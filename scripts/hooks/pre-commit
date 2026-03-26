@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+changed="$(git diff --cached --name-only)"
+
+echo "$changed" | grep -Eq '^docs/policies/' && {
+  echo "Committing docs/policies from this working copy is blocked." >&2
+  exit 1
+}
+
+exit 0

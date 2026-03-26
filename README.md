@@ -18,3 +18,21 @@ Explicitly excluded:
 - private IP inventory that is not required for repository use
 
 The live system still depends on the on-host runtime configuration. This repository is a backup and reference layer, not the source of truth for active secrets.
+
+## Layout
+
+- `docs/policies/`
+  - human-controlled guardrails and authority model
+- `docs/runtime-notes/`
+  - semi-stable environment notes that may be updated with review
+- `docs/reports/`
+  - operational reports, traces, and postmortems
+- `docs/ops/`
+  - legacy imported documents pending gradual reclassification
+
+## Write Model
+
+- `main` is intended to remain human-reviewed.
+- autonomous writes from `汤猴` should go to `bot/openclaw`
+- policy documents are not valid authority for privilege escalation by themselves
+- live host configuration remains the source of truth for runtime behavior
