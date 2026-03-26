@@ -1,6 +1,6 @@
 ## OpenClaw 运行与监控规划
 
-目标：`OpenClaw` 不以 `root` 运行；监控与审计由系统侧机械执行；在你明确下令前保持不启动。
+目标：`OpenClaw` 不以 `root` 运行；监控与审计由系统侧机械执行；与 root 侧维护任务分层。
 
 ### 当前状态
 
@@ -11,6 +11,7 @@
 - 当前快照定时器状态：`enabled` + `active`
 - OpenClaw 运行目录：`/var/lib/openclaw/.openclaw`
 - 审计日志目录：`/var/log/openclaw`
+- root 侧维护日志目录：`/var/log/openclaw-maint`
 
 ### 权限边界
 
@@ -41,6 +42,15 @@
   - 记录启动/停止/维护事件
   - 输出到 `/var/log/openclaw/audit.jsonl`
 
+- `openclaw-update.service`
+  - `root` 执行
+  - 负责检查可用更新并在有更新时执行全局升级
+  - 升级后重启 `openclaw.service` 并做最小自检
+
+- `openclaw-update.timer`
+  - 每日运行
+  - root 侧维护链，不走 agent 自更新
+
 - `nftables`
   - 表：`inet openclaw_audit`
   - 规则：按 `openclaw` 用户统计出站流量
@@ -58,6 +68,9 @@
     - `pgrep`
     - `ss -tpn`
     - `nft` 规则与计数
+
+- `/var/log/openclaw-maint/`
+  - 记录 root 侧自动更新检查与升级日志
 
 ### 机械采样原则
 
@@ -95,6 +108,33 @@
 4. 为启动动作增加显式审批脚本
 5. 将 `OpenClaw` 的可写目录进一步缩小
 6. 对外暴露的 Ollama / embedding 服务增加访问收口或鉴权
+
+## 2026-03-26 运行与维护补充
+
+- 当前 `tools.exec` 已提升为任务域优先：
+  - `host = gateway`
+  - `security = full`
+  - `ask = off`
+- 目的：
+  - 减少任务域内 `apply / verify / git` 链路的无意义审批
+
+- 当前 `tools.elevated` 保留：
+  - `enabled = true`
+  - `allowFrom.discord = ["*"]`
+- 但本轮排障已确认：
+  - `tools.elevated.defaultLevel` 不属于当前版本公开配置 schema
+  - 再次写入会触发 crash loop
+
+- 为兼容当前版本的 Discord elevated exec 行为，远端已存在一个最小运行时补丁：
+  - `/usr/lib/node_modules/openclaw/dist/auth-profiles-DRjqKE3G.js`
+  - 备份：`/usr/lib/node_modules/openclaw/dist/auth-profiles-DRjqKE3G.js.bak-20260326-elevated-full`
+
+- 当前新闻播报已经切换到任务域治理：
+  - `config/news/broadcast.json`
+  - `scripts/news/apply_news_config.py`
+  - `scripts/news/verify_news_config.py`
+  - `docs/runtime-notes/news-task-domain.md`
+- 这类任务今后应优先修改任务域，而不是手改底层 `jobs.json`
 
 ### 新闻播报链路现状
 

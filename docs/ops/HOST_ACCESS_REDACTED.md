@@ -48,6 +48,25 @@ Updated: 2026-03-26 (Asia/Tokyo)
   - `/root/.config/systemd/user/openclaw-gateway.service`
 - If supervisor logging is used, `ReadWritePaths` must include `/var/log/openclaw`.
 
+- Current `tools.exec` runtime posture:
+  - `host = gateway`
+  - `security = full`
+  - `ask = off`
+- Purpose:
+  - let task-domain `exec / git / python` chains run without repetitive approval churn
+
+- Current `tools.elevated` posture remains:
+  - `enabled = true`
+  - `allowFrom.discord = ["*"]`
+- Known compatibility warning:
+  - `tools.elevated.defaultLevel` is not accepted by the current public config schema
+  - do not write that key back into `openclaw.json`
+
+- A small runtime compatibility patch exists on the host:
+  - `/usr/lib/node_modules/openclaw/dist/auth-profiles-DRjqKE3G.js`
+  - backup:
+    `/usr/lib/node_modules/openclaw/dist/auth-profiles-DRjqKE3G.js.bak-20260326-elevated-full`
+
 ## Key Paths
 
 - Service supervisor: `/usr/local/bin/openclaw-gateway-supervise`
@@ -95,11 +114,42 @@ Updated: 2026-03-26 (Asia/Tokyo)
 ## News Broadcast Notes
 
 - Daily news cron exists in two slots:
-  - morning JST run
-  - afternoon JST run
+  - `09:00 JST`
+  - `16:30 JST`
 - Delivery target is the Discord `public` channel.
 - Current known degradations:
   - `web_search` lacks a search API key
   - browser operations may still time out
   - `web_fetch` can be blocked by upstream content defenses
 - Public RSS and normal web fetch remain valid fallback sources.
+
+- News broadcasting now has a dedicated task domain:
+  - machine config:
+    `config/news/broadcast.json`
+  - apply tool:
+    `scripts/news/apply_news_config.py`
+  - verify tool:
+    `scripts/news/verify_news_config.py`
+  - note:
+    `docs/runtime-notes/news-task-domain.md`
+- Future changes should go through:
+  - config change
+  - apply
+  - verify
+  - then report
+
+## Root-Side Auto Update
+
+- Root now owns OpenClaw package replacement and restart verification.
+- Deployed components:
+  - `/usr/local/lib/openclaw-maint/check_openclaw_update.sh`
+  - `/usr/local/lib/openclaw-maint/apply_openclaw_update.sh`
+  - `/etc/systemd/system/openclaw-update.service`
+  - `/etc/systemd/system/openclaw-update.timer`
+- Log directory:
+  - `/var/log/openclaw-maint`
+- Verified update result on 2026-03-26:
+  - before:
+    `OpenClaw 2026.3.13`
+  - after:
+    `OpenClaw 2026.3.24`
