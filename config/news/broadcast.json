@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "timezone": "Asia/Tokyo",
+  "delivery": {
+    "channel": "discord",
+    "to": "1483636573235843072",
+    "accountId": "default",
+    "mode": "announce"
+  },
+  "jobs": [
+    {
+      "name": "news-digest-jst-0900",
+      "description": "Discord news digest for previous 16 hours (JST)",
+      "schedule": {
+        "expr": "0 9 * * *",
+        "tz": "Asia/Tokyo"
+      },
+      "windowLabel": "前一日 17:00 到当日 09:00（亚洲/东京，JST）",
+      "windowHours": 16
+    },
+    {
+      "name": "news-digest-jst-1630",
+      "description": "Discord news digest for previous 8 hours (JST)",
+      "schedule": {
+        "expr": "30 16 * * *",
+        "tz": "Asia/Tokyo"
+      },
+      "windowLabel": "当日 09:00 到当日 17:00（亚洲/东京，JST）",
+      "windowHours": 8
+    }
+  ],
+  "formatRules": {
+    "outline": [
+      "1. 标题",
+      "2. 时间窗口",
+      "3. 日本",
+      "4. 中国",
+      "5. 国际",
+      "6. 市场或风险提示",
+      "7. 信息来源概览"
+    ],
+    "contentBulletPrefix": "- ",
+    "forbidNestedNumbering": true,
+    "selfCheckNumberedLinesOnlyTopLevel": true,
+    "fallbackNoMajorUpdateLine": "本时段未检索到足够重大的新增事件。"
+  },
+  "model": {
+    "name": "openai-codex/gpt-5.4",
+    "thinking": "low",
+    "timeoutSeconds": 480,
+    "lightContext": true,
+    "allowUnsafeExternalContent": true
+  }
+}
