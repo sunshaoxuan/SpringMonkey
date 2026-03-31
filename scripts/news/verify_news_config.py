@@ -46,14 +46,19 @@ def main():
             "禁止继续使用数字编号",
             "带数字编号的行只能是 1 到 7"
         ]
-        if cfg["formatRules"].get("requirePerItemSourceLink"):
+        fr = cfg["formatRules"]
+        if fr.get("requirePerItemSourceLink"):
             required.append("每一条实际新闻条目后都必须带具体原文链接")
             required.append("如果拿不到该条新闻的具体原文链接，这条新闻不得发布")
-        if cfg["formatRules"].get("requireLinkOnNewLine"):
+        if fr.get("requireLinkOnNewLine"):
             required.append("每条新闻的链接必须单独另起一行")
             required.append("不允许把链接塞在正文句尾")
-        if cfg["formatRules"].get("requireSourceLinkMatchesItem"):
+        if fr.get("requireSourceLinkMatchesItem"):
             required.append("链接必须与该条正文内容直接对应；如果点开后与正文不符，这条新闻不得发布")
+        if fr.get("forbidAggregatorLinksAsSource"):
+            required.append("聚合页链接不能直接作为原文信源")
+        if fr.get("requireSourceVerifiedBeforeWriting"):
+            required.append("必须先验证来源链接可访问且内容与要写的事实相符，再组织成新闻条目")
         for token in required:
             if token not in msg:
                 fail(f"missing required token in {spec['name']}: {token}")

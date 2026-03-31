@@ -45,7 +45,21 @@
     "requirePerItemSourceLink": true,
     "fallbackNoMajorUpdateLine": "本时段未检索到足够重大的新增事件。",
     "requireLinkOnNewLine": true,
-    "requireSourceLinkMatchesItem": true
+    "requireSourceLinkMatchesItem": true,
+    "forbidAggregatorLinksAsSource": true,
+    "requireSourceVerifiedBeforeWriting": true
+  },
+  "sourcePolicy": {
+    "blockedDomains": [
+      "theguardian.com",
+      "www.theguardian.com"
+    ],
+    "aggregatorDomains": [
+      "news.google.com",
+      "google.com",
+      "news.yahoo.com",
+      "yahoo.com"
+    ]
   },
   "model": {
     "name": "openai-codex/gpt-5.4",
