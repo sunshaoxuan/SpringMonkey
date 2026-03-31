@@ -43,7 +43,9 @@
     "forbidNestedNumbering": true,
     "selfCheckNumberedLinesOnlyTopLevel": true,
     "requirePerItemSourceLink": true,
-    "fallbackNoMajorUpdateLine": "本时段未检索到足够重大的新增事件。"
+    "fallbackNoMajorUpdateLine": "本时段未检索到足够重大的新增事件。",
+    "requireLinkOnNewLine": true,
+    "requireSourceLinkMatchesItem": true
   },
   "model": {
     "name": "openai-codex/gpt-5.4",

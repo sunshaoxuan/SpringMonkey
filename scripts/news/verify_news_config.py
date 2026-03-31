@@ -48,6 +48,12 @@ def main():
         ]
         if cfg["formatRules"].get("requirePerItemSourceLink"):
             required.append("每一条实际新闻条目后都必须带具体原文链接")
+            required.append("如果拿不到该条新闻的具体原文链接，这条新闻不得发布")
+        if cfg["formatRules"].get("requireLinkOnNewLine"):
+            required.append("每条新闻的链接必须单独另起一行")
+            required.append("不允许把链接塞在正文句尾")
+        if cfg["formatRules"].get("requireSourceLinkMatchesItem"):
+            required.append("链接必须与该条正文内容直接对应；如果点开后与正文不符，这条新闻不得发布")
         for token in required:
             if token not in msg:
                 fail(f"missing required token in {spec['name']}: {token}")
