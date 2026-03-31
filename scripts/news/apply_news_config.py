@@ -27,6 +27,12 @@ def save_json(path: Path, data):
 
 def build_message(cfg: dict, job: dict) -> str:
     outline = "\n".join(cfg["formatRules"]["outline"])
+    require_links = cfg["formatRules"].get("requirePerItemSourceLink", False)
+    link_rule = (
+        "- 每一条实际新闻条目后都必须带具体原文链接；不能只在文末统一列来源名，不得省略 URL。\n"
+        if require_links
+        else ""
+    )
     return (
         "你要向 Discord public 频道发布新闻简报。严格使用以下固定结构：\n"
         f"{outline}\n\n"
@@ -37,6 +43,7 @@ def build_message(cfg: dict, job: dict) -> str:
         "- 绝对不要出现类似“4. 中国”下面再写“4. 某条新闻”或“5. 某条新闻”的情况。\n"
         "- 发出前先自检：整篇中带数字编号的行只能是 1 到 7 这七个一级标题。若不满足，先重写再发送。\n"
         f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{cfg['formatRules']['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。\n"
+        f"{link_rule}"
         "- 语言使用中文。\n\n"
         f"本次任务的时间窗是：{job['windowLabel']}。"
         f" 优先使用公开可信来源；若 web_search 不可用，可使用 RSS、公开网页与已知权威媒体页面。"
@@ -93,6 +100,16 @@ def main():
     jobs_doc = load_json(JOBS_PATH)
     if jobs_doc.get("version") != 1:
         raise SystemExit("Unsupported jobs.json version")
+
+    expected_names = {spec["name"] for spec in cfg["jobs"]}
+    jobs_doc["jobs"] = [
+        job
+        for job in jobs_doc.get("jobs", [])
+        if not (
+            str(job.get("name", "")).startswith("news-digest-jst-")
+            and job.get("name") not in expected_names
+        )
+    ]
 
     for spec in cfg["jobs"]:
         apply_job(cfg, jobs_doc, spec)

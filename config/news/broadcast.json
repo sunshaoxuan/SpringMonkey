@@ -19,10 +19,10 @@
       "windowHours": 16
     },
     {
-      "name": "news-digest-jst-1630",
-      "description": "Discord news digest for previous 8 hours (JST)",
+      "name": "news-digest-jst-1700",
+      "description": "Discord news digest for 09:00-17:00 (JST)",
       "schedule": {
-        "expr": "30 16 * * *",
+        "expr": "0 17 * * *",
         "tz": "Asia/Tokyo"
       },
       "windowLabel": "当日 09:00 到当日 17:00（亚洲/东京，JST）",
@@ -42,6 +42,7 @@
     "contentBulletPrefix": "- ",
     "forbidNestedNumbering": true,
     "selfCheckNumberedLinesOnlyTopLevel": true,
+    "requirePerItemSourceLink": true,
     "fallbackNoMajorUpdateLine": "本时段未检索到足够重大的新增事件。"
   },
   "model": {

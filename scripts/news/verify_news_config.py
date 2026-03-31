@@ -21,6 +21,15 @@ def main():
     cfg = load_json(CONFIG_PATH)
     jobs_doc = load_json(JOBS_PATH)
     jobs = {job["name"]: job for job in jobs_doc.get("jobs", [])}
+    expected_names = {spec["name"] for spec in cfg["jobs"]}
+
+    stale = [
+        name
+        for name in jobs
+        if str(name).startswith("news-digest-jst-") and name not in expected_names
+    ]
+    if stale:
+        fail(f"stale jobs present: {', '.join(sorted(stale))}")
 
     for spec in cfg["jobs"]:
         job = jobs.get(spec["name"])
@@ -37,6 +46,8 @@ def main():
             "禁止继续使用数字编号",
             "带数字编号的行只能是 1 到 7"
         ]
+        if cfg["formatRules"].get("requirePerItemSourceLink"):
+            required.append("每一条实际新闻条目后都必须带具体原文链接")
         for token in required:
             if token not in msg:
                 fail(f"missing required token in {spec['name']}: {token}")
