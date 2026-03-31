@@ -10,14 +10,23 @@ News broadcasting is now intended to be changed through a task-domain workflow i
   - `scripts/news/apply_news_config.py`
 - Verify tool:
   - `scripts/news/verify_news_config.py`
+- Workspace mirror for editing from OpenClaw:
+  - `~/.openclaw/workspace/SpringMonkey/`
 
 ## Intended Workflow For 汤猴
 
-1. Update `config/news/broadcast.json`
-2. Run `scripts/news/apply_news_config.py`
-3. Run `scripts/news/verify_news_config.py`
-4. Report only after verification passes
-5. Commit the config or docs change to `bot/openclaw`
+1. Update `~/.openclaw/workspace/SpringMonkey/config/news/broadcast.json`
+2. Mirror or save the same change into the repo working copy under `/var/lib/openclaw/repos/SpringMonkey/`
+3. Run `scripts/news/apply_news_config.py`
+4. Run `scripts/news/verify_news_config.py`
+5. Report only after verification passes
+6. Commit the config or docs change to `bot/openclaw`
+
+## Path Rule
+
+- Do not use `apply_patch` against absolute repo paths outside `~/.openclaw/workspace`.
+- If editing from Discord/embedded agent mode, prefer the workspace mirror path first.
+- The repo working copy under `/var/lib/openclaw/repos/SpringMonkey` remains the source for Git commits.
 
 ## Scope
 
