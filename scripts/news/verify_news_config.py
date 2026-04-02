@@ -41,12 +41,15 @@ def main():
             fail(f"bad delivery target for {spec['name']}")
         msg = job.get("payload", {}).get("message", "")
         required = [
-            "1. 标题",
-            "7. 信息来源概览",
-            "禁止继续使用数字编号",
-            "带数字编号的行只能是 1 到 7"
+            "标题直接写成：",
+            "从日本开始才允许使用编号",
+            "只有以上 4 个一级标题可以使用数字编号",
+            "标题和时间窗口不能编号",
+            "带数字编号的行只能是 1 到 4"
         ]
         fr = cfg["formatRules"]
+        if fr.get("omitFinalSourceSummary"):
+            required.append("文末不要再重复列一次所有来源概览")
         if fr.get("requirePerItemSourceLink"):
             required.append("每一条实际新闻条目后都必须带具体原文链接")
             required.append("如果拿不到该条新闻的具体原文链接，这条新闻不得发布")
@@ -59,6 +62,9 @@ def main():
             required.append("聚合页链接不能直接作为原文信源")
         if fr.get("requireSourceVerifiedBeforeWriting"):
             required.append("必须先验证来源链接可访问且内容与要写的事实相符，再组织成新闻条目")
+        coverage_rule = cfg.get("sourcePolicy", {}).get("coverageRule")
+        if coverage_rule:
+            required.append(coverage_rule)
         for token in required:
             if token not in msg:
                 fail(f"missing required token in {spec['name']}: {token}")

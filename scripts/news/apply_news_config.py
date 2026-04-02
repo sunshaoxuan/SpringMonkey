@@ -25,9 +25,12 @@ def save_json(path: Path, data):
 
 
 def build_message(cfg: dict, job: dict) -> str:
-    outline = "\n".join(cfg["formatRules"]["outline"])
     fr = cfg["formatRules"]
     sp = cfg.get("sourcePolicy", {})
+
+    outline = "\n".join(fr["outline"])
+    title_line = fr.get("titleLine", "新闻简报")
+    show_window_plain = fr.get("showWindowAsPlainLine", False)
 
     link_rules = []
     if fr.get("requirePerItemSourceLink"):
@@ -45,32 +48,42 @@ def build_message(cfg: dict, job: dict) -> str:
         link_rules.append("- 如果拿不到该条新闻的具体原文链接，这条新闻不得发布。")
         link_rules.append("- 发出前自检：每一条新闻是否都带有一个可直接打开且与正文一致的原文链接；若有缺失或不匹配，先重写或删掉该条。")
 
-    link_rule_text = "\n".join(link_rules)
-    if link_rule_text:
-        link_rule_text += "\n"
-
     blocked = ", ".join(sp.get("blockedDomains", []))
     aggregators = ", ".join(sp.get("aggregatorDomains", []))
+    categories = "、".join(sp.get("coverageCategories", []))
+    coverage_rule = sp.get("coverageRule", "")
 
-    return (
-        "你要向 Discord public 频道发布新闻简报。严格使用以下固定结构：\n"
-        f"{outline}\n\n"
-        "强制格式规则：\n"
-        "- 只有以上 7 个一级标题可以使用数字编号。\n"
-        "- 在“3. 日本 / 4. 中国 / 5. 国际 / 6. 市场或风险提示 / 7. 信息来源概览”各节内部，禁止继续使用数字编号。\n"
-        "- 各节内部的条目一律使用短横线项目符号 `- `。\n"
-        "- 绝对不要出现类似“4. 中国”下面再写“4. 某条新闻”或“5. 某条新闻”的情况。\n"
-        "- 发出前先自检：整篇中带数字编号的行只能是 1 到 7 这七个一级标题。若不满足，先重写再发送。\n"
-        f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{fr['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。\n"
-        f"{link_rule_text}"
-        f"- 禁用信源域名：{blocked}。若候选链接命中这些域名，必须丢弃并改用其他来源。\n"
-        f"- 聚合域名：{aggregators}。这些链接只能当线索，不能当原文信源。\n"
-        "- 语言使用中文。\n\n"
-        f"本次任务的时间窗是：{job['windowLabel']}。"
-        f" 优先使用公开可信来源；若 web_search 不可用，可使用 RSS、公开网页与已知权威媒体页面。"
-        f" 重点覆盖日本 / 中国 / 国际三类重大新闻，并补充市场或风险提示。"
-        f" 本时段参考窗口约 {job['windowHours']} 小时。完成后直接投递到 Discord。"
-    )
+    intro = [
+        "你要向 Discord public 频道发布新闻简报。",
+        f"标题直接写成：{title_line}。",
+        "时间窗口作为标题下的附加信息单独显示，不使用数字编号。" if show_window_plain else "",
+        "从日本开始才允许使用编号，且只能使用以下一级标题：",
+        outline,
+        "",
+        "强制格式规则：",
+        "- 只有以上 4 个一级标题可以使用数字编号。",
+        "- 标题和时间窗口不能编号。",
+        "- 各节内部的条目一律使用短横线项目符号 `- `。",
+        "- 绝对不要出现嵌套数字编号。",
+        "- 发出前先自检：整篇中带数字编号的行只能是 1 到 4 这四个一级标题。若不满足，先重写再发送。",
+        f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{fr['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。",
+    ]
+    if fr.get("omitFinalSourceSummary"):
+        intro.append("- 每条新闻既然已经单独附链接，文末不要再重复列一次所有来源概览。")
+    intro.extend(link_rules)
+    intro.extend([
+        f"- 禁用信源域名：{blocked}。若候选链接命中这些域名，必须丢弃并改用其他来源。",
+        f"- 聚合域名：{aggregators}。这些链接只能当线索，不能当原文信源。",
+        f"- 每次都要主动覆盖这些类别：{categories}。",
+        f"- {coverage_rule}" if coverage_rule else "",
+        "- 语言使用中文。",
+        "",
+        f"本次任务的时间窗是：{job['windowLabel']}。",
+        "优先使用公开可信来源；若 web_search 不可用，可使用 RSS、公开网页与已知权威媒体页面。",
+        f"本时段参考窗口约 {job['windowHours']} 小时。完成后直接投递到 Discord。"
+    ])
+
+    return "\n".join([line for line in intro if line != ""])
 
 
 def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
