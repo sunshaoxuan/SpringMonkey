@@ -65,6 +65,16 @@ def main():
         coverage_rule = cfg.get("sourcePolicy", {}).get("coverageRule")
         if coverage_rule:
             required.append(coverage_rule)
+        min_soft = cfg.get("sourcePolicy", {}).get("minimumSoftNewsCategoriesPerRegion")
+        if min_soft:
+            required.append(f"每个地区至少要纳入 {min_soft} 个软新闻类别")
+        pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
+        if pools.get("japan"):
+            required.append("日本优先信源池")
+        if pools.get("china"):
+            required.append("中国优先信源池")
+        if pools.get("world"):
+            required.append("国际优先信源池")
         for token in required:
             if token not in msg:
                 fail(f"missing required token in {spec['name']}: {token}")

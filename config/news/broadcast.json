@@ -70,7 +70,42 @@
       "公共安全与健康",
       "环境与气候"
     ],
-    "coverageRule": "不能只保留国家级或宏观政治经济新闻；每次都要主动检索并纳入有信息价值的社会、娱乐、科技、文化、生活类新闻。"
+    "coverageRule": "不能只保留国家级或宏观政治经济新闻；每次都要主动检索并纳入有信息价值的社会、娱乐、科技、文化、生活类新闻。",
+    "minimumSoftNewsCategoriesPerRegion": 2,
+    "sourcePools": {
+      "japan": [
+        "Reuters",
+        "AP",
+        "Kyodo",
+        "The Japan Times",
+        "nippon.com",
+        "Formula 1",
+        "The Cut",
+        "Vanity Fair",
+        "ESPN"
+      ],
+      "china": [
+        "Reuters",
+        "BBC",
+        "CNBC",
+        "NBC News",
+        "SpaceNews",
+        "InsideEVs",
+        "The New York Times",
+        "AP"
+      ],
+      "world": [
+        "Reuters",
+        "AP",
+        "WMO",
+        "WHO",
+        "ICIJ",
+        "NPR",
+        "BBC",
+        "ESPN",
+        "AP News"
+      ]
+    }
   },
   "model": {
     "name": "openai-codex/gpt-5.4",

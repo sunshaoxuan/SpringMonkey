@@ -52,6 +52,13 @@ def build_message(cfg: dict, job: dict) -> str:
     aggregators = ", ".join(sp.get("aggregatorDomains", []))
     categories = "、".join(sp.get("coverageCategories", []))
     coverage_rule = sp.get("coverageRule", "")
+    min_soft = sp.get("minimumSoftNewsCategoriesPerRegion", 0)
+    pools = sp.get("sourcePools", {})
+    pools_text = []
+    for region in ("japan", "china", "world"):
+        if pools.get(region):
+            label = {"japan": "日本", "china": "中国", "world": "国际"}[region]
+            pools_text.append(f"- {label}优先信源池：{'、'.join(pools[region])}。")
 
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
@@ -76,6 +83,8 @@ def build_message(cfg: dict, job: dict) -> str:
         f"- 聚合域名：{aggregators}。这些链接只能当线索，不能当原文信源。",
         f"- 每次都要主动覆盖这些类别：{categories}。",
         f"- {coverage_rule}" if coverage_rule else "",
+        f"- 每个地区至少要纳入 {min_soft} 个软新闻类别（如社会、科技、娱乐、生活、体育、健康）中的有效条目，除非确实无可验证来源。" if min_soft else "",
+        *pools_text,
         "- 语言使用中文。",
         "",
         f"本次任务的时间窗是：{job['windowLabel']}。",
