@@ -41,6 +41,8 @@
     "contentBulletPrefix": "- ",
     "forbidNestedNumbering": true,
     "selfCheckNumberedLinesOnlyTopLevel": true,
+    "requiredExactTopLevelCount": 4,
+    "titleAndWindowMustBePlain": true,
     "requirePerItemSourceLink": true,
     "fallbackNoMajorUpdateLine": "本节无合格新增新闻条目。",
     "requireLinkOnNewLine": true,
@@ -107,11 +109,6 @@
       ]
     }
   },
-  "toolPolicy": {
-    "preferWebSearchAndWebFetch": true,
-    "forbidBrowserSearchPages": true,
-    "browserFallbackPolicy": "如果 browser 超时或不可用，不要重试 browser；直接改走 web_search、RSS、媒体直链与公开网页抓取。"
-  },
   "model": {
     "name": "openai-codex/gpt-5.4",
     "thinking": "low",
@@ -120,4 +117,3 @@
     "allowUnsafeExternalContent": true
   }
 }
-
