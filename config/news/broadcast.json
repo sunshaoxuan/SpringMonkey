@@ -110,7 +110,7 @@
   "model": {
     "name": "openai-codex/gpt-5.4",
     "thinking": "low",
-    "timeoutSeconds": 480,
+    "timeoutSeconds": 3600,
     "lightContext": true,
     "allowUnsafeExternalContent": true
   }
