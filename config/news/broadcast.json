@@ -41,8 +41,6 @@
     "contentBulletPrefix": "- ",
     "forbidNestedNumbering": true,
     "selfCheckNumberedLinesOnlyTopLevel": true,
-    "requiredExactTopLevelCount": 4,
-    "titleAndWindowMustBePlain": true,
     "requirePerItemSourceLink": true,
     "fallbackNoMajorUpdateLine": "本节无合格新增新闻条目。",
     "requireLinkOnNewLine": true,
@@ -109,6 +107,40 @@
       ]
     }
   },
+  "toolPolicy": {
+    "preferWebSearchAndWebFetch": true,
+    "forbidBrowserSearchPages": true,
+    "browserFallbackPolicy": "如果 browser 超时或不可用，不要重试 browser；直接改走 web_search、RSS、媒体直链与公开网页抓取。",
+    "searchQuotaPolicy": {
+      "rssFirst": true,
+      "primaryProvider": "brave",
+      "secondaryProvider": "google-programmable-search",
+      "limits": {
+        "brave": {
+          "period": "monthly",
+          "maxCalls": 1000
+        },
+        "googleProgrammableSearch": {
+          "period": "daily",
+          "maxCalls": 100
+        }
+      },
+      "enforcementRules": [
+        "每次任务优先使用 RSS、原媒体直链和已知权威页面，只有确实需要补线索时才调用搜索 API。",
+        "调用 Brave 前必须确认本月累计调用未超过 1000 次；达到上限后本月不得再调用 Brave。",
+        "调用 Google Programmable Search 前必须确认当日累计调用未超过 100 次；达到上限后当日不得再调用 Google。",
+        "当主搜索源超限时，只能降级到下一搜索源或 RSS/直链，不得继续硬打超限 provider。",
+        "执行过程中必须精确控制调用量，不得为了同一条新闻重复进行无意义的同类搜索。"
+      ],
+      "googleProgrammableSearch": {
+        "enabled": true,
+        "helperScript": "scripts/news/google_custom_search.py",
+        "envKeyVar": "GOOGLE_CUSTOM_SEARCH_API_KEY",
+        "envCxVar": "GOOGLE_CUSTOM_SEARCH_CX",
+        "usageLedger": "/var/lib/openclaw/.openclaw/runtime/google-pse-usage.json"
+      }
+    }
+  },
   "model": {
     "name": "openai-codex/gpt-5.4",
     "thinking": "low",
@@ -117,3 +149,4 @@
     "allowUnsafeExternalContent": true
   }
 }
+
