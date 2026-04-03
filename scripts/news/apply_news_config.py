@@ -27,6 +27,7 @@ def save_json(path: Path, data):
 def build_message(cfg: dict, job: dict) -> str:
     fr = cfg["formatRules"]
     sp = cfg.get("sourcePolicy", {})
+    tp = cfg.get("toolPolicy", {})
 
     outline = "\n".join(fr["outline"])
     title_line = fr.get("titleLine", "新闻简报")
@@ -81,6 +82,9 @@ def build_message(cfg: dict, job: dict) -> str:
     intro.extend([
         f"- 禁用信源域名：{blocked}。若候选链接命中这些域名，必须丢弃并改用其他来源。",
         f"- 聚合域名：{aggregators}。这些链接只能当线索，不能当原文信源。",
+        "- 优先使用 web_search 获取线索，并直接用 web_fetch 抓取原文页面；不要为了搜索结果页再调用 browser。" if tp.get("preferWebSearchAndWebFetch") else "",
+        "- 禁止把 Google、DuckDuckGo 等搜索结果页当成 browser 打开目标；搜索结果只能作为线索，后续必须直接抓原媒体或机构页面。" if tp.get("forbidBrowserSearchPages") else "",
+        f"- {tp['browserFallbackPolicy']}" if tp.get("browserFallbackPolicy") else "",
         f"- 每次都要主动覆盖这些类别：{categories}。",
         f"- {coverage_rule}" if coverage_rule else "",
         f"- 每个地区至少要纳入 {min_soft} 个软新闻类别（如社会、科技、娱乐、生活、体育、健康）中的有效条目，除非确实无可验证来源。" if min_soft else "",
@@ -165,3 +169,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

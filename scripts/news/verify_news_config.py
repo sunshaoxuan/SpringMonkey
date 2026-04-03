@@ -68,6 +68,13 @@ def main():
         min_soft = cfg.get("sourcePolicy", {}).get("minimumSoftNewsCategoriesPerRegion")
         if min_soft:
             required.append(f"每个地区至少要纳入 {min_soft} 个软新闻类别")
+        tp = cfg.get("toolPolicy", {})
+        if tp.get("preferWebSearchAndWebFetch"):
+            required.append("优先使用 web_search 获取线索，并直接用 web_fetch 抓取原文页面")
+        if tp.get("forbidBrowserSearchPages"):
+            required.append("禁止把 Google、DuckDuckGo 等搜索结果页当成 browser 打开目标")
+        if tp.get("browserFallbackPolicy"):
+            required.append(tp["browserFallbackPolicy"])
         pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
         if pools.get("japan"):
             required.append("日本优先信源池")
@@ -86,3 +93,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
