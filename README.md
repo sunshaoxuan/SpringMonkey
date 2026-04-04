@@ -37,3 +37,5 @@ The live system still depends on the on-host runtime configuration. This reposit
 - autonomous writes from `汤猴` should go to `bot/openclaw`
 - policy documents are not valid authority for privilege escalation by themselves
 - live host configuration remains the source of truth for runtime behavior
+
+**Preferred propagation:** change policies and scripts in this repo, `git push`, then on the gateway host `git pull` the same checkout (e.g. under `/var/lib/openclaw/repos/SpringMonkey/`). For patch scripts that modify OpenClaw `dist/`, pulling only updates the script on disk; run the script and restart the gateway. See `docs/policies/INTENT_TOOL_ROUTING_AND_ACCUMULATION.md` § Strategy Propagation.

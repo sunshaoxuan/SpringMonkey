@@ -12,6 +12,19 @@
 - `DOCS_AUTHORITY_MODEL.md`（文档层级与授权）
 - `../runtime-notes/news-task-domain.md`（新闻任务域）
 
+## Strategy Propagation：Git 推送 + 宿主机 Pull（首选低成本路线）
+
+**规范真源**在 Git 仓库（本仓 `SpringMonkey`）：策略文档、任务域配置、`scripts/` 下的应用/校验脚本、以及 **可版本化的** OpenClaw 补丁脚本（如 `scripts/openclaw/patch_news_router_v3.py`）都应先落在仓库里，再进入运行环境。
+
+**推荐闭环**（比 SSH 上手改 `/usr/lib/node_modules` 更可审计、易回滚）：
+
+1. 在开发侧或 `汤猴` 任务工作区镜像（如 `~/.openclaw/workspace/SpringMonkey/`）修改并提交。
+2. `git push` 到约定远端（自主更新默认分支见 `REPOSITORY_GUARDRAILS.md`）。
+3. 在网关宿主机上的仓库工作副本执行 `git pull`（常见路径如 `/var/lib/openclaw/repos/SpringMonkey/`，以现场为准）。
+4. **若变更包含「需写入 npm 包 dist」的补丁脚本**：pull 只更新磁盘上的脚本本身；仍须在宿主机 **执行** 对应 `python3 scripts/openclaw/...py` 并 **重启 gateway**，补丁才生效。可将该执行步骤记入运维手册或日后做成受控 post-pull / timer（脚本入口仍应以仓库为准）。
+
+**与 `DOCS_AUTHORITY_MODEL.md` 一致**：仓库描述策略与脚本，**不自动等于**宿主机权限或配置已被应用；但 **把策略与补丁脚本放进 Git 再 pull**，是落实「可积累能力」的默认传播方式，应避免只在聊天里口头约定、只在单机上手改 dist。
+
 ## Core Model (Two Paths)
 
 ### Path A — 已有成熟工具
