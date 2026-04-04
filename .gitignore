@@ -5,3 +5,6 @@
 secrets/
 private/
 
+# 新闻流水线本地运行目录
+var/news-runs/
+
