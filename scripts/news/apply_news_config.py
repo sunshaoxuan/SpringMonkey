@@ -87,13 +87,9 @@ def build_message(cfg: dict, job: dict) -> str:
         "- 禁止把 Google、DuckDuckGo 等搜索结果页当成 browser 打开目标；搜索结果只能作为线索，后续必须直接抓原媒体或机构页面。" if tp.get("forbidBrowserSearchPages") else "",
         f"- {tp['browserFallbackPolicy']}" if tp.get("browserFallbackPolicy") else "",
         "- 搜索配额控制是硬约束，不得超过。" if sq else "",
-        f"- 搜索顺序：先 RSS / 原媒体直链，再 {sq.get('primaryProvider')}，必要时再 {sq.get('secondaryProvider')}。" if sq else "",
+        f"- 搜索顺序：先 RSS / 原媒体直链，再 {sq.get('primaryProvider')}。" if sq else "",
         f"- Brave 调用上限：每月 {sq.get('limits',{}).get('brave',{}).get('maxCalls')} 次。" if sq.get('limits',{}).get('brave',{}).get('maxCalls') else "",
-        f"- Google Programmable Search 调用上限：每日 {sq.get('limits',{}).get('googleProgrammableSearch',{}).get('maxCalls')} 次。" if sq.get('limits',{}).get('googleProgrammableSearch',{}).get('maxCalls') else "",
         *[f"- {rule}" for rule in sq.get("enforcementRules", [])],
-        f"- 若需要 Google Programmable Search，只能通过辅助脚本 `{sq.get('googleProgrammableSearch',{}).get('helperScript')}` 调用。" if sq.get("googleProgrammableSearch", {}).get("helperScript") else "",
-        f"- Google PSE 凭据环境变量：{sq.get('googleProgrammableSearch',{}).get('envKeyVar')} 与 {sq.get('googleProgrammableSearch',{}).get('envCxVar')}。" if sq.get("googleProgrammableSearch", {}).get("envKeyVar") and sq.get("googleProgrammableSearch", {}).get("envCxVar") else "",
-        f"- Google PSE 使用计数账本：{sq.get('googleProgrammableSearch',{}).get('usageLedger')}；调用前后都要以它为准。" if sq.get("googleProgrammableSearch", {}).get("usageLedger") else "",
         f"- 每次都要主动覆盖这些类别：{categories}。",
         f"- {coverage_rule}" if coverage_rule else "",
         f"- 每个地区至少要纳入 {min_soft} 个软新闻类别（如社会、科技、娱乐、生活、体育、健康）中的有效条目，除非确实无可验证来源。" if min_soft else "",
@@ -143,6 +139,43 @@ def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
         "kind": "agentTurn",
         "message": build_message(cfg, spec),
         "model": cfg["model"]["name"],
+        "thinking": cfg["model"]["thinking"],
+        "timeoutSeconds": cfg["model"]["timeoutSeconds"],
+        "lightContext": cfg["model"]["lightContext"],
+        "allowUnsafeExternalContent": cfg["model"]["allowUnsafeExternalContent"]
+    }
+    existing["delivery"] = cfg["delivery"]
+
+
+def main():
+    cfg = load_json(CONFIG_PATH)
+    jobs_doc = load_json(JOBS_PATH)
+    if jobs_doc.get("version") != 1:
+        raise SystemExit("Unsupported jobs.json version")
+
+    expected_names = {spec["name"] for spec in cfg["jobs"]}
+    jobs_doc["jobs"] = [
+        job
+        for job in jobs_doc.get("jobs", [])
+        if not (
+            str(job.get("name", "")).startswith("news-digest-jst-")
+            and job.get("name") not in expected_names
+        )
+    ]
+
+    for spec in cfg["jobs"]:
+        apply_job(cfg, jobs_doc, spec)
+
+    save_json(JOBS_PATH, jobs_doc)
+    print("APPLY_OK")
+    for spec in cfg["jobs"]:
+        print(spec["name"])
+
+
+if __name__ == "__main__":
+    main()
+
+],
         "thinking": cfg["model"]["thinking"],
         "timeoutSeconds": cfg["model"]["timeoutSeconds"],
         "lightContext": cfg["model"]["lightContext"],

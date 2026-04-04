@@ -82,15 +82,28 @@ def main():
             required.append(f"搜索顺序：先 RSS / 原媒体直链，再 {sq['primaryProvider']}")
         if sq.get("limits", {}).get("brave", {}).get("maxCalls"):
             required.append(f"Brave 调用上限：每月 {sq['limits']['brave']['maxCalls']} 次")
-        if sq.get("limits", {}).get("googleProgrammableSearch", {}).get("maxCalls"):
-            required.append(f"Google Programmable Search 调用上限：每日 {sq['limits']['googleProgrammableSearch']['maxCalls']} 次")
         for rule in sq.get("enforcementRules", []):
             required.append(rule)
-        gps = sq.get("googleProgrammableSearch", {})
-        if gps.get("helperScript"):
-            required.append(f"若需要 Google Programmable Search，只能通过辅助脚本 `{gps['helperScript']}` 调用")
-        if gps.get("envKeyVar") and gps.get("envCxVar"):
-            required.append(f"Google PSE 凭据环境变量：{gps['envKeyVar']} 与 {gps['envCxVar']}")
+        pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
+        if pools.get("japan"):
+            required.append("日本优先信源池")
+        if pools.get("china"):
+            required.append("中国优先信源池")
+        if pools.get("world"):
+            required.append("国际优先信源池")
+        for token in required:
+            if token not in msg:
+                fail(f"missing required token in {spec['name']}: {token}")
+
+    print("VERIFY_OK")
+    for spec in cfg["jobs"]:
+        print(spec["name"])
+
+
+if __name__ == "__main__":
+    main()
+
+� {gps['envCxVar']}")
         if gps.get("usageLedger"):
             required.append(f"Google PSE 使用计数账本：{gps['usageLedger']}；调用前后都要以它为准")
         pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
