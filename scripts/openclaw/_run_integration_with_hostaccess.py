@@ -45,7 +45,11 @@ def main() -> int:
         return 2
     env = os.environ.copy()
     env["SPRINGMONKEY_SSH_PASSWORD"] = m.group(1)
-    cmd = [sys.executable, str(SCRIPT)] + sys.argv[1:]
+    extra = sys.argv[1:]
+    if not extra:
+        # 默认：拉代码契约 + 不强制 pull（避免无网络时失败）；需要部署补丁时显式传 --apply-v6 等
+        extra = ["--full-contract", "--no-pull"]
+    cmd = [sys.executable, str(SCRIPT)] + extra
     return subprocess.call(cmd, env=env)
 
 

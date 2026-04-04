@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
 """
-宿主机集成验证（可选 SSH）：不依赖人工在 Discord 里发消息。
+宿主机集成验证（SSH）：策略补丁契约 + cron CLI，尽量避免「只能靠人工在 Discord 试」才发现问题。
 
-环境变量：
-  SPRINGMONKEY_SSH_HOST / PORT / USER / PASSWORD / REPO（同前）
-  SPRINGMONKEY_POST_RESTART_WAIT_SEC  默认 25
+环境变量：SPRINGMONKEY_SSH_*、SPRINGMONKEY_REPO、SPRINGMONKEY_POST_RESTART_WAIT_SEC（同前）
 
-步骤：
-  1) git pull main（可选 --no-pull）
-  2) --apply-v5：打 v5 补丁并重启（由旧基线升级时）
-  3) --apply-v6：打 v6（Ollama 超时 + Codex 回退 + generate 探针）并重启
-  4) --apply-v7：cron run 改为 async spawn（修复网关内 spawnSync 自死锁）
-  5) 校验 dist 含关键标记；runuser 跑 test_cron_run_cli.sh
+常用：
+  --full-contract --no-pull   仅校验 dist 契约 + 单元脚本 + cron + 服务存活（推荐每次发版后 CI/本地一键）
+  --apply-v6 --apply-v7       打补丁并重启后再跑契约（新环境或升级）
 
-推荐一键：`--apply-v6 --apply-v7` 或仅 `--apply-v7`（若 v6 已在 dist）。
-
-用法：
-  SPRINGMONKEY_SSH_PASSWORD='***' python3 scripts/openclaw/integration_verify_host.py --apply-v6 --apply-v7
+无参数调用本脚本时，若通过 _run_integration_with_hostaccess.py 包装，将默认 --full-contract --no-pull。
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -39,6 +32,16 @@ def main() -> int:
     parser.add_argument("--apply-v5", action="store_true")
     parser.add_argument("--apply-v6", action="store_true")
     parser.add_argument("--apply-v7", action="store_true")
+    parser.add_argument(
+        "--full-contract",
+        action="store_true",
+        help="dist 全量契约（v5–v7 + 禁止 spawnSync openclaw cron + 可选日志告警）",
+    )
+    parser.add_argument(
+        "--fail-on-recent-deadlock-log",
+        action="store_true",
+        help="journalctl 最近 400 行若含 spawnSync openclaw ETIMEDOUT 则失败（易误伤旧日志，默认关）",
+    )
     parser.add_argument("--skip-cron-cli", action="store_true")
     args = parser.parse_args()
 
@@ -55,6 +58,12 @@ def main() -> int:
     if not password:
         print("FAIL: set SPRINGMONKEY_SSH_PASSWORD", file=sys.stderr)
         return 2
+
+    full = args.full_contract or os.environ.get("SPRINGMONKEY_FULL_CONTRACT", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -76,6 +85,20 @@ def main() -> int:
         print(f"[integration] waiting {wait}s for gateway...")
         time.sleep(wait)
         return 0
+
+    def count_grep(pat: str) -> int:
+        """在远端用 Python 统计子串出现次数，避免 shell 引号问题。"""
+        one_liner = (
+            f"import pathlib;t=pathlib.Path({json.dumps(DIST)}).read_text(encoding='utf-8');"
+            f"print(t.count({json.dumps(pat)}))"
+        )
+        code, o = run(f"python3 -c {json.dumps(one_liner)}", timeout=120)
+        if code != 0:
+            return -1
+        try:
+            return int(o.strip().split()[-1])
+        except ValueError:
+            return -1
 
     try:
         if not args.no_pull:
@@ -111,20 +134,22 @@ def main() -> int:
             if restart_and_wait() != 0:
                 return 1
 
-        def count_grep(pat: str) -> int:
-            _, o = run(f"grep -c '{pat}' {DIST} 2>/dev/null || echo 0")
-            try:
-                return int(o.strip().split()[-1])
-            except ValueError:
-                return 0
-
+        # —— 契约校验 ——
         bc = count_grep("bypass classifier")
         print("bypass_classifier_hits:", bc)
+        if bc < 0:
+            print("FAIL: could not count in dist (path/read error)", file=sys.stderr)
+            return 4
         if bc < 1:
             print("FAIL: v5 bypass string missing in dist", file=sys.stderr)
             return 5
 
-        if args.apply_v6 or os.environ.get("SPRINGMONKEY_REQUIRE_V6_MARKERS", "").lower() in ("1", "true", "yes"):
+        v6_needed = (
+            full
+            or args.apply_v6
+            or os.environ.get("SPRINGMONKEY_REQUIRE_V6_MARKERS", "").lower() in ("1", "true", "yes")
+        )
+        if v6_needed:
             for label, pat in (
                 ("model_fallback", "model-fallback"),
                 ("codex_fallback_log", "fallback to codex"),
@@ -132,16 +157,61 @@ def main() -> int:
             ):
                 n = count_grep(pat)
                 print(f"{label}_hits:", n)
+                if n < 0:
+                    print(f"FAIL: could not count for {label}", file=sys.stderr)
+                    return 6
                 if n < 1:
-                    print(f"FAIL: expected '{pat}' in dist (run --apply-v6)", file=sys.stderr)
+                    print(f"FAIL: expected '{pat}' in dist", file=sys.stderr)
                     return 6
 
-        if args.apply_v7 or os.environ.get("SPRINGMONKEY_REQUIRE_V7_MARKERS", "").lower() in ("1", "true", "yes"):
+        v7_needed = (
+            full
+            or args.apply_v7
+            or os.environ.get("SPRINGMONKEY_REQUIRE_V7_MARKERS", "").lower() in ("1", "true", "yes")
+        )
+        if v7_needed:
             n = count_grep("execResult = await new Promise")
             print("async_cron_spawn_hits:", n)
-            if n < 1:
-                print("FAIL: v7 async spawn not in dist (run --apply-v7)", file=sys.stderr)
+            if n < 0:
+                print("FAIL: could not count v7 marker", file=sys.stderr)
                 return 7
+            if n < 1:
+                print("FAIL: v7 async spawn not in dist", file=sys.stderr)
+                return 7
+
+        if full or v7_needed:
+            # 网关中 queueFormalNewsJobRun 不得再 spawnSync openclaw cron（自死锁）
+            bad = count_grep('spawnSync("openclaw", ["cron"')
+            print("forbidden_spawnSync_openclaw_cron_hits:", bad)
+            if bad < 0:
+                print("FAIL: could not count forbidden spawnSync pattern", file=sys.stderr)
+                return 8
+            if bad != 0:
+                print(
+                    "FAIL: dist still contains spawnSync(openclaw cron) — v7 not applied or regressed",
+                    file=sys.stderr,
+                )
+                return 8
+
+        if full:
+            code, out = run(f"cd {repo} && python3 scripts/openclaw/test_manual_news_heuristics.py")
+            print(out)
+            if code != 0:
+                return code
+
+        code, out = run("systemctl is-active openclaw.service")
+        print("openclaw_active:", out.strip())
+        if code != 0 or "active" not in out:
+            print("FAIL: openclaw.service not active", file=sys.stderr)
+            return 9
+
+        if args.fail_on_recent_deadlock_log:
+            _, o = run(
+                "journalctl -u openclaw.service -n 400 --no-pager | grep -F 'spawnSync openclaw ETIMEDOUT' | tail -3"
+            )
+            if o.strip():
+                print("FAIL: recent journal still shows spawnSync openclaw ETIMEDOUT:\n", o, file=sys.stderr)
+                return 10
 
         if not args.skip_cron_cli:
             last_out = ""
