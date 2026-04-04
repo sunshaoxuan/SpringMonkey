@@ -47,36 +47,7 @@
     "requireSourceLinkMatchesItem": true,
     "forbidAggregatorLinksAsSource": true,
     "requireSourceVerifiedBeforeWriting": true,
-    "omitFinalSourceSummary": true,
-    "numberingCheck": {
-      "allowedTopLevelHeadings": [
-        "1. 日本",
-        "2. 中国",
-        "3. 国际",
-        "4. 市场或风险提示"
-      ],
-      "forbidNumberingIn": [
-        "标题",
-        "时间窗口",
-        "正文条目",
-        "链接行"
-      ],
-      "forbidPatterns": [
-        "1.1",
-        "1)",
-        "（1）",
-        "一、",
-        "（一）"
-      ],
-      "deliveryChecklist": [
-        "标题不得编号",
-        "时间窗口不得编号",
-        "全文只允许出现 4 个一级数字标题",
-        "一级数字标题必须连续为 1 到 4",
-        "正文条目只能使用短横线，不能使用数字编号",
-        "链接行不得带任何编号"
-      ]
-    }
+    "omitFinalSourceSummary": true
   },
   "sourcePolicy": {
     "blockedDomains": [
@@ -157,77 +128,15 @@
       ]
     }
   },
-  "workflow": {
-    "mode": "two-stage-per-item",
-    "defaultUnlessExplicitlyOverridden": true,
-    "taskTempRoot": "runtime/news-runs",
-    "itemRecordFile": "candidate-records.ndjson",
-    "mergedRecordFile": "merged-records.json",
-    "finalDraftFile": "final-draft.md",
-    "summaryReportFile": "run-summary.json",
-    "channelOutputPolicy": {
-      "defaultMode": "final-only",
-      "allowStartMessage": true,
-      "maxStartMessages": 1,
-      "allowCompletionMessage": true,
-      "maxCompletionMessages": 1,
-      "forbidIntermediateProgressMessages": true,
-      "allowRealtimeOnlyIfExplicitlyRequested": true
-    },
-    "perItemProcessing": {
-      "requireStructuredRecord": true,
-      "appendImmediatelyToTempFile": true,
-      "preferLocalModel": true,
-      "forbidCodexBeforeFinalDraft": true,
-      "requiredFields": [
-        "keep",
-        "section",
-        "factSummary",
-        "sourceUrl",
-        "sourceName",
-        "publishedAt",
-        "reason"
-      ]
-    },
-    "mechanicalMerge": {
-      "useScriptBeforeFinalDraft": true,
-      "steps": [
-        "dedupe",
-        "group-by-section",
-        "sort-by-time",
-        "check-source-url-completeness"
-      ],
-      "script": "scripts/news/merge_candidate_records.py"
-    },
-    "finalCodexPass": {
-      "enabled": true,
-      "allowedResponsibilities": [
-        "overall-formatting",
-        "numbering-normalization",
-        "tone-tightening",
-        "source-overview"
-      ],
-      "forbidRescreeningAllCandidates": true
-    },
-    "reporting": {
-      "replyFields": [
-        "stagesUsed",
-        "localModelCandidateCount",
-        "codexUsed",
-        "tempResultFiles",
-        "finalDraftFile"
-      ]
-    }
-  },
   "model": {
-    "name": "ollama/gpt-oss:20b",
+    "chatPrimary": "ollama/qwen2.5:14b-instruct",
+    "chatFallback": "openai-codex/gpt-5.4",
+    "newsOrchestrator": "openai-codex/gpt-5.4",
+    "newsWorker": "ollama/qwen2.5:14b-instruct",
     "thinking": "low",
     "timeoutSeconds": 3600,
     "lightContext": true,
     "allowUnsafeExternalContent": true
-  },
-  "finalDraftModel": {
-    "name": "openai-codex/gpt-5.4",
-    "thinking": "low"
   }
 }
+

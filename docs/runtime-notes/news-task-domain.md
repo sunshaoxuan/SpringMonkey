@@ -36,17 +36,6 @@ This task domain is intended to let `汤猴` adjust:
 - time windows
 - news outline rules
 - numbering rules
-- per-item candidate-processing workflow
-- intermediate file layout and merge scripts
 - delivery target already assigned to the news workflow
 
 It is not intended to grant authority over unrelated host security boundaries.
-
-## Default Generation Contract
-
-Unless the user explicitly overrides it, news generation now defaults to a two-stage workflow:
-
-1. process candidate items one by one, preferably with a local model
-2. append each structured decision to a task-local temp file
-3. run a script for dedupe / grouping / time sort / source-link checks
-4. use Codex only once at the very end for final formatting and numbering cleanup

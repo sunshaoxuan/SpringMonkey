@@ -29,8 +29,6 @@ def build_message(cfg: dict, job: dict) -> str:
     sp = cfg.get("sourcePolicy", {})
     tp = cfg.get("toolPolicy", {})
     sq = tp.get("searchQuotaPolicy", {})
-    numbering = fr.get("numberingCheck", {})
-    workflow = cfg.get("workflow", {})
 
     outline = "\n".join(fr["outline"])
     title_line = fr.get("titleLine", "新闻简报")
@@ -64,26 +62,17 @@ def build_message(cfg: dict, job: dict) -> str:
             label = {"japan": "日本", "china": "中国", "world": "国际"}[region]
             pools_text.append(f"- {label}优先信源池：{'、'.join(pools[region])}。")
 
-    checklist = numbering.get("deliveryChecklist", [])
-    forbidden_areas = "、".join(numbering.get("forbidNumberingIn", []))
-    forbidden_patterns = "、".join(numbering.get("forbidPatterns", []))
-    allowed_headings = " / ".join(numbering.get("allowedTopLevelHeadings", fr.get("outline", [])))
-
-    workflow_mode = workflow.get("mode", "")
-    temp_root = workflow.get("taskTempRoot", "runtime/news-runs")
-    item_record_file = workflow.get("itemRecordFile", "candidate-records.ndjson")
-    merged_record_file = workflow.get("mergedRecordFile", "merged-records.json")
-    final_draft_file = workflow.get("finalDraftFile", "final-draft.md")
-    summary_report_file = workflow.get("summaryReportFile", "run-summary.json")
-    per_item = workflow.get("perItemProcessing", {})
-    merge = workflow.get("mechanicalMerge", {})
-    final_codex = workflow.get("finalCodexPass", {})
-    reporting = workflow.get("reporting", {})
-    channel_output = workflow.get("channelOutputPolicy", {})
+    model_cfg = cfg.get("model", {})
+    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.4"))
+    news_worker = model_cfg.get("newsWorker", "ollama/qwen2.5:14b-instruct")
 
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
-        f"默认工作流模式：{workflow_mode}。除非用户明确改口，否则不得退回整批候选新闻一次性交给单个模型直出的流程。" if workflow_mode else "",
+        f"- 这类新闻任务由 {news_orchestrator} 主导，不要把整个任务直接交给本地模型整包直出。",
+        f"- 对候选新闻的逐条筛选、摘要、分类与结构化整理，优先调用本地模型 {news_worker} 完成。",
+        f"- 最终成稿、格式校验、链接完整性把关与最后投递，由 {news_orchestrator} 负责。",
+        "- 绝对不要直接生成占位结果，例如“[标题] [来源]”。如果没有真实候选条目，就明确写出本节无合格新增新闻条目。",
+        "- 如果你没有真正完成候选抓取、逐条整理、机械合并和最终校验，不得宣称“已完成播报”。",
         f"标题直接写成：{title_line}。",
         "时间窗口作为标题下的附加信息单独显示，不使用数字编号。" if show_window_plain else "",
         "从日本开始才允许使用编号，且只能使用以下一级标题：",
@@ -91,39 +80,11 @@ def build_message(cfg: dict, job: dict) -> str:
         "",
         "强制格式规则：",
         "- 只有以上 4 个一级标题可以使用数字编号。",
-        f"- 允许编号的一级标题必须严格固定为：{allowed_headings}。",
         "- 标题和时间窗口不能编号。",
         "- 各节内部的条目一律使用短横线项目符号 `- `。",
         "- 绝对不要出现嵌套数字编号。",
-        f"- 以下位置禁止任何编号：{forbidden_areas}。" if forbidden_areas else "",
-        f"- 以下模式一律视为编号错误并禁止出现：{forbidden_patterns}。" if forbidden_patterns else "",
         "- 发出前先自检：整篇中带数字编号的行只能是 1 到 4 这四个一级标题。若不满足，先重写再发送。",
-        "- 发出前逐条检查：标题未编号、时间窗口未编号、只有 4 个一级数字标题、一级标题连续为 1 到 4、正文条目不用数字、链接行不带编号。",
         f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{fr['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。",
-        *[f"- 编号检查清单：{item}。" for item in checklist],
-        "两阶段执行规则：",
-        "- 第一阶段必须逐条处理候选新闻；每拿到一条候选新闻，就单独做一次判断和整理。",
-        "- 单条判断阶段优先使用本地模型，不要先用 Codex。" if per_item.get("preferLocalModel") else "",
-        "- Codex 在最终成稿前禁止参与整批筛选或前置判断。" if per_item.get("forbidCodexBeforeFinalDraft") else "",
-        f"- 本次任务必须建立自己的临时目录，建议根目录：{temp_root}。",
-        f"- 单条处理结果必须持续追加写入临时文件：{item_record_file}；不能只放在上下文里。" if per_item.get("appendImmediatelyToTempFile") else "",
-        f"- 每条候选新闻必须输出结构化记录，至少包含：{'、'.join(per_item.get('requiredFields', []))}。" if per_item.get("requireStructuredRecord") else "",
-        "- 第二阶段必须先做机械合并，再做最终成稿。",
-        f"- 机械合并产物写入：{merged_record_file}。",
-        f"- 机械合并必须先用脚本完成，脚本路径：{merge.get('script')}。" if merge.get("useScriptBeforeFinalDraft") else "",
-        *[f"- 机械合并步骤：{step}。" for step in merge.get("steps", [])],
-        "- 机械合并阶段尽量不用 AI。",
-        "- 只有在单条处理和机械合并都完成后，才允许调用 Codex 做最后一次整体格式校准。",
-        f"- Codex 只负责：{'、'.join(final_codex.get('allowedResponsibilities', []))}。" if final_codex.get("allowedResponsibilities") else "",
-        "- Codex 不得重新做整批新闻筛选。" if final_codex.get("forbidRescreeningAllCandidates") else "",
-        f"- 最终成稿文件写入：{final_draft_file}。",
-        f"- 运行摘要写入：{summary_report_file}。",
-        f"- 完成后只汇报这些字段：{'、'.join(reporting.get('replyFields', []))}。" if reporting.get("replyFields") else "",
-        f"- 频道输出默认模式：{channel_output.get('defaultMode')}。" if channel_output.get("defaultMode") else "",
-        "- 默认不要把中间过程连续发到频道。" if channel_output.get("forbidIntermediateProgressMessages") else "",
-        "- 除非用户明确要求实时播报，否则只发最终结果。" if channel_output.get("allowRealtimeOnlyIfExplicitlyRequested") else "",
-        f"- 最多允许发送 {channel_output.get('maxStartMessages')} 条开始执行消息。" if channel_output.get("allowStartMessage") else "- 不发送开始执行消息。",
-        f"- 最多允许发送 {channel_output.get('maxCompletionMessages')} 条完成结果消息。" if channel_output.get("allowCompletionMessage") else "- 不发送完成结果消息。",
     ]
     if fr.get("omitFinalSourceSummary"):
         intro.append("- 每条新闻既然已经单独附链接，文末不要再重复列一次所有来源概览。")
@@ -186,7 +147,7 @@ def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
     existing["payload"] = {
         "kind": "agentTurn",
         "message": build_message(cfg, spec),
-        "model": cfg["model"]["name"],
+        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.4")),
         "thinking": cfg["model"]["thinking"],
         "timeoutSeconds": cfg["model"]["timeoutSeconds"],
         "lightContext": cfg["model"]["lightContext"],
@@ -222,3 +183,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

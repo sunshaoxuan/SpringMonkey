@@ -40,26 +40,21 @@ def main():
         if job.get("delivery", {}).get("to") != cfg["delivery"]["to"]:
             fail(f"bad delivery target for {spec['name']}")
         msg = job.get("payload", {}).get("message", "")
+        payload = job.get("payload", {})
+        expected_model = cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.4"))
+        if payload.get("model") != expected_model:
+            fail(f"bad model for {spec['name']}: {payload.get('model')} != {expected_model}")
         required = [
             "标题直接写成：",
             "从日本开始才允许使用编号",
             "只有以上 4 个一级标题可以使用数字编号",
             "标题和时间窗口不能编号",
             "带数字编号的行只能是 1 到 4",
-            "发出前逐条检查：标题未编号、时间窗口未编号、只有 4 个一级数字标题、一级标题连续为 1 到 4、正文条目不用数字、链接行不带编号"
+            "不要把整个任务直接交给本地模型整包直出",
+            "绝对不要直接生成占位结果",
+            "不得宣称“已完成播报”"
         ]
         fr = cfg["formatRules"]
-        numbering = fr.get("numberingCheck", {})
-        for heading in numbering.get("allowedTopLevelHeadings", []):
-            required.append(heading)
-        for area in numbering.get("forbidNumberingIn", []):
-            required.append(f"以下位置禁止任何编号：{'、'.join(numbering.get('forbidNumberingIn', []))}")
-            break
-        for pattern in numbering.get("forbidPatterns", []):
-            required.append(f"以下模式一律视为编号错误并禁止出现：{'、'.join(numbering.get('forbidPatterns', []))}")
-            break
-        for item in numbering.get("deliveryChecklist", []):
-            required.append(f"编号检查清单：{item}。")
         if fr.get("omitFinalSourceSummary"):
             required.append("文末不要再重复列一次所有来源概览")
         if fr.get("requirePerItemSourceLink"):
@@ -96,50 +91,6 @@ def main():
             required.append(f"Brave 调用上限：每月 {sq['limits']['brave']['maxCalls']} 次")
         for rule in sq.get("enforcementRules", []):
             required.append(rule)
-        workflow = cfg.get("workflow", {})
-        if workflow.get("mode"):
-            required.append(f"默认工作流模式：{workflow['mode']}")
-        per_item = workflow.get("perItemProcessing", {})
-        if per_item.get("preferLocalModel"):
-            required.append("单条判断阶段优先使用本地模型，不要先用 Codex")
-        if per_item.get("forbidCodexBeforeFinalDraft"):
-            required.append("Codex 在最终成稿前禁止参与整批筛选或前置判断")
-        if workflow.get("taskTempRoot"):
-            required.append(f"本次任务必须建立自己的临时目录，建议根目录：{workflow['taskTempRoot']}")
-        if workflow.get("itemRecordFile"):
-            required.append(f"单条处理结果必须持续追加写入临时文件：{workflow['itemRecordFile']}")
-        if per_item.get("requiredFields"):
-            required.append(f"每条候选新闻必须输出结构化记录，至少包含：{'、'.join(per_item['requiredFields'])}")
-        merge = workflow.get("mechanicalMerge", {})
-        if workflow.get("mergedRecordFile"):
-            required.append(f"机械合并产物写入：{workflow['mergedRecordFile']}")
-        if merge.get("script"):
-            required.append(f"机械合并必须先用脚本完成，脚本路径：{merge['script']}")
-        for step in merge.get("steps", []):
-            required.append(f"机械合并步骤：{step}。")
-        final_codex = workflow.get("finalCodexPass", {})
-        if final_codex.get("allowedResponsibilities"):
-            required.append(f"Codex 只负责：{'、'.join(final_codex['allowedResponsibilities'])}。")
-        if final_codex.get("forbidRescreeningAllCandidates"):
-            required.append("Codex 不得重新做整批新闻筛选")
-        if workflow.get("finalDraftFile"):
-            required.append(f"最终成稿文件写入：{workflow['finalDraftFile']}")
-        if workflow.get("summaryReportFile"):
-            required.append(f"运行摘要写入：{workflow['summaryReportFile']}")
-        reporting = workflow.get("reporting", {})
-        if reporting.get("replyFields"):
-            required.append(f"完成后只汇报这些字段：{'、'.join(reporting['replyFields'])}")
-        channel_output = workflow.get("channelOutputPolicy", {})
-        if channel_output.get("defaultMode"):
-            required.append(f"频道输出默认模式：{channel_output['defaultMode']}")
-        if channel_output.get("forbidIntermediateProgressMessages"):
-            required.append("默认不要把中间过程连续发到频道")
-        if channel_output.get("allowRealtimeOnlyIfExplicitlyRequested"):
-            required.append("除非用户明确要求实时播报，否则只发最终结果")
-        if channel_output.get("allowStartMessage"):
-            required.append(f"最多允许发送 {channel_output['maxStartMessages']} 条开始执行消息")
-        if channel_output.get("allowCompletionMessage"):
-            required.append(f"最多允许发送 {channel_output['maxCompletionMessages']} 条完成结果消息")
         pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
         if pools.get("japan"):
             required.append("日本优先信源池")
