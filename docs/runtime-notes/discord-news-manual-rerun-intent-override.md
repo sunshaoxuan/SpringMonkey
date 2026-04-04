@@ -18,6 +18,14 @@
 
 应用后需 **重启 gateway**（如 `openclaw.service`）。
 
+## v6（必打）：Ollama 异常时自动切 Codex + 分类器超时
+
+- `classifyDiscordIntent` 对 22545 的 `fetch` 增加 **12s** 超时，避免无限挂死。
+- `maybeRouteDiscordIntent` 的 `catch`：**不再 `return null`**；优先按启发式恢复 `news_task`（含 `cron run`），否则 **强制 reroute 到 `openai-codex/gpt-5.4`**（`task_control`）。
+- `runEmbeddedAttempt`：Discord 且本轮仍为 **ollama** 时，做一次 **极短 generate 探针**（`num_predict:1`，12s 超时）；失败则 **embedded 主调用切到 Codex**（日志 `[model-fallback]`）。
+
+脚本：`scripts/openclaw/patch_news_router_v6.py`（在 v5 已应用的前提下执行）。
+
 ## v5（必打）：手动重跑不得依赖 Ollama 意图分类
 
 `classifyDiscordIntent()` 会向 Ollama 发 HTTP；若 Ollama 卡住，整段 `maybeRouteDiscordIntent` 在分类器处失败并 `return null`，网关退回默认 ollama 链路，表现为「自由发挥」且无 `[intent-router] reroute` 日志。
@@ -37,8 +45,9 @@
 2. 再执行 v3 脚本。
 3. 再执行 **v4** 脚本（systemd 以非 root 跑网关时必需）。
 4. 再执行 **v5** 脚本（避免 Ollama 分类器阻塞手动重跑路径）。
-5. 自动化验证：`python3 scripts/openclaw/test_manual_news_heuristics.py`；宿主机上 `runuser -u openclaw -- env HOME=/var/lib/openclaw bash scripts/openclaw/test_cron_run_cli.sh`；可选 `python3 scripts/openclaw/integration_verify_host.py`（需环境变量 `SPRINGMONKEY_SSH_PASSWORD`）。
-6. 验证：`journalctl` 可出现 `bypass classifier: news_task` 与 `manual-cron-run=1`。
+5. 再执行 **v6** 脚本（Ollama 超时 / 失败时自动 Codex，与 OpenClaw 内置 failover 互补：内置多针对「已返回错误」；v6 针对「挂死 / 路由 null」）。
+6. 自动化验证：`python3 scripts/openclaw/test_manual_news_heuristics.py`；`runuser -u openclaw -- ... test_cron_run_cli.sh`；`integration_verify_host.py --apply-v6`（需 `SPRINGMONKEY_SSH_PASSWORD`）。
+7. 验证：`journalctl` 可出现 `bypass classifier`、`fallback to codex`、`model-fallback`、`manual-cron-run=1` 等。
 
 ## 策略对齐
 
