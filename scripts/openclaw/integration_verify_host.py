@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 
 try:
     import paramiko
@@ -81,6 +82,10 @@ def main() -> int:
             print(out)
             if code != 0:
                 return code
+            # Gateway WS 在刚重启后短暂不可用，避免 cron CLI 立刻报 1006
+            wait = int(os.environ.get("SPRINGMONKEY_POST_RESTART_WAIT_SEC", "25"))
+            print(f"[integration] waiting {wait}s for gateway...")
+            time.sleep(wait)
 
         code, out = run(
             "grep -c 'bypass classifier' /usr/lib/node_modules/openclaw/dist/pi-embedded-BYdcxQ5A.js || true"
@@ -91,11 +96,17 @@ def main() -> int:
             return 5
 
         if not args.skip_cron_cli:
-            code, out = run(
-                f"runuser -u openclaw -- env HOME=/var/lib/openclaw bash {repo}/scripts/openclaw/test_cron_run_cli.sh",
-                timeout=240,
-            )
-            print(out)
+            last_out = ""
+            for attempt in range(1, 4):
+                code, last_out = run(
+                    f"runuser -u openclaw -- env HOME=/var/lib/openclaw bash {repo}/scripts/openclaw/test_cron_run_cli.sh",
+                    timeout=240,
+                )
+                print(last_out)
+                if code == 0:
+                    break
+                print(f"[integration] cron cli attempt {attempt} failed, retrying in 15s...")
+                time.sleep(15)
             if code != 0:
                 return code
 
