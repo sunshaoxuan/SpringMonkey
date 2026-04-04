@@ -18,6 +18,14 @@
 
 应用后需 **重启 gateway**（如 `openclaw.service`）。
 
+## v7（必打）：网关内 `spawnSync openclaw cron run` 自死锁
+
+现象：日志已有 `bypass classifier: news_task`，随后 `spawnSync openclaw ETIMEDOUT`，`codex fallback` 仍 `spawnSync` 同样超时；频道里仍像「自由发挥」。
+
+原因：在 **openclaw-gateway 进程内** `spawnSync` 会 **阻塞 Node 事件循环**。子 CLI 需 **WebSocket 连回同一网关** 才能完成 `cron run`，网关却无法处理 → **自死锁**。
+
+修复：`scripts/openclaw/patch_news_router_v7.py` 将 `queueFormalNewsJobRun` 改为 **`spawn` + `await new Promise`**，不阻塞事件循环。
+
 ## v6（必打）：Ollama 异常时自动切 Codex + 分类器超时
 
 - `classifyDiscordIntent` 对 22545 的 `fetch` 增加 **12s** 超时，避免无限挂死。
@@ -45,9 +53,10 @@
 2. 再执行 v3 脚本。
 3. 再执行 **v4** 脚本（systemd 以非 root 跑网关时必需）。
 4. 再执行 **v5** 脚本（避免 Ollama 分类器阻塞手动重跑路径）。
-5. 再执行 **v6** 脚本（Ollama 超时 / 失败时自动 Codex，与 OpenClaw 内置 failover 互补：内置多针对「已返回错误」；v6 针对「挂死 / 路由 null」）。
-6. 自动化验证：`python3 scripts/openclaw/test_manual_news_heuristics.py`；`runuser -u openclaw -- ... test_cron_run_cli.sh`；`integration_verify_host.py --apply-v6`（需 `SPRINGMONKEY_SSH_PASSWORD`）。
-7. 验证：`journalctl` 可出现 `bypass classifier`、`fallback to codex`、`model-fallback`、`manual-cron-run=1` 等。
+5. 再执行 **v6** 脚本（Ollama 超时 / 失败时自动 Codex）。
+6. 再执行 **v7** 脚本（async `spawn` 修复网关内 cron CLI 死锁）。
+7. 自动化验证：`test_manual_news_heuristics.py`、`test_cron_run_cli.sh`、`integration_verify_host.py --apply-v6 --apply-v7`。
+8. 验证：`journalctl` 可出现 `manual-cron-run=1` 且 **不应**再出现 `spawnSync openclaw ETIMEDOUT`（在 Ollama/Codex 正常时）。
 
 ## 策略对齐
 

@@ -10,12 +10,13 @@
   1) git pull main（可选 --no-pull）
   2) --apply-v5：打 v5 补丁并重启（由旧基线升级时）
   3) --apply-v6：打 v6（Ollama 超时 + Codex 回退 + generate 探针）并重启
-  4) 校验 dist 含关键标记；runuser 跑 test_cron_run_cli.sh
+  4) --apply-v7：cron run 改为 async spawn（修复网关内 spawnSync 自死锁）
+  5) 校验 dist 含关键标记；runuser 跑 test_cron_run_cli.sh
 
-推荐一键（当前生产）：仅 --apply-v6（假定 v5 已在 dist）。
+推荐一键：`--apply-v6 --apply-v7` 或仅 `--apply-v7`（若 v6 已在 dist）。
 
 用法：
-  SPRINGMONKEY_SSH_PASSWORD='***' python3 scripts/openclaw/integration_verify_host.py --apply-v6
+  SPRINGMONKEY_SSH_PASSWORD='***' python3 scripts/openclaw/integration_verify_host.py --apply-v6 --apply-v7
 """
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ def main() -> int:
     parser.add_argument("--no-pull", action="store_true")
     parser.add_argument("--apply-v5", action="store_true")
     parser.add_argument("--apply-v6", action="store_true")
+    parser.add_argument("--apply-v7", action="store_true")
     parser.add_argument("--skip-cron-cli", action="store_true")
     args = parser.parse_args()
 
@@ -101,6 +103,14 @@ def main() -> int:
             if restart_and_wait() != 0:
                 return 1
 
+        if args.apply_v7:
+            code, out = run(f"cd {repo} && python3 scripts/openclaw/patch_news_router_v7.py")
+            print(out)
+            if code != 0:
+                return code
+            if restart_and_wait() != 0:
+                return 1
+
         def count_grep(pat: str) -> int:
             _, o = run(f"grep -c '{pat}' {DIST} 2>/dev/null || echo 0")
             try:
@@ -125,6 +135,13 @@ def main() -> int:
                 if n < 1:
                     print(f"FAIL: expected '{pat}' in dist (run --apply-v6)", file=sys.stderr)
                     return 6
+
+        if args.apply_v7 or os.environ.get("SPRINGMONKEY_REQUIRE_V7_MARKERS", "").lower() in ("1", "true", "yes"):
+            n = count_grep("execResult = await new Promise")
+            print("async_cron_spawn_hits:", n)
+            if n < 1:
+                print("FAIL: v7 async spawn not in dist (run --apply-v7)", file=sys.stderr)
+                return 7
 
         if not args.skip_cron_cli:
             last_out = ""
