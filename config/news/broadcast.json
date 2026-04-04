@@ -157,11 +157,68 @@
       ]
     }
   },
+  "workflow": {
+    "mode": "two-stage-per-item",
+    "defaultUnlessExplicitlyOverridden": true,
+    "taskTempRoot": "runtime/news-runs",
+    "itemRecordFile": "candidate-records.ndjson",
+    "mergedRecordFile": "merged-records.json",
+    "finalDraftFile": "final-draft.md",
+    "summaryReportFile": "run-summary.json",
+    "perItemProcessing": {
+      "requireStructuredRecord": true,
+      "appendImmediatelyToTempFile": true,
+      "preferLocalModel": true,
+      "forbidCodexBeforeFinalDraft": true,
+      "requiredFields": [
+        "keep",
+        "section",
+        "factSummary",
+        "sourceUrl",
+        "sourceName",
+        "publishedAt",
+        "reason"
+      ]
+    },
+    "mechanicalMerge": {
+      "useScriptBeforeFinalDraft": true,
+      "steps": [
+        "dedupe",
+        "group-by-section",
+        "sort-by-time",
+        "check-source-url-completeness"
+      ],
+      "script": "scripts/news/merge_candidate_records.py"
+    },
+    "finalCodexPass": {
+      "enabled": true,
+      "allowedResponsibilities": [
+        "overall-formatting",
+        "numbering-normalization",
+        "tone-tightening",
+        "source-overview"
+      ],
+      "forbidRescreeningAllCandidates": true
+    },
+    "reporting": {
+      "replyFields": [
+        "stagesUsed",
+        "localModelCandidateCount",
+        "codexUsed",
+        "tempResultFiles",
+        "finalDraftFile"
+      ]
+    }
+  },
   "model": {
     "name": "ollama/gpt-oss:20b",
     "thinking": "low",
     "timeoutSeconds": 3600,
     "lightContext": true,
     "allowUnsafeExternalContent": true
+  },
+  "finalDraftModel": {
+    "name": "openai-codex/gpt-5.4",
+    "thinking": "low"
   }
 }

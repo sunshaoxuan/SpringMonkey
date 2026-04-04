@@ -30,6 +30,7 @@ def build_message(cfg: dict, job: dict) -> str:
     tp = cfg.get("toolPolicy", {})
     sq = tp.get("searchQuotaPolicy", {})
     numbering = fr.get("numberingCheck", {})
+    workflow = cfg.get("workflow", {})
 
     outline = "\n".join(fr["outline"])
     title_line = fr.get("titleLine", "新闻简报")
@@ -68,8 +69,20 @@ def build_message(cfg: dict, job: dict) -> str:
     forbidden_patterns = "、".join(numbering.get("forbidPatterns", []))
     allowed_headings = " / ".join(numbering.get("allowedTopLevelHeadings", fr.get("outline", [])))
 
+    workflow_mode = workflow.get("mode", "")
+    temp_root = workflow.get("taskTempRoot", "runtime/news-runs")
+    item_record_file = workflow.get("itemRecordFile", "candidate-records.ndjson")
+    merged_record_file = workflow.get("mergedRecordFile", "merged-records.json")
+    final_draft_file = workflow.get("finalDraftFile", "final-draft.md")
+    summary_report_file = workflow.get("summaryReportFile", "run-summary.json")
+    per_item = workflow.get("perItemProcessing", {})
+    merge = workflow.get("mechanicalMerge", {})
+    final_codex = workflow.get("finalCodexPass", {})
+    reporting = workflow.get("reporting", {})
+
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
+        f"默认工作流模式：{workflow_mode}。除非用户明确改口，否则不得退回整批候选新闻一次性交给单个模型直出的流程。" if workflow_mode else "",
         f"标题直接写成：{title_line}。",
         "时间窗口作为标题下的附加信息单独显示，不使用数字编号。" if show_window_plain else "",
         "从日本开始才允许使用编号，且只能使用以下一级标题：",
@@ -87,6 +100,24 @@ def build_message(cfg: dict, job: dict) -> str:
         "- 发出前逐条检查：标题未编号、时间窗口未编号、只有 4 个一级数字标题、一级标题连续为 1 到 4、正文条目不用数字、链接行不带编号。",
         f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{fr['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。",
         *[f"- 编号检查清单：{item}。" for item in checklist],
+        "两阶段执行规则：",
+        "- 第一阶段必须逐条处理候选新闻；每拿到一条候选新闻，就单独做一次判断和整理。",
+        "- 单条判断阶段优先使用本地模型，不要先用 Codex。" if per_item.get("preferLocalModel") else "",
+        "- Codex 在最终成稿前禁止参与整批筛选或前置判断。" if per_item.get("forbidCodexBeforeFinalDraft") else "",
+        f"- 本次任务必须建立自己的临时目录，建议根目录：{temp_root}。",
+        f"- 单条处理结果必须持续追加写入临时文件：{item_record_file}；不能只放在上下文里。" if per_item.get("appendImmediatelyToTempFile") else "",
+        f"- 每条候选新闻必须输出结构化记录，至少包含：{'、'.join(per_item.get('requiredFields', []))}。" if per_item.get("requireStructuredRecord") else "",
+        "- 第二阶段必须先做机械合并，再做最终成稿。",
+        f"- 机械合并产物写入：{merged_record_file}。",
+        f"- 机械合并必须先用脚本完成，脚本路径：{merge.get('script')}。" if merge.get("useScriptBeforeFinalDraft") else "",
+        *[f"- 机械合并步骤：{step}。" for step in merge.get("steps", [])],
+        "- 机械合并阶段尽量不用 AI。",
+        "- 只有在单条处理和机械合并都完成后，才允许调用 Codex 做最后一次整体格式校准。",
+        f"- Codex 只负责：{'、'.join(final_codex.get('allowedResponsibilities', []))}。" if final_codex.get("allowedResponsibilities") else "",
+        "- Codex 不得重新做整批新闻筛选。" if final_codex.get("forbidRescreeningAllCandidates") else "",
+        f"- 最终成稿文件写入：{final_draft_file}。",
+        f"- 运行摘要写入：{summary_report_file}。",
+        f"- 完成后只汇报这些字段：{'、'.join(reporting.get('replyFields', []))}。" if reporting.get("replyFields") else "",
     ]
     if fr.get("omitFinalSourceSummary"):
         intro.append("- 每条新闻既然已经单独附链接，文末不要再重复列一次所有来源概览。")
@@ -185,4 +216,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

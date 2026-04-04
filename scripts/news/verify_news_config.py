@@ -96,6 +96,39 @@ def main():
             required.append(f"Brave 调用上限：每月 {sq['limits']['brave']['maxCalls']} 次")
         for rule in sq.get("enforcementRules", []):
             required.append(rule)
+        workflow = cfg.get("workflow", {})
+        if workflow.get("mode"):
+            required.append(f"默认工作流模式：{workflow['mode']}")
+        per_item = workflow.get("perItemProcessing", {})
+        if per_item.get("preferLocalModel"):
+            required.append("单条判断阶段优先使用本地模型，不要先用 Codex")
+        if per_item.get("forbidCodexBeforeFinalDraft"):
+            required.append("Codex 在最终成稿前禁止参与整批筛选或前置判断")
+        if workflow.get("taskTempRoot"):
+            required.append(f"本次任务必须建立自己的临时目录，建议根目录：{workflow['taskTempRoot']}")
+        if workflow.get("itemRecordFile"):
+            required.append(f"单条处理结果必须持续追加写入临时文件：{workflow['itemRecordFile']}")
+        if per_item.get("requiredFields"):
+            required.append(f"每条候选新闻必须输出结构化记录，至少包含：{'、'.join(per_item['requiredFields'])}")
+        merge = workflow.get("mechanicalMerge", {})
+        if workflow.get("mergedRecordFile"):
+            required.append(f"机械合并产物写入：{workflow['mergedRecordFile']}")
+        if merge.get("script"):
+            required.append(f"机械合并必须先用脚本完成，脚本路径：{merge['script']}")
+        for step in merge.get("steps", []):
+            required.append(f"机械合并步骤：{step}。")
+        final_codex = workflow.get("finalCodexPass", {})
+        if final_codex.get("allowedResponsibilities"):
+            required.append(f"Codex 只负责：{'、'.join(final_codex['allowedResponsibilities'])}。")
+        if final_codex.get("forbidRescreeningAllCandidates"):
+            required.append("Codex 不得重新做整批新闻筛选")
+        if workflow.get("finalDraftFile"):
+            required.append(f"最终成稿文件写入：{workflow['finalDraftFile']}")
+        if workflow.get("summaryReportFile"):
+            required.append(f"运行摘要写入：{workflow['summaryReportFile']}")
+        reporting = workflow.get("reporting", {})
+        if reporting.get("replyFields"):
+            required.append(f"完成后只汇报这些字段：{'、'.join(reporting['replyFields'])}")
         pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
         if pools.get("japan"):
             required.append("日本优先信源池")
