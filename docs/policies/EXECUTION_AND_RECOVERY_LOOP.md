@@ -28,6 +28,7 @@ Every nontrivial task must follow this loop:
 
 1. Preflight
    - read local guardrail documents first
+   - classify inbound intent and prefer registered tools over model improvisation (`INTENT_TOOL_ROUTING_AND_ACCUMULATION.md`)
    - inspect live state
    - identify success condition
    - identify the first implementation path

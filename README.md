@@ -23,6 +23,7 @@ The live system still depends on the on-host runtime configuration. This reposit
 
 - `docs/policies/`
   - human-controlled guardrails and authority model
+  - `INTENT_TOOL_ROUTING_AND_ACCUMULATION.md` — intent → tool registry → execution, and ad-hoc formalization loop for `汤猴`
 - `docs/runtime-notes/`
   - semi-stable environment notes that may be updated with review
 - `docs/reports/`

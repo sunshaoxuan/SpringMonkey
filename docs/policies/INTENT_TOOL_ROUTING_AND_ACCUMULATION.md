@@ -1,0 +1,97 @@
+# Intent, Tool Registry, And Capability Accumulation
+
+## Purpose
+
+`汤猴` 的行为不应退化为「先理解消息 → 再让强模型临场发挥」。稳定、可复用的运维能力必须走 **意图路由 + 已注册工具**，才能把一次成功变成长期可调用能力。
+
+本策略与下列文档同阶配合阅读：
+
+- `EXECUTION_AND_RECOVERY_LOOP.md`（执行、验证、恢复）
+- `TASK_DELIVERY_STANDARD.md`（交付形态与证据）
+- `REPOSITORY_GUARDRAILS.md`（仓库与权限边界）
+- `DOCS_AUTHORITY_MODEL.md`（文档层级与授权）
+- `../runtime-notes/news-task-domain.md`（新闻任务域）
+
+## Core Model (Two Paths)
+
+### Path A — 已有成熟工具
+
+```
+intent 判定 → 工具注册表命中 → 直接调工具（脚本 / CLI / 任务域）→ 按标准验证与记录
+```
+
+模型职责限于：**选对意图、填对参数、解释结果**，而不是重新发明执行路径。
+
+### Path B — 尚无正式工具
+
+```
+intent 判定 → 受控临时执行（有边界、可审计）→ 若同类任务重复出现 → 沉淀为正式工具 → 回写注册表与意图路由
+```
+
+临时执行仍须遵守 `EXECUTION_AND_RECOVERY_LOOP.md` 与 `TASK_DELIVERY_STANDARD.md`（证据、禁止空口完成）。
+
+## Intent Taxonomy (Baseline)
+
+以下分类用于 **路由决策**；新增重复任务类时，应扩展本表并同步更新「工具注册表」与运行时意图路由（若宿主已打补丁，仓库侧须保持描述一致）。
+
+| Intent ID | 典型用户表述（示例） | 首选执行方式 | 模型角色 |
+|-----------|----------------------|--------------|----------|
+| `chat_general` | 闲聊、解释概念、与当前宿主/仓库无强绑定操作 | 聊天引擎（如本地 instruct 模型）；不强行套工具 | 正常对话 |
+| `news_rerun` | 手动重跑 09:00/17:00 新闻、按正式任务再执行一遍 | **禁止**把需求当成「临时搜新闻写摘要」。应使用正式 cron 任务定义：`openclaw cron run <jobId>`，权威 payload 以 `cron/jobs.json` 为准 | 仅确认已排队/已触发，不替代正式任务生成投递内容 |
+| `news_config` | 改播报节奏、大纲规则、时间窗、编号、目标频道（任务域内） | 任务域：`config/news/broadcast.json` → `apply_news_config.py` → `verify_news_config.py`，见 `news-task-domain.md` | 编辑配置与跑脚本，不手改散落 `jobs.json` 绕过任务域 |
+| `cron_inspect` | 查看/确认定时任务是否存在、表达式为何 | `openclaw cron list --json` 及宿主机上 `cron/jobs.json` 等**机器可读证据** | 展示事实状态，不臆测 |
+| `repo_sync` | 拉取/同步 SpringMonkey 或工作区镜像、提交到约定分支 | 已配置的 git / 同步流程与 elevated 策略（以宿主配置为准）；**优先走既定自动化或脚本化路径** | 少自由发挥，多 `git status` / `rev-parse` 等证据 |
+| `config_apply_verify` | 某任务域「应用配置 + 验证」类（新闻以外若日后增加） | 该域的 `apply_*` / `verify_*` 脚本对 | 同新闻任务域模式 |
+| `adhoc_ops` | 单次排障、尚未归类、无注册工具 | 受控临时执行：先读 guardrail 文档，明确成功条件与证据，再动手机 | 执行完毕后评估是否升级为下表新工具 |
+
+**禁止：**在已有工具覆盖的意图上，用「更强模型多写几段推理」替代 **一次正确的工具调用**。
+
+## Tool Registry (Repository-Anchored)
+
+下列条目为 **仓库内可指向的规范入口**；CLI 路径、systemd、Discord 补丁文件以宿主文档（如运维笔记）为准，但 **语义与优先级** 以本注册表为准。
+
+| Tool ID | 作用 | 仓库或约定入口 | 验证要点 |
+|---------|------|----------------|----------|
+| `news.broadcast.config` | 新闻播报可调参数 | `config/news/broadcast.json` | `verify_news_config.py` 通过 |
+| `news.apply` | 将配置应用到运行侧 | `scripts/news/apply_news_config.py` | 与 verify 成对使用 |
+| `news.verify` | 校验新闻任务域一致性 | `scripts/news/verify_news_config.py` | 机器输出作为交付证据 |
+| `openclaw.cron.run` | 触发已注册定时任务 | 宿主：`openclaw cron run <jobId>` | 任务进入队列/执行记录；非「模型直接发文」 |
+| `openclaw.cron.list` | 枚举定时任务 | 宿主：`openclaw cron list --json` | JSON 与 `jobs.json` 对照 |
+| `chat.engine` | 无工具类对话 | 运行时模型路由配置 | 不涉及宿主机状态变更时不强制证据 |
+
+新增工具时：**在本表增加一行**，并在 `Intent Taxonomy` 中增加或收窄 `intent`，必要时在运维笔记中记录运行时补丁文件。
+
+## Controlled Ad Hoc Execution (Path B Detail)
+
+当意图落在 `adhoc_ops` 或尚未注册时：
+
+1. **Preflight**：读 `REPOSITORY_GUARDRAILS.md` 与相关 runtime-notes；明确是否允许自主改仓库、改哪条分支。
+2. **Success condition**：写清「怎样算完成」（可机器验证优先）。
+3. **Execute**：最小变更面；避免与任务域脚本职责重复的「手搓链路」。
+4. **Verify**：满足 `TASK_DELIVERY_STANDARD.md`（证据、剩余风险）。
+5. **Record**： durable 规则写入 policy 或 runtime-note；单次事件写入 `docs/reports/`（若适用）。
+
+## Formalize Into Tool (Accumulation Loop)
+
+满足以下 **任一** 条件，应启动沉淀（人类或自主在 `bot/openclaw` 上提案均可）：
+
+- 同一 intent 在短周期内 **重复** 出现，且步骤稳定；
+- 失败模式与「缺少脚本/缺少单一入口」强相关；
+- 需要可重复验证（apply/verify 类）。
+
+**沉淀步骤（检查清单）：**
+
+1. 新增或整理 **脚本/CLI 封装**（单一入口、非交互、可日志化）。
+2. 在 **工具注册表** 增加 `Tool ID` 与路径说明。
+3. 在 **意图分类表** 中将原 `adhoc_ops` 细化为独立 `intent`，并写明「禁止再走临时路径」的边界。
+4. 更新 **任务域文档**（如 `news-task-domain.md` 模式）或新建 `docs/runtime-notes/<domain>.md`。
+5. 若宿主使用 Discord 前置路由：将「调工具而非改模型 prompt」同步到运行时补丁说明（运维文档记录补丁路径即可，密钥不进仓库）。
+6. 首次落地后按 `EXECUTION_AND_RECOVERY_LOOP.md` 做一次完整验证并留报告摘要。
+
+## Relation To Runtime Patches
+
+宿主上的 `pi-embedded-*.js` 等补丁实现 **具体如何** 截获消息并调用 `openclaw cron`；本仓库策略描述 **应当** 遵守的路由优先级。升级 OpenClaw 覆盖补丁后，须按本策略回归：新闻重跑仍须绑定正式任务，而非纯模型生成。
+
+## When To Stop Elevating Model Freedom
+
+若某类任务已注册工具，却仍以「换更强模型」为主要手段，视为策略违背：应回到 **工具失败分类 → 下一合法路径 → 证据**，而不是加长推理链。
