@@ -20,8 +20,11 @@
 
 1. 在开发侧或 `汤猴` 任务工作区镜像（如 `~/.openclaw/workspace/SpringMonkey/`）修改并提交。
 2. `git push` 到约定远端（自主更新默认分支见 `REPOSITORY_GUARDRAILS.md`）。
-3. 在网关宿主机上的仓库工作副本执行 `git pull`（常见路径如 `/var/lib/openclaw/repos/SpringMonkey/`，以现场为准）。
-4. **若变更包含「需写入 npm 包 dist」的补丁脚本**：pull 只更新磁盘上的脚本本身；仍须在宿主机 **执行** 对应 `python3 scripts/openclaw/...py` 并 **重启 gateway**，补丁才生效。可将该执行步骤记入运维手册或日后做成受控 post-pull / timer（脚本入口仍应以仓库为准）。
+3. 在网关宿主机上的仓库工作副本更新代码（常见路径如 `/var/lib/openclaw/repos/SpringMonkey/`，以现场为准）。**注意：**
+   - 若工作副本停在 `bot/openclaw` 而策略在 `main`，应先 `git checkout main` 再 `git pull --ff-only origin main`，否则会与 `main` 分叉导致无法 fast-forward。
+   - 若出现 `detected dubious ownership`，对 root 执行：`git config --global --add safe.directory /var/lib/openclaw/repos/SpringMonkey`（路径按实际填写）。
+   - 若 `origin` 使用 `git@github-springmonkey:...` 等 **本机无法解析的 SSH Host 别名**，`git fetch` 会失败；可改为只读拉取用的 HTTPS，例如：`git remote set-url origin https://github.com/sunshaoxuan/SpringMonkey.git`（需要写回 SSH 推分支时再改回或配置 `~/.ssh/config` 中的 `Host`）。
+4. **若变更包含「需写入 npm 包 dist」的补丁脚本**：pull 只更新磁盘上的脚本本身；仍须在宿主机 **执行** 对应 `python3 scripts/openclaw/...py` 并 **重启 gateway**（如 `systemctl restart openclaw.service`），补丁才生效。可将该执行步骤记入运维手册或日后做成受控 post-pull / timer（脚本入口仍应以仓库为准）。
 
 **与 `DOCS_AUTHORITY_MODEL.md` 一致**：仓库描述策略与脚本，**不自动等于**宿主机权限或配置已被应用；但 **把策略与补丁脚本放进 Git 再 pull**，是落实「可积累能力」的默认传播方式，应避免只在聊天里口头约定、只在单机上手改 dist。
 
