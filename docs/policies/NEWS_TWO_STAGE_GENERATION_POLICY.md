@@ -99,3 +99,15 @@ Completion reports for this workflow should only include:
 - whether Codex was used
 - temp result file location
 - final draft file location
+
+## Channel Output Rule
+
+During execution, do not continuously post intermediate progress into the channel.
+
+Default channel behavior:
+
+- at most one start message
+- at most one completion message
+- otherwise only the final result
+
+Realtime progress is allowed only when the user explicitly asks for it.

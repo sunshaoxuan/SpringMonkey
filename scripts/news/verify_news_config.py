@@ -129,6 +129,17 @@ def main():
         reporting = workflow.get("reporting", {})
         if reporting.get("replyFields"):
             required.append(f"完成后只汇报这些字段：{'、'.join(reporting['replyFields'])}")
+        channel_output = workflow.get("channelOutputPolicy", {})
+        if channel_output.get("defaultMode"):
+            required.append(f"频道输出默认模式：{channel_output['defaultMode']}")
+        if channel_output.get("forbidIntermediateProgressMessages"):
+            required.append("默认不要把中间过程连续发到频道")
+        if channel_output.get("allowRealtimeOnlyIfExplicitlyRequested"):
+            required.append("除非用户明确要求实时播报，否则只发最终结果")
+        if channel_output.get("allowStartMessage"):
+            required.append(f"最多允许发送 {channel_output['maxStartMessages']} 条开始执行消息")
+        if channel_output.get("allowCompletionMessage"):
+            required.append(f"最多允许发送 {channel_output['maxCompletionMessages']} 条完成结果消息")
         pools = cfg.get("sourcePolicy", {}).get("sourcePools", {})
         if pools.get("japan"):
             required.append("日本优先信源池")

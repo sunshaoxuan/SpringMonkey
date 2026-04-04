@@ -165,6 +165,15 @@
     "mergedRecordFile": "merged-records.json",
     "finalDraftFile": "final-draft.md",
     "summaryReportFile": "run-summary.json",
+    "channelOutputPolicy": {
+      "defaultMode": "final-only",
+      "allowStartMessage": true,
+      "maxStartMessages": 1,
+      "allowCompletionMessage": true,
+      "maxCompletionMessages": 1,
+      "forbidIntermediateProgressMessages": true,
+      "allowRealtimeOnlyIfExplicitlyRequested": true
+    },
     "perItemProcessing": {
       "requireStructuredRecord": true,
       "appendImmediatelyToTempFile": true,

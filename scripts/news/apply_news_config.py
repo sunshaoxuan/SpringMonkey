@@ -79,6 +79,7 @@ def build_message(cfg: dict, job: dict) -> str:
     merge = workflow.get("mechanicalMerge", {})
     final_codex = workflow.get("finalCodexPass", {})
     reporting = workflow.get("reporting", {})
+    channel_output = workflow.get("channelOutputPolicy", {})
 
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
@@ -118,6 +119,11 @@ def build_message(cfg: dict, job: dict) -> str:
         f"- 最终成稿文件写入：{final_draft_file}。",
         f"- 运行摘要写入：{summary_report_file}。",
         f"- 完成后只汇报这些字段：{'、'.join(reporting.get('replyFields', []))}。" if reporting.get("replyFields") else "",
+        f"- 频道输出默认模式：{channel_output.get('defaultMode')}。" if channel_output.get("defaultMode") else "",
+        "- 默认不要把中间过程连续发到频道。" if channel_output.get("forbidIntermediateProgressMessages") else "",
+        "- 除非用户明确要求实时播报，否则只发最终结果。" if channel_output.get("allowRealtimeOnlyIfExplicitlyRequested") else "",
+        f"- 最多允许发送 {channel_output.get('maxStartMessages')} 条开始执行消息。" if channel_output.get("allowStartMessage") else "- 不发送开始执行消息。",
+        f"- 最多允许发送 {channel_output.get('maxCompletionMessages')} 条完成结果消息。" if channel_output.get("allowCompletionMessage") else "- 不发送完成结果消息。",
     ]
     if fr.get("omitFinalSourceSummary"):
         intro.append("- 每条新闻既然已经单独附链接，文末不要再重复列一次所有来源概览。")
