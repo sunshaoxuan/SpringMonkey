@@ -18,6 +18,12 @@
 
 应用后需 **重启 gateway**（如 `openclaw.service`）。
 
+## v5（必打）：手动重跑不得依赖 Ollama 意图分类
+
+`classifyDiscordIntent()` 会向 Ollama 发 HTTP；若 Ollama 卡住，整段 `maybeRouteDiscordIntent` 在分类器处失败并 `return null`，网关退回默认 ollama 链路，表现为「自由发挥」且无 `[intent-router] reroute` 日志。
+
+**处理：**`scripts/openclaw/patch_news_router_v5.py` — 当 `shouldOverrideToNewsTask` 为真时 **跳过分类器**，直接 `intent=news_task` 再 `queueFormalNewsJobRun`。
+
 ## v4（必打）：网关非 root 时禁止用 `runuser`
 
 若 `openclaw.service` 的 `User=` 为 `openclaw`（常见），进程内调用 `runuser -u openclaw ...` 会失败：`runuser: may not be used by non-root users`。  
@@ -30,7 +36,9 @@
 1. 若 `dist/pi-embedded-*.js` 尚无 v2 块：先在工作区使用 `patch_news_router_v2.py`（或宿主上已备份的等价补丁）。
 2. 再执行 v3 脚本。
 3. 再执行 **v4** 脚本（systemd 以非 root 跑网关时必需）。
-4. 验证：`journalctl` 中不再出现 `classify failed: cron run failed ... runuser`；可出现 `manual-cron-run=1` 或 `override ... -> news_task`。
+4. 再执行 **v5** 脚本（避免 Ollama 分类器阻塞手动重跑路径）。
+5. 自动化验证：`python3 scripts/openclaw/test_manual_news_heuristics.py`；宿主机上 `runuser -u openclaw -- env HOME=/var/lib/openclaw bash scripts/openclaw/test_cron_run_cli.sh`；可选 `python3 scripts/openclaw/integration_verify_host.py`（需环境变量 `SPRINGMONKEY_SSH_PASSWORD`）。
+6. 验证：`journalctl` 可出现 `bypass classifier: news_task` 与 `manual-cron-run=1`。
 
 ## 策略对齐
 
