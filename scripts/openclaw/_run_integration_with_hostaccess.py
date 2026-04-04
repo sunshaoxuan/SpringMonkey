@@ -1,29 +1,51 @@
 #!/usr/bin/env python3
-"""从仓库旁 HOST_ACCESS.md 取密码并运行 integration_verify_host（仅本地运维使用，勿提交密码）。"""
+"""
+从磁盘上的 HOST_ACCESS.md 读取 SSH 密码并运行 integration_verify_host。
+
+查找顺序：
+  1) 环境变量 SPRINGMONKEY_HOST_ACCESS_FILE
+  2) 自本文件向上最多 6 层目录中的 HOST_ACCESS.md
+
+勿将密码写入仓库；HOST_ACCESS 通常在工作区根目录（与 SpringMonkey 并列）。
+"""
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-ACCESS = ROOT / "HOST_ACCESS.md"
 SCRIPT = Path(__file__).resolve().parent / "integration_verify_host.py"
 
 
+def find_access() -> Path | None:
+    envp = os.environ.get("SPRINGMONKEY_HOST_ACCESS_FILE", "").strip()
+    if envp:
+        p = Path(envp)
+        return p if p.is_file() else None
+    here = Path(__file__).resolve().parent
+    for _ in range(8):
+        cand = here / "HOST_ACCESS.md"
+        if cand.is_file():
+            return cand
+        if here.parent == here:
+            break
+        here = here.parent
+    return None
+
+
 def main() -> int:
-    if not ACCESS.exists():
-        print("missing", ACCESS, file=sys.stderr)
+    access = find_access()
+    if not access:
+        print("Set SPRINGMONKEY_HOST_ACCESS_FILE or place HOST_ACCESS.md above this repo.", file=sys.stderr)
         return 2
-    text = ACCESS.read_text(encoding="utf-8")
+    text = access.read_text(encoding="utf-8")
     m = re.search(r"- Password:\s*`([^`]+)`", text)
     if not m:
-        print("no password in HOST_ACCESS", file=sys.stderr)
+        print("no password in", access, file=sys.stderr)
         return 2
     env = os.environ.copy()
     env["SPRINGMONKEY_SSH_PASSWORD"] = m.group(1)
-    extra = sys.argv[1:]
-    cmd = [sys.executable, str(SCRIPT)] + extra
+    cmd = [sys.executable, str(SCRIPT)] + sys.argv[1:]
     return subprocess.call(cmd, env=env)
 
 
