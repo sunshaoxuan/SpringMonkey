@@ -47,7 +47,36 @@
     "requireSourceLinkMatchesItem": true,
     "forbidAggregatorLinksAsSource": true,
     "requireSourceVerifiedBeforeWriting": true,
-    "omitFinalSourceSummary": true
+    "omitFinalSourceSummary": true,
+    "numberingCheck": {
+      "allowedTopLevelHeadings": [
+        "1. 日本",
+        "2. 中国",
+        "3. 国际",
+        "4. 市场或风险提示"
+      ],
+      "forbidNumberingIn": [
+        "标题",
+        "时间窗口",
+        "正文条目",
+        "链接行"
+      ],
+      "forbidPatterns": [
+        "1.1",
+        "1)",
+        "（1）",
+        "一、",
+        "（一）"
+      ],
+      "deliveryChecklist": [
+        "标题不得编号",
+        "时间窗口不得编号",
+        "全文只允许出现 4 个一级数字标题",
+        "一级数字标题必须连续为 1 到 4",
+        "正文条目只能使用短横线，不能使用数字编号",
+        "链接行不得带任何编号"
+      ]
+    }
   },
   "sourcePolicy": {
     "blockedDomains": [
@@ -129,31 +158,10 @@
     }
   },
   "model": {
-    "name": "openai-codex/gpt-5.4",
+    "name": "ollama/gpt-oss:20b",
     "thinking": "low",
     "timeoutSeconds": 3600,
     "lightContext": true,
     "allowUnsafeExternalContent": true
   }
 }
-
-�必须精确控制调用量，不得为了同一条新闻重复进行无意义的同类搜索。"
-      ],
-      "googleProgrammableSearch": {
-        "enabled": true,
-        "helperScript": "scripts/news/google_custom_search.py",
-        "envKeyVar": "GOOGLE_CUSTOM_SEARCH_API_KEY",
-        "envCxVar": "GOOGLE_CUSTOM_SEARCH_CX",
-        "usageLedger": "/var/lib/openclaw/.openclaw/runtime/google-pse-usage.json"
-      }
-    }
-  },
-  "model": {
-    "name": "openai-codex/gpt-5.4",
-    "thinking": "low",
-    "timeoutSeconds": 3600,
-    "lightContext": true,
-    "allowUnsafeExternalContent": true
-  }
-}
-

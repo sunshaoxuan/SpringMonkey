@@ -29,6 +29,7 @@ def build_message(cfg: dict, job: dict) -> str:
     sp = cfg.get("sourcePolicy", {})
     tp = cfg.get("toolPolicy", {})
     sq = tp.get("searchQuotaPolicy", {})
+    numbering = fr.get("numberingCheck", {})
 
     outline = "\n".join(fr["outline"])
     title_line = fr.get("titleLine", "新闻简报")
@@ -62,6 +63,11 @@ def build_message(cfg: dict, job: dict) -> str:
             label = {"japan": "日本", "china": "中国", "world": "国际"}[region]
             pools_text.append(f"- {label}优先信源池：{'、'.join(pools[region])}。")
 
+    checklist = numbering.get("deliveryChecklist", [])
+    forbidden_areas = "、".join(numbering.get("forbidNumberingIn", []))
+    forbidden_patterns = "、".join(numbering.get("forbidPatterns", []))
+    allowed_headings = " / ".join(numbering.get("allowedTopLevelHeadings", fr.get("outline", [])))
+
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
         f"标题直接写成：{title_line}。",
@@ -71,11 +77,16 @@ def build_message(cfg: dict, job: dict) -> str:
         "",
         "强制格式规则：",
         "- 只有以上 4 个一级标题可以使用数字编号。",
+        f"- 允许编号的一级标题必须严格固定为：{allowed_headings}。",
         "- 标题和时间窗口不能编号。",
         "- 各节内部的条目一律使用短横线项目符号 `- `。",
         "- 绝对不要出现嵌套数字编号。",
+        f"- 以下位置禁止任何编号：{forbidden_areas}。" if forbidden_areas else "",
+        f"- 以下模式一律视为编号错误并禁止出现：{forbidden_patterns}。" if forbidden_patterns else "",
         "- 发出前先自检：整篇中带数字编号的行只能是 1 到 4 这四个一级标题。若不满足，先重写再发送。",
+        "- 发出前逐条检查：标题未编号、时间窗口未编号、只有 4 个一级数字标题、一级标题连续为 1 到 4、正文条目不用数字、链接行不带编号。",
         f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{fr['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。",
+        *[f"- 编号检查清单：{item}。" for item in checklist],
     ]
     if fr.get("omitFinalSourceSummary"):
         intro.append("- 每条新闻既然已经单独附链接，文末不要再重复列一次所有来源概览。")
@@ -139,43 +150,6 @@ def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
         "kind": "agentTurn",
         "message": build_message(cfg, spec),
         "model": cfg["model"]["name"],
-        "thinking": cfg["model"]["thinking"],
-        "timeoutSeconds": cfg["model"]["timeoutSeconds"],
-        "lightContext": cfg["model"]["lightContext"],
-        "allowUnsafeExternalContent": cfg["model"]["allowUnsafeExternalContent"]
-    }
-    existing["delivery"] = cfg["delivery"]
-
-
-def main():
-    cfg = load_json(CONFIG_PATH)
-    jobs_doc = load_json(JOBS_PATH)
-    if jobs_doc.get("version") != 1:
-        raise SystemExit("Unsupported jobs.json version")
-
-    expected_names = {spec["name"] for spec in cfg["jobs"]}
-    jobs_doc["jobs"] = [
-        job
-        for job in jobs_doc.get("jobs", [])
-        if not (
-            str(job.get("name", "")).startswith("news-digest-jst-")
-            and job.get("name") not in expected_names
-        )
-    ]
-
-    for spec in cfg["jobs"]:
-        apply_job(cfg, jobs_doc, spec)
-
-    save_json(JOBS_PATH, jobs_doc)
-    print("APPLY_OK")
-    for spec in cfg["jobs"]:
-        print(spec["name"])
-
-
-if __name__ == "__main__":
-    main()
-
-],
         "thinking": cfg["model"]["thinking"],
         "timeoutSeconds": cfg["model"]["timeoutSeconds"],
         "lightContext": cfg["model"]["lightContext"],
