@@ -87,6 +87,29 @@ class TestVerifyDraft(unittest.TestCase):
         self.assertTrue(any("bad_top_level" in e for e in err))
 
 
+class TestPipelineCronMessage(unittest.TestCase):
+    def test_build_pipeline_message_has_job_and_script(self):
+        m = _load_apply_news_config()
+        cfg = json.loads(CFG.read_text(encoding="utf-8"))
+        spec = cfg["jobs"][0]
+        text = m.build_pipeline_cron_message(cfg, spec)
+        self.assertIn("run_news_pipeline.py", text)
+        self.assertIn(spec["name"], text)
+        self.assertIn("PIPELINE_OK", text)
+        self.assertIn("final_broadcast.md", text)
+
+
+def _load_apply_news_config():
+    import importlib.util
+
+    p = NEWS_DIR / "apply_news_config.py"
+    spec = importlib.util.spec_from_file_location("apply_news_config", p)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 class TestCliSmoke(unittest.TestCase):
     def test_pipeline_no_llm(self):
         with tempfile.TemporaryDirectory() as td:

@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "timezone": "Asia/Tokyo",
+  "delivery": {
+    "channel": "discord",
+    "to": "1483636573235843072",
+    "accountId": "default",
+    "mode": "announce"
+  },
+  "jobs": [
+    {
+      "name": "news-digest-jst-0900",
+      "description": "Discord news digest for previous 16 hours (JST)",
+      "schedule": {
+        "expr": "0 9 * * *",
+        "tz": "Asia/Tokyo"
+      },
+      "windowLabel": "前一日 17:00 到当日 09:00（亚洲/东京，JST）",
+      "windowHours": 16
+    },
+    {
+      "name": "news-digest-jst-1700",
+      "description": "Discord news digest for 09:00-17:00 (JST)",
+      "schedule": {
+        "expr": "0 17 * * *",
+        "tz": "Asia/Tokyo"
+      },
+      "windowLabel": "当日 09:00 到当日 17:00（亚洲/东京，JST）",
+      "windowHours": 8
+    }
+  ],
+  "formatRules": {
+    "titleLine": "新闻简报",
+    "showWindowAsPlainLine": true,
+    "outline": [
+      "1. 日本",
+      "2. 中国",
+      "3. 国际",
+      "4. 市场或风险提示"
+    ],
+    "contentBulletPrefix": "- ",
+    "forbidNestedNumbering": true,
+    "selfCheckNumberedLinesOnlyTopLevel": true,
+    "requirePerItemSourceLink": true,
+    "fallbackNoMajorUpdateLine": "本节无合格新增新闻条目。",
+    "requireLinkOnNewLine": true,
+    "requireSourceLinkMatchesItem": true,
+    "forbidAggregatorLinksAsSource": true,
+    "requireSourceVerifiedBeforeWriting": true,
+    "omitFinalSourceSummary": true
+  },
+  "sourcePolicy": {
+    "blockedDomains": [
+      "theguardian.com",
+      "www.theguardian.com"
+    ],
+    "aggregatorDomains": [
+      "news.google.com",
+      "google.com",
+      "news.yahoo.com",
+      "yahoo.com"
+    ],
+    "coverageCategories": [
+      "时政与公共事务",
+      "经济与产业",
+      "社会与民生",
+      "科技与AI",
+      "文化与娱乐",
+      "体育与生活方式",
+      "公共安全与健康",
+      "环境与气候"
+    ],
+    "coverageRule": "不能只保留国家级或宏观政治经济新闻；每次都要主动检索并纳入有信息价值的社会、娱乐、科技、文化、生活类新闻。",
+    "minimumSoftNewsCategoriesPerRegion": 2,
+    "sourcePools": {
+      "japan": [
+        "Reuters",
+        "AP",
+        "Kyodo",
+        "The Japan Times",
+        "nippon.com",
+        "Formula 1",
+        "The Cut",
+        "Vanity Fair",
+        "ESPN"
+      ],
+      "china": [
+        "Reuters",
+        "BBC",
+        "CNBC",
+        "NBC News",
+        "SpaceNews",
+        "InsideEVs",
+        "The New York Times",
+        "AP"
+      ],
+      "world": [
+        "Reuters",
+        "AP",
+        "WMO",
+        "WHO",
+        "ICIJ",
+        "NPR",
+        "BBC",
+        "ESPN",
+        "AP News"
+      ]
+    }
+  },
+  "toolPolicy": {
+    "preferWebSearchAndWebFetch": true,
+    "forbidBrowserSearchPages": true,
+    "browserFallbackPolicy": "如果 browser 超时或不可用，不要重试 browser；直接改走 web_search、RSS、媒体直链与公开网页抓取。",
+    "searchQuotaPolicy": {
+      "rssFirst": true,
+      "primaryProvider": "brave",
+      "limits": {
+        "brave": {
+          "period": "monthly",
+          "maxCalls": 1000
+        }
+      },
+      "enforcementRules": [
+        "每次任务优先使用 RSS、原媒体直链和已知权威页面，只有确实需要补线索时才调用搜索 API。",
+        "调用 Brave 前必须确认本月累计调用未超过 1000 次；达到上限后本月不得再调用 Brave。",
+        "当 Brave 达到上限时，只能降级到 RSS、原媒体直链与公开网页抓取，不得继续硬打超限 provider。",
+        "执行过程中必须精确控制调用量，不得为了同一条新闻重复进行无意义的同类搜索。"
+      ]
+    }
+  },
+  "model": {
+    "chatPrimary": "ollama/qwen2.5:14b-instruct",
+    "chatFallback": "openai-codex/gpt-5.4",
+    "newsOrchestrator": "openai-codex/gpt-5.4",
+    "newsWorker": "ollama/qwen2.5:14b-instruct",
+    "thinking": "low",
+    "timeoutSeconds": 3600,
+    "lightContext": true,
+    "allowUnsafeExternalContent": true
+  },
+  "newsExecution": {
+    "mode": "pipeline",
+    "repoPath": "/var/lib/openclaw/repos/SpringMonkey",
+    "cronTimeoutSeconds": 7200,
+    "pipelineCliArgs": []
+  }
+}
+
