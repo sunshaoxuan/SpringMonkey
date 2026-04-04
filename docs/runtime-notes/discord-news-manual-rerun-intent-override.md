@@ -18,11 +18,19 @@
 
 应用后需 **重启 gateway**（如 `openclaw.service`）。
 
+## v4（必打）：网关非 root 时禁止用 `runuser`
+
+若 `openclaw.service` 的 `User=` 为 `openclaw`（常见），进程内调用 `runuser -u openclaw ...` 会失败：`runuser: may not be used by non-root users`。  
+此时 `maybeRouteDiscordIntent` 会 catch 并 `return null`，汤猴退回默认链路并**自由发挥**。
+
+**处理：**在 v3 之后执行 `scripts/openclaw/patch_news_router_v4.py`：非 root 时直接 `spawnSync("openclaw", ["cron","run",jobId], { env: { ...process.env, HOME: "/var/lib/openclaw" } })`；仅当 `getuid()===0` 时保留 `runuser`。
+
 ## 部署顺序
 
 1. 若 `dist/pi-embedded-*.js` 尚无 v2 块：先在工作区使用 `patch_news_router_v2.py`（或宿主上已备份的等价补丁）。
 2. 再执行 v3 脚本。
-3. 验证：`journalctl` / supervisor 日志中出现 `[intent-router] override chat -> news_task (manual cron run heuristics)`（或 `task_control`）。
+3. 再执行 **v4** 脚本（systemd 以非 root 跑网关时必需）。
+4. 验证：`journalctl` 中不再出现 `classify failed: cron run failed ... runuser`；可出现 `manual-cron-run=1` 或 `override ... -> news_task`。
 
 ## 策略对齐
 
