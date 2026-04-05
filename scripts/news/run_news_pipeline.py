@@ -262,21 +262,86 @@ def worker_user_prompt(
     return "\n".join(lines)
 
 
-def finalize_system_prompt(cfg: dict, plan: dict) -> str:
+def _finalize_template_example(plan: dict) -> str:
+    """生成一份精确模板示例，用于 system prompt 和机械兜底。"""
+    fr_outline = plan.get("_outline") or []
+    lines = [plan["title_line"], plan["window_label"]]
+    fallback = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
+    for sec in fr_outline:
+        lines.append(sec)
+        lines.append(f"- {fallback}")
+    return "\n".join(lines)
+
+
+def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None = None) -> str:
     fr = cfg["formatRules"]
     outline = "\n".join(fr["outline"])
-    return (
-        "你是主编，负责合并工人草稿并输出最终 Discord 新闻简报。"
-        "只输出最终成稿 Markdown，不要前言后语。\n"
-        f"第一行标题必须是：{plan['title_line']}\n"
-        f"第二行起写时间窗（纯文字，不要编号）：{plan['window_label']}\n"
-        "然后必须按顺序出现且仅出现以下四个编号小节（整篇仅此四处数字编号行）：\n"
+    plan_with_outline = {**plan, "_outline": fr["outline"]}
+    example = _finalize_template_example(plan_with_outline)
+
+    base = (
+        "你是主编，负责合并工人草稿并输出最终 Discord 新闻简报。\n"
+        "只输出最终成稿 Markdown，不要前言后语、不要解释、不要代码围栏。\n\n"
+        "【强制版式（违反任何一条即为失败）】\n"
+        f"第 1 行必须是：{plan['title_line']}\n"
+        f"第 2 行必须是：{plan['window_label']}\n"
+        "从第 3 行开始，必须按顺序且仅出现以下四个编号小节：\n"
         f"{outline}\n"
-        "每个小节内条目一律用「- 」项目符号；禁止嵌套数字编号；禁止在小节内再写 1.2.3.。\n"
-        "若某节工人未提供合格条目，写一条「- " + plan["fallback_no_news"] + "」。\n"
-        "链接规则：每条新闻下另起一行「链接：https://...」；无链则不写该条。\n"
-        "不要使用 markdown 代码围栏（不要用 ```）包裹全文。"
+        "全文只允许上面这四行使用数字编号；其他任何地方不得出现数字编号。\n"
+        "每个小节内条目一律用「- 」项目符号开头。\n"
+        f"若某节工人未提供合格条目，写一条「- {plan['fallback_no_news']}」。\n"
+        "链接规则：每条新闻下另起一行「链接：https://...」；无链则不写该条。\n\n"
+        "【模板示例（内容替换为工人实际条目）】\n"
+        f"{example}\n"
     )
+    if retry_errors:
+        base += (
+            "\n⚠ 上一次输出未通过校验，具体错误：\n"
+            + "\n".join(f"  - {e}" for e in retry_errors)
+            + "\n请严格修正后重新输出完整成稿。\n"
+        )
+    return base
+
+
+def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
+    """
+    不依赖 LLM，纯机械拼接出 100% 通过 verify 的播报稿。
+    按 batch 注释 (<!-- batch:xxx -->) 切分工人草稿，对应到 outline 四节；
+    内容不做润色，但保证标题、时间窗、一级编号完全正确。
+    """
+    fr = cfg["formatRules"]
+    outline: list[str] = fr.get("outline", [])
+    fallback_line = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
+
+    batch_ids = [b["id"] for b in plan.get("batches", [])]
+    batch_content: dict[str, list[str]] = {bid: [] for bid in batch_ids}
+
+    import re as _re
+
+    current_bid: str | None = None
+    for line in merged_draft.splitlines():
+        m = _re.match(r"<!--\s*batch:(\w+)\s*-->", line)
+        if m:
+            current_bid = m.group(1)
+            continue
+        if current_bid and current_bid in batch_content:
+            stripped = line.strip()
+            if stripped:
+                if not stripped.startswith("- "):
+                    stripped = "- " + stripped
+                batch_content[current_bid].append(stripped)
+
+    result_lines = [plan["title_line"], plan["window_label"]]
+    for i, sec_title in enumerate(outline):
+        result_lines.append(sec_title)
+        bid = batch_ids[i] if i < len(batch_ids) else None
+        items = batch_content.get(bid, []) if bid else []
+        if items:
+            result_lines.extend(items)
+        else:
+            result_lines.append(f"- {fallback_line}")
+
+    return "\n".join(result_lines) + "\n"
 
 
 def merge_workers(run_dir: Path, plan: dict) -> str:
@@ -411,31 +476,57 @@ def main() -> int:
     draft = merge_workers(run_dir, plan)
     (run_dir / "draft_merged.md").write_text(draft, encoding="utf-8")
 
-    # --- finalize ---
+    # --- finalize (with verify-retry loop) ---
     final_path = run_dir / "final_broadcast.md"
+    max_finalize_attempts = 3
+
     if args.skip_finalize:
         final_path.write_text(draft, encoding="utf-8")
         print(f"PIPELINE_OK skip_finalize -> {final_path}")
-    elif not api_key:
-        print("[pipeline] no OPENAI_API_KEY: copy draft to final (may fail verify)", file=sys.stderr)
-        final_path.write_text(draft, encoding="utf-8")
-    else:
-        fin_sys = finalize_system_prompt(cfg, plan)
-        fin_user = "工人合并草稿如下，请输出最终成稿：\n\n" + draft
-        final_text = openai_chat(
-            base_url, api_key, orch_model, fin_sys, fin_user, args.openai_timeout * 2
-        )
-        final_path.write_text(final_text.strip() + "\n", encoding="utf-8")
+        return 0
 
-    if not args.skip_verify:
-        verify_text = load_verify_text()
-        ok, errors = verify_text(final_path.read_text(encoding="utf-8"), cfg)
-        if not ok:
-            print("VERIFY_DRAFT_FAIL", file=sys.stderr)
-            for err in errors:
-                print(err, file=sys.stderr)
-            save_json(run_dir / "verify_errors.json", {"errors": errors})
-            return 3
+    if not api_key:
+        print("[pipeline] no OPENAI_API_KEY: using mechanical template fallback", file=sys.stderr)
+
+    verify_text_fn = load_verify_text() if not args.skip_verify else None
+    last_errors: list[str] = []
+
+    for attempt in range(1, max_finalize_attempts + 1):
+        if not api_key:
+            final_text = _mechanical_fallback(cfg, plan, draft)
+        else:
+            fin_sys = finalize_system_prompt(cfg, plan, last_errors if attempt > 1 else None)
+            fin_user = "工人合并草稿如下，请输出最终成稿：\n\n" + draft
+            final_text = openai_chat(
+                base_url, api_key, orch_model, fin_sys, fin_user, args.openai_timeout * 2
+            )
+        final_text = final_text.strip() + "\n"
+        final_path.write_text(final_text, encoding="utf-8")
+
+        if verify_text_fn is None:
+            break
+        ok, errors = verify_text_fn(final_text, cfg)
+        if ok:
+            print(f"[pipeline] finalize attempt {attempt}/{max_finalize_attempts}: VERIFY_OK")
+            break
+        last_errors = errors
+        print(
+            f"[pipeline] finalize attempt {attempt}/{max_finalize_attempts}: VERIFY_FAIL {errors}",
+            file=sys.stderr,
+        )
+        save_json(run_dir / f"verify_errors_attempt{attempt}.json", {"errors": errors})
+    else:
+        print("[pipeline] all finalize attempts failed; applying mechanical template fallback", file=sys.stderr)
+        fallback_text = _mechanical_fallback(cfg, plan, draft)
+        final_path.write_text(fallback_text, encoding="utf-8")
+        if verify_text_fn:
+            ok2, err2 = verify_text_fn(fallback_text, cfg)
+            if not ok2:
+                print("VERIFY_DRAFT_FAIL (even mechanical fallback)", file=sys.stderr)
+                for e in err2:
+                    print(e, file=sys.stderr)
+                save_json(run_dir / "verify_errors.json", {"errors": err2})
+                return 3
 
     print("PIPELINE_OK", run_dir)
     return 0

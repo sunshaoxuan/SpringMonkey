@@ -77,6 +77,35 @@ class TestPlanAndTemplate(unittest.TestCase):
         with patch.dict(os.environ, {"OLLAMA_HOST": "http://127.0.0.1:11434"}):
             self.assertEqual(self.m.resolve_ollama_base_url(cfg), "http://127.0.0.1:11434")
 
+    def test_mechanical_fallback_passes_verify(self):
+        cfg = self.cfg
+        job = self.m.job_spec(cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(cfg, job)
+        merged = (
+            "<!-- batch:japan -->\n- JP news item\n"
+            "<!-- batch:china -->\n- CN news item\n"
+            "<!-- batch:world -->\n- Intl news item\n"
+            "<!-- batch:markets -->\n- Markets item\n"
+        )
+        text = self.m._mechanical_fallback(cfg, plan, merged)
+        v = _load_verify()
+        ok, err = v.verify_text(text, cfg)
+        self.assertTrue(ok, f"mechanical fallback should pass verify: {err}")
+        self.assertIn("新闻简报", text)
+        self.assertIn("1. 日本", text)
+        self.assertIn("4. 市场或风险提示", text)
+
+    def test_mechanical_fallback_empty_batch(self):
+        cfg = self.cfg
+        job = self.m.job_spec(cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(cfg, job)
+        merged = "<!-- batch:japan -->\n<!-- batch:china -->\n<!-- batch:world -->\n<!-- batch:markets -->\n"
+        text = self.m._mechanical_fallback(cfg, plan, merged)
+        v = _load_verify()
+        ok, err = v.verify_text(text, cfg)
+        self.assertTrue(ok, f"empty-batch fallback should still pass: {err}")
+        self.assertIn("本节无合格新增新闻条目", text)
+
     def test_ollama_api_model_name_strips_provider_prefix(self):
         self.assertEqual(
             self.m.ollama_api_model_name("ollama/qwen2.5:14b-instruct"),
@@ -130,8 +159,10 @@ class TestPipelineCronMessage(unittest.TestCase):
         cfg = json.loads(CFG.read_text(encoding="utf-8"))
         spec = cfg["jobs"][0]
         text = m.build_pipeline_cron_message(cfg, spec)
-        self.assertIn("run_news_pipeline.py", text)
-        self.assertIn("bash -lc", text)
+        self.assertIn("python3", text)
+        self.assertIn("news_digest_jst_0900", text)
+        self.assertIn("PIPELINE_OK", text)
+        self.assertIn("final_broadcast.md", text)
         self.assertIn(spec["name"], text)
         self.assertIn("PIPELINE_OK", text)
         self.assertIn("final_broadcast.md", text)

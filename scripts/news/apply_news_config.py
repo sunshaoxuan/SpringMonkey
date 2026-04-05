@@ -123,32 +123,36 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
     nex = _news_execution(cfg)
     repo = nex.get("repoPath", "/var/lib/openclaw/repos/SpringMonkey")
     extra = nex.get("pipelineCliArgs") or []
-    extra_s = " ".join(extra) if extra else ""
     job = spec["name"]
-    # 网关 exec allowlist 按「首个可执行文件」匹配；以 cd 开头会 allowlist miss。经 bash -lc 首进程为 bash（已在 allowlist）。
-    inner = f"cd {repo} && python3 scripts/news/run_news_pipeline.py --job {job}"
-    if extra_s:
-        inner = f"{inner} {extra_s}"
-    cmd_core = f"bash -lc {shlex.quote(inner)}"
+    wrapper_name = job.replace("-", "_")
+    script_path = f"{repo}/scripts/news/jobs/{wrapper_name}.py"
+    # 当前版本的 exec 预检会拦截复杂解释器调用；新闻正式任务必须使用固定 wrapper，
+    # 并要求模型优先调用 process 工具，以减少自由拼接 shell 的空间。
+    cmd_parts = ["python3", script_path]
+    cmd_core = shlex.join(cmd_parts)
     return "\n".join(
         [
             "【新闻定时任务 · 流水线模式】",
             "",
-            "你必须按顺序执行，不得跳过第 1 步直接撰写或臆造正文。",
+            "⚠ 绝对禁止事项（违反任何一条即为严重错误）：",
+            "   a) 禁止在执行流水线命令之前、之中或之外，自行撰写、生成或输出任何新闻摘要、简报正文或类似内容。",
+            "   b) 禁止将你自己生成的文字当作新闻播报投递到 Discord。",
+            "   c) 禁止用「临时搜新闻写摘要」替代流水线产出。",
+            "   d) 你唯一允许发到频道的新闻正文，只能来自流水线成功后 final_broadcast.md 的原文。",
             "",
-            "1) 在宿主机 shell 执行（须一次性跑完流水线；OPENAI_API_KEY 由宿主环境提供；"
-            "Ollama 基址优先 OLLAMA_HOST，否则使用 broadcast.json model.ollamaBaseUrl）：",
-            f"   {cmd_core}",
+            "执行步骤（严格按顺序，不得跳步）：",
             "",
-            "2) 若退出码为 0：标准输出中会出现一行以 PIPELINE_OK 开头并带运行目录路径。",
-            "   进入该目录，读取 final_broadcast.md 的完整 UTF-8 正文，按本任务 delivery 配置投递到 Discord",
-            "  （与往常定时新闻相同的频道与账号、announce 模式）；除修复明显乱码外不得改写一级编号结构。",
+            f"1) 执行命令：{cmd_core}",
+            "   使用 process / exec 工具；OPENAI_API_KEY 由宿主环境提供。",
             "",
-            "3) 若退出码非 0：向同一频道发送简短失败说明（含退出码与末尾错误摘要），不得编造新闻条目。",
+            "2) 若退出码 = 0：标准输出中会出现一行以 PIPELINE_OK 开头并带运行目录路径。",
+            "   进入该目录，读取 final_broadcast.md 的完整 UTF-8 正文，",
+            "   原样投递到 Discord（同频道、announce 模式）。除修复明显乱码外不得改写。",
             "",
-            "4) 禁止用「临时搜新闻写摘要」替代上述流水线。",
+            "3) 若退出码 ≠ 0：向同一频道发送一条简短失败说明（含退出码与末尾错误摘要），",
+            "   不得编造新闻条目，不得自行补写新闻内容。",
             "",
-            f"（本任务 job 名：{job}；时间窗见正式配置 windowLabel。）",
+            f"（job 名：{job}；时间窗见 windowLabel。）",
         ]
     )
 
@@ -233,4 +237,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
