@@ -264,30 +264,30 @@ def main() -> int:
                 print("FAIL: e2e-news-discord cron run", file=sys.stderr)
                 return 11
 
-            # openclaw cron run 通常只「入队」即返回；轮询网关日志直到出现流水线成功标记或超时
-            wait_sec = int(os.environ.get("SPRINGMONKEY_E2E_WAIT_PIPE_SEC", "1800"))
+            # cron run 只保证「入队」；子进程 stdout 未必进 journal，默认不盲等日志
+            wait_sec = int(os.environ.get("SPRINGMONKEY_E2E_WAIT_PIPE_SEC", "0"))
             if wait_sec > 0:
                 print(
-                    f"[integration] polling journal for PIPELINE_OK (max {wait_sec}s, "
-                    "set SPRINGMONKEY_E2E_WAIT_PIPE_SEC=0 to skip)..."
+                    f"[integration] polling journal for PIPELINE_OK (max {wait_sec}s; "
+                    "若网关不落盘该串则会超时，仍以 Discord 为准)..."
                 )
                 deadline = time.time() + wait_sec
                 found = False
                 while time.time() < deadline:
                     code, o = run(
-                        "journalctl -u openclaw.service --since '2 min ago' --no-pager 2>/dev/null | "
-                        "grep -F PIPELINE_OK | tail -1",
+                        "journalctl -u openclaw.service --since '15 minutes ago' --no-pager 2>/dev/null | "
+                        "grep -E 'PIPELINE_OK|run_news_pipeline\\.py|final_broadcast' | tail -3",
                         timeout=90,
                     )
-                    if "PIPELINE_OK" in o:
-                        print("[integration] saw PIPELINE_OK in journal:\n", o.strip()[:500])
+                    if "PIPELINE_OK" in o or "run_news_pipeline.py" in o:
+                        print("[integration] journal snippet:\n", o.strip()[:800])
                         found = True
                         break
                     time.sleep(20)
                 if not found:
                     print(
-                        "WARN: timeout waiting for PIPELINE_OK in openclaw journal; "
-                        "任务可能仍在跑或日志未包含该串，请直接查看 Discord",
+                        "[integration] 未在 journal 中匹配到流水线关键字（常见）；"
+                        "请直接查看 Discord 是否已出现新闻简报或网关会话回复。",
                         file=sys.stderr,
                     )
 

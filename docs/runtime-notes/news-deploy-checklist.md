@@ -47,7 +47,7 @@ python scripts/openclaw/_run_integration_with_hostaccess.py
 python scripts/openclaw/_run_integration_with_hostaccess.py --full-contract --e2e-news-discord
 ```
 
-入队后默认再轮询网关日志最多 **1800s** 等待 `PIPELINE_OK`（`SPRINGMONKEY_E2E_WAIT_PIPE_SEC=0` 可跳过，仅入队即返回）。
+可选：`SPRINGMONKEY_E2E_WAIT_PIPE_SEC=1800` 时轮询 `journalctl` 是否出现 `PIPELINE_OK` / `run_news_pipeline.py`（多数网关**不会**把子进程 stdout 写入 systemd 日志，**以 Discord 频道结果为准**）。
 
 ## 阶段 D — 事故类根因（2026-04-05 09:00）
 
