@@ -19,7 +19,7 @@ NEWS_ORCHESTRATOR_MODEL  覆盖 broadcast.json model.newsOrchestrator
 OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
 model.ollamaBaseUrl      broadcast.json 中工人模型 HTTP 基址（定时任务无 shell 环境时常用）
                          未设置且未设 OLLAMA_HOST 时回退 http://127.0.0.1:11434
-NEWS_WORKER_MODEL        覆盖 broadcast.json model.newsWorker
+NEWS_WORKER_MODEL        覆盖 broadcast.json model.newsWorker（可带 ollama/ 前缀，调用 API 时会自动剥掉）
 
 不落盘 OpenAI Key；运行目录仅含中间稿与 JSON。
 """
@@ -65,6 +65,18 @@ def resolve_ollama_base_url(cfg: dict) -> str:
         if isinstance(v, str) and v.strip():
             return v.strip().rstrip("/")
     return "http://127.0.0.1:11434"
+
+
+def ollama_api_model_name(model_id: str) -> str:
+    """
+    Ollama /api/chat 的 model 字段必须是裸名（如 qwen2.5:14b-instruct）。
+    broadcast 里常与 OpenClaw 一致写成 ollama/qwen2.5:14b-instruct，需去掉 provider 前缀。
+    """
+    s = (model_id or "").strip()
+    if s.lower().startswith("ollama/"):
+        rest = s.split("/", 1)[1].strip()
+        return rest if rest else s
+    return s
 
 
 def save_json(path: Path, data: Any) -> None:
@@ -319,6 +331,7 @@ def main() -> int:
         "NEWS_WORKER_MODEL",
         model_cfg.get("newsWorker", "qwen2.5:14b-instruct"),
     )
+    ollama_worker_model = ollama_api_model_name(worker_model)
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     base_url = os.environ.get("NEWS_OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
     ollama_host = resolve_ollama_base_url(cfg)
@@ -340,6 +353,7 @@ def main() -> int:
             "dry_run": args.dry_run,
             "orchestrator_model": orch_model,
             "worker_model": worker_model,
+            "ollama_api_model": ollama_worker_model,
             "ollama_base_url": ollama_host,
         },
     )
@@ -383,7 +397,7 @@ def main() -> int:
         user_p = worker_user_prompt(plan, b, ob, args.dry_run, rss_hints or None)
         try:
             text = ollama_chat(
-                ollama_host, worker_model, sys_prompt, user_p, args.ollama_timeout
+                ollama_host, ollama_worker_model, sys_prompt, user_p, args.ollama_timeout
             )
         except Exception as e:
             if args.dry_run:

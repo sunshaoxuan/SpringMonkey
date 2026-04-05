@@ -77,6 +77,14 @@ class TestPlanAndTemplate(unittest.TestCase):
         with patch.dict(os.environ, {"OLLAMA_HOST": "http://127.0.0.1:11434"}):
             self.assertEqual(self.m.resolve_ollama_base_url(cfg), "http://127.0.0.1:11434")
 
+    def test_ollama_api_model_name_strips_provider_prefix(self):
+        self.assertEqual(
+            self.m.ollama_api_model_name("ollama/qwen2.5:14b-instruct"),
+            "qwen2.5:14b-instruct",
+        )
+        self.assertEqual(self.m.ollama_api_model_name("qwen2.5:14b-instruct"), "qwen2.5:14b-instruct")
+        self.assertEqual(self.m.ollama_api_model_name("Ollama/foo:bar"), "foo:bar")
+
     def test_broadcast_json_has_ollama_base_url(self):
         url = self.cfg.get("model", {}).get("ollamaBaseUrl", "")
         self.assertTrue(url.startswith("http://"), "model.ollamaBaseUrl should be set for pipeline hosts")
