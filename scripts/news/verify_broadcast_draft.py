@@ -31,31 +31,40 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
 
     lines = text.splitlines()
     flat = "\n".join(lines)
+    outline_set = set(outline)
 
     if title not in flat:
         errors.append(f"missing_title: 正文中应出现标题「{title}」")
 
-    top_numbered = [ln for ln in lines if re.match(r"^\d+\.\s", ln)]
-    if top_numbered != outline:
+    # outline 匹配：按顺序检查每个 outline 条目是否作为独立行出现
+    found_outline: list[str] = []
+    for ln in lines:
+        s = ln.strip()
+        if s in outline_set:
+            found_outline.append(s)
+    if found_outline != outline:
         errors.append(
-            f"bad_top_level_numbering: 期望 {outline!r}, 实际 {top_numbered!r}"
+            f"bad_top_level_numbering: 期望 {outline!r}, 实际 {found_outline!r}"
         )
 
-    outline_set = set(outline)
-    if self_check:
-        for i, ln in enumerate(lines, 1):
-            if re.match(r"^\d+\.\s", ln) and ln not in outline_set:
-                errors.append(f"unexpected_numbered_line_{i}: {ln[:80]!r}")
+    bullet_prefix = fr.get("contentBulletPrefix", "• ")
 
     if forbid_nested:
         for i, ln in enumerate(lines, 1):
-            if re.match(r"^\s+\d+\.\s+", ln):
+            s = ln.strip()
+            if s in outline_set:
+                continue
+            # 独立行以裸数字编号开头（如 1. xxx / 2) xxx），且不是 outline
+            if re.match(r"^\*{0,2}\d+[\.\)）]\s", s):
+                errors.append(f"bare_numbered_line_{i}: {ln[:80]!r}")
+            # 缩进行以数字编号开头
+            if re.match(r"^\s+\d+[\.\)）]\s", ln):
                 errors.append(f"nested_numbering_line_{i}: {ln[:80]!r}")
-            # 「- 1. xxx」「- **1.** xxx」「- （1）xxx」等
-            if re.match(r"^\s*-\s+\*{0,2}\d+[\.\)）]\s*\*{0,2}\s+", ln):
+            # 条目符号后接数字编号：「• 1. xxx」「- 1. xxx」「• **1.** xxx」
+            if re.match(r"^\s*[•\-]\s+\*{0,2}\d+[\.\)）]\s*\*{0,2}\s+", ln):
                 errors.append(f"numbered_inside_bullet_line_{i}: {ln[:80]!r}")
-            # 「- 1、xxx」
-            if re.match(r"^\s*-\s+\d+[、，]\s*", ln):
+            # 「• 1、xxx」「- 1、xxx」
+            if re.match(r"^\s*[•\-]\s+\d+[、，]\s*", ln):
                 errors.append(f"numbered_inside_bullet_cn_line_{i}: {ln[:80]!r}")
 
     ok = len(errors) == 0

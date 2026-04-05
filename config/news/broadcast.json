@@ -33,12 +33,12 @@
     "titleLine": "新闻简报",
     "showWindowAsPlainLine": true,
     "outline": [
-      "1. 日本",
-      "2. 中国",
-      "3. 国际",
-      "4. 市场或风险提示"
+      "**1. 日本**",
+      "**2. 中国**",
+      "**3. 国际**",
+      "**4. 市场或风险提示**"
     ],
-    "contentBulletPrefix": "- ",
+    "contentBulletPrefix": "• ",
     "forbidNestedNumbering": true,
     "selfCheckNumberedLinesOnlyTopLevel": true,
     "requirePerItemSourceLink": true,

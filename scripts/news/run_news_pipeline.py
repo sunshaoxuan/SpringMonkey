@@ -230,11 +230,12 @@ def worker_system_prompt() -> str:
         "【编号与格式硬规则】\n"
         "- 严禁使用任何形式的数字编号：不要写 1. 2. 3.，不要写 1、2、3、，"
         "不要写 (1) (2)，不要写 **1.** **2.**，不要写①②。\n"
-        "- 每条新闻固定以「- 」（短横线+空格）开头，这是唯一允许的条目标记。\n"
+        "- 每条新闻固定以「• 」（圆点+空格，Unicode U+2022）开头，这是唯一允许的条目标记。\n"
+        "- 不要用短横线 - 开头（Discord 会错误渲染为列表），只用圆点 •。\n"
         "- 若某条无可靠独立信源链接则不要写该条。\n"
-        "- 若本批没有任何可写条目，只输出一行：- 本节无合格新增新闻条目。\n"
+        "- 若本批没有任何可写条目，只输出一行：• 本节无合格新增新闻条目。\n"
         "- 链接另起一行，格式：链接：https://...\n"
-        "发出前自检：你的输出中是否有任何数字编号？如有，删掉编号只留「- 」。"
+        "发出前自检：你的输出中是否有任何数字编号或短横线条目？如有，删掉编号，把 - 换成 •。"
     )
 
 
@@ -270,18 +271,19 @@ def worker_user_prompt(
 def _finalize_template_example(plan: dict) -> str:
     """生成一份精确模板示例，用于 system prompt 和机械兜底。"""
     fr_outline = plan.get("_outline") or []
+    bullet = plan.get("_bullet", "• ")
     lines = [plan["title_line"], plan["window_label"]]
     fallback = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
     for sec in fr_outline:
         lines.append(sec)
-        lines.append(f"- {fallback}")
+        lines.append(f"{bullet}{fallback}")
     return "\n".join(lines)
 
 
 def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None = None) -> str:
     fr = cfg["formatRules"]
     outline = "\n".join(fr["outline"])
-    plan_with_outline = {**plan, "_outline": fr["outline"]}
+    plan_with_outline = {**plan, "_outline": fr["outline"], "_bullet": fr.get("contentBulletPrefix", "• ")}
     example = _finalize_template_example(plan_with_outline)
 
     base = (
@@ -293,10 +295,12 @@ def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None
         "从第 3 行开始，必须按顺序且仅出现以下四个编号小节：\n"
         f"{outline}\n"
         "全文只允许上面这四行使用数字编号；其他任何地方不得出现数字编号。\n"
-        "【禁止的编号形式举例】1. xxx / 2. xxx / 1、xxx / (1) xxx / **1.** xxx / ① xxx\n"
-        "以上在条目行内全部禁止。条目只能以「- 」开头，不得附带任何序号。\n"
-        "每个小节内条目一律用「- 」项目符号开头。\n"
-        f"若某节工人未提供合格条目，写一条「- {plan['fallback_no_news']}」。\n"
+        "【禁止的编号形式举例】1. xxx / 2. xxx / 1、xxx / (1) xxx / ① xxx\n"
+        "以上在条目行内全部禁止。\n"
+        "一级标题必须加粗（用 ** 包裹），如 **1. 日本**。\n"
+        "每个小节内条目一律用「• 」（Unicode 圆点 U+2022 + 空格）开头。\n"
+        "不要使用短横线 - 作为条目符号（Discord 会错误渲染）。\n"
+        f"若某节工人未提供合格条目，写一条「• {plan['fallback_no_news']}」。\n"
         "链接规则：每条新闻下另起一行「链接：https://...」；无链则不写该条。\n\n"
         "【模板示例（内容替换为工人实际条目）】\n"
         f"{example}\n"
@@ -341,6 +345,8 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
     outline: list[str] = fr.get("outline", [])
     fallback_line = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
 
+    bullet = fr.get("contentBulletPrefix", "• ")
+
     batch_ids = [b["id"] for b in plan.get("batches", [])]
     batch_content: dict[str, list[str]] = {bid: [] for bid in batch_ids}
 
@@ -356,9 +362,14 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
             stripped = line.strip()
             if stripped:
                 stripped = _strip_item_numbering(stripped)
-                if not stripped.startswith("- "):
-                    stripped = "- " + stripped
-                batch_content[current_bid].append(stripped)
+                # 统一条目前缀：去掉 - / • 再加 bullet
+                if stripped.startswith("- "):
+                    stripped = stripped[2:].lstrip()
+                elif stripped.startswith("• "):
+                    stripped = stripped[2:].lstrip()
+                if stripped:
+                    stripped = f"{bullet}{stripped}"
+                    batch_content[current_bid].append(stripped)
 
     result_lines = [plan["title_line"], plan["window_label"]]
     for i, sec_title in enumerate(outline):
@@ -368,7 +379,7 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
         if items:
             result_lines.extend(items)
         else:
-            result_lines.append(f"- {fallback_line}")
+            result_lines.append(f"{bullet}{fallback_line}")
 
     return "\n".join(result_lines) + "\n"
 
