@@ -41,6 +41,12 @@ python scripts/openclaw/_run_integration_with_hostaccess.py
 
 默认 `--full-contract --no-pull`：dist 契约、`test_manual_news_heuristics.py`、`openclaw cron run` 冒烟。
 
+**端到端（Discord 上可见新闻任务结果）**：拉最新 `main`、宿主机上 `ensure_daily_memory` + `apply_news_config` + `verify_runtime_readiness` 后，用长跑超时执行 `openclaw cron run`（默认 7200s，可用环境变量 `SPRINGMONKEY_E2E_CRON_TIMEOUT_SEC` 调整）：
+
+```bash
+python scripts/openclaw/_run_integration_with_hostaccess.py --full-contract --e2e-news-discord
+```
+
 ## 阶段 D — 事故类根因（2026-04-05 09:00）
 
 - OpenClaw **`web_fetch` 未捕获异常导致整进程退出**：需上游修复或升级；本仓库通过 **pipeline 脚本** 降低对网关内并行 `web_fetch` 的依赖。

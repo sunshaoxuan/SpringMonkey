@@ -61,7 +61,7 @@
   "sourcePolicy": {
     "rssFeedHints": [
       "Reuters：主站 RSS 常用路径（不依赖 feeds 子域解析）如 https://www.reuters.com/rssfeed/worldNews 、 https://www.reuters.com/rssfeed/topNews",
-      "AP： https://apnews.com/hub/ap-top-news",
+      "AP： https://apnews.com/apf-topnews（聚合页；请打开单篇报道取可验证直链）",
       "BBC： https://feeds.bbci.co.uk/news/world/rss.xml",
       "NPR： https://feeds.npr.org/1001/rss.xml"
     ],

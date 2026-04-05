@@ -6,6 +6,7 @@
 
 常用：
   --full-contract --no-pull   仅校验 dist 契约 + 单元脚本 + cron + 服务存活（推荐每次发版后 CI/本地一键）
+  --full-contract --e2e-news-discord   拉代码后跑契约，再 ensure/apply/verify + 长跑 cron 直至 Discord 投递（默认 7200s）
   --apply-v6 --apply-v7       打补丁并重启后再跑契约（新环境或升级）
 
 无参数调用本脚本时，若通过 _run_integration_with_hostaccess.py 包装，将默认 --full-contract --no-pull。
@@ -43,6 +44,11 @@ def main() -> int:
         help="journalctl 最近 400 行若含 spawnSync openclaw ETIMEDOUT 则失败（易误伤旧日志，默认关）",
     )
     parser.add_argument("--skip-cron-cli", action="store_true")
+    parser.add_argument(
+        "--e2e-news-discord",
+        action="store_true",
+        help="跳过 180s 短冒烟，改为长跑 openclaw cron run 新闻任务（直至投递 Discord，默认超时 7200s）",
+    )
     args = parser.parse_args()
 
     if paramiko is None:
@@ -213,7 +219,8 @@ def main() -> int:
                 print("FAIL: recent journal still shows spawnSync openclaw ETIMEDOUT:\n", o, file=sys.stderr)
                 return 10
 
-        if not args.skip_cron_cli:
+        run_quick_cron = not args.skip_cron_cli and not args.e2e_news_discord
+        if run_quick_cron:
             last_out = ""
             code = 1
             for attempt in range(1, 4):
@@ -228,6 +235,34 @@ def main() -> int:
                 time.sleep(15)
             if code != 0:
                 return code
+
+        if args.e2e_news_discord:
+            for label, prep in (
+                ("ensure_daily_memory", f"cd {repo} && python3 scripts/news/ensure_daily_memory.py"),
+                ("apply_news_config", f"cd {repo} && python3 scripts/news/apply_news_config.py"),
+                ("verify_runtime_readiness", f"cd {repo} && python3 scripts/news/verify_runtime_readiness.py"),
+            ):
+                code, out = run(prep, timeout=180)
+                print(out)
+                if code != 0:
+                    print(f"FAIL: {label} exit {code}", file=sys.stderr)
+                    return 12
+            e2e_timeout = int(os.environ.get("SPRINGMONKEY_E2E_CRON_TIMEOUT_SEC", "7200"))
+            job_name = os.environ.get("NEWS_CRON_JOB_NAME", "news-digest-jst-1700")
+            ssh_budget = min(e2e_timeout + 600, 14_400)
+            print(
+                f"[integration] e2e-news-discord: cron run job={job_name} timeout={e2e_timeout}s (ssh {ssh_budget}s)..."
+            )
+            e2e_cmd = (
+                f"runuser -u openclaw -- env HOME=/var/lib/openclaw "
+                f"CRON_RUN_TIMEOUT_SEC={e2e_timeout} NEWS_CRON_JOB_NAME={job_name} "
+                f"bash {repo}/scripts/openclaw/test_cron_run_cli.sh"
+            )
+            code, last_out = run(e2e_cmd, timeout=ssh_budget)
+            print(last_out)
+            if code != 0:
+                print("FAIL: e2e-news-discord cron run", file=sys.stderr)
+                return 11
 
         print("INTEGRATION_OK")
         return 0
