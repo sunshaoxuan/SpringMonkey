@@ -56,41 +56,46 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertEqual(len(orch["batches"]), 4)
         self.assertIn("queries", orch["batches"][0])
 
-    def test_worker_prompt_per_query(self):
-        text = self.m.worker_user_prompt_per_query(
-            "Japan economy latest", "当日 09:00 到当日 17:00", ["Reuters", "AP"], False
+    def test_summarize_article_prompt(self):
+        sys_p, user_p = self.m.summarize_article_prompt(
+            "Test Title", "https://example.com/article", "Article body text here."
         )
-        self.assertIn("Japan economy", text)
-        self.assertIn("Reuters", text)
-        self.assertLess(len(text), 300)
+        self.assertIn("example.com/article", sys_p)
+        self.assertIn("Test Title", user_p)
+        self.assertIn("Article body text here", user_p)
+        self.assertIn("•", sys_p)
 
-    def test_worker_prompt_batch_includes_rss_hints(self):
-        job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
-        plan = self.m.build_plan(self.cfg, job)
-        b = plan["batches"][0]
-        orch_b = {"queries": [], "outlet_hints": []}
-        hints = ["https://example.com/rss"]
-        text = self.m.worker_user_prompt_batch(plan, b, orch_b, False, hints)
-        self.assertIn("example.com/rss", text)
+    def test_summarize_prompt_truncates_long_content(self):
+        long_body = "A" * 3000
+        _, user_p = self.m.summarize_article_prompt(
+            "Title", "https://example.com", long_body, max_chars=500
+        )
+        self.assertLessEqual(len(user_p), 600)
 
-    def test_worker_system_prompt_per_query_is_short(self):
-        prompt = self.m.worker_system_prompt_per_query()
-        self.assertLess(len(prompt), 500)
-        self.assertIn("•", prompt)
-        self.assertIn("U+2022", prompt)
-
-    def test_per_query_worker_fallback_when_no_queries(self):
-        result = self.m._run_worker_per_query(
-            queries=[],
-            outlet_hints=[],
-            window_label="test",
+    def test_summarize_articles_fallback_when_empty(self):
+        result = self.m._summarize_articles_with_qwen(
+            articles=[],
             ollama_host="http://localhost:9999",
             model="test",
             timeout=5,
-            dry_run=False,
-            bid="japan",
             fallback_line="本节无合格新增新闻条目。",
             max_input_chars=1500,
+            bid="japan",
+        )
+        self.assertIn("本节无合格新增新闻条目", result)
+
+    def test_summarize_articles_skips_unfetched(self):
+        articles = [
+            {"title": "T1", "url": "http://a.com", "content": "", "fetch_ok": False, "snippet": ""},
+        ]
+        result = self.m._summarize_articles_with_qwen(
+            articles=articles,
+            ollama_host="http://localhost:9999",
+            model="test",
+            timeout=5,
+            fallback_line="本节无合格新增新闻条目。",
+            max_input_chars=1500,
+            bid="japan",
         )
         self.assertIn("本节无合格新增新闻条目", result)
 
@@ -298,7 +303,7 @@ class TestCliSmoke(unittest.TestCase):
                     "news-digest-jst-1700",
                     "--run-dir",
                     str(run_dir),
-                    "--template-orchestrate",
+                    "--skip-discover",
                     "--skip-worker",
                     "--skip-finalize",
                     "--skip-verify",
@@ -311,7 +316,6 @@ class TestCliSmoke(unittest.TestCase):
             )
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertTrue((run_dir / "plan.json").is_file())
-            self.assertTrue((run_dir / "orchestration.json").is_file())
             self.assertTrue((run_dir / "draft_merged.md").is_file())
 
 

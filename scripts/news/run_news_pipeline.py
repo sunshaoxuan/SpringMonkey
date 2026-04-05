@@ -1,27 +1,28 @@
 #!/usr/bin/env python3
 """
-新闻多阶段流水线（管理者工具）：编排 → 工人落盘 → 合并 → 终稿 + 机械校验。
+新闻多阶段流水线：RSS 发现 → HTTP 取回 → Qwen 逐条总结 → GPT-OSS 终稿 → 机械校验。
 
 阶段概览
 --------
 1. plan          从 broadcast.json + job 名生成 plan.json（按地区拆批，与 1–4 大纲对齐）。
-2. orchestrate   调用 OpenAI 兼容 API（默认 Codex/配置中的 newsOrchestrator）生成本批检索计划 orchestration.json。
-3. worker        每批调用 Ollama（newsWorker）整理/筛选，写入 worker_<id>.md。
-4. merge         拼接为 draft_merged.md。
-5. finalize      再次调用 OpenAI 兼容 API，合并润色为 final_broadcast.md 并强调编号规则。
-6. verify        调用 verify_broadcast_draft 规则做机械检查。
+2. discover      RSS 抓取各地区新闻源，获取真实文章链接（无需 API key）。
+3. fetch         HTTP 取回每篇文章正文内容。
+4. worker        每篇文章独立调用 Qwen（Ollama），输入真实正文 → 输出中文摘要+保留原链接。
+5. merge         拼接为 draft_merged.md。
+6. finalize      GPT-OSS（本地 Ollama 20b，可靠）合并润色 → Codex API 降级备选 → 机械兜底。
+7. verify        调用 verify_broadcast_draft 规则做机械检查。
+
+模型分工
+--------
+- Qwen (qwen2.5:14b-instruct)  → 逐条处理器：短上下文、单篇文章摘要
+- GPT-OSS (gpt-oss:20b)        → 终稿格式化：本地可靠，无超量风险
+- Codex (openai-codex/gpt-5.4) → 降级备选：有超量拒绝风险
 
 环境变量（常用）
 --------------
-OPENAI_API_KEY           编排与终稿（缺省则 orchestrate/finalize 用模板或跳过终稿）
-NEWS_OPENAI_BASE_URL     默认 https://api.openai.com/v1
-NEWS_ORCHESTRATOR_MODEL  覆盖 broadcast.json model.newsOrchestrator
+OPENAI_API_KEY           降级用 Codex 编排/终稿（缺省则全走本地模型+机械兜底）
 OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
-model.ollamaBaseUrl      broadcast.json 中工人模型 HTTP 基址（定时任务无 shell 环境时常用）
-                         未设置且未设 OLLAMA_HOST 时回退 http://127.0.0.1:11434
-NEWS_WORKER_MODEL        覆盖 broadcast.json model.newsWorker（可带 ollama/ 前缀，调用 API 时会自动剥掉）
-
-不落盘 OpenAI Key；运行目录仅含中间稿与 JSON。
+model.ollamaBaseUrl      broadcast.json 中 Ollama 基址
 """
 from __future__ import annotations
 
@@ -224,109 +225,53 @@ def orchestrate_with_openai(plan: dict, cfg: dict, api_key: str, base_url: str, 
     return {"version": 1, "batches": data["batches"], "source": "openai"}
 
 
-def worker_system_prompt_per_query() -> str:
-    """per-query 模式：每次只处理一个检索主题，输出 0-3 条结构化条目。"""
-    return (
-        "你是新闻条目整理助手。根据给定的一个检索主题，输出 0-3 条结构化新闻条目。\n"
-        "【输出格式】\n"
-        "每条格式固定为两行：\n"
-        "• 一句话中文摘要（20-60字）\n"
-        "链接：https://具体原文URL\n\n"
-        "【规则】\n"
-        "• 条目以「• 」（U+2022 圆点+空格）开头，禁止用 - 或任何数字编号\n"
-        "• 无可靠链接的条目不写\n"
-        "• 没有合格条目时输出空文本\n"
-        "• 不要解释、不要前言后语，只输出条目"
-    )
+SUMMARIZE_SYSTEM_PROMPT = (
+    "你是新闻摘要助手。根据给定的原文内容，输出一条中文摘要。\n"
+    "【输出格式（严格两行）】\n"
+    "• 一句话中文摘要（20-60字，概括核心事实）\n"
+    "链接：{url}\n\n"
+    "【规则】\n"
+    "• 以「• 」（U+2022 圆点+空格）开头\n"
+    "• 只输出摘要和链接，不要解释、不要前言后语\n"
+    "• 如果原文内容无实质新闻价值，输出空文本"
+)
 
 
-def worker_system_prompt_batch() -> str:
-    """per-batch 模式（兼容旧流程）：处理整个地区批次。"""
-    return (
-        "你是新闻整理与质检助手。只输出 Markdown 正文片段，不要解释流程。\n"
-        "【格式】\n"
-        "• 条目以「• 」（U+2022 圆点+空格）开头，禁止用 - 或数字编号\n"
-        "• 链接另起一行：链接：https://...\n"
-        "• 无链接则不写该条\n"
-        "• 无合格条目时只输出：• 本节无合格新增新闻条目。"
-    )
+def summarize_article_prompt(title: str, url: str, content: str, max_chars: int = 1500) -> tuple[str, str]:
+    """为单篇文章生成 Qwen 调用的 system/user prompt。"""
+    sys_p = SUMMARIZE_SYSTEM_PROMPT.replace("{url}", url)
+    body = content[:max_chars] if len(content) > max_chars else content
+    user_p = f"标题：{title}\n链接：{url}\n\n正文：\n{body}"
+    return sys_p, user_p
 
 
-def worker_user_prompt_per_query(
-    query: str,
-    window_label: str,
-    outlet_hints: list[str],
-    dry_run: bool,
-) -> str:
-    """per-query 模式：最小化输入，只给一个检索主题。"""
-    parts = [
-        f"检索主题：{query}",
-        f"时间窗：{window_label}",
-    ]
-    if outlet_hints:
-        parts.append(f"优先媒体：{'、'.join(outlet_hints[:4])}")
-    if dry_run:
-        parts.append("（干跑模式：输出 1 条占位条目，标注【干跑占位】，链接用 example.com）")
-    return "\n".join(parts)
-
-
-def worker_user_prompt_batch(
-    plan: dict,
-    batch_plan: dict,
-    orch_batch: dict,
-    dry_run: bool,
-    rss_hints: list[str] | None = None,
-) -> str:
-    """per-batch 模式（兼容旧流程）。"""
-    lines = [
-        f"地区：{batch_plan['outline_line']}",
-        f"时间窗：{plan['window_label']}",
-        f"查询：{json.dumps(orch_batch.get('queries', []), ensure_ascii=False)}",
-        f"媒体：{json.dumps(orch_batch.get('outlet_hints', []), ensure_ascii=False)}",
-    ]
-    if rss_hints:
-        lines.append(f"RSS参考：{'；'.join(rss_hints[:3])}")
-    lines.append("请整理候选条目。无法联网时列出应核查的主题，但不要伪造事实。")
-    if dry_run:
-        lines.append("（干跑模式：输出两条占位示例条目，标注【干跑占位】，链接用 example.com）")
-    return "\n".join(lines)
-
-
-def _run_worker_per_query(
-    *,
-    queries: list[str],
-    outlet_hints: list[str],
-    window_label: str,
+def _summarize_articles_with_qwen(
+    articles: list[dict],
     ollama_host: str,
     model: str,
     timeout: int,
-    dry_run: bool,
-    bid: str,
     fallback_line: str,
     max_input_chars: int,
+    bid: str,
 ) -> str:
-    """per-query 模式：每个 query 独立调用 Qwen，保持超短上下文。"""
-    if not queries:
+    """逐篇文章调用 Qwen 做摘要，每次超短上下文。"""
+    if not articles:
         return f"• {fallback_line}\n"
 
-    sys_prompt = worker_system_prompt_per_query()
     fragments: list[str] = []
-
-    for i, query in enumerate(queries):
-        user_p = worker_user_prompt_per_query(query, window_label, outlet_hints, dry_run)
-        if len(user_p) > max_input_chars:
-            user_p = user_p[:max_input_chars]
+    for i, art in enumerate(articles):
+        if not art.get("content") or not art.get("fetch_ok"):
+            continue
+        sys_p, user_p = summarize_article_prompt(
+            art["title"], art["url"], art["content"], max_input_chars
+        )
         try:
-            result = ollama_chat(ollama_host, model, sys_prompt, user_p, timeout)
+            result = ollama_chat(ollama_host, model, sys_p, user_p, timeout)
         except Exception as e:
-            if dry_run:
-                result = f"• 【干跑占位】query {i}: {query[:30]}\n链接：https://example.com\n"
-                print(f"[pipeline] worker per-query {bid}[{i}] failed, dry-run stub: {e}", file=sys.stderr)
-            else:
-                print(f"[pipeline] worker per-query {bid}[{i}] failed: {e}", file=sys.stderr)
-                continue
+            print(f"[pipeline] summarize {bid}[{i}] failed: {e}", file=sys.stderr)
+            continue
         cleaned = result.strip()
-        if cleaned:
+        if cleaned and not cleaned.startswith("[") and len(cleaned) > 10:
             fragments.append(cleaned)
 
     if not fragments:
@@ -471,41 +416,52 @@ def load_verify_text():
     return mod.verify_text
 
 
+def _load_fetcher():
+    path = Path(__file__).resolve().parent / "news_fetcher.py"
+    spec = importlib.util.spec_from_file_location("news_fetcher", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load news_fetcher")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["news_fetcher"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="新闻多阶段流水线（Codex 编排/终稿 + Qwen 工人落盘）")
+    parser = argparse.ArgumentParser(description="新闻流水线：RSS发现 → HTTP取回 → Qwen逐条总结 → GPT-OSS终稿")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--job", required=True, help="jobs.json 中的 name，如 news-digest-jst-1700")
     parser.add_argument("--run-dir", type=Path, help="运行目录；默认 repo 下 var/news-runs/<ts>_<job>")
-    parser.add_argument("--dry-run", action="store_true", help="工人输出占位；编排/终稿仍尽量走 API（若无 Key 用模板）")
-    parser.add_argument("--template-orchestrate", action="store_true", help="跳过 Codex 编排，只用模板检索计划")
-    parser.add_argument("--skip-finalize", action="store_true", help="不调用主编模型，draft 即结束")
-    parser.add_argument("--skip-worker", action="store_true", help="不调用 Ollama，写入占位 worker_*.md（测合并/终稿）")
+    parser.add_argument("--dry-run", action="store_true", help="跳过真实搜索/抓取，用占位数据")
+    parser.add_argument("--skip-discover", action="store_true", help="跳过 RSS 发现阶段")
+    parser.add_argument("--skip-fetch", action="store_true", help="跳过正文抓取")
+    parser.add_argument("--skip-finalize", action="store_true", help="不调用终稿模型，draft 即结束")
+    parser.add_argument("--skip-worker", action="store_true", help="不调用 Qwen，写入占位 worker_*.md")
     parser.add_argument("--skip-verify", action="store_true", help="跳过机械校验")
     parser.add_argument("--openai-timeout", type=int, default=120)
     parser.add_argument("--ollama-timeout", type=int, default=300)
     args = parser.parse_args()
 
     cfg = load_json(args.config)
-    sp = cfg.get("sourcePolicy") or {}
-    raw_hints = sp.get("rssFeedHints")
-    if isinstance(raw_hints, list):
-        rss_hints = [str(x).strip() for x in raw_hints if str(x).strip()]
-    else:
-        rss_hints = []
     job = job_spec(cfg, args.job)
     model_cfg = cfg.get("model", {})
+
+    worker_model_raw = os.environ.get(
+        "NEWS_WORKER_MODEL",
+        model_cfg.get("newsWorker", "qwen2.5:14b-instruct"),
+    )
+    finalize_model_raw = model_cfg.get("newsFinalize", "gpt-oss:20b")
     orch_model = os.environ.get(
         "NEWS_ORCHESTRATOR_MODEL",
         model_cfg.get("newsOrchestrator", "gpt-4o"),
     )
-    worker_model = os.environ.get(
-        "NEWS_WORKER_MODEL",
-        model_cfg.get("newsWorker", "qwen2.5:14b-instruct"),
-    )
-    ollama_worker_model = ollama_api_model_name(worker_model)
+
+    ollama_worker_model = ollama_api_model_name(worker_model_raw)
+    ollama_finalize_model = ollama_api_model_name(finalize_model_raw)
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     base_url = os.environ.get("NEWS_OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
     ollama_host = resolve_ollama_base_url(cfg)
+    max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
 
     ts = int(time.time())
     run_dir = args.run_dir
@@ -522,43 +478,40 @@ def main() -> int:
             "created_at_ts": ts,
             "job": args.job,
             "dry_run": args.dry_run,
+            "worker_model": worker_model_raw,
+            "finalize_model": finalize_model_raw,
             "orchestrator_model": orch_model,
-            "worker_model": worker_model,
-            "worker_call_mode": model_cfg.get("workerCallMode", "per-batch"),
-            "ollama_api_model": ollama_worker_model,
+            "worker_call_mode": "per-article",
+            "ollama_api_worker": ollama_worker_model,
+            "ollama_api_finalize": ollama_finalize_model,
             "ollama_base_url": ollama_host,
         },
     )
 
-    # --- orchestrate ---
-    if args.template_orchestrate or not api_key:
-        orch = template_orchestration(plan)
-    else:
-        try:
-            orch = orchestrate_with_openai(
-                plan, cfg, api_key, base_url, orch_model, args.openai_timeout
-            )
-        except Exception as e:
-            print(f"[pipeline] orchestrate fallback template: {e}", file=sys.stderr)
-            orch = template_orchestration(plan)
-    tpl = template_orchestration(plan)
-    tpl_by_id = {b["id"]: b for b in tpl["batches"]}
-    orch_by_id = {b["id"]: b for b in orch.get("batches", [])}
-    for b in plan["batches"]:
-        if b["id"] not in orch_by_id:
-            print(
-                f"[pipeline] orchestration missing batch {b['id']}, using template slice",
-                file=sys.stderr,
-            )
-            orch_by_id[b["id"]] = tpl_by_id[b["id"]]
-    orch["batches"] = [orch_by_id[b["id"]] for b in plan["batches"]]
-    save_json(run_dir / "orchestration.json", orch)
-
-    # --- workers ---
-    worker_call_mode = model_cfg.get("workerCallMode", "per-batch")
-    max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
     fallback_text_tpl = plan["fallback_no_news"]
 
+    # --- discover + fetch ---
+    fetcher = _load_fetcher()
+    all_articles: dict[str, list] = {}
+
+    for b in plan["batches"]:
+        bid = b["id"]
+        if args.skip_discover or args.dry_run:
+            all_articles[bid] = []
+            continue
+        print(f"[pipeline] discover {bid}...", file=sys.stderr)
+        articles = fetcher.discover_articles(bid, max_per_batch=8)
+        if not args.skip_fetch:
+            print(f"[pipeline] fetch {bid}: {len(articles)} articles...", file=sys.stderr)
+            fetcher.fetch_and_fill(articles, max_chars=max_worker_chars)
+        all_articles[bid] = [
+            {"title": a.title, "url": a.url, "content": a.content,
+             "fetch_ok": a.fetch_ok, "snippet": a.snippet}
+            for a in articles
+        ]
+        save_json(run_dir / f"articles_{bid}.json", all_articles[bid])
+
+    # --- worker: Qwen 逐条总结 ---
     for b in plan["batches"]:
         bid = b["id"]
         out_path = run_dir / f"worker_{bid}.md"
@@ -568,47 +521,26 @@ def main() -> int:
                 encoding="utf-8",
             )
             continue
-        ob = orch_by_id.get(bid) or {"id": bid, "queries": [], "outlet_hints": []}
-
-        if worker_call_mode == "per-query":
-            text = _run_worker_per_query(
-                queries=ob.get("queries", []),
-                outlet_hints=ob.get("outlet_hints", []),
-                window_label=plan["window_label"],
+        articles = all_articles.get(bid, [])
+        if args.dry_run:
+            text = f"• 【干跑占位】{b['outline_line']}\n链接：https://example.com\n"
+        else:
+            text = _summarize_articles_with_qwen(
+                articles=articles,
                 ollama_host=ollama_host,
                 model=ollama_worker_model,
                 timeout=args.ollama_timeout,
-                dry_run=args.dry_run,
-                bid=bid,
                 fallback_line=fallback_text_tpl,
                 max_input_chars=max_worker_chars,
+                bid=bid,
             )
-        else:
-            sys_prompt = worker_system_prompt_batch()
-            user_p = worker_user_prompt_batch(plan, b, ob, args.dry_run, rss_hints or None)
-            if len(user_p) > max_worker_chars:
-                print(
-                    f"[pipeline] warning: worker input for {bid} is {len(user_p)} chars "
-                    f"(max {max_worker_chars}), consider per-query mode",
-                    file=sys.stderr,
-                )
-            try:
-                text = ollama_chat(
-                    ollama_host, ollama_worker_model, sys_prompt, user_p, args.ollama_timeout
-                )
-            except Exception as e:
-                if args.dry_run:
-                    text = f"• 【干跑】工人失败回退：{bid}\n• {fallback_text_tpl}\n"
-                    print(f"[pipeline] ollama worker {bid} failed, dry-run stub: {e}", file=sys.stderr)
-                else:
-                    raise
         out_path.write_text(text.strip() + "\n", encoding="utf-8")
 
     # --- merge ---
     draft = merge_workers(run_dir, plan)
     (run_dir / "draft_merged.md").write_text(draft, encoding="utf-8")
 
-    # --- finalize (with verify-retry loop) ---
+    # --- finalize: GPT-OSS (local) → Codex (fallback) → mechanical ---
     final_path = run_dir / "final_broadcast.md"
     max_finalize_attempts = 3
 
@@ -617,21 +549,34 @@ def main() -> int:
         print(f"PIPELINE_OK skip_finalize -> {final_path}")
         return 0
 
-    if not api_key:
-        print("[pipeline] no OPENAI_API_KEY: using mechanical template fallback", file=sys.stderr)
-
     verify_text_fn = load_verify_text() if not args.skip_verify else None
     last_errors: list[str] = []
 
     for attempt in range(1, max_finalize_attempts + 1):
-        if not api_key:
-            final_text = _mechanical_fallback(cfg, plan, draft)
-        else:
-            fin_sys = finalize_system_prompt(cfg, plan, last_errors if attempt > 1 else None)
-            fin_user = "工人合并草稿如下，请输出最终成稿：\n\n" + draft
-            final_text = openai_chat(
-                base_url, api_key, orch_model, fin_sys, fin_user, args.openai_timeout * 2
+        fin_sys = finalize_system_prompt(cfg, plan, last_errors if attempt > 1 else None)
+        fin_user = "工人合并草稿如下，请输出最终成稿：\n\n" + draft
+
+        # 优先用 GPT-OSS（本地 Ollama，可靠）
+        try:
+            print(f"[pipeline] finalize attempt {attempt}: GPT-OSS ({ollama_finalize_model})...", file=sys.stderr)
+            final_text = ollama_chat(
+                ollama_host, ollama_finalize_model, fin_sys, fin_user, args.ollama_timeout
             )
+        except Exception as e:
+            print(f"[pipeline] GPT-OSS finalize failed: {e}", file=sys.stderr)
+            # 降级到 Codex（如果有 API key）
+            if api_key:
+                print(f"[pipeline] fallback to Codex ({orch_model})...", file=sys.stderr)
+                try:
+                    final_text = openai_chat(
+                        base_url, api_key, orch_model, fin_sys, fin_user, args.openai_timeout * 2
+                    )
+                except Exception as e2:
+                    print(f"[pipeline] Codex finalize also failed: {e2}", file=sys.stderr)
+                    final_text = _mechanical_fallback(cfg, plan, draft)
+            else:
+                final_text = _mechanical_fallback(cfg, plan, draft)
+
         final_text = final_text.strip() + "\n"
         final_path.write_text(final_text, encoding="utf-8")
 
@@ -648,7 +593,7 @@ def main() -> int:
         )
         save_json(run_dir / f"verify_errors_attempt{attempt}.json", {"errors": errors})
     else:
-        print("[pipeline] all finalize attempts failed; applying mechanical template fallback", file=sys.stderr)
+        print("[pipeline] all finalize attempts failed; applying mechanical fallback", file=sys.stderr)
         fallback_text = _mechanical_fallback(cfg, plan, draft)
         final_path.write_text(fallback_text, encoding="utf-8")
         if verify_text_fn:
