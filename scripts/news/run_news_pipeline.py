@@ -178,6 +178,8 @@ def build_plan(cfg: dict, job: dict) -> dict:
         "title_line": fr.get("titleLine", "新闻简报"),
         "fallback_no_news": fr.get("fallbackNoMajorUpdateLine", "本节无合格新增新闻条目。"),
         "batches": batches,
+        "_outline": outline,
+        "_format_rules": fr,
     }
 
 
@@ -396,14 +398,34 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
 
 
 def merge_workers(run_dir: Path, plan: dict) -> str:
-    parts = []
-    for b in plan["batches"]:
+    """合并 worker 输出为已格式化的完整草稿（标题+时间窗+小节标题+内容）。"""
+    fr = plan.get("_format_rules") or {}
+    bullet = fr.get("contentBulletPrefix", "• ")
+    fallback = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
+    outline = plan.get("_outline") or []
+
+    lines = [plan["title_line"], plan["window_label"]]
+    for i, b in enumerate(plan["batches"]):
         bid = b["id"]
         p = run_dir / f"worker_{bid}.md"
         if not p.is_file():
             raise SystemExit(f"missing worker file: {p}")
-        parts.append(f"<!-- batch:{bid} -->\n{p.read_text(encoding='utf-8').strip()}\n")
-    return "\n".join(parts).strip() + "\n"
+        content = p.read_text(encoding="utf-8").strip()
+
+        header = outline[i] if i < len(outline) else b.get("outline_line", f"{i+1}. {bid}")
+        lines.append(header)
+
+        if content and not content.startswith("•") and not content.startswith(bullet):
+            for cline in content.splitlines():
+                cline = cline.strip()
+                if cline:
+                    lines.append(cline)
+        elif content:
+            lines.append(content)
+        else:
+            lines.append(f"{bullet}{fallback}")
+
+    return "\n".join(lines).strip() + "\n"
 
 
 def load_verify_text():
@@ -536,27 +558,39 @@ def main() -> int:
             )
         out_path.write_text(text.strip() + "\n", encoding="utf-8")
 
-    # --- merge ---
+    # --- merge (已格式化：标题+时间窗+小节标题+内容) ---
     draft = merge_workers(run_dir, plan)
     (run_dir / "draft_merged.md").write_text(draft, encoding="utf-8")
 
-    # --- finalize: GPT-OSS (local) → Codex (fallback) → mechanical ---
+    # --- finalize ---
     final_path = run_dir / "final_broadcast.md"
-    max_finalize_attempts = 3
+    verify_text_fn = load_verify_text() if not args.skip_verify else None
 
     if args.skip_finalize:
         final_path.write_text(draft, encoding="utf-8")
         print(f"PIPELINE_OK skip_finalize -> {final_path}")
         return 0
 
-    verify_text_fn = load_verify_text() if not args.skip_verify else None
+    # 策略：merge 草稿已经包含完整格式，先直接校验；
+    # 如果通过就直接用（省掉 finalize 模型调用）；
+    # 不通过才走 GPT-OSS → mechanical fallback。
+    if verify_text_fn:
+        ok_draft, draft_errors = verify_text_fn(draft, cfg)
+        if ok_draft:
+            print("[pipeline] merged draft passes verify directly, skipping finalize model", file=sys.stderr)
+            final_path.write_text(draft, encoding="utf-8")
+            print("PIPELINE_OK", run_dir)
+            return 0
+        else:
+            print(f"[pipeline] merged draft verify failed: {draft_errors}, trying finalize model", file=sys.stderr)
+
+    max_finalize_attempts = 2
     last_errors: list[str] = []
 
     for attempt in range(1, max_finalize_attempts + 1):
         fin_sys = finalize_system_prompt(cfg, plan, last_errors if attempt > 1 else None)
-        fin_user = "工人合并草稿如下，请输出最终成稿：\n\n" + draft
+        fin_user = "以下是已格式化的合并草稿，只需微调格式即可输出最终成稿（不要改写内容或链接）：\n\n" + draft
 
-        # 优先用 GPT-OSS（本地 Ollama，可靠）
         try:
             print(f"[pipeline] finalize attempt {attempt}: GPT-OSS ({ollama_finalize_model})...", file=sys.stderr)
             final_text = ollama_chat(
@@ -564,7 +598,6 @@ def main() -> int:
             )
         except Exception as e:
             print(f"[pipeline] GPT-OSS finalize failed: {e}", file=sys.stderr)
-            # 降级到 Codex（如果有 API key）
             if api_key:
                 print(f"[pipeline] fallback to Codex ({orch_model})...", file=sys.stderr)
                 try:
@@ -593,7 +626,7 @@ def main() -> int:
         )
         save_json(run_dir / f"verify_errors_attempt{attempt}.json", {"errors": errors})
     else:
-        print("[pipeline] all finalize attempts failed; applying mechanical fallback", file=sys.stderr)
+        print("[pipeline] finalize attempts failed; applying mechanical fallback", file=sys.stderr)
         fallback_text = _mechanical_fallback(cfg, plan, draft)
         final_path.write_text(fallback_text, encoding="utf-8")
         if verify_text_fn:
