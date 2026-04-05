@@ -49,7 +49,22 @@
     "requireSourceVerifiedBeforeWriting": true,
     "omitFinalSourceSummary": true
   },
+  "runtimeReadiness": {
+    "rssReachabilityHosts": [
+      "feeds.reuters.com",
+      "www.reuters.com",
+      "www.apnews.com",
+      "feeds.bbci.co.uk",
+      "feeds.npr.org"
+    ]
+  },
   "sourcePolicy": {
+    "rssFeedHints": [
+      "Reuters：主站 RSS 常用路径（不依赖 feeds 子域解析）如 https://www.reuters.com/rssfeed/worldNews 、 https://www.reuters.com/rssfeed/topNews",
+      "AP： https://apnews.com/hub/ap-top-news",
+      "BBC： https://feeds.bbci.co.uk/news/world/rss.xml",
+      "NPR： https://feeds.npr.org/1001/rss.xml"
+    ],
     "blockedDomains": [
       "theguardian.com",
       "www.theguardian.com"

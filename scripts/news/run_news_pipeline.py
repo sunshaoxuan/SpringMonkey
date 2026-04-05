@@ -206,15 +206,30 @@ def worker_system_prompt() -> str:
     )
 
 
-def worker_user_prompt(plan: dict, batch_plan: dict, orch_batch: dict, dry_run: bool) -> str:
+def worker_user_prompt(
+    plan: dict,
+    batch_plan: dict,
+    orch_batch: dict,
+    dry_run: bool,
+    rss_hints: list[str] | None = None,
+) -> str:
     lines = [
         f"本批地区大纲行：{batch_plan['outline_line']}",
         f"时间窗：{plan['window_label']}",
         f"检索查询建议：{json.dumps(orch_batch.get('queries', []), ensure_ascii=False)}",
         f"优先媒体提示：{json.dumps(orch_batch.get('outlet_hints', []), ensure_ascii=False)}",
         "",
-        "请基于上述方向整理候选条目（若无法联网检索，可列出你认为该时间窗应核查的主题清单，用项目符号，但不要伪造具体新闻事实）。",
     ]
+    if rss_hints:
+        lines.append(
+            "公开 RSS 入口参考（优先使用当前环境可解析的域名；勿假定 feeds.reuters.com 一定可用）："
+        )
+        for h in rss_hints:
+            lines.append(f"- {h}")
+        lines.append("")
+    lines.append(
+        "请基于上述方向整理候选条目（若无法联网检索，可列出你认为该时间窗应核查的主题清单，用项目符号，但不要伪造具体新闻事实）。"
+    )
     if dry_run:
         lines.append("（干跑模式：输出两条占位示例条目，标注【干跑占位】，并附假链接 example.com）")
     return "\n".join(lines)
@@ -273,6 +288,12 @@ def main() -> int:
     args = parser.parse_args()
 
     cfg = load_json(args.config)
+    sp = cfg.get("sourcePolicy") or {}
+    raw_hints = sp.get("rssFeedHints")
+    if isinstance(raw_hints, list):
+        rss_hints = [str(x).strip() for x in raw_hints if str(x).strip()]
+    else:
+        rss_hints = []
     job = job_spec(cfg, args.job)
     model_cfg = cfg.get("model", {})
     orch_model = os.environ.get(
@@ -343,7 +364,7 @@ def main() -> int:
             )
             continue
         ob = orch_by_id.get(bid) or {"id": bid, "queries": [], "outlet_hints": []}
-        user_p = worker_user_prompt(plan, b, ob, args.dry_run)
+        user_p = worker_user_prompt(plan, b, ob, args.dry_run, rss_hints or None)
         try:
             text = ollama_chat(
                 ollama_host, worker_model, sys_prompt, user_p, args.ollama_timeout

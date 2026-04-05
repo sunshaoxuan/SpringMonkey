@@ -17,6 +17,38 @@ DEFAULT_CONFIG = REPO_ROOT / "config" / "news" / "broadcast.json"
 DEFAULT_JOBS = Path("/var/lib/openclaw/.openclaw/cron/jobs.json")
 JST = timezone(timedelta(hours=9))
 
+DEFAULT_RSS_HOSTS = [
+    "feeds.reuters.com",
+    "www.reuters.com",
+    "www.apnews.com",
+    "feeds.bbci.co.uk",
+    "feeds.npr.org",
+]
+
+
+def rss_reachability_hosts(cfg: dict) -> list[str]:
+    rr = cfg.get("runtimeReadiness") or {}
+    hosts = rr.get("rssReachabilityHosts")
+    if isinstance(hosts, list) and hosts:
+        out = [str(h).strip() for h in hosts if str(h).strip()]
+        if out:
+            return out
+    return list(DEFAULT_RSS_HOSTS)
+
+
+def any_rss_host_resolves(hosts: list[str]) -> tuple[bool, str | None]:
+    """任一通则 True；全失败返回 (False, 摘要说明)。"""
+    if not hosts:
+        return False, "rssReachabilityHosts 为空"
+    last: OSError | None = None
+    for h in hosts:
+        try:
+            socket.getaddrinfo(h, 443, type=socket.SOCK_STREAM)
+            return True, None
+        except OSError as e:
+            last = e
+    return False, f"以下主机均不可解析: {', '.join(hosts)}（末项错误: {last}）"
+
 
 def today_jst() -> str:
     return datetime.now(JST).strftime("%Y-%m-%d")
@@ -39,7 +71,7 @@ def main() -> int:
     parser.add_argument(
         "--strict-dns",
         action="store_true",
-        help="feeds.reuters.com 不可解析时退出 2",
+        help="runtimeReadiness.rssReachabilityHosts 全部不可解析时退出 2",
     )
     args = parser.parse_args()
 
@@ -80,11 +112,11 @@ def main() -> int:
     else:
         print("INFO: newsExecution.mode 非 pipeline，跳过流水线契约检查")
 
-    # DNS（采集常用）
-    try:
-        socket.getaddrinfo("feeds.reuters.com", 443, type=socket.SOCK_STREAM)
-    except OSError as e:
-        line = f"DNS: feeds.reuters.com 不可解析 ({e})，Reuters 经典 RSS 将失败"
+    # DNS：任一通即可（避免单点 feeds.reuters.com 与本地 DNS 差异误报）
+    probe_hosts = rss_reachability_hosts(cfg)
+    ok_dns, dns_detail = any_rss_host_resolves(probe_hosts)
+    if not ok_dns:
+        line = f"DNS: {dns_detail}"
         if args.strict_dns:
             errors.append(line)
         else:

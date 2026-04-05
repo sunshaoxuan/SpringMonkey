@@ -27,7 +27,7 @@ systemctl is-active openclaw.service
 说明：
 
 - `ensure_daily_memory.py`：避免 `read …/memory/YYYY-MM-DD.md` ENOENT。
-- `verify_runtime_readiness.py`：确认 `jobs.json` 中新闻任务 payload 含「流水线模式」且超时与配置一致；`feeds.reuters.com` 不可解析时仅 WARN（可用 `--strict-dns` 改为失败）。
+- `verify_runtime_readiness.py`：确认 `jobs.json` 中新闻任务 payload 含「流水线模式」且超时与配置一致；`runtimeReadiness.rssReachabilityHosts` 中**任一台**可解析即通过；**全部**不可解析时 WARN（`--strict-dns` 则失败）。
 - 若需 **Brave web_search**：在网关环境中配置 `BRAVE_API_KEY`（见 OpenClaw 文档）。
 
 ## 阶段 C — 集成验证（可 SSH 的开发机）
@@ -43,7 +43,7 @@ python scripts/openclaw/_run_integration_with_hostaccess.py
 ## 阶段 D — 事故类根因（2026-04-05 09:00）
 
 - OpenClaw **`web_fetch` 未捕获异常导致整进程退出**：需上游修复或升级；本仓库通过 **pipeline 脚本** 降低对网关内并行 `web_fetch` 的依赖。
-- **DNS**：宿主机无法解析 `feeds.reuters.com` 时需修 resolv/网络或换 RSS 源。
+- **DNS**：若配置中的 RSS 探测主机**全部**不可解析，需修 resolv/网络；单点 `feeds.reuters.com` 失败时可依赖 `www.reuters.com` 等备用域名（见 `broadcast.json` 的 `rssFeedHints`）。
 - **Brave 未配置**：`web_search` 返回 `missing_brave_api_key`，应配置密钥或依赖 RSS/直链。
 
 ## 回滚

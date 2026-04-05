@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import json
+import socket
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -52,6 +54,16 @@ class TestPlanAndTemplate(unittest.TestCase):
         orch = self.m.template_orchestration(plan)
         self.assertEqual(len(orch["batches"]), 4)
         self.assertIn("queries", orch["batches"][0])
+
+    def test_worker_prompt_includes_rss_hints_when_configured(self):
+        job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(self.cfg, job)
+        b = plan["batches"][0]
+        orch_b = {"queries": [], "outlet_hints": []}
+        hints = ["https://example.com/rss"]
+        text = self.m.worker_user_prompt(plan, b, orch_b, False, hints)
+        self.assertIn("example.com/rss", text)
+        self.assertIn("feeds.reuters.com", text)
 
 
 class TestVerifyDraft(unittest.TestCase):
@@ -242,6 +254,42 @@ class TestVerifyRuntimeReadiness(unittest.TestCase):
             )
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("RUNTIME_VERIFY_FAIL", r.stderr)
+
+
+def _load_verify_runtime():
+    import importlib.util
+
+    p = NEWS_DIR / "verify_runtime_readiness.py"
+    spec = importlib.util.spec_from_file_location("verify_runtime_readiness", p)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestRssReachabilityHelpers(unittest.TestCase):
+    def test_hosts_from_cfg_custom(self):
+        vr = _load_verify_runtime()
+        cfg = {"runtimeReadiness": {"rssReachabilityHosts": ["a.example", "b.example"]}}
+        self.assertEqual(vr.rss_reachability_hosts(cfg), ["a.example", "b.example"])
+
+    def test_hosts_from_cfg_default_when_empty(self):
+        vr = _load_verify_runtime()
+        self.assertIn("feeds.reuters.com", vr.rss_reachability_hosts({}))
+
+    @patch.object(socket, "getaddrinfo", side_effect=OSError("nxdomain"))
+    def test_any_resolves_all_fail(self, _mock):
+        vr = _load_verify_runtime()
+        ok, detail = vr.any_rss_host_resolves(["x.test", "y.test"])
+        self.assertFalse(ok)
+        self.assertIn("x.test", detail or "")
+
+    @patch.object(socket, "getaddrinfo", side_effect=[OSError("a"), [(0, 0, 0, "", ("1.1.1.1", 443))]])
+    def test_any_resolves_second_ok(self, _mock):
+        vr = _load_verify_runtime()
+        ok, detail = vr.any_rss_host_resolves(["bad.test", "good.test"])
+        self.assertTrue(ok)
+        self.assertIsNone(detail)
 
 
 if __name__ == "__main__":
