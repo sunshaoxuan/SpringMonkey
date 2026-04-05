@@ -20,25 +20,25 @@ from typing import Any
 
 RSS_FEEDS: dict[str, list[str]] = {
     "japan": [
-        "https://www.reuters.com/rssfeed/worldNews",
         "https://www.japantimes.co.jp/feed/",
-        "https://english.kyodonews.net/rss/all.xml",
+        "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
     ],
     "china": [
-        "https://www.reuters.com/rssfeed/worldNews",
         "https://feeds.bbci.co.uk/news/world/asia/china/rss.xml",
         "https://www.cnbc.com/id/100727362/device/rss/rss.html",
+        "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
     ],
     "world": [
         "https://feeds.bbci.co.uk/news/world/rss.xml",
-        "https://www.reuters.com/rssfeed/topNews",
         "https://feeds.npr.org/1001/rss.xml",
         "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
     ],
     "markets": [
-        "https://www.reuters.com/rssfeed/businessNews",
         "https://feeds.bbci.co.uk/news/business/rss.xml",
         "https://www.cnbc.com/id/10001147/device/rss/rss.html",
+        "https://feeds.bbci.co.uk/news/technology/rss.xml",
     ],
 }
 
