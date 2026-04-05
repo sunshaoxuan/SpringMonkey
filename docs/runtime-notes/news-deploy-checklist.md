@@ -47,6 +47,8 @@ python scripts/openclaw/_run_integration_with_hostaccess.py
 python scripts/openclaw/_run_integration_with_hostaccess.py --full-contract --e2e-news-discord
 ```
 
+入队后默认再轮询网关日志最多 **1800s** 等待 `PIPELINE_OK`（`SPRINGMONKEY_E2E_WAIT_PIPE_SEC=0` 可跳过，仅入队即返回）。
+
 ## 阶段 D — 事故类根因（2026-04-05 09:00）
 
 - OpenClaw **`web_fetch` 未捕获异常导致整进程退出**：需上游修复或升级；本仓库通过 **pipeline 脚本** 降低对网关内并行 `web_fetch` 的依赖。

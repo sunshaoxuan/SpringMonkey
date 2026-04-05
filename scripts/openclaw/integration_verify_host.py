@@ -264,6 +264,33 @@ def main() -> int:
                 print("FAIL: e2e-news-discord cron run", file=sys.stderr)
                 return 11
 
+            # openclaw cron run 通常只「入队」即返回；轮询网关日志直到出现流水线成功标记或超时
+            wait_sec = int(os.environ.get("SPRINGMONKEY_E2E_WAIT_PIPE_SEC", "1800"))
+            if wait_sec > 0:
+                print(
+                    f"[integration] polling journal for PIPELINE_OK (max {wait_sec}s, "
+                    "set SPRINGMONKEY_E2E_WAIT_PIPE_SEC=0 to skip)..."
+                )
+                deadline = time.time() + wait_sec
+                found = False
+                while time.time() < deadline:
+                    code, o = run(
+                        "journalctl -u openclaw.service --since '2 min ago' --no-pager 2>/dev/null | "
+                        "grep -F PIPELINE_OK | tail -1",
+                        timeout=90,
+                    )
+                    if "PIPELINE_OK" in o:
+                        print("[integration] saw PIPELINE_OK in journal:\n", o.strip()[:500])
+                        found = True
+                        break
+                    time.sleep(20)
+                if not found:
+                    print(
+                        "WARN: timeout waiting for PIPELINE_OK in openclaw journal; "
+                        "任务可能仍在跑或日志未包含该串，请直接查看 Discord",
+                        file=sys.stderr,
+                    )
+
         print("INTEGRATION_OK")
         return 0
     finally:
