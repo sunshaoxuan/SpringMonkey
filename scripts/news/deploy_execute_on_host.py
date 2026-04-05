@@ -50,6 +50,8 @@ def main() -> int:
     cmd = r"""set -e
 cd /var/lib/openclaw/repos/SpringMonkey
 git fetch origin
+git checkout -- . 2>/dev/null || true
+git clean -fd scripts/news/jobs/ 2>/dev/null || true
 git pull --ff-only origin main || git pull --ff-only
 python3 scripts/news/ensure_daily_memory.py
 python3 scripts/news/apply_news_config.py

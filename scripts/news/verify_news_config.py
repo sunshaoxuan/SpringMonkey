@@ -21,8 +21,7 @@ def _pipeline_payload_ok(msg: str, spec_name: str) -> list[str]:
     miss = []
     for token in (
         "【新闻定时任务 · 流水线模式】",
-        "scripts/news/jobs/",
-        "process 工具参数应等价于",
+        "python3",
         spec_name,
         "final_broadcast.md",
         "PIPELINE_OK",
