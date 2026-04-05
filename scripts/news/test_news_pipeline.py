@@ -131,6 +131,7 @@ class TestPipelineCronMessage(unittest.TestCase):
         spec = cfg["jobs"][0]
         text = m.build_pipeline_cron_message(cfg, spec)
         self.assertIn("run_news_pipeline.py", text)
+        self.assertIn("bash -lc", text)
         self.assertIn(spec["name"], text)
         self.assertIn("PIPELINE_OK", text)
         self.assertIn("final_broadcast.md", text)

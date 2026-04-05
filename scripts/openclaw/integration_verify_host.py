@@ -279,7 +279,7 @@ def main() -> int:
                         "grep -E 'PIPELINE_OK|run_news_pipeline\\.py|final_broadcast' | tail -3",
                         timeout=90,
                     )
-                    if "PIPELINE_OK" in o or "run_news_pipeline.py" in o:
+                    if "PIPELINE_OK" in o:
                         print("[integration] journal snippet:\n", o.strip()[:800])
                         found = True
                         break

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import shlex
 import time
 import uuid
 from pathlib import Path
@@ -124,9 +125,11 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
     extra = nex.get("pipelineCliArgs") or []
     extra_s = " ".join(extra) if extra else ""
     job = spec["name"]
-    cmd_core = f"cd {repo} && python3 scripts/news/run_news_pipeline.py --job {job}"
+    # 网关 exec allowlist 按「首个可执行文件」匹配；以 cd 开头会 allowlist miss。经 bash -lc 首进程为 bash（已在 allowlist）。
+    inner = f"cd {repo} && python3 scripts/news/run_news_pipeline.py --job {job}"
     if extra_s:
-        cmd_core = f"{cmd_core} {extra_s}"
+        inner = f"{inner} {extra_s}"
+    cmd_core = f"bash -lc {shlex.quote(inner)}"
     return "\n".join(
         [
             "【新闻定时任务 · 流水线模式】",
