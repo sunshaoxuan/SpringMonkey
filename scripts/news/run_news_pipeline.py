@@ -16,7 +16,9 @@
 OPENAI_API_KEY           编排与终稿（缺省则 orchestrate/finalize 用模板或跳过终稿）
 NEWS_OPENAI_BASE_URL     默认 https://api.openai.com/v1
 NEWS_ORCHESTRATOR_MODEL  覆盖 broadcast.json model.newsOrchestrator
-OLLAMA_HOST              默认 http://127.0.0.1:11434
+OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
+model.ollamaBaseUrl      broadcast.json 中工人模型 HTTP 基址（定时任务无 shell 环境时常用）
+                         未设置且未设 OLLAMA_HOST 时回退 http://127.0.0.1:11434
 NEWS_WORKER_MODEL        覆盖 broadcast.json model.newsWorker
 
 不落盘 OpenAI Key；运行目录仅含中间稿与 JSON。
@@ -50,6 +52,19 @@ BATCH_SPECS: list[dict[str, Any]] = [
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def resolve_ollama_base_url(cfg: dict) -> str:
+    """工人阶段 Ollama HTTP 基址：环境变量优先，其次 model.ollamaBaseUrl / ollamaHost。"""
+    env = os.environ.get("OLLAMA_HOST", "").strip()
+    if env:
+        return env.rstrip("/")
+    mc = cfg.get("model") or {}
+    for key in ("ollamaBaseUrl", "ollamaHost"):
+        v = mc.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip().rstrip("/")
+    return "http://127.0.0.1:11434"
 
 
 def save_json(path: Path, data: Any) -> None:
@@ -306,7 +321,7 @@ def main() -> int:
     )
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     base_url = os.environ.get("NEWS_OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
-    ollama_host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").strip()
+    ollama_host = resolve_ollama_base_url(cfg)
 
     ts = int(time.time())
     run_dir = args.run_dir
@@ -325,6 +340,7 @@ def main() -> int:
             "dry_run": args.dry_run,
             "orchestrator_model": orch_model,
             "worker_model": worker_model,
+            "ollama_base_url": ollama_host,
         },
     )
 

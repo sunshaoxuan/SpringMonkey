@@ -27,6 +27,7 @@ systemctl is-active openclaw.service
 说明：
 
 - `ensure_daily_memory.py`：避免 `read …/memory/YYYY-MM-DD.md` ENOENT。
+- 新闻流水线工人阶段：`run_news_pipeline.py` 连 Ollama 的顺序为 **`OLLAMA_HOST` 环境变量** → **`broadcast.json` 的 `model.ollamaBaseUrl`** → 回退本机 `127.0.0.1:11434`。定时任务往往没有交互式 shell 里的 `export`，因此必须在配置里写明远端基址（与 OpenClaw 实际使用的节点一致）。
 - `verify_runtime_readiness.py`：确认 `jobs.json` 中新闻任务 payload 含「流水线模式」且超时与配置一致；`runtimeReadiness.rssReachabilityHosts` 中**任一台**可解析即通过；**全部**不可解析时 WARN（`--strict-dns` 则失败）。
 - 若需 **Brave web_search**：在网关环境中配置 `BRAVE_API_KEY`（见 OpenClaw 文档）。
 

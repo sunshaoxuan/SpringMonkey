@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -64,6 +65,22 @@ class TestPlanAndTemplate(unittest.TestCase):
         text = self.m.worker_user_prompt(plan, b, orch_b, False, hints)
         self.assertIn("example.com/rss", text)
         self.assertIn("feeds.reuters.com", text)
+
+    def test_resolve_ollama_base_url_from_config(self):
+        cfg = {"model": {"ollamaBaseUrl": "http://remote.example:22545"}}
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("OLLAMA_HOST", None)
+            self.assertEqual(self.m.resolve_ollama_base_url(cfg), "http://remote.example:22545")
+
+    def test_resolve_ollama_env_overrides_config(self):
+        cfg = {"model": {"ollamaBaseUrl": "http://remote.example:22545"}}
+        with patch.dict(os.environ, {"OLLAMA_HOST": "http://127.0.0.1:11434"}):
+            self.assertEqual(self.m.resolve_ollama_base_url(cfg), "http://127.0.0.1:11434")
+
+    def test_broadcast_json_has_ollama_base_url(self):
+        url = self.cfg.get("model", {}).get("ollamaBaseUrl", "")
+        self.assertTrue(url.startswith("http://"), "model.ollamaBaseUrl should be set for pipeline hosts")
+        self.assertNotIn("127.0.0.1", url)
 
 
 class TestVerifyDraft(unittest.TestCase):

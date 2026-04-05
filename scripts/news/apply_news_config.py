@@ -133,7 +133,8 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
             "",
             "你必须按顺序执行，不得跳过第 1 步直接撰写或臆造正文。",
             "",
-            "1) 在宿主机 shell 执行（须一次性跑完流水线；OPENAI_API_KEY、Ollama 由宿主环境提供）：",
+            "1) 在宿主机 shell 执行（须一次性跑完流水线；OPENAI_API_KEY 由宿主环境提供；"
+            "Ollama 基址优先 OLLAMA_HOST，否则使用 broadcast.json model.ollamaBaseUrl）：",
             f"   {cmd_core}",
             "",
             "2) 若退出码为 0：标准输出中会出现一行以 PIPELINE_OK 开头并带运行目录路径。",

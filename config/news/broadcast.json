@@ -146,6 +146,7 @@
   "model": {
     "chatPrimary": "ollama/qwen2.5:14b-instruct",
     "chatFallback": "openai-codex/gpt-5.4",
+    "ollamaBaseUrl": "http://ccnode.briconbric.com:22545",
     "newsOrchestrator": "openai-codex/gpt-5.4",
     "newsWorker": "ollama/qwen2.5:14b-instruct",
     "thinking": "low",
