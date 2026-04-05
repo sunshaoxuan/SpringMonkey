@@ -56,15 +56,43 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertEqual(len(orch["batches"]), 4)
         self.assertIn("queries", orch["batches"][0])
 
-    def test_worker_prompt_includes_rss_hints_when_configured(self):
+    def test_worker_prompt_per_query(self):
+        text = self.m.worker_user_prompt_per_query(
+            "Japan economy latest", "当日 09:00 到当日 17:00", ["Reuters", "AP"], False
+        )
+        self.assertIn("Japan economy", text)
+        self.assertIn("Reuters", text)
+        self.assertLess(len(text), 300)
+
+    def test_worker_prompt_batch_includes_rss_hints(self):
         job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
         plan = self.m.build_plan(self.cfg, job)
         b = plan["batches"][0]
         orch_b = {"queries": [], "outlet_hints": []}
         hints = ["https://example.com/rss"]
-        text = self.m.worker_user_prompt(plan, b, orch_b, False, hints)
+        text = self.m.worker_user_prompt_batch(plan, b, orch_b, False, hints)
         self.assertIn("example.com/rss", text)
-        self.assertIn("feeds.reuters.com", text)
+
+    def test_worker_system_prompt_per_query_is_short(self):
+        prompt = self.m.worker_system_prompt_per_query()
+        self.assertLess(len(prompt), 500)
+        self.assertIn("•", prompt)
+        self.assertIn("U+2022", prompt)
+
+    def test_per_query_worker_fallback_when_no_queries(self):
+        result = self.m._run_worker_per_query(
+            queries=[],
+            outlet_hints=[],
+            window_label="test",
+            ollama_host="http://localhost:9999",
+            model="test",
+            timeout=5,
+            dry_run=False,
+            bid="japan",
+            fallback_line="本节无合格新增新闻条目。",
+            max_input_chars=1500,
+        )
+        self.assertIn("本节无合格新增新闻条目", result)
 
     def test_resolve_ollama_base_url_from_config(self):
         cfg = {"model": {"ollamaBaseUrl": "http://remote.example:22545"}}
@@ -235,8 +263,16 @@ class TestPipelineCronMessage(unittest.TestCase):
         self.assertIn("PIPELINE_OK", text)
         self.assertIn("final_broadcast.md", text)
         self.assertIn(spec["name"], text)
-        self.assertIn("PIPELINE_OK", text)
-        self.assertIn("final_broadcast.md", text)
+        self.assertIn("模型角色边界", text)
+        self.assertIn("逐条处理器", text)
+
+    def test_build_message_has_qwen_policy(self):
+        m = _load_apply_news_config()
+        cfg = json.loads(CFG.read_text(encoding="utf-8"))
+        spec = cfg["jobs"][0]
+        text = m.build_message(cfg, spec)
+        self.assertIn("处理器", text)
+        self.assertIn("禁止场景", text)
 
 
 def _load_apply_news_config():

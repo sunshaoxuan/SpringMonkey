@@ -224,48 +224,114 @@ def orchestrate_with_openai(plan: dict, cfg: dict, api_key: str, base_url: str, 
     return {"version": 1, "batches": data["batches"], "source": "openai"}
 
 
-def worker_system_prompt() -> str:
+def worker_system_prompt_per_query() -> str:
+    """per-query 模式：每次只处理一个检索主题，输出 0-3 条结构化条目。"""
     return (
-        "你是新闻整理与质检助手（工人模型）。只输出 Markdown 正文片段，不要解释流程。\n"
-        "【编号与格式硬规则】\n"
-        "- 严禁使用任何形式的数字编号：不要写 1. 2. 3.，不要写 1、2、3、，"
-        "不要写 (1) (2)，不要写 **1.** **2.**，不要写①②。\n"
-        "- 每条新闻固定以「• 」（圆点+空格，Unicode U+2022）开头，这是唯一允许的条目标记。\n"
-        "- 不要用短横线 - 开头（Discord 会错误渲染为列表），只用圆点 •。\n"
-        "- 若某条无可靠独立信源链接则不要写该条。\n"
-        "- 若本批没有任何可写条目，只输出一行：• 本节无合格新增新闻条目。\n"
-        "- 链接另起一行，格式：链接：https://...\n"
-        "发出前自检：你的输出中是否有任何数字编号或短横线条目？如有，删掉编号，把 - 换成 •。"
+        "你是新闻条目整理助手。根据给定的一个检索主题，输出 0-3 条结构化新闻条目。\n"
+        "【输出格式】\n"
+        "每条格式固定为两行：\n"
+        "• 一句话中文摘要（20-60字）\n"
+        "链接：https://具体原文URL\n\n"
+        "【规则】\n"
+        "• 条目以「• 」（U+2022 圆点+空格）开头，禁止用 - 或任何数字编号\n"
+        "• 无可靠链接的条目不写\n"
+        "• 没有合格条目时输出空文本\n"
+        "• 不要解释、不要前言后语，只输出条目"
     )
 
 
-def worker_user_prompt(
+def worker_system_prompt_batch() -> str:
+    """per-batch 模式（兼容旧流程）：处理整个地区批次。"""
+    return (
+        "你是新闻整理与质检助手。只输出 Markdown 正文片段，不要解释流程。\n"
+        "【格式】\n"
+        "• 条目以「• 」（U+2022 圆点+空格）开头，禁止用 - 或数字编号\n"
+        "• 链接另起一行：链接：https://...\n"
+        "• 无链接则不写该条\n"
+        "• 无合格条目时只输出：• 本节无合格新增新闻条目。"
+    )
+
+
+def worker_user_prompt_per_query(
+    query: str,
+    window_label: str,
+    outlet_hints: list[str],
+    dry_run: bool,
+) -> str:
+    """per-query 模式：最小化输入，只给一个检索主题。"""
+    parts = [
+        f"检索主题：{query}",
+        f"时间窗：{window_label}",
+    ]
+    if outlet_hints:
+        parts.append(f"优先媒体：{'、'.join(outlet_hints[:4])}")
+    if dry_run:
+        parts.append("（干跑模式：输出 1 条占位条目，标注【干跑占位】，链接用 example.com）")
+    return "\n".join(parts)
+
+
+def worker_user_prompt_batch(
     plan: dict,
     batch_plan: dict,
     orch_batch: dict,
     dry_run: bool,
     rss_hints: list[str] | None = None,
 ) -> str:
+    """per-batch 模式（兼容旧流程）。"""
     lines = [
-        f"本批地区大纲行：{batch_plan['outline_line']}",
+        f"地区：{batch_plan['outline_line']}",
         f"时间窗：{plan['window_label']}",
-        f"检索查询建议：{json.dumps(orch_batch.get('queries', []), ensure_ascii=False)}",
-        f"优先媒体提示：{json.dumps(orch_batch.get('outlet_hints', []), ensure_ascii=False)}",
-        "",
+        f"查询：{json.dumps(orch_batch.get('queries', []), ensure_ascii=False)}",
+        f"媒体：{json.dumps(orch_batch.get('outlet_hints', []), ensure_ascii=False)}",
     ]
     if rss_hints:
-        lines.append(
-            "公开 RSS 入口参考（优先使用当前环境可解析的域名；勿假定 feeds.reuters.com 一定可用）："
-        )
-        for h in rss_hints:
-            lines.append(f"- {h}")
-        lines.append("")
-    lines.append(
-        "请基于上述方向整理候选条目（若无法联网检索，可列出你认为该时间窗应核查的主题清单，用项目符号，但不要伪造具体新闻事实）。"
-    )
+        lines.append(f"RSS参考：{'；'.join(rss_hints[:3])}")
+    lines.append("请整理候选条目。无法联网时列出应核查的主题，但不要伪造事实。")
     if dry_run:
-        lines.append("（干跑模式：输出两条占位示例条目，标注【干跑占位】，并附假链接 example.com）")
+        lines.append("（干跑模式：输出两条占位示例条目，标注【干跑占位】，链接用 example.com）")
     return "\n".join(lines)
+
+
+def _run_worker_per_query(
+    *,
+    queries: list[str],
+    outlet_hints: list[str],
+    window_label: str,
+    ollama_host: str,
+    model: str,
+    timeout: int,
+    dry_run: bool,
+    bid: str,
+    fallback_line: str,
+    max_input_chars: int,
+) -> str:
+    """per-query 模式：每个 query 独立调用 Qwen，保持超短上下文。"""
+    if not queries:
+        return f"• {fallback_line}\n"
+
+    sys_prompt = worker_system_prompt_per_query()
+    fragments: list[str] = []
+
+    for i, query in enumerate(queries):
+        user_p = worker_user_prompt_per_query(query, window_label, outlet_hints, dry_run)
+        if len(user_p) > max_input_chars:
+            user_p = user_p[:max_input_chars]
+        try:
+            result = ollama_chat(ollama_host, model, sys_prompt, user_p, timeout)
+        except Exception as e:
+            if dry_run:
+                result = f"• 【干跑占位】query {i}: {query[:30]}\n链接：https://example.com\n"
+                print(f"[pipeline] worker per-query {bid}[{i}] failed, dry-run stub: {e}", file=sys.stderr)
+            else:
+                print(f"[pipeline] worker per-query {bid}[{i}] failed: {e}", file=sys.stderr)
+                continue
+        cleaned = result.strip()
+        if cleaned:
+            fragments.append(cleaned)
+
+    if not fragments:
+        return f"• {fallback_line}\n"
+    return "\n".join(fragments) + "\n"
 
 
 def _finalize_template_example(plan: dict) -> str:
@@ -458,6 +524,7 @@ def main() -> int:
             "dry_run": args.dry_run,
             "orchestrator_model": orch_model,
             "worker_model": worker_model,
+            "worker_call_mode": model_cfg.get("workerCallMode", "per-batch"),
             "ollama_api_model": ollama_worker_model,
             "ollama_base_url": ollama_host,
         },
@@ -488,29 +555,54 @@ def main() -> int:
     save_json(run_dir / "orchestration.json", orch)
 
     # --- workers ---
-    sys_prompt = worker_system_prompt()
+    worker_call_mode = model_cfg.get("workerCallMode", "per-batch")
+    max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
+    fallback_text_tpl = plan["fallback_no_news"]
+
     for b in plan["batches"]:
         bid = b["id"]
         out_path = run_dir / f"worker_{bid}.md"
         if args.skip_worker:
             out_path.write_text(
-                f"- 【skip-worker】{b['outline_line']} 占位草稿（须由主编终稿整理编号）。\n",
+                f"• 【skip-worker】{b['outline_line']} 占位草稿。\n",
                 encoding="utf-8",
             )
             continue
         ob = orch_by_id.get(bid) or {"id": bid, "queries": [], "outlet_hints": []}
-        user_p = worker_user_prompt(plan, b, ob, args.dry_run, rss_hints or None)
-        try:
-            text = ollama_chat(
-                ollama_host, ollama_worker_model, sys_prompt, user_p, args.ollama_timeout
+
+        if worker_call_mode == "per-query":
+            text = _run_worker_per_query(
+                queries=ob.get("queries", []),
+                outlet_hints=ob.get("outlet_hints", []),
+                window_label=plan["window_label"],
+                ollama_host=ollama_host,
+                model=ollama_worker_model,
+                timeout=args.ollama_timeout,
+                dry_run=args.dry_run,
+                bid=bid,
+                fallback_line=fallback_text_tpl,
+                max_input_chars=max_worker_chars,
             )
-        except Exception as e:
-            if args.dry_run:
-                text = f"- 【干跑】工人失败回退：{bid}\n- {plan['fallback_no_news']}\n"
-                print(f"[pipeline] ollama worker {bid} failed, dry-run stub: {e}", file=sys.stderr)
-            else:
-                raise
-        out_path.write_text(text + "\n", encoding="utf-8")
+        else:
+            sys_prompt = worker_system_prompt_batch()
+            user_p = worker_user_prompt_batch(plan, b, ob, args.dry_run, rss_hints or None)
+            if len(user_p) > max_worker_chars:
+                print(
+                    f"[pipeline] warning: worker input for {bid} is {len(user_p)} chars "
+                    f"(max {max_worker_chars}), consider per-query mode",
+                    file=sys.stderr,
+                )
+            try:
+                text = ollama_chat(
+                    ollama_host, ollama_worker_model, sys_prompt, user_p, args.ollama_timeout
+                )
+            except Exception as e:
+                if args.dry_run:
+                    text = f"• 【干跑】工人失败回退：{bid}\n• {fallback_text_tpl}\n"
+                    print(f"[pipeline] ollama worker {bid} failed, dry-run stub: {e}", file=sys.stderr)
+                else:
+                    raise
+        out_path.write_text(text.strip() + "\n", encoding="utf-8")
 
     # --- merge ---
     draft = merge_workers(run_dir, plan)

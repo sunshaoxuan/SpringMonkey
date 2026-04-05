@@ -67,10 +67,17 @@ def build_message(cfg: dict, job: dict) -> str:
     news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.4"))
     news_worker = model_cfg.get("newsWorker", "ollama/qwen2.5:14b-instruct")
 
+    qwen_policy = model_cfg.get("qwenUsagePolicy", {})
+    qwen_allowed = "、".join(qwen_policy.get("allowedScenarios", ["逐条摘要", "单条分类"]))
+    qwen_forbidden = "、".join(qwen_policy.get("forbiddenScenarios", ["大任务整包", "任务总控"]))
+
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
-        f"- 这类新闻任务由 {news_orchestrator} 主导，不要把整个任务直接交给本地模型整包直出。",
-        f"- 对候选新闻的逐条筛选、摘要、分类与结构化整理，优先调用本地模型 {news_worker} 完成。",
+        f"- 这类新闻任务由 {news_orchestrator} 主导。",
+        f"- 本地模型 {news_worker} 仅作为 **处理器** 使用，严禁用于任务控制。",
+        f"  - {news_worker} 允许场景：{qwen_allowed}。",
+        f"  - {news_worker} 禁止场景：{qwen_forbidden}。",
+        f"  - 不要把整批候选新闻、全部规则一次性塞给 {news_worker}，应逐条或逐查询调用。",
         f"- 最终成稿、格式校验、链接完整性把关与最后投递，由 {news_orchestrator} 负责。",
         "- 绝对不要直接生成占位结果，例如“[标题] [来源]”。如果没有真实候选条目，就明确写出本节无合格新增新闻条目。",
         "- 如果你没有真正完成候选抓取、逐条整理、机械合并和最终校验，不得宣称“已完成播报”。",
@@ -126,10 +133,10 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
     job = spec["name"]
     wrapper_name = job.replace("-", "_")
     script_path = f"{repo}/scripts/news/jobs/{wrapper_name}.py"
-    # 当前版本的 exec 预检会拦截复杂解释器调用；新闻正式任务必须使用固定 wrapper，
-    # 并要求模型优先调用 process 工具，以减少自由拼接 shell 的空间。
     cmd_parts = ["python3", script_path]
     cmd_core = shlex.join(cmd_parts)
+    model_cfg = cfg.get("model", {})
+    nw = model_cfg.get("newsWorker", "ollama/qwen2.5:14b-instruct")
     return "\n".join(
         [
             "【新闻定时任务 · 流水线模式】",
@@ -139,6 +146,9 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
             "   b) 禁止将你自己生成的文字当作新闻播报投递到 Discord。",
             "   c) 禁止用「临时搜新闻写摘要」替代流水线产出。",
             "   d) 你唯一允许发到频道的新闻正文，只能来自流水线成功后 final_broadcast.md 的原文。",
+            "",
+            f"⚠ 模型角色边界：{nw} 仅在流水线内部作为逐条处理器被调用，",
+            "   禁止将整个任务整包交给它，禁止让它做任务控制或长上下文判定。",
             "",
             "执行步骤（严格按顺序，不得跳步）：",
             "",

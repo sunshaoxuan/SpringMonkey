@@ -51,6 +51,29 @@ python scripts/openclaw/_run_integration_with_hostaccess.py --full-contract --e2
 
 可选：`SPRINGMONKEY_E2E_WAIT_PIPE_SEC=1800` 时轮询 `journalctl` 是否出现 `PIPELINE_OK` / `run_news_pipeline.py`（多数网关**不会**把子进程 stdout 写入 systemd 日志，**以 Discord 频道结果为准**）。
 
+## Qwen 使用策略
+
+**定位**：Qwen（`ollama/qwen2.5:14b-instruct`）是**处理器**，不是代理/控制器。
+
+| 允许 | 禁止 |
+|------|------|
+| 逐条新闻摘要（per-query worker 调用） | Discord 长历史控制命令入口 |
+| 单条分类与格式校验 | 新闻任务总控与执行调度 |
+| 短对话（history < 8000 chars） | 大任务整包直出 |
+| 中间稿压缩与提取 | 多轮复杂工具调用决策 |
+
+**配置要点**：
+- `model.workerCallMode: "per-query"` — 每个检索查询独立调用 Qwen，保持超短上下文
+- `model.maxWorkerInputChars: 1500` — 单次 worker 输入上限，超出会截断
+- `model.chatEscalateWhenHistoryCharsExceed: 8000` — Discord 会话历史超长时应升级到 chatFallback
+- `model.qwenUsagePolicy` — 详细的允许/禁止场景列表，由 `apply_news_config.py` 写入 cron payload
+
+**架构分层**：
+```
+orchestrate (GPT-5.4)  →  per-query worker (Qwen×N)  →  merge  →  finalize (GPT-5.4)  →  verify
+   编排检索计划              逐条短上下文处理            机械拼接      合并润色成稿          机械校验
+```
+
 ## 阶段 D — 事故类根因（2026-04-05 09:00）
 
 - OpenClaw **`web_fetch` 未捕获异常导致整进程退出**：需上游修复或升级；本仓库通过 **pipeline 脚本** 降低对网关内并行 `web_fetch` 的依赖。

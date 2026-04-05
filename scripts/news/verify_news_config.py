@@ -25,6 +25,7 @@ def _pipeline_payload_ok(msg: str, spec_name: str) -> list[str]:
         spec_name,
         "final_broadcast.md",
         "PIPELINE_OK",
+        "模型角色边界",
     ):
         if token not in msg:
             miss.append(token)
