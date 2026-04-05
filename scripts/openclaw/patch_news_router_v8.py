@@ -31,33 +31,7 @@ OLD_BLOCK = """\tif (intentRoute?.rerouted) {
 \t\tparams.modelId = intentRoute.modelId;
 \t\tparams.model = intentRoute.model;
 \t\tif (intentRoute.messageOverride) params.message = intentRoute.messageOverride;
-\t\tif (intentRoute.manualNewsRun && params.sessionFile) {
-\t\t\tparams.disableTools = true;
-\t\t\ttry {
-\t\t\t\tconst _raw = await fs.readFile(params.sessionFile, "utf8");
-\t\t\t\tconst _lines = _raw.trimEnd().split("\\n");
-\t\t\t\tfor (let _i = _lines.length - 1; _i >= 0; _i--) {
-\t\t\t\t\ttry {
-\t\t\t\t\t\tconst _entry = JSON.parse(_lines[_i]);
-\t\t\t\t\t\tif (_entry?.message?.role === "user") {
-\t\t\t\t\t\t\tconst _overrideText = intentRoute.messageOverride || "已触发正式新闻任务，结果将由独立任务投递。只回复这一句确认。";
-\t\t\t\t\t\t\tif (typeof _entry.message.content === "string") {
-\t\t\t\t\t\t\t\t_entry.message.content = _overrideText;
-\t\t\t\t\t\t\t} else if (Array.isArray(_entry.message.content)) {
-\t\t\t\t\t\t\t\t_entry.message.content = [{ type: "text", text: _overrideText }];
-\t\t\t\t\t\t\t}
-\t\t\t\t\t\t\t_lines[_i] = JSON.stringify(_entry);
-\t\t\t\t\t\t\tbreak;
-\t\t\t\t\t\t}
-\t\t\t\t\t} catch (_pe) {}
-\t\t\t\t}
-\t\t\t\tawait fs.writeFile(params.sessionFile, _lines.join("\\n") + "\\n", "utf8");
-\t\t\t\tlog$16.info("[intent-router] v8: manual news run \\u2192 tools disabled + session user msg rewritten");
-\t\t\t} catch (_e) {
-\t\t\t\tlog$16.warn(`[intent-router] v8: session rewrite failed: ${_e?.message ?? _e}`);
-\t\t\t}
-\t\t}
-\t\tlog$16.info(`[intent-router] intent=${intentRoute.intent} reroute=${params.provider}/${params.modelId}${intentRoute.messageOverride ? " formal-payload=1" : ""}${intentRoute.manualNewsRun ? " manual-news-run=1 tools-disabled=1" : ""}`);
+\t\tlog$16.info(`[intent-router] intent=${intentRoute.intent} reroute=${params.provider}/${params.modelId}${intentRoute.messageOverride ? " formal-payload=1" : ""}`);
 \t} else if (intentRoute?.intent) {
 \t\tlog$16.debug(`[intent-router] intent=${intentRoute.intent} keep=${params.provider}/${params.modelId}`);
 \t}"""
