@@ -226,10 +226,15 @@ def orchestrate_with_openai(plan: dict, cfg: dict, api_key: str, base_url: str, 
 
 def worker_system_prompt() -> str:
     return (
-        "你是新闻整理与质检助手（工人模型）。只输出 Markdown 正文片段，不要解释流程。"
-        "严禁使用一级数字标题（不要用 1. 2. 3. 作为章节号，主编会统一加）。"
-        "每条新闻一条项目符号，以「- 」开头；若某条无可靠独立信源链接则不要写该条。"
-        "若本批没有任何可写条目，只输出一行：- 本节无合格新增新闻条目。"
+        "你是新闻整理与质检助手（工人模型）。只输出 Markdown 正文片段，不要解释流程。\n"
+        "【编号与格式硬规则】\n"
+        "- 严禁使用任何形式的数字编号：不要写 1. 2. 3.，不要写 1、2、3、，"
+        "不要写 (1) (2)，不要写 **1.** **2.**，不要写①②。\n"
+        "- 每条新闻固定以「- 」（短横线+空格）开头，这是唯一允许的条目标记。\n"
+        "- 若某条无可靠独立信源链接则不要写该条。\n"
+        "- 若本批没有任何可写条目，只输出一行：- 本节无合格新增新闻条目。\n"
+        "- 链接另起一行，格式：链接：https://...\n"
+        "发出前自检：你的输出中是否有任何数字编号？如有，删掉编号只留「- 」。"
     )
 
 
@@ -288,6 +293,8 @@ def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None
         "从第 3 行开始，必须按顺序且仅出现以下四个编号小节：\n"
         f"{outline}\n"
         "全文只允许上面这四行使用数字编号；其他任何地方不得出现数字编号。\n"
+        "【禁止的编号形式举例】1. xxx / 2. xxx / 1、xxx / (1) xxx / **1.** xxx / ① xxx\n"
+        "以上在条目行内全部禁止。条目只能以「- 」开头，不得附带任何序号。\n"
         "每个小节内条目一律用「- 」项目符号开头。\n"
         f"若某节工人未提供合格条目，写一条「- {plan['fallback_no_news']}」。\n"
         "链接规则：每条新闻下另起一行「链接：https://...」；无链则不写该条。\n\n"
@@ -301,6 +308,27 @@ def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None
             + "\n请严格修正后重新输出完整成稿。\n"
         )
     return base
+
+
+def _strip_item_numbering(line: str) -> str:
+    """
+    去掉条目行首各种数字编号，只保留「- 」开头的纯项目符号形式。
+    处理：- 1. xxx / - **1.** xxx / - 1、xxx / - (1) xxx / - ① xxx / 1. xxx（无-）
+    """
+    import re as _re
+
+    s = line.strip()
+    if s.startswith("- "):
+        body = s[2:].lstrip()
+        body = _re.sub(r"^\*{1,2}(\d+[\.\)）])\*{1,2}\s*", "", body)
+        body = _re.sub(r"^(\d+)[\.\)）、，]\s*", "", body)
+        body = _re.sub(r"^[①②③④⑤⑥⑦⑧⑨⑩]\s*", "", body)
+        body = _re.sub(r"^\(\d+\)\s*", "", body)
+        return "- " + body if body else s
+    s = _re.sub(r"^\d+[\.\)）、，]\s*", "", s)
+    s = _re.sub(r"^[①②③④⑤⑥⑦⑧⑨⑩]\s*", "", s)
+    s = _re.sub(r"^\(\d+\)\s*", "", s)
+    return s
 
 
 def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
@@ -327,6 +355,7 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
         if current_bid and current_bid in batch_content:
             stripped = line.strip()
             if stripped:
+                stripped = _strip_item_numbering(stripped)
                 if not stripped.startswith("- "):
                     stripped = "- " + stripped
                 batch_content[current_bid].append(stripped)

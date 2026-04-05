@@ -95,6 +95,25 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertIn("1. 日本", text)
         self.assertIn("4. 市场或风险提示", text)
 
+    def test_mechanical_fallback_strips_numbering(self):
+        cfg = self.cfg
+        job = self.m.job_spec(cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(cfg, job)
+        merged = (
+            "<!-- batch:japan -->\n- 1. Numbered item\n- **2.** Bold numbered\n- 3、Chinese num\n"
+            "<!-- batch:china -->\n1. Bare number\n(2) Paren number\n"
+            "<!-- batch:world -->\n- ① Circle number\n"
+            "<!-- batch:markets -->\n- Normal item\n"
+        )
+        text = self.m._mechanical_fallback(cfg, plan, merged)
+        v = _load_verify()
+        ok, err = v.verify_text(text, cfg)
+        self.assertTrue(ok, f"should strip numbering and pass verify: {err}")
+        self.assertNotIn("- 1.", text.split("1. 日本")[1].split("2. 中国")[0])
+        self.assertNotIn("- **2.**", text)
+        self.assertNotIn("- 3、", text)
+        self.assertNotIn("- ①", text)
+
     def test_mechanical_fallback_empty_batch(self):
         cfg = self.cfg
         job = self.m.job_spec(cfg, "news-digest-jst-1700")
@@ -151,6 +170,39 @@ class TestVerifyDraft(unittest.TestCase):
         ok, err = self.v.verify_text(text, self.cfg)
         self.assertFalse(ok)
         self.assertTrue(any("bad_top_level" in e for e in err))
+
+    def test_numbered_inside_bullet_fails(self):
+        text = """新闻简报
+窗口
+1. 日本
+- 1. Item with number
+- **2.** Bold numbered item
+2. 中国
+- ok
+3. 国际
+- ok
+4. 市场或风险提示
+- ok
+"""
+        ok, err = self.v.verify_text(text, self.cfg)
+        self.assertFalse(ok)
+        self.assertTrue(any("numbered_inside_bullet" in e for e in err))
+
+    def test_chinese_numbering_in_bullet_fails(self):
+        text = """新闻简报
+窗口
+1. 日本
+- 1、Item
+2. 中国
+- ok
+3. 国际
+- ok
+4. 市场或风险提示
+- ok
+"""
+        ok, err = self.v.verify_text(text, self.cfg)
+        self.assertFalse(ok)
+        self.assertTrue(any("numbered_inside_bullet_cn" in e for e in err))
 
 
 class TestPipelineCronMessage(unittest.TestCase):
