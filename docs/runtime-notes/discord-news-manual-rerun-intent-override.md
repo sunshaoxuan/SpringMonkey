@@ -18,6 +18,17 @@
 
 应用后需 **重启 gateway**（如 `openclaw.service`）。
 
+## v8（必打）：`messageOverride` 无效导致主 session 自由发挥
+
+现象：`formal-payload=1` 日志正常输出，但主 chat session 仍然调 `web_fetch` 抓 RSS 并生成自由摘要；用户看到两条消息（一条自由摘要 + 一条流水线正确结果）。
+
+原因：`params.message = intentRoute.messageOverride` 实际上是**死代码**。`runEmbeddedAttempt` 从不读取 `params.message`（只读 `params.sessionFile`）。用户原始消息已写入 session JSONL，模型直接读文件看到的仍是 "手动重跑 17:00 新闻播报"。
+
+修复（`scripts/openclaw/patch_news_router_v8.py`）：
+- `manualNewsRun=true` 时设 `params.disableTools = true`：阻止模型调用任何工具（web_fetch/exec 等）。
+- 重写 session JSONL 最后一条 user 消息的 content 为 override 指令："你已成功触发正式任务…只回复这一句确认"。
+- 效果：主 session 秒回确认文本，不生成任何新闻内容；cron session 独立完成流水线并投递。
+
 ## v7（必打）：网关内 `spawnSync openclaw cron run` 自死锁
 
 现象：日志已有 `bypass classifier: news_task`，随后 `spawnSync openclaw ETIMEDOUT`，`codex fallback` 仍 `spawnSync` 同样超时；频道里仍像「自由发挥」。
@@ -55,8 +66,9 @@
 4. 再执行 **v5** 脚本（避免 Ollama 分类器阻塞手动重跑路径）。
 5. 再执行 **v6** 脚本（Ollama 超时 / 失败时自动 Codex）。
 6. 再执行 **v7** 脚本（async `spawn` 修复网关内 cron CLI 死锁）。
-7. 自动化验证：`test_manual_news_heuristics.py`、`test_cron_run_cli.sh`、`integration_verify_host.py --apply-v6 --apply-v7`。
-8. 验证：`journalctl` 可出现 `manual-cron-run=1` 且 **不应**再出现 `spawnSync openclaw ETIMEDOUT`（在 Ollama/Codex 正常时）。
+7. 再执行 **v8** 脚本（阻止主 session 自由发挥，强制只输出确认）。
+8. 自动化验证：`test_manual_news_heuristics.py`、`test_cron_run_cli.sh`、`integration_verify_host.py --apply-v6 --apply-v7`。
+9. 验证：`journalctl` 可出现 `manual-news-run=1 tools-disabled=1` 且主 session 不再输出新闻摘要。
 
 ## 策略对齐
 
