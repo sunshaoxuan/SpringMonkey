@@ -27,6 +27,16 @@ Accepted evidence:
 
 If any of these checks fails, the agent must say task creation did not finish.
 
+## Hard Runtime Rules
+
+For ordinary recurring tasks:
+
+1. only use `scripts/cron/upsert_generic_cron_job.py`
+2. do not use raw `cron.update`, `cron.add`, or ad-hoc cron RPCs as the user-facing write path
+3. after create or update, immediately call the same wrapper with `--verify-only`
+4. if `--verify-only` does not show the expected job, never say the task is already created
+5. a conversational summary is never evidence of success
+
 ## Generic Job Writer
 
 Use:
@@ -112,6 +122,13 @@ After writing a job:
 1. verify with `openclaw cron list --all --json` under the `openclaw` user context
 2. verify by job name in `jobs.json`
 3. only then tell the user the task is created
+
+The wrapper now treats this as the default behavior:
+
+- write
+- re-read the stored job
+- verify schedule, model, message, `delivery.channel`, `delivery.to`, and enabled state
+- exit non-zero if any mismatch remains
 
 Current runtime note:
 

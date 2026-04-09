@@ -98,6 +98,54 @@ def render_job(job: dict | None) -> int:
     return 0
 
 
+def expect_job_matches(job: dict | None, args: argparse.Namespace, message: str | None = None) -> dict:
+    if not job:
+        raise SystemExit("Verification failed: job is still missing after write.")
+    errors: list[str] = []
+    schedule = job.get("schedule", {})
+    payload = job.get("payload", {})
+    delivery = job.get("delivery", {})
+    if args.expr and schedule.get("expr") != args.expr:
+        errors.append(f"schedule.expr mismatch: expected {args.expr!r}, got {schedule.get('expr')!r}")
+    if args.tz and schedule.get("tz") != args.tz:
+        errors.append(f"schedule.tz mismatch: expected {args.tz!r}, got {schedule.get('tz')!r}")
+    if args.delivery_channel and delivery.get("channel") != args.delivery_channel:
+        errors.append(
+            f"delivery.channel mismatch: expected {args.delivery_channel!r}, got {delivery.get('channel')!r}"
+        )
+    if args.delivery_to and delivery.get("to") != args.delivery_to:
+        errors.append(f"delivery.to mismatch: expected {args.delivery_to!r}, got {delivery.get('to')!r}")
+    if args.delivery_account_id and delivery.get("accountId", "default") != args.delivery_account_id:
+        errors.append(
+            "delivery.accountId mismatch: expected "
+            f"{args.delivery_account_id!r}, got {delivery.get('accountId', 'default')!r}"
+        )
+    expected_enabled = not args.disabled
+    if bool(job.get("enabled", True)) != expected_enabled:
+        errors.append(f"enabled mismatch: expected {expected_enabled!r}, got {job.get('enabled')!r}")
+    if payload.get("model", args.model) != args.model:
+        errors.append(f"payload.model mismatch: expected {args.model!r}, got {payload.get('model')!r}")
+    if payload.get("thinking", args.thinking) != args.thinking:
+        errors.append(
+            f"payload.thinking mismatch: expected {args.thinking!r}, got {payload.get('thinking')!r}"
+        )
+    if int(payload.get("timeoutSeconds", args.timeout_seconds)) != args.timeout_seconds:
+        errors.append(
+            "payload.timeoutSeconds mismatch: expected "
+            f"{args.timeout_seconds!r}, got {payload.get('timeoutSeconds')!r}"
+        )
+    if bool(payload.get("lightContext", False)) != bool_arg(args.light_context):
+        errors.append(
+            "payload.lightContext mismatch: expected "
+            f"{bool_arg(args.light_context)!r}, got {payload.get('lightContext')!r}"
+        )
+    if message is not None and payload.get("message") != message:
+        errors.append("payload.message mismatch after write.")
+    if errors:
+        raise SystemExit("Verification failed after write:\n- " + "\n- ".join(errors))
+    return job
+
+
 def build_add_args(args: argparse.Namespace, message: str) -> list[str]:
     cli = [
         "cron",
@@ -214,20 +262,8 @@ def main() -> int:
     if rc != 0:
         raise SystemExit(f"openclaw cron write failed ({rc}): {(stderr or stdout).strip()}")
 
-    payload = None
-    if stdout.strip():
-        try:
-            payload = json.loads(stdout)
-        except json.JSONDecodeError:
-            payload = None
-        print(stdout.strip())
-
-    if payload and payload.get("name") == args.name:
-        return 0
-
     job = find_job_by_name(args.name)
-    if not job:
-        raise SystemExit("CLI returned success but the job is still missing from jobs.json.")
+    job = expect_job_matches(job, args, message=message)
     print(json.dumps(job, ensure_ascii=False, indent=2))
     return 0
 

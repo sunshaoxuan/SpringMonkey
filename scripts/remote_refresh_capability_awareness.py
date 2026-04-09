@@ -48,8 +48,12 @@ This file tells the runtime agent what is actually available on this host right 
 - When checking dead or stuck scheduled tasks, inspect cron/job state first. Do not treat the gateway process itself as a dead task.
 - Cron jobs with `delivery.channel = line` must keep delivering to LINE unless the user explicitly authorizes a different delivery target.
 - For ordinary recurring tasks, use the generic cron job writer at `/var/lib/openclaw/repos/SpringMonkey/scripts/cron/upsert_generic_cron_job.py` instead of pretending a task already exists.
-- Do not claim `已触发正式任务` or `已创建定时任务` unless machine evidence exists in `jobs.json` or `openclaw cron list --json`.
-- After creating or updating a cron job, verify the stored `delivery.channel` and `delivery.to` before reporting success.
+- For ordinary recurring tasks, do not use raw `cron.update`, `cron.add`, or ad-hoc cron RPCs as the user-facing write path.
+- For ordinary recurring tasks, the only allowed write path is `/var/lib/openclaw/repos/SpringMonkey/scripts/cron/upsert_generic_cron_job.py`.
+- After creating or updating a generic cron job, immediately run the same wrapper again with `--verify-only`.
+- Do not claim `已触发正式任务` or `已创建定时任务` unless the wrapper write succeeded and `--verify-only` proves the stored job exists.
+- Verification must confirm at least the stored job name, schedule, `delivery.channel`, and `delivery.to`.
+- If verification does not find the expected job, explicitly say task creation did not finish.
 
 ## Browser Retention Rules
 
