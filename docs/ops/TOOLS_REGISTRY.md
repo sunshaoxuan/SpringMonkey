@@ -21,6 +21,7 @@
 
 | 场景 | 症状或目标 | 工具（脚本） | 必备环境变量 / 参数 |
 |------|------------|--------------|---------------------|
+| 通用定时任务落地 | 普通 recurring task 需要真的落进 cron，而不是只在对话里宣称“已创建” | `cron/upsert_generic_cron_job.py` | `--name`、`--expr`、`--message-file/--message`、`--delivery-channel`、`--delivery-to` |
 | 宿主机同步仓库 | 本地已 push，需要在汤猴机上 `git pull` | `remote_springmonkey_git_pull.py` | `OPENCLAW_SSH_PASSWORD`；可选 `OPENCLAW_RESTART_AFTER_PULL=1`、`SPRINGMONKEY_REPO_PATH` |
 | 健康检查 | 不知服务是否活着、端口是否监听 | `remote_diag_openclaw_webhook.py` | `OPENCLAW_SSH_PASSWORD` |
 | 配置迁移 | `Config invalid`、`legacy`、`doctor --fix` | `remote_openclaw_doctor_fix.py` | 同上 |
@@ -91,6 +92,7 @@
 - `docs/policies/REPOSITORY_GUARDRAILS.md`：哪些不能进 Git。
 - `docs/runtime-notes/openclaw-runtime-baseline-2026-04.md`：当前汤猴宿主机恢复基线。
 - `docs/runtime-notes/line-runtime-baseline-2026-04.md`：LINE 接入与恢复基线。
+- `docs/runtime-notes/generic-cron-task-domain-2026-04.md`：普通定时任务的通用落地与验收规则。
 
 ---
 

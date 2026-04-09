@@ -96,6 +96,15 @@
 - `news/verify_runtime_readiness.py`：运行时就绪检查
 - `news/ensure_daily_memory.py`：当日 memory 保证
 
+## 4.1 通用定时任务
+
+- `cron/upsert_generic_cron_job.py`
+  - 用途：为普通 recurring task 创建 / 更新 / 校验 / 删除 OpenClaw cron 任务，不再靠聊天里“已创建”的口头确认。
+  - 典型用法：
+    - 创建/更新：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --expr "<cron>" --message-file <prompt.txt> --delivery-channel <channel> --delivery-to <target>`
+    - 校验：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --verify-only`
+    - 删除：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --delete`
+
 ## 5. OpenClaw 补丁与验证
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）

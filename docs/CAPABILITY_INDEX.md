@@ -43,6 +43,7 @@
 | Discord 入口 | 服务器 `PKROCOHR001`、频道 `public`、策略要点 | `HOST_ACCESS_REDACTED.md` |
 | 新闻播报 | 定时任务、流水线、`broadcast.json` 域；成功分支最终回答必须直接等于 `final_broadcast.md` 正文 | `docs/runtime-notes/news-task-domain.md`、`news-deploy-checklist.md`、`docs/runtime-notes/news-cron-final-broadcast-delivery-fix.md` |
 | 年度再部署 / 灾备 | 汇总 2026 已落地运行时改动、宿主机真值与恢复顺序 | `docs/runtime-notes/openclaw-redeployment-runbook-2026.md` |
+| 通用定时任务 | 普通 recurring task 的真实落地入口与验收规则；不能只凭对话宣称任务已创建 | `docs/runtime-notes/generic-cron-task-domain-2026-04.md`、`scripts/cron/upsert_generic_cron_job.py` |
 | LINE | Webhook 路径默认 `/line/webhook`、插件 `@openclaw/line`、需 HTTPS 公网；`dmPolicy` / pairing / open / frpc 映射见专项基线文档 | `docs/runtime-notes/line-runtime-baseline-2026-04.md`、本仓库 `scripts/remote_*.py`、`remote_line_*.sh` |
 | TimesCar 自动化 | 登录入口不再写死为单一 URL；采用“缓存优先，失效后自主探查并回写缓存” | `docs/runtime-notes/timescar-site-discovery-baseline-2026-04.md` |
 | 国际渠道预部署 | Telegram / Slack / Signal / Matrix / IRC / Twitch 等插件已预部署，但默认不写 token | `scripts/remote_enable_international_channels.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
