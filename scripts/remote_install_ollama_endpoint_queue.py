@@ -52,12 +52,26 @@ function enqueueOllamaEndpointTask(endpointKey, modelKey, task) {
 
 
 def main() -> int:
-    target = Path("/usr/lib/node_modules/openclaw/dist/stream-DqNCFbiN.js")
-    if not target.is_file():
-        print(f"missing target: {target}", file=sys.stderr)
-        return 1
-    text = target.read_text(encoding="utf-8")
     anchor = "function createOllamaStreamFn(baseUrl, defaultHeaders) {"
+    dist = Path("/usr/lib/node_modules/openclaw/dist")
+    matches = []
+    for candidate in sorted(dist.glob("stream-*.js")):
+        try:
+            text = candidate.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if anchor in text:
+            matches.append((candidate, text))
+    if not matches:
+        print(f"missing anchor in {dist}", file=sys.stderr)
+        return 1
+    target, text = matches[0]
+    if len(matches) > 1:
+        print(
+            "multiple stream bundles matched; using "
+            + ", ".join(p.name for p, _ in matches),
+            file=sys.stderr,
+        )
     if anchor not in text:
         print("missing anchor", file=sys.stderr)
         return 1
