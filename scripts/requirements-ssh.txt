@@ -1,0 +1,3 @@
+# 远程 SSH 运维脚本依赖；一次性安装：
+#   %OPENCLAW_PYTHON% -m pip install -r SpringMonkey/scripts/requirements-ssh.txt
+paramiko>=3.0,<4.0

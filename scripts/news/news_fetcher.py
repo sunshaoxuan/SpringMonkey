@@ -14,8 +14,11 @@ import sys
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
+from urllib.parse import urlparse
 
 
 RSS_FEEDS: dict[str, list[str]] = {
@@ -58,6 +61,9 @@ class Article:
     url: str
     source_feed: str
     snippet: str = ""
+    published_at: str = ""
+    published_ts: int = 0
+    fingerprint: str = ""
     content: str = ""
     batch_id: str = ""
     fetch_ok: bool = False
@@ -66,15 +72,43 @@ class Article:
 
 def _is_blocked(url: str) -> bool:
     try:
-        from urllib.parse import urlparse
         host = urlparse(url).hostname or ""
         return any(host.endswith(d) for d in BLOCKED_DOMAINS | AGGREGATOR_DOMAINS)
     except Exception:
         return False
 
 
-def fetch_rss(feed_url: str, timeout: int = FETCH_TIMEOUT) -> list[dict[str, str]]:
-    """Parse an RSS/Atom feed, return list of {title, url, snippet}."""
+def _parse_published_ts(value: str) -> int:
+    raw = (value or "").strip()
+    if not raw:
+        return 0
+    try:
+        dt = parsedate_to_datetime(raw)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+    except Exception:
+        pass
+    for candidate in (raw, raw.replace("Z", "+00:00")):
+        try:
+            dt = datetime.fromisoformat(candidate)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return int(dt.timestamp())
+        except Exception:
+            continue
+    return 0
+
+
+def build_article_fingerprint(title: str, url: str) -> str:
+    host = (urlparse(url).hostname or "").lower()
+    norm_title = re.sub(r"\s+", " ", (title or "").strip().lower())
+    norm_title = re.sub(r"[^\w\u4e00-\u9fff]+", "", norm_title)
+    return f"{host}|{norm_title}"
+
+
+def fetch_rss(feed_url: str, timeout: int = FETCH_TIMEOUT) -> list[dict[str, Any]]:
+    """Parse an RSS/Atom feed, return list of article dicts with timestamps."""
     req = urllib.request.Request(feed_url, headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -83,22 +117,35 @@ def fetch_rss(feed_url: str, timeout: int = FETCH_TIMEOUT) -> list[dict[str, str
         print(f"[fetcher] RSS fetch failed {feed_url}: {e}", file=sys.stderr)
         return []
 
-    items: list[dict[str, str]] = []
+    items: list[dict[str, Any]] = []
     try:
         root = ET.fromstring(raw)
     except ET.ParseError as e:
         print(f"[fetcher] RSS parse failed {feed_url}: {e}", file=sys.stderr)
         return []
 
-    # RSS 2.0
     for item in root.iter("item"):
         title = (item.findtext("title") or "").strip()
         link = (item.findtext("link") or "").strip()
         desc = (item.findtext("description") or "").strip()
+        published_raw = (
+            item.findtext("pubDate")
+            or item.findtext("{http://purl.org/dc/elements/1.1/}date")
+            or ""
+        ).strip()
+        published_ts = _parse_published_ts(published_raw)
         if title and link and not _is_blocked(link):
-            items.append({"title": title, "url": link, "snippet": _strip_html(desc)[:300]})
+            items.append(
+                {
+                    "title": title,
+                    "url": link,
+                    "snippet": _strip_html(desc)[:300],
+                    "published_at": published_raw,
+                    "published_ts": published_ts,
+                    "fingerprint": build_article_fingerprint(title, link),
+                }
+            )
 
-    # Atom
     if not items:
         ns = {"atom": "http://www.w3.org/2005/Atom"}
         for entry in root.iter("{http://www.w3.org/2005/Atom}entry"):
@@ -106,8 +153,25 @@ def fetch_rss(feed_url: str, timeout: int = FETCH_TIMEOUT) -> list[dict[str, str
             link_el = entry.find("atom:link[@rel='alternate']", ns) or entry.find("atom:link", ns)
             link = (link_el.get("href", "") if link_el is not None else "").strip()
             summary = (entry.findtext("atom:summary", "", ns) or "").strip()
+            published_raw = (
+                entry.findtext("atom:published", "", ns)
+                or entry.findtext("atom:updated", "", ns)
+                or entry.findtext("published")
+                or entry.findtext("updated")
+                or ""
+            ).strip()
+            published_ts = _parse_published_ts(published_raw)
             if title and link and not _is_blocked(link):
-                items.append({"title": title, "url": link, "snippet": _strip_html(summary)[:300]})
+                items.append(
+                    {
+                        "title": title,
+                        "url": link,
+                        "snippet": _strip_html(summary)[:300],
+                        "published_at": published_raw,
+                        "published_ts": published_ts,
+                        "fingerprint": build_article_fingerprint(title, link),
+                    }
+                )
 
     return items[:MAX_ARTICLES_PER_FEED]
 
@@ -120,10 +184,13 @@ def _strip_html(text: str) -> str:
 
 def fetch_article_content(url: str, timeout: int = FETCH_TIMEOUT, max_chars: int = MAX_CONTENT_CHARS) -> str:
     """Fetch a URL and extract main text content from HTML."""
-    req = urllib.request.Request(url, headers={
-        "User-Agent": USER_AGENT,
-        "Accept": "text/html,application/xhtml+xml",
-    })
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml",
+        },
+    )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read(500_000)
@@ -143,10 +210,9 @@ def _extract_main_text(html_text: str, max_chars: int) -> str:
         )
 
     paragraphs: list[str] = []
-
-    for m in re.finditer(r"<(?:p|h[1-6]|li|figcaption)[^>]*>(.*?)</(?:p|h[1-6]|li|figcaption)>",
-                         html_text, re.DOTALL | re.IGNORECASE):
-        text = _strip_html(m.group(1)).strip()
+    pattern = r"<(?:p|h[1-6]|li|figcaption)[^>]*>(.*?)</(?:p|h[1-6]|li|figcaption)>"
+    for match in re.finditer(pattern, html_text, re.DOTALL | re.IGNORECASE):
+        text = _strip_html(match.group(1)).strip()
         if len(text) > 20:
             paragraphs.append(text)
 
@@ -160,28 +226,46 @@ def discover_articles(
     batch_id: str,
     feeds: list[str] | None = None,
     max_per_batch: int = 8,
+    window_start_ts: int = 0,
+    window_end_ts: int = 0,
+    exclude_fingerprints: set[str] | None = None,
+    require_timestamp: bool = True,
 ) -> list[Article]:
     """Discover articles for a batch via RSS feeds."""
     if feeds is None:
         feeds = RSS_FEEDS.get(batch_id, [])
 
     seen_urls: set[str] = set()
+    excluded = exclude_fingerprints or set()
     articles: list[Article] = []
 
     for feed_url in feeds:
         items = fetch_rss(feed_url)
         for item in items:
             url = item["url"]
-            if url in seen_urls:
+            fingerprint = item.get("fingerprint") or build_article_fingerprint(item.get("title", ""), url)
+            if url in seen_urls or fingerprint in excluded:
                 continue
+            published_ts = int(item.get("published_ts") or 0)
+            if window_start_ts and window_end_ts:
+                if published_ts:
+                    if not (window_start_ts <= published_ts <= window_end_ts):
+                        continue
+                elif require_timestamp:
+                    continue
             seen_urls.add(url)
-            articles.append(Article(
-                title=item["title"],
-                url=url,
-                source_feed=feed_url,
-                snippet=item.get("snippet", ""),
-                batch_id=batch_id,
-            ))
+            articles.append(
+                Article(
+                    title=item["title"],
+                    url=url,
+                    source_feed=feed_url,
+                    snippet=item.get("snippet", ""),
+                    published_at=item.get("published_at", ""),
+                    published_ts=published_ts,
+                    fingerprint=fingerprint,
+                    batch_id=batch_id,
+                )
+            )
             if len(articles) >= max_per_batch:
                 break
         if len(articles) >= max_per_batch:
@@ -211,6 +295,7 @@ def articles_to_json(articles: list[Article]) -> str:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="RSS news discovery + content fetch")
     parser.add_argument("--batch", default="world", help="Batch ID (japan/china/world/markets)")
     parser.add_argument("--max", type=int, default=5, help="Max articles per batch")
@@ -223,7 +308,8 @@ if __name__ == "__main__":
         fetch_and_fill(arts)
     for a in arts:
         status = "OK" if a.fetch_ok else ("SKIP" if not args.fetch_content else "FAIL")
-        print(f"  [{status}] {a.title[:60]} — {a.url}")
+        pub = f" @ {a.published_at}" if a.published_at else ""
+        print(f"  [{status}] {a.title[:60]}{pub} — {a.url}")
     if arts:
         print(f"\nSample content ({arts[0].title[:40]}):")
         print(arts[0].content[:500] if arts[0].content else "(no content)")

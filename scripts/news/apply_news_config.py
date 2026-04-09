@@ -65,7 +65,7 @@ def build_message(cfg: dict, job: dict) -> str:
 
     model_cfg = cfg.get("model", {})
     news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.4"))
-    news_worker = model_cfg.get("newsWorker", "ollama/qwen2.5:14b-instruct")
+    news_worker = model_cfg.get("newsWorker", "ollama/qwen3:14b")
 
     qwen_policy = model_cfg.get("qwenUsagePolicy", {})
     qwen_allowed = "、".join(qwen_policy.get("allowedScenarios", ["逐条摘要", "单条分类"]))
@@ -115,8 +115,9 @@ def build_message(cfg: dict, job: dict) -> str:
         "",
         f"本次任务的时间窗是：{job['windowLabel']}。",
         "优先使用公开可信来源；若 web_search 不可用，可使用 RSS、公开网页与已知权威媒体页面。",
-        f"本时段参考窗口约 {job['windowHours']} 小时。完成后直接投递到 Discord。"
+        f"本时段参考窗口约 {job['windowHours']} 小时。完成后按下列投递目标直接发到 Discord。"
     ])
+    intro.extend(_delivery_prompt_lines(cfg))
 
     return "\n".join([line for line in intro if line != ""])
 
@@ -125,18 +126,41 @@ def _news_execution(cfg: dict) -> dict:
     return cfg.get("newsExecution") or {}
 
 
+def _delivery_prompt_lines(cfg: dict) -> list[str]:
+    """从 broadcast.json 的 delivery 生成「必须显式 target」说明，避免 message.send 报 Action send requires a target。"""
+    d = cfg.get("delivery") or {}
+    to = str(d.get("to", "") or "").strip()
+    ch = d.get("channel", "discord")
+    acc = d.get("accountId", "default")
+    mode = d.get("mode", "announce")
+    if not to:
+        return [
+            "",
+            "【投递目标 — 配置缺失】",
+            "- broadcast.json 中 delivery.to 为空：请补全 Discord 频道 ID 后重新 apply_news_config。",
+        ]
+    return [
+        "",
+        "【投递目标 — 必须显式传 target，禁止省略】",
+        f"- Discord 频道 ID（channel id）：{to}",
+        f"- delivery.channel = {ch}，accountId = {acc}，mode = {mode}",
+        "- 使用 message.send / Discord 相关发送能力时，必须把上述 channel id 作为 target（或当前 OpenClaw 版本插件文档要求的等价字段）。",
+        "- 未提供 target 将导致：Action send requires a target。",
+        "- 禁止只写「同频道」而不传 channel id。",
+    ]
+
+
 def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
     """定时任务走 scripts/news/run_news_pipeline.py 时的 agentTurn 正文（由网关执行器跑命令并投递）。"""
     nex = _news_execution(cfg)
     repo = nex.get("repoPath", "/var/lib/openclaw/repos/SpringMonkey")
-    extra = nex.get("pipelineCliArgs") or []
     job = spec["name"]
     wrapper_name = job.replace("-", "_")
     script_path = f"{repo}/scripts/news/jobs/{wrapper_name}.py"
     cmd_parts = ["python3", script_path]
     cmd_core = shlex.join(cmd_parts)
     model_cfg = cfg.get("model", {})
-    nw = model_cfg.get("newsWorker", "ollama/qwen2.5:14b-instruct")
+    nw = model_cfg.get("newsWorker", "ollama/qwen3:14b")
     return "\n".join(
         [
             "【新闻定时任务 · 流水线模式】",
@@ -146,6 +170,7 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
             "   b) 禁止将你自己生成的文字当作新闻播报投递到 Discord。",
             "   c) 禁止用「临时搜新闻写摘要」替代流水线产出。",
             "   d) 你唯一允许发到频道的新闻正文，只能来自流水线成功后 final_broadcast.md 的原文。",
+            "   e) 禁止返回“已成功/应发送/运行目录/文件路径/执行报告”之类说明文字，除非本轮是失败分支。",
             "",
             f"⚠ 模型角色边界：{nw} 仅在流水线内部作为逐条处理器被调用，",
             "   禁止将整个任务整包交给它，禁止让它做任务控制或长上下文判定。",
@@ -156,11 +181,12 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
             "   使用 process / exec 工具；OPENAI_API_KEY 由宿主环境提供。",
             "",
             "2) 若退出码 = 0：标准输出中会出现一行以 PIPELINE_OK 开头并带运行目录路径。",
-            "   进入该目录，读取 final_broadcast.md 的完整 UTF-8 正文，",
-            "   原样投递到 Discord（同频道、announce 模式）。除修复明显乱码外不得改写。",
+            "   进入该目录，读取 final_broadcast.md 的完整 UTF-8 正文。",
+            "   你的最终回答必须且只能是该文件正文本身；不要添加任何前言、后记、说明、代码块、路径、执行结果或“应发送到 Discord”之类文字。",
+            "   系统会把你的最终回答自动投递到该任务的 Discord 目标；你不要再调用 message.send，也不要要求系统代发。",
             "",
-            "3) 若退出码 ≠ 0：向同一频道发送一条简短失败说明（含退出码与末尾错误摘要），",
-            "   不得编造新闻条目，不得自行补写新闻内容。",
+            "3) 若退出码 ≠ 0：你的最终回答只写一条简短失败说明（含退出码与末尾错误摘要），",
+            "   不得编造新闻条目，不得自行补写新闻内容，不得添加多余说明。",
             "",
             f"（job 名：{job}；时间窗见 windowLabel。）",
         ]

@@ -14,7 +14,7 @@
 
 模型分工
 --------
-- Qwen (qwen2.5:14b-instruct)  → 逐条处理器：短上下文、单篇文章摘要
+- Qwen (qwen3:14b)  → 逐条处理器：短上下文、单篇文章摘要
 - GPT-OSS (gpt-oss:20b)        → 终稿格式化：本地可靠，无超量风险
 - Codex (openai-codex/gpt-5.4) → 降级备选：有超量拒绝风险
 
@@ -36,10 +36,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPO_ROOT / "config" / "news" / "broadcast.json"
+NEWS_STATE_DIR = Path("/var/lib/openclaw/.openclaw/state/news")
+RECENT_ITEMS_PATH = NEWS_STATE_DIR / "recent_items.json"
 
 # 与 formatRules.outline 顺序一致
 BATCH_SPECS: list[dict[str, Any]] = [
@@ -70,8 +74,8 @@ def resolve_ollama_base_url(cfg: dict) -> str:
 
 def ollama_api_model_name(model_id: str) -> str:
     """
-    Ollama /api/chat 的 model 字段必须是裸名（如 qwen2.5:14b-instruct）。
-    broadcast 里常与 OpenClaw 一致写成 ollama/qwen2.5:14b-instruct，需去掉 provider 前缀。
+    Ollama /api/chat 的 model 字段必须是裸名（如 qwen3:14b）。
+    broadcast 里常与 OpenClaw 一致写成 ollama/qwen3:14b，需去掉 provider 前缀。
     """
     s = (model_id or "").strip()
     if s.lower().startswith("ollama/"):
@@ -87,6 +91,59 @@ def save_json(path: Path, data: Any) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
     tmp.replace(path)
+
+
+def load_recent_items(path: Path, now_ts: int, max_age_hours: int) -> dict[str, Any]:
+    try:
+        data = load_json(path)
+    except Exception:
+        return {"version": 1, "items": []}
+    cutoff = now_ts - max_age_hours * 3600
+    kept = []
+    for item in data.get("items", []):
+        seen_ts = int(item.get("seen_ts") or 0)
+        if seen_ts >= cutoff:
+            kept.append(item)
+    return {"version": 1, "items": kept}
+
+
+def append_recent_items(path: Path, data: dict[str, Any], articles: list[dict], now_ts: int) -> None:
+    items = list(data.get("items", []))
+    seen = {str(item.get("fingerprint") or "") for item in items}
+    for art in articles:
+        fp = str(art.get("fingerprint") or "")
+        if not fp or fp in seen:
+            continue
+        seen.add(fp)
+        items.append(
+            {
+                "fingerprint": fp,
+                "title": art.get("title", ""),
+                "url": art.get("url", ""),
+                "published_ts": int(art.get("published_ts") or 0),
+                "seen_ts": now_ts,
+            }
+        )
+    save_json(path, {"version": 1, "items": items})
+
+
+def compute_window_bounds(job: dict, tz_name: str) -> tuple[int, int]:
+    schedule = job.get("schedule") or {}
+    expr = str(schedule.get("expr") or "").strip()
+    hour = 0
+    minute = 0
+    parts = expr.split()
+    if len(parts) >= 2:
+        minute = int(parts[0])
+        hour = int(parts[1])
+    tz = ZoneInfo(tz_name)
+    now_local = datetime.now(tz)
+    end_local = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if end_local > now_local:
+        end_local -= timedelta(days=1)
+    end_ts = int(end_local.timestamp())
+    start_ts = end_ts - int(job.get("windowHours") or 0) * 3600
+    return start_ts, end_ts
 
 
 def http_post_json(url: str, payload: dict, headers: dict[str, str], timeout: int) -> dict:
@@ -470,7 +527,7 @@ def main() -> int:
 
     worker_model_raw = os.environ.get(
         "NEWS_WORKER_MODEL",
-        model_cfg.get("newsWorker", "qwen2.5:14b-instruct"),
+        model_cfg.get("newsWorker", "qwen3:14b"),
     )
     finalize_model_raw = model_cfg.get("newsFinalize", "gpt-oss:20b")
     orch_model = os.environ.get(
@@ -484,6 +541,8 @@ def main() -> int:
     base_url = os.environ.get("NEWS_OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
     ollama_host = resolve_ollama_base_url(cfg)
     max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
+    dedupe_hours = int((cfg.get("newsExecution") or {}).get("crossRunDedupeHours", 36))
+    require_timestamp = bool((cfg.get("newsExecution") or {}).get("requireTimestampInWindow", True))
 
     ts = int(time.time())
     run_dir = args.run_dir
@@ -493,6 +552,7 @@ def main() -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
 
     plan = build_plan(cfg, job)
+    window_start_ts, window_end_ts = compute_window_bounds(job, cfg.get("timezone", "Asia/Tokyo"))
     save_json(run_dir / "plan.json", plan)
     save_json(
         run_dir / "meta.json",
@@ -507,6 +567,10 @@ def main() -> int:
             "ollama_api_worker": ollama_worker_model,
             "ollama_api_finalize": ollama_finalize_model,
             "ollama_base_url": ollama_host,
+            "window_start_ts": window_start_ts,
+            "window_end_ts": window_end_ts,
+            "cross_run_dedupe_hours": dedupe_hours,
+            "require_timestamp_in_window": require_timestamp,
         },
     )
 
@@ -515,6 +579,13 @@ def main() -> int:
     # --- discover + fetch ---
     fetcher = _load_fetcher()
     all_articles: dict[str, list] = {}
+    NEWS_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    recent_items = load_recent_items(RECENT_ITEMS_PATH, ts, dedupe_hours)
+    seen_fingerprints = {
+        str(item.get("fingerprint") or "")
+        for item in recent_items.get("items", [])
+        if str(item.get("fingerprint") or "")
+    }
 
     for b in plan["batches"]:
         bid = b["id"]
@@ -522,15 +593,34 @@ def main() -> int:
             all_articles[bid] = []
             continue
         print(f"[pipeline] discover {bid}...", file=sys.stderr)
-        articles = fetcher.discover_articles(bid, max_per_batch=8)
+        articles = fetcher.discover_articles(
+            bid,
+            max_per_batch=8,
+            window_start_ts=window_start_ts,
+            window_end_ts=window_end_ts,
+            exclude_fingerprints=seen_fingerprints,
+            require_timestamp=require_timestamp,
+        )
         if not args.skip_fetch:
             print(f"[pipeline] fetch {bid}: {len(articles)} articles...", file=sys.stderr)
             fetcher.fetch_and_fill(articles, max_chars=max_worker_chars)
         all_articles[bid] = [
-            {"title": a.title, "url": a.url, "content": a.content,
-             "fetch_ok": a.fetch_ok, "snippet": a.snippet}
+            {
+                "title": a.title,
+                "url": a.url,
+                "content": a.content,
+                "fetch_ok": a.fetch_ok,
+                "snippet": a.snippet,
+                "published_at": a.published_at,
+                "published_ts": a.published_ts,
+                "fingerprint": a.fingerprint,
+            }
             for a in articles
         ]
+        for art in all_articles[bid]:
+            fp = str(art.get("fingerprint") or "")
+            if fp:
+                seen_fingerprints.add(fp)
         save_json(run_dir / f"articles_{bid}.json", all_articles[bid])
 
     # --- worker: Qwen 逐条总结 ---
@@ -579,6 +669,12 @@ def main() -> int:
         if ok_draft:
             print("[pipeline] merged draft passes verify directly, skipping finalize model", file=sys.stderr)
             final_path.write_text(draft, encoding="utf-8")
+            append_recent_items(
+                RECENT_ITEMS_PATH,
+                recent_items,
+                [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
+                ts,
+            )
             print("PIPELINE_OK", run_dir)
             return 0
         else:
@@ -638,6 +734,12 @@ def main() -> int:
                 save_json(run_dir / "verify_errors.json", {"errors": err2})
                 return 3
 
+    append_recent_items(
+        RECENT_ITEMS_PATH,
+        recent_items,
+        [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
+        ts,
+    )
     print("PIPELINE_OK", run_dir)
     return 0
 
