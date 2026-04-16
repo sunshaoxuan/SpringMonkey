@@ -15,10 +15,10 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Create, update, verify, or delete generic OpenClaw cron jobs via the official Gateway CLI.",
     )
-    p.add_argument("--name", required=True, help="Stable job name.")
+    p.add_argument("--name", "--job-name", dest="name", help="Stable job name.")
     p.add_argument("--delete", action="store_true", help="Delete the named job instead of upserting it.")
     p.add_argument("--description", default="", help="Human-readable description.")
-    p.add_argument("--expr", help="Cron expression, for example: 0 7 * * 1-5")
+    p.add_argument("--expr", "--schedule", dest="expr", help="Cron expression, for example: 0 7 * * 1-5")
     p.add_argument("--tz", default="Asia/Tokyo", help="Cron timezone.")
     p.add_argument("--message-file", help="UTF-8 file containing the exact agentTurn message.")
     p.add_argument("--message", help="Exact agentTurn message.")
@@ -28,14 +28,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--delivery-account-id", default="default", help="Gateway accountId. Default: default.")
     p.add_argument("--model", default="ollama/qwen3:14b", help="Task model. Default keeps qwen primary.")
     p.add_argument("--thinking", default="low", help="Thinking setting. Default: low.")
-    p.add_argument("--timeout-seconds", type=int, default=900, help="Task timeout seconds. Default: 900.")
+    p.add_argument("--timeout-seconds", type=int, default=1800, help="Task timeout seconds. Default: 1800.")
     p.add_argument("--light-context", choices=["true", "false"], default="true")
     p.add_argument("--disabled", action="store_true", help="Create/update the job but leave it disabled.")
     p.add_argument("--agent-id", default="main", help="Target agent id. Default: main.")
     p.add_argument("--session-target", default="isolated", help="Session target. Default: isolated.")
     p.add_argument("--wake-mode", default="now", help="Wake mode. Default: now.")
     p.add_argument("--verify-only", action="store_true", help="Do not write. Only print the current matching job JSON.")
-    return p.parse_args()
+    args = p.parse_args()
+    if not args.name:
+        raise SystemExit("Missing required argument: --name")
+    return args
 
 
 def require_non_empty(value: str | None, flag: str) -> str:

@@ -32,12 +32,14 @@
 | 能力认知刷新 | 更新 runtime 注入提示，让模型按当前宿主机能力说话 | `remote_refresh_capability_awareness.py` | `OPENCLAW_SSH_PASSWORD` |
 | 长记忆修复 | 修复 `memory-lancedb` embeddings 路径与维度配置，重启 gateway 并做 recall 回归验证 | `remote_repair_memory_lancedb.py` | `OPENCLAW_SSH_PASSWORD` |
 | 长记忆启动级自愈 | 为 `memory-lancedb` 安装 `ExecStartPre`/`ExecStartPost` 守护：启动前自动重打补丁，启动后自动校验 1024 维 embeddings | `remote_install_memory_lancedb_guard.py` | `OPENCLAW_SSH_PASSWORD` |
+| qwen 超时三次重试 | 给当前 host `pi-embedded` bundle 加上 `qwen3:14b` 同模型超时三次内重试，并把现有 qwen cron 超时统一抬到 `1800` | `remote_install_qwen_timeout_retry_policy.py` | `OPENCLAW_SSH_PASSWORD` |
 | 国际渠道预部署 | 启用国际向官方渠道插件并预注册空配置入口 | `remote_enable_international_channels.py` | `OPENCLAW_SSH_PASSWORD` |
 | LINE 插件 | manifest / 插件未装全 | `remote_install_line_plugin_fix.py` | 同上 |
 | LINE 密钥 + 启用 | 已有 token/secret，写入并 `enabled=true` | `push_line_credentials_remote.py` | `OPENCLAW_SSH_PASSWORD`、`LINE_CHANNEL_ACCESS_TOKEN`、`LINE_CHANNEL_SECRET` |
 | LINE 首次结构 | 占位文件、`enabled=false` | `remote_line_openclaw_setup.sh`（在**宿主机 root** 执行） | 无密钥入仓 |
 | LINE 密钥（bash） | 与上类似，偏宿主机直跑 | `remote_line_apply_secrets.sh` | `LINE_CHANNEL_*` 在 shell 中 export |
 | LINE Webhook 公网入口 | 需把本机 `127.0.0.1:18789` 映射到 frps 公网 TCP 端口，供域名 HTTPS 反代 | `remote_frpc_line_webhook_map.py` | `OPENCLAW_SSH_PASSWORD`；可选 `FRPC_LINE_LOCAL_PORT`（默认 18789）、`FRPC_LINE_REMOTE_PORT`（默认 31879） |
+| LINE TimesCar cron 故障排查 | `LINE` 上 TimesCar 任务失败、`NO_REPLY`、`not-delivered`、旧 session 污染 | 以 `cron/jobs.json` + session `.jsonl` + `line-timescar-cron-repair-2026-04.md` 为准；必要时重置相关 cron session 并重新 `cron run` | 不要在 LINE 聊天里临时改 prompt/权限来“自修复” |
 | frpc 隧道诊断 | ccnode 上看不到 remotePort 时，在汤猴查日志/配置 | `remote_diag_frpc_tunnel.py` | `OPENCLAW_SSH_PASSWORD` |
 
 **统一 CLI（本机）**：`python SpringMonkey/scripts/openclaw_remote_cli.py <子命令>`，子命令与上表对应，见该脚本 `--help`。

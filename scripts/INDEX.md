@@ -56,6 +56,10 @@
   - 用途：为 `memory-lancedb` 安装启动级自愈守护；每次 `openclaw.service` 启动前自动重打补丁，启动后自动校验 embeddings 必须为 1024 维。
   - 典型用法：`python SpringMonkey/scripts/remote_install_memory_lancedb_guard.py`
 
+- `remote_install_qwen_timeout_retry_policy.py`
+  - 用途：给宿主机当前 `pi-embedded` bundle 加上 `qwen3:14b` 超时三次内重试、三次后才允许切 `codex` 的策略，并把现有所有 qwen cron 的 `timeoutSeconds` 统一抬到 `1800`。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_qwen_timeout_retry_policy.py`
+
 - `remote_enable_international_channels.py`
   - 用途：启用一批国际向官方渠道插件并预注册空配置入口，默认不写入 token、不主动上线。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_international_channels.py`

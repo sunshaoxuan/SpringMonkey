@@ -44,6 +44,23 @@
 - 新闻与聊天模型基线已统一到 `qwen3:14b -> codex fallback`
 - 若宿主机 `openclaw.json` 漂回 `qwen2.5:14b-instruct`，应视为偏离当前基线
 
+## 2.1 会话压缩基线
+
+当前宿主机基线：
+
+- `agents.defaults.compaction.mode = "safeguard"`
+- `agents.defaults.compaction.reserveTokens = 42000`
+- `agents.defaults.compaction.keepRecentTokens = 8000`
+- `agents.defaults.compaction.reserveTokensFloor = 32000`
+- `agents.defaults.compaction.recentTurnsPreserve = 6`
+
+说明：
+
+- 这条基线用于降低 Discord / LINE 长会话在高日志、高工具结果场景下突然触发 `Context limit exceeded` 的概率。
+- `reserveTokensFloor` 过低时，系统会更容易在关键回合临近上限时被迫压缩或直接重置会话。
+- 该项是全局 `agents.defaults` 配置，Discord 与 LINE 共用，不是单独 channel 配置。
+- 当前宿主机还启用了“任务前预压缩守卫”：如果任务未超限但已逼近 prompt 预算，也会在运行前先 compact，而不是等到中途溢出。
+
 ## 3. 联网与浏览器能力
 
 当前宿主机事实：
@@ -103,6 +120,8 @@
   - 有 `browser`
   - 如果 browser 本轮失败，只能说“本轮 browser backend 不可用”或“本轮网页访问失败”
   - 不得笼统说“我没有上网能力”
+  - 对管理员已授权、且宿主机已具备凭据的既有业务，不要求每次在聊天里重新显式给出密码或 token
+  - 直连 LINE 的 TimesCar 业务是这条通用规则的一个已知实例
 
 恢复脚本：
 

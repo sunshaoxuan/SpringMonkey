@@ -162,10 +162,10 @@ class TestPlanAndTemplate(unittest.TestCase):
 
     def test_ollama_api_model_name_strips_provider_prefix(self):
         self.assertEqual(
-            self.m.ollama_api_model_name("ollama/qwen2.5:14b-instruct"),
-            "qwen2.5:14b-instruct",
+            self.m.ollama_api_model_name("ollama/qwen3:14b"),
+            "qwen3:14b",
         )
-        self.assertEqual(self.m.ollama_api_model_name("qwen2.5:14b-instruct"), "qwen2.5:14b-instruct")
+        self.assertEqual(self.m.ollama_api_model_name("qwen3:14b"), "qwen3:14b")
         self.assertEqual(self.m.ollama_api_model_name("Ollama/foo:bar"), "foo:bar")
 
     def test_broadcast_json_has_ollama_base_url(self):

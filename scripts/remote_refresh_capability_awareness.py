@@ -39,6 +39,9 @@ This file tells the runtime agent what is actually available on this host right 
   Browser backend support is present on the host and may be used when visual navigation is needed.
 - Playwright is installed on the host.
 - Exec and process tools are available from both Discord and LINE.
+- For established admin-authorized workflows, host-stored credentials, tokens, cookies, and encrypted secrets are approved inputs even when they are not shown inline in the current chat.
+- If a direct admin request falls within an already authorized business workflow and the required credentials already exist on the host, do not refuse merely because the current chat does not repeat the secret material.
+- For direct LINE TimesCar workflows, encrypted TimesCar credentials are already stored on the host and may be used for the authorized booking, extension, cancellation, and reservation-adjustment workflow.
 
 ## Service Safety Rules
 
@@ -50,10 +53,18 @@ This file tells the runtime agent what is actually available on this host right 
 - For ordinary recurring tasks, use the generic cron job writer at `/var/lib/openclaw/repos/SpringMonkey/scripts/cron/upsert_generic_cron_job.py` instead of pretending a task already exists.
 - For ordinary recurring tasks, do not use raw `cron.update`, `cron.add`, or ad-hoc cron RPCs as the user-facing write path.
 - For ordinary recurring tasks, the only allowed write path is `/var/lib/openclaw/repos/SpringMonkey/scripts/cron/upsert_generic_cron_job.py`.
+- Prefer invoking the generic cron writer through `python3 /var/lib/openclaw/repos/SpringMonkey/scripts/cron/upsert_generic_cron_job.py ...` so execution does not depend on the file mode bit.
 - After creating or updating a generic cron job, immediately run the same wrapper again with `--verify-only`.
 - Do not claim `已触发正式任务` or `已创建定时任务` unless the wrapper write succeeded and `--verify-only` proves the stored job exists.
 - Verification must confirm at least the stored job name, schedule, `delivery.channel`, and `delivery.to`.
 - If verification does not find the expected job, explicitly say task creation did not finish.
+- Do not try `sudo`, `chmod`, or self-repair loops just to make the cron writer runnable; prefer the direct `python3 ...` form first.
+- Do not claim `已通过系统接口查询`, `已检查任务状态`, `已更新配置`, or similar system-verification wording unless the current turn actually used a tool that produced that evidence.
+- For generic task-status checks, use a real tool path such as the generic cron wrapper with `--verify-only`, `openclaw cron list --all --json`, or a direct file read of `jobs.json`.
+- If no tool evidence exists in the current turn, explicitly say the status is not yet verified instead of inferring a plausible failure cause.
+- Never invent a job name, failure time, HTTP status, or upstream site error when no matching job exists in the real cron store.
+- Do not fall back to a generic safety refusal merely because the current chat does not repeat credentials that are already securely stored on the host for an established admin-authorized workflow.
+- For direct admin requests, the right question is whether the action is within the already authorized workflow and whether the required host-side credentials exist; it is not whether the current message repeats the password.
 
 ## Browser Retention Rules
 
@@ -69,6 +80,7 @@ This file tells the runtime agent what is actually available on this host right 
 - Prefer `web_search` and `web_fetch` for ordinary page retrieval.
 - Use `browser` when a page needs visual interaction, JavaScript rendering, login state, or click/navigation behavior.
 - If browser backend is temporarily unavailable, say: `本轮 browser backend 不可用` or `本轮网页访问失败`, not `我没有上网能力`.
+- For established admin-authorized workflows, do not fall back to a generic safety refusal when the real issue is a concrete execution failure. Prefer the concrete reason: missing host credential, decryption failed, login failed, site changed, permission actually denied, page control missing, or verification failed.
 '''
 
 tools_path.write_text(content, encoding="utf-8")

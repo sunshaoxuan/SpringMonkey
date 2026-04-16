@@ -32,7 +32,7 @@ OLD_CLASSIFY = """async function classifyDiscordIntent(promptText) {
 \t\tmethod: "POST",
 \t\theaders: { "content-type": "application/json" },
 \t\tbody: JSON.stringify({
-\t\t\tmodel: "qwen2.5:14b-instruct",
+\t\t\tmodel: "qwen3:14b",
 \t\t\tprompt: [
 \t\t\t\t"Classify the user's intent into exactly one label.",
 \t\t\t\t"Allowed labels: chat, task_control, news_task, repo_sync.",
@@ -73,7 +73,7 @@ NEW_CLASSIFY = """async function classifyDiscordIntent(promptText) {
 \t\t\theaders: { "content-type": "application/json" },
 \t\t\tsignal: ac.signal,
 \t\t\tbody: JSON.stringify({
-\t\t\t\tmodel: "qwen2.5:14b-instruct",
+\t\t\t\tmodel: "qwen3:14b",
 \t\t\t\tprompt: [
 \t\t\t\t\t"Classify the user's intent into exactly one label.",
 \t\t\t\t\t"Allowed labels: chat, task_control, news_task, repo_sync.",
@@ -228,7 +228,7 @@ NEW_EMBEDDED_INTENT_BLOCK = """\tlog$16.debug(`embedded run start: runId=${param
 \t}
 \tif ((!intentRoute || !intentRoute.rerouted) && String(params.provider ?? "").toLowerCase() === "ollama" && shouldRunIntentRouting(params)) {
 \t\tlet ollamaOk = false;
-\t\tconst probeModel = String(params.modelId || "qwen2.5:14b-instruct");
+\t\tconst probeModel = String(params.modelId || "qwen3:14b");
 \t\tconst ac2 = new AbortController();
 \t\tconst tid2 = setTimeout(() => ac2.abort(), 12000);
 \t\ttry {

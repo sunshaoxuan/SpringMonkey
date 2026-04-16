@@ -70,6 +70,21 @@
 8. 自动化验证：`test_manual_news_heuristics.py`、`test_cron_run_cli.sh`、`integration_verify_host.py --apply-v6 --apply-v7`。
 9. 验证：`journalctl` 可出现 `manual-news-run=1 tools-disabled=1` 且主 session 不再输出新闻摘要。
 
+## 当前 bundle 修复（2026-04-08）
+
+若 OpenClaw 升级后 `dist/pi-embedded-*.js` 文件名与旧补丁脚本写死的目标不一致，`v3`–`v8` 可能**根本没有打到当前运行文件**，表现为 Discord 手动重跑再次自由发挥。
+
+当前仓库新增：
+
+- `scripts/openclaw/patch_news_manual_rerun_current.py`
+
+行为：
+
+- 自动定位当前包含 `runEmbeddedAttempt` 的活跃 `pi-embedded` bundle
+- 对 Discord 手动新闻重跑请求直接执行正式 `openclaw cron run`
+- 主会话禁用工具，只允许回复固定确认句
+- 避免再次出现“主会话自由生成摘要，正式任务没有真正接管”的回归
+
 ## 策略对齐
 
 见 `docs/policies/INTENT_TOOL_ROUTING_AND_ACCUMULATION.md` 中 `news_rerun` 与 `openclaw.cron.run`。

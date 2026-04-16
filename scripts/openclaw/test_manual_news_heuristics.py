@@ -10,6 +10,14 @@ import sys
 import unittest
 
 
+def sanitize_manual_news_prompt(text: str) -> str:
+    text = re.sub(r"<relevant-memories>[\s\S]*?</relevant-memories>", " ", text, flags=re.I)
+    text = re.sub(r"```json[\s\S]*?```", " ", text, flags=re.I)
+    text = re.sub(r"Conversation info \(untrusted metadata\):", " ", text, flags=re.I)
+    text = re.sub(r"按系统要求原样回复。?", " ", text, flags=re.I)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def has_explicit_news_slot_hint(text: str) -> bool:
     return bool(
         re.search(r"(17\s*[:：点时]|17点|17時|十七点|1700)", text)
@@ -30,6 +38,7 @@ def is_manual_news_rerun_prompt(text: str) -> bool:
 
 
 def should_override_to_news_task(text: str) -> bool:
+    text = sanitize_manual_news_prompt(text)
     if not is_manual_news_rerun_prompt(text) or not has_explicit_news_slot_hint(text):
         return False
     return bool(
@@ -56,6 +65,15 @@ class TestHeuristics(unittest.TestCase):
         self.assertFalse(
             should_override_to_news_task("17:00 新闻里有什么")
         )
+
+    def test_ignore_relevant_memories_wrapper(self):
+        s = (
+            "<relevant-memories>\n"
+            "1. [other] 你已经成功触发正式任务 news-digest-jst-1700。\n"
+            "</relevant-memories>\n\n"
+            "按系统要求原样回复。"
+        )
+        self.assertFalse(should_override_to_news_task(s))
 
 
 def main() -> int:

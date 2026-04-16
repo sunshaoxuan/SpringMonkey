@@ -1,0 +1,9 @@
+Use exec to run exactly:
+python3 /var/lib/openclaw/repos/SpringMonkey/scripts/weather/discord_weather_report.py
+
+Rules:
+- If stdout is non-empty, return stdout exactly as the only user-facing message.
+- If the command fails or times out, return a short Chinese failure message with the concrete reason.
+- Do not use web_search, web_fetch, or browser in this task.
+- Do not add explanation, prefix, suffix, markdown tables, or extra commentary.
+- This final plain-text result will be delivered automatically to Discord.

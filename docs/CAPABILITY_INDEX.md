@@ -36,6 +36,7 @@
 | HTTP 监听 | 默认 **127.0.0.1:18789**（本机 `/line/webhook` 诊断用） | `scripts/remote_diag_openclaw_webhook.py`、运维对话记录 |
 | 共享能力入口 | `openclaw.service` 通过 drop-in 加载 `/etc/openclaw/openclaw.env`；Discord / LINE 共用同一套 provider secret 与 `tools.elevated.allowFrom` | `scripts/remote_enable_shared_channel_capabilities.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 聊天主模型 | `ollama/qwen3:14b` 主力，`openai-codex/gpt-5.4` 候补 | `config/news/broadcast.json`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
+| qwen 超时策略 | `qwen3:14b` 超时先在同模型内重试 3 次，现有 qwen cron 超时基线抬到 `1800s`，耗尽后才允许切 `codex` | `scripts/remote_install_qwen_timeout_retry_policy.py`、`docs/runtime-notes/qwen-timeout-retry-policy-2026-04.md` |
 | Browser backend | 常驻 Chrome + raw CDP，默认 `127.0.0.1:18800`，OpenClaw profile `openclaw` | `scripts/remote_enable_persistent_browser_backend.py`、`scripts/remote_install_browser_guardrails.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 长记忆 | `memory-lancedb`、LanceDB 路径、embedding 策略 | `HOST_ACCESS_REDACTED.md`、`docs/ops/OPENCLAW_VECTOR_BACKEND_PLAN.md` |
 | 监控与审计 | 日志路径、`openclaw-snapshot.timer` 等 | `docs/ops/OPENCLAW_MONITORING_PLAN.md` |
@@ -46,6 +47,7 @@
 | 通用定时任务 | 普通 recurring task 的真实落地入口与验收规则；不能只凭对话宣称任务已创建 | `docs/runtime-notes/generic-cron-task-domain-2026-04.md`、`scripts/cron/upsert_generic_cron_job.py` |
 | LINE | Webhook 路径默认 `/line/webhook`、插件 `@openclaw/line`、需 HTTPS 公网；`dmPolicy` / pairing / open / frpc 映射见专项基线文档 | `docs/runtime-notes/line-runtime-baseline-2026-04.md`、本仓库 `scripts/remote_*.py`、`remote_line_*.sh` |
 | TimesCar 自动化 | 登录入口不再写死为单一 URL；采用“缓存优先，失效后自主探查并回写缓存” | `docs/runtime-notes/timescar-site-discovery-baseline-2026-04.md` |
+| LINE TimesCar cron 修复 | 解释为什么 `LINE` 自修复会越修越差、`NO_REPLY` 的 `not-delivered` 应如何解读，以及 `timescar-*` 的当前稳定链路 | `docs/runtime-notes/line-timescar-cron-repair-2026-04.md` |
 | 国际渠道预部署 | Telegram / Slack / Signal / Matrix / IRC / Twitch 等插件已预部署，但默认不写 token | `scripts/remote_enable_international_channels.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 
 **注意**：`OPENCLAW_MONITORING_PLAN.md` 前段曾有「未下令前不启动」等历史结论，后段与 `docs/ops/*` 中 **已稳定运行** 的描述可能并存；以**当前** `systemctl` 与最新 ops 为准。
