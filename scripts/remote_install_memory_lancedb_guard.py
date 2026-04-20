@@ -16,6 +16,8 @@ PORT = int(os.environ.get("OPENCLAW_SSH_PORT", "8822"))
 USER = os.environ.get("OPENCLAW_SSH_USER", "root")
 LOCAL_PATCH = _SCRIPTS / "openclaw" / "patch_memory_lancedb_raw_embeddings_current.py"
 REMOTE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_memory_lancedb_raw_embeddings_current.py"
+LOCAL_AUTOCAPTURE_PATCH = _SCRIPTS / "openclaw" / "patch_memory_lancedb_autocapture_current.py"
+REMOTE_AUTOCAPTURE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_memory_lancedb_autocapture_current.py"
 
 REMOTE = r"""
 set -e
@@ -27,13 +29,22 @@ set -euo pipefail
 export HOME=/var/lib/openclaw
 REPO=/var/lib/openclaw/repos/SpringMonkey
 PATCH="${REPO}/scripts/openclaw/patch_memory_lancedb_raw_embeddings_current.py"
+AUTOCAPTURE_PATCH="${REPO}/scripts/openclaw/patch_memory_lancedb_autocapture_current.py"
 PLUGIN="/usr/lib/node_modules/openclaw/dist/extensions/memory-lancedb/index.js"
 if [ ! -f "$PATCH" ]; then
   echo "[memory-guard] missing patch script: $PATCH" >&2
   exit 1
 fi
+if [ ! -f "$AUTOCAPTURE_PATCH" ]; then
+  echo "[memory-guard] missing patch script: $AUTOCAPTURE_PATCH" >&2
+  exit 1
+fi
 python3 "$PATCH" >/tmp/memory-lancedb-guard-patch.log 2>&1 || {
   cat /tmp/memory-lancedb-guard-patch.log >&2 || true
+  exit 1
+}
+python3 "$AUTOCAPTURE_PATCH" >/tmp/memory-lancedb-guard-autocapture.log 2>&1 || {
+  cat /tmp/memory-lancedb-guard-autocapture.log >&2 || true
   exit 1
 }
 python3 - <<'PY'
@@ -43,6 +54,9 @@ text = plugin.read_text(encoding="utf-8")
 required = [
     "const response = await fetch(`${baseUrl}/embeddings`, {",
     "Embeddings dimension mismatch: expected ${expectedDims}, got ${vector.length}",
+    "function stripConversationMetadata(text) {",
+    "remember|记住|记一下|请记住|别忘了",
+    "const normalizedTexts = texts.map((text) => stripConversationMetadata(text)).filter(Boolean);",
 ]
 missing = [item for item in required if item not in text]
 if missing:
@@ -134,6 +148,10 @@ def main() -> int:
         print(f"missing local patch script: {LOCAL_PATCH}", file=sys.stderr)
         c.close()
         return 1
+    if not LOCAL_AUTOCAPTURE_PATCH.is_file():
+        print(f"missing local patch script: {LOCAL_AUTOCAPTURE_PATCH}", file=sys.stderr)
+        c.close()
+        return 1
     sftp = c.open_sftp()
     try:
         try:
@@ -141,6 +159,7 @@ def main() -> int:
         except OSError:
             pass
         sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
+        sftp.put(str(LOCAL_AUTOCAPTURE_PATCH), REMOTE_AUTOCAPTURE_PATCH)
     finally:
         sftp.close()
     stdin, stdout, stderr = c.exec_command(REMOTE, get_pty=True, timeout=900)

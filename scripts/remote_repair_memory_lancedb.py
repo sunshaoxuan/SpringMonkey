@@ -104,6 +104,8 @@ else:
     print("PATCHED already")
 PY
 
+python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_memory_lancedb_autocapture_current.py
+
 python3 <<'PY'
 import json, shutil
 from datetime import datetime
