@@ -64,20 +64,35 @@ def build_message(cfg: dict, job: dict) -> str:
             pools_text.append(f"- {label}优先信源池：{'、'.join(pools[region])}。")
 
     model_cfg = cfg.get("model", {})
-    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.4"))
+    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "ollama/qwen3:14b"))
     news_worker = model_cfg.get("newsWorker", "ollama/qwen3:14b")
 
     qwen_policy = model_cfg.get("qwenUsagePolicy", {})
     qwen_allowed = "、".join(qwen_policy.get("allowedScenarios", ["逐条摘要", "单条分类"]))
     qwen_forbidden = "、".join(qwen_policy.get("forbiddenScenarios", ["大任务整包", "任务总控"]))
 
+    same_model_roles = news_orchestrator == news_worker
+
     intro = [
         "你要向 Discord public 频道发布新闻简报。",
         f"- 这类新闻任务由 {news_orchestrator} 主导。",
-        f"- 本地模型 {news_worker} 仅作为 **处理器** 使用，严禁用于任务控制。",
-        f"  - {news_worker} 允许场景：{qwen_allowed}。",
-        f"  - {news_worker} 禁止场景：{qwen_forbidden}。",
-        f"  - 不要把整批候选新闻、全部规则一次性塞给 {news_worker}，应逐条或逐查询调用。",
+    ]
+    if same_model_roles:
+        intro.extend([
+            f"- 当前总控与处理器统一使用 {news_worker}，但仍必须保持轻上下文、分阶段执行。",
+            f"  - {news_worker} 允许场景：{qwen_allowed}。",
+            f"  - {news_worker} 禁止场景：{qwen_forbidden}。",
+            f"  - 不要把整批候选新闻、全部规则一次性塞给 {news_worker}，应逐条或逐查询调用。",
+            "- 若 qwen 出现持续性灾难故障，再允许切换到 Codex 兜底；正常情况下不得主动升级到 Codex。",
+        ])
+    else:
+        intro.extend([
+            f"- 本地模型 {news_worker} 仅作为 **处理器** 使用，严禁用于任务控制。",
+            f"  - {news_worker} 允许场景：{qwen_allowed}。",
+            f"  - {news_worker} 禁止场景：{qwen_forbidden}。",
+            f"  - 不要把整批候选新闻、全部规则一次性塞给 {news_worker}，应逐条或逐查询调用。",
+        ])
+    intro.extend([
         f"- 最终成稿、格式校验、链接完整性把关与最后投递，由 {news_orchestrator} 负责。",
         "- 绝对不要直接生成占位结果，例如“[标题] [来源]”。如果没有真实候选条目，就明确写出本节无合格新增新闻条目。",
         "- 如果你没有真正完成候选抓取、逐条整理、机械合并和最终校验，不得宣称“已完成播报”。",
@@ -237,7 +252,7 @@ def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
     existing["payload"] = {
         "kind": "agentTurn",
         "message": body,
-        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.4")),
+        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "ollama/qwen3:14b")),
         "thinking": cfg["model"]["thinking"],
         "timeoutSeconds": timeout_sec,
         "lightContext": cfg["model"]["lightContext"],

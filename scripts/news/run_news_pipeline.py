@@ -532,7 +532,7 @@ def main() -> int:
     finalize_model_raw = model_cfg.get("newsFinalize", "gpt-oss:20b")
     orch_model = os.environ.get(
         "NEWS_ORCHESTRATOR_MODEL",
-        model_cfg.get("newsOrchestrator", "gpt-4o"),
+        model_cfg.get("newsOrchestrator", "ollama/qwen3:14b"),
     )
 
     ollama_worker_model = ollama_api_model_name(worker_model_raw)

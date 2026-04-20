@@ -31,7 +31,7 @@
 
 - 主力聊天模型：`ollama/qwen3:14b`
 - 候补模型：`openai-codex/gpt-5.4`
-- 新闻总控：`openai-codex/gpt-5.4`
+- 新闻总控：`ollama/qwen3:14b`
 - 新闻 worker：`ollama/qwen3:14b`
 - Ollama 基址：`http://ccnode.briconbric.com:22545`
 
@@ -41,7 +41,8 @@
 
 说明：
 
-- 新闻与聊天模型基线已统一到 `qwen3:14b -> codex fallback`
+- 新闻、聊天与任务总控基线已统一到 `qwen3:14b -> codex fallback`
+- `openai-codex/gpt-5.4` 只应在 qwen 持续超时、断连或宿主级灾难故障时作为最后兜底
 - 若宿主机 `openclaw.json` 漂回 `qwen2.5:14b-instruct`，应视为偏离当前基线
 
 ## 2.1 会话压缩基线
