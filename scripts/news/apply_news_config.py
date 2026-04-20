@@ -108,7 +108,7 @@ def build_message(cfg: dict, job: dict) -> str:
         "- 绝对不要出现嵌套数字编号。",
         "- 发出前先自检：整篇中带数字编号的行只能是 1 到 4 这四个一级标题。若不满足，先重写再发送。",
         f"- 若某一地区没有足够重大且可确认的新条目，写一条项目符号说明“{fr['fallbackNoMajorUpdateLine']}”，不要为了凑数乱编号。",
-    ]
+    ])
     if fr.get("omitFinalSourceSummary"):
         intro.append("- 每条新闻既然已经单独附链接，文末不要再重复列一次所有来源概览。")
     intro.extend(link_rules)
