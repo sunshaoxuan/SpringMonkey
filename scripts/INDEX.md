@@ -60,6 +60,22 @@
   - 用途：给宿主机当前 `pi-embedded` bundle 加上 `qwen3:14b` 超时三次内重试、三次后才允许切 `codex` 的策略，并把现有所有 qwen cron 的 `timeoutSeconds` 统一抬到 `1800`。
   - 典型用法：`python SpringMonkey/scripts/remote_install_qwen_timeout_retry_policy.py`
 
+- `remote_install_three_phase_reply_guard.py`
+  - 用途：给 direct chat 安装“三段式可见性”补丁，确保先回执、长任务给进度、空结果时给兜底收尾，而不是石沉大海。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_three_phase_reply_guard.py`
+
+- `remote_install_operational_execution_guard.py`
+  - 用途：给操作型任务安装 plan-execute-observe-replan 执行协议，网站/账号类任务优先走 browser-first，而不是只靠一段长 thinking。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_operational_execution_guard.py`
+
+- `remote_install_agent_society_runtime_guard.py`
+  - 用途：执行一次性的 agent society runtime 部署；会把仓库中的 `scripts/openclaw/patch_agent_society_runtime_current.py` 同步到宿主机并应用。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_agent_society_runtime_guard.py`
+
+- `remote_install_agent_society_startup_guard.py`
+  - 用途：为 agent society runtime 安装启动级自愈守护；以后宿主机只要 `git pull` 到新 patch 脚本，`openclaw.service` 启动前就会从 repo 重打补丁，不再依赖手改残留。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_agent_society_startup_guard.py`
+
 - `remote_enable_international_channels.py`
   - 用途：启用一批国际向官方渠道插件并预注册空配置入口，默认不写入 token、不主动上线。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_international_channels.py`

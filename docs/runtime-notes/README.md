@@ -14,6 +14,7 @@ These notes may change over time, but they should remain factual and should not 
 - LINE 运行基线：`line-runtime-baseline-2026-04.md`
 - LINE / TimesCar 定时任务根因修复与回归：`line-timescar-cron-repair-2026-04.md`
 - qwen 超时三次重试后才允许切 codex：`qwen-timeout-retry-policy-2026-04.md`
+- 任务执行从单轮聊天向 Goal / Intent / Task / Step / Agent Society 过渡：`agent-society-runtime-guard-2026-04.md`
 - 通用定时任务落地与验收：`generic-cron-task-domain-2026-04.md`
 - `memory-lancedb` embeddings 维度漂移修复与启动级自愈：`memory-lancedb-raw-embeddings-fix.md`
 - 新闻 cron 自动投递只发执行报告的修复：`news-cron-final-broadcast-delivery-fix.md`

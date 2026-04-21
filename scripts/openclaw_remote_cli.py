@@ -34,6 +34,8 @@ TOOLS: dict[str, str] = {
     "capability-awareness": "remote_refresh_capability_awareness.py",
     "memory-repair": "remote_repair_memory_lancedb.py",
     "memory-guard": "remote_install_memory_lancedb_guard.py",
+    "agent-society-runtime": "remote_install_agent_society_runtime_guard.py",
+    "agent-society-guard": "remote_install_agent_society_startup_guard.py",
     "intl-channels": "remote_enable_international_channels.py",
     "line-install": "remote_install_line_plugin_fix.py",
     "line-push": "push_line_credentials_remote.py",

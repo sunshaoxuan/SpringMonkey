@@ -52,7 +52,7 @@
 - `agents.defaults.compaction.mode = "safeguard"`
 - `agents.defaults.compaction.reserveTokens = 42000`
 - `agents.defaults.compaction.keepRecentTokens = 8000`
-- `agents.defaults.compaction.reserveTokensFloor = 32000`
+- `agents.defaults.compaction.reserveTokensFloor = 64000`
 - `agents.defaults.compaction.recentTurnsPreserve = 6`
 
 说明：
@@ -214,12 +214,13 @@
 如果宿主机被覆盖，优先按这个顺序恢复：
 
 1. `git pull` 仓库到宿主机现场路径
-2. 恢复共享能力入口：`shared-capabilities`
-3. 恢复联网与浏览器基线：`browser-capabilities` → `browser-backend` → `browser-guardrails`
-4. 刷新能力认知：`capability-awareness`
-5. 恢复长记忆：`memory-repair`
-6. 预部署国际渠道：`intl-channels`
-7. 应用新闻配置并重启服务
+2. 恢复 direct task runtime bridge：`agent-society-runtime` → `agent-society-guard`
+3. 恢复共享能力入口：`shared-capabilities`
+4. 恢复联网与浏览器基线：`browser-capabilities` → `browser-backend` → `browser-guardrails`
+5. 刷新能力认知：`capability-awareness`
+6. 恢复长记忆：`memory-repair`
+7. 预部署国际渠道：`intl-channels`
+8. 应用新闻配置并重启服务
 
 ## 10. 相关脚本入口
 
@@ -230,5 +231,8 @@
 - `scripts/remote_install_browser_guardrails.py`
 - `scripts/remote_refresh_capability_awareness.py`
 - `scripts/remote_repair_memory_lancedb.py`
+- `scripts/remote_install_agent_society_runtime_guard.py`
+- `scripts/remote_install_agent_society_startup_guard.py`
+- `scripts/openclaw/patch_agent_society_runtime_current.py`
 - `scripts/remote_enable_international_channels.py`
 - `scripts/news/apply_news_config.py`

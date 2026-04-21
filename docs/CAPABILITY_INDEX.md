@@ -37,6 +37,7 @@
 | 共享能力入口 | `openclaw.service` 通过 drop-in 加载 `/etc/openclaw/openclaw.env`；Discord / LINE 共用同一套 provider secret 与 `tools.elevated.allowFrom` | `scripts/remote_enable_shared_channel_capabilities.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 聊天与任务总控主模型 | `ollama/qwen3:14b` 主力，`openai-codex/gpt-5.4` 仅灾难回退 | `config/news/broadcast.json`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | qwen 超时策略 | `qwen3:14b` 超时先在同模型内重试 3 次，现有 qwen cron 超时基线抬到 `1800s`，耗尽后才允许切 `codex` | `scripts/remote_install_qwen_timeout_retry_policy.py`、`docs/runtime-notes/qwen-timeout-retry-policy-2026-04.md` |
+| 任务执行内核过渡层 | direct chat 已增加“三段式可见性 + 操作型任务执行协议 + Goal/Intent/Task/Step/Agent Society 协议”补丁，目标是从单轮聊天执行器过渡到受控 Agent 群 | `scripts/remote_install_three_phase_reply_guard.py`、`scripts/remote_install_operational_execution_guard.py`、`scripts/remote_install_agent_society_runtime_guard.py`、`docs/runtime-notes/agent-society-runtime-guard-2026-04.md`、`docs/policies/GOAL_INTENT_TASK_AGENT_SOCIETY.md` |
 | Browser backend | 常驻 Chrome + raw CDP，默认 `127.0.0.1:18800`，OpenClaw profile `openclaw` | `scripts/remote_enable_persistent_browser_backend.py`、`scripts/remote_install_browser_guardrails.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 长记忆 | `memory-lancedb`、LanceDB 路径、embedding 策略 | `HOST_ACCESS_REDACTED.md`、`docs/ops/OPENCLAW_VECTOR_BACKEND_PLAN.md` |
 | 监控与审计 | 日志路径、`openclaw-snapshot.timer` 等 | `docs/ops/OPENCLAW_MONITORING_PLAN.md` |
