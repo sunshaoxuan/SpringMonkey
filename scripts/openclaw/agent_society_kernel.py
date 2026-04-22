@@ -126,6 +126,34 @@ class AgentSocietyKernel:
         self.root = root
         self.sessions_dir = root / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        self.ensure_workspace_bridge()
+
+    def ensure_workspace_bridge(self) -> None:
+        workspace = self.root.parent
+        workspace.mkdir(parents=True, exist_ok=True)
+        policy_file = workspace / "AGENT_SOCIETY_KERNEL.md"
+        policy_text = """# Agent Society Kernel
+
+This host has a minimal durable kernel for goal -> intent -> task -> step execution state.
+
+State root:
+
+- `/var/lib/openclaw/.openclaw/workspace/agent_society_kernel`
+
+Current expectations:
+
+- direct work may be represented as one goal with multiple intents
+- intents may map to multiple tasks
+- tasks map to concrete observable steps
+- each step should identify current tool candidates and one chosen tool
+- observations should be written back into durable state instead of living only in prompt text
+
+Current limitation:
+
+- this kernel is a state and execution-loop foundation
+- it is not yet a full native OpenClaw scheduler
+"""
+        policy_file.write_text(policy_text, encoding="utf-8")
 
     def bootstrap_session(self, prompt: str, channel: str, user_id: str) -> KernelSession:
         session_id = make_id("session")

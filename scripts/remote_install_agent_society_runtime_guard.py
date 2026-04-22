@@ -18,6 +18,8 @@ LOCAL_PATCH = _SCRIPTS / "openclaw" / "patch_agent_society_runtime_current.py"
 REMOTE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_agent_society_runtime_current.py"
 LOCAL_PREEMPTIVE_PATCH = _SCRIPTS / "openclaw" / "patch_preemptive_compaction_runtime_current.py"
 REMOTE_PREEMPTIVE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
+LOCAL_KERNEL = _SCRIPTS / "openclaw" / "agent_society_kernel.py"
+REMOTE_KERNEL = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/agent_society_kernel.py"
 
 REMOTE = r"""
 set -euo pipefail
@@ -25,6 +27,7 @@ set -euo pipefail
 REPO=/var/lib/openclaw/repos/SpringMonkey
 PATCH="${REPO}/scripts/openclaw/patch_agent_society_runtime_current.py"
 PREEMPTIVE_PATCH="${REPO}/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
+KERNEL="${REPO}/scripts/openclaw/agent_society_kernel.py"
 if [ ! -f "$PATCH" ]; then
   echo "missing patch script: $PATCH" >&2
   exit 1
@@ -33,9 +36,18 @@ if [ ! -f "$PREEMPTIVE_PATCH" ]; then
   echo "missing patch script: $PREEMPTIVE_PATCH" >&2
   exit 1
 fi
+if [ ! -f "$KERNEL" ]; then
+  echo "missing kernel script: $KERNEL" >&2
+  exit 1
+fi
 
 python3 "$PATCH"
 python3 "$PREEMPTIVE_PATCH"
+install -d -m 755 /var/lib/openclaw/.openclaw/workspace/agent_society_kernel/sessions
+python3 "$KERNEL" --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel new-session --channel system --user-id bootstrap --prompt "refresh agent society kernel state root after runtime deployment" >/tmp/agent-society-kernel-bootstrap.log 2>&1 || {
+  cat /tmp/agent-society-kernel-bootstrap.log >&2 || true
+  exit 1
+}
 
 systemctl restart openclaw.service
 systemctl is-active openclaw.service
@@ -92,6 +104,13 @@ print({
 })
 workspace_file = Path("/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md")
 print({"workspace_policy": workspace_file.exists()})
+kernel_workspace = Path("/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_KERNEL.md")
+kernel_state_root = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
+print({
+    "kernel_workspace_policy": kernel_workspace.exists(),
+    "kernel_state_root": kernel_state_root.exists(),
+    "kernel_sessions_dir": (kernel_state_root / "sessions").exists(),
+})
 PY
 """
 
@@ -122,6 +141,10 @@ def main() -> int:
         print(f"missing local patch script: {LOCAL_PREEMPTIVE_PATCH}", file=sys.stderr)
         client.close()
         return 1
+    if not LOCAL_KERNEL.is_file():
+        print(f"missing local kernel script: {LOCAL_KERNEL}", file=sys.stderr)
+        client.close()
+        return 1
     sftp = client.open_sftp()
     try:
         try:
@@ -130,6 +153,7 @@ def main() -> int:
             pass
         sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
         sftp.put(str(LOCAL_PREEMPTIVE_PATCH), REMOTE_PREEMPTIVE_PATCH)
+        sftp.put(str(LOCAL_KERNEL), REMOTE_KERNEL)
     finally:
         sftp.close()
     _, stdout, stderr = client.exec_command(REMOTE.strip(), get_pty=True)
@@ -139,7 +163,7 @@ def main() -> int:
     sys.stdout.write(out)
     if err.strip():
         sys.stderr.write(err)
-    return 0 if "HEALTH_OK" in out and "agent_society_protocol_token" in out and "preemptive_compaction_guard" in out else 1
+    return 0 if "HEALTH_OK" in out and "agent_society_protocol_token" in out and "preemptive_compaction_guard" in out and "kernel_state_root" in out else 1
 
 
 if __name__ == "__main__":

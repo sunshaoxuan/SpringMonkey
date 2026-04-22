@@ -19,6 +19,8 @@ LOCAL_PATCH = _SCRIPTS / "openclaw" / "patch_agent_society_runtime_current.py"
 REMOTE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_agent_society_runtime_current.py"
 LOCAL_PREEMPTIVE_PATCH = _SCRIPTS / "openclaw" / "patch_preemptive_compaction_runtime_current.py"
 REMOTE_PREEMPTIVE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
+LOCAL_KERNEL = _SCRIPTS / "openclaw" / "agent_society_kernel.py"
+REMOTE_KERNEL = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/agent_society_kernel.py"
 
 REMOTE = r"""
 set -e
@@ -31,6 +33,7 @@ export HOME=/var/lib/openclaw
 REPO=/var/lib/openclaw/repos/SpringMonkey
 PATCH="${REPO}/scripts/openclaw/patch_agent_society_runtime_current.py"
 PREEMPTIVE_PATCH="${REPO}/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
+KERNEL="${REPO}/scripts/openclaw/agent_society_kernel.py"
 if [ ! -f "$PATCH" ]; then
   echo "[agent-society-guard] missing patch script: $PATCH" >&2
   exit 1
@@ -39,12 +42,21 @@ if [ ! -f "$PREEMPTIVE_PATCH" ]; then
   echo "[agent-society-guard] missing patch script: $PREEMPTIVE_PATCH" >&2
   exit 1
 fi
+if [ ! -f "$KERNEL" ]; then
+  echo "[agent-society-guard] missing kernel script: $KERNEL" >&2
+  exit 1
+fi
 python3 "$PATCH" >/tmp/agent-society-runtime-guard.log 2>&1 || {
   cat /tmp/agent-society-runtime-guard.log >&2 || true
   exit 1
 }
 python3 "$PREEMPTIVE_PATCH" >/tmp/preemptive-compaction-runtime-guard.log 2>&1 || {
   cat /tmp/preemptive-compaction-runtime-guard.log >&2 || true
+  exit 1
+}
+install -d -m 755 /var/lib/openclaw/.openclaw/workspace/agent_society_kernel/sessions
+python3 "$KERNEL" --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel new-session --channel system --user-id bootstrap --prompt "refresh agent society kernel state root before gateway start" >/tmp/agent-society-kernel-bootstrap.log 2>&1 || {
+  cat /tmp/agent-society-kernel-bootstrap.log >&2 || true
   exit 1
 }
 python3 - <<'PY'
@@ -89,6 +101,12 @@ selection_required = [
 selection_missing = [item for item in selection_required if item not in selection_text]
 if selection_missing:
     raise SystemExit(f"[agent-society-guard] preemptive compaction verification failed: missing {selection_missing}")
+kernel_workspace = Path("/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_KERNEL.md")
+kernel_state_root = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
+if not kernel_workspace.exists():
+    raise SystemExit("[agent-society-guard] kernel workspace file missing")
+if not (kernel_state_root / "sessions").exists():
+    raise SystemExit("[agent-society-guard] kernel state root missing")
 print("[agent-society-guard] patch verification ok")
 PY
 EOF
@@ -148,6 +166,10 @@ def main() -> int:
         print(f"missing local patch script: {LOCAL_PREEMPTIVE_PATCH}", file=sys.stderr)
         c.close()
         return 1
+    if not LOCAL_KERNEL.is_file():
+        print(f"missing local kernel script: {LOCAL_KERNEL}", file=sys.stderr)
+        c.close()
+        return 1
     sftp = c.open_sftp()
     try:
         try:
@@ -156,6 +178,7 @@ def main() -> int:
             pass
         sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
         sftp.put(str(LOCAL_PREEMPTIVE_PATCH), REMOTE_PREEMPTIVE_PATCH)
+        sftp.put(str(LOCAL_KERNEL), REMOTE_KERNEL)
     finally:
         sftp.close()
     stdin, stdout, stderr = c.exec_command(REMOTE, get_pty=True, timeout=900)
