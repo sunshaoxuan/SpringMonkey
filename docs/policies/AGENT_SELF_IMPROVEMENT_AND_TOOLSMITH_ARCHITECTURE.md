@@ -232,6 +232,7 @@ The current MVP implementation direction also includes:
 - `scripts/openclaw/agent_society_runtime_record_gap.py` so a real runtime failure can be persisted as a gap and optionally materialized into a helper scaffold
 - LINE direct runtime failure hooks currently cover both `no response generated` and `auto-reply failed` paths
 - LINE direct runtime failure hooks now also cover the watchdog timeout path
+- the current reusable-helper path is aligned for the already hooked `execution_blocked`, `runtime_timeout`, and `tool_missing` categories
 
 The durable state is meant to answer:
 

@@ -11,7 +11,16 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from agent_society_helper_toolsmith import normalize_slug
-from agent_society_kernel import AgentSocietyKernel
+from agent_society_kernel import AgentSocietyKernel, utc_now
+
+
+REUSABLE_HELPER_CATEGORIES = {
+    "execution_blocked",
+    "runtime_drift",
+    "runtime_timeout",
+    "target_discovery_missing",
+    "tool_missing",
+}
 
 
 def main() -> int:
@@ -48,10 +57,23 @@ def main() -> int:
 
     helper_payload = None
     repo_root = Path(args.repo_root)
-    if gap.proposed_tool_name:
+    if gap.category in REUSABLE_HELPER_CATEGORIES:
         helpers_dir = repo_root / "scripts" / "openclaw" / "helpers"
         helpers_dir.mkdir(parents=True, exist_ok=True)
-        slug = normalize_slug(gap.proposed_tool_name)
+        helper_name = gap.proposed_tool_name
+        if not helper_name:
+            session = kernel.load_session(session.session_id)
+            tool = kernel.propose_helper_from_gap(
+                session,
+                gap.gap_id,
+                "script",
+                "__pending_helper_entrypoint__",
+                scope=gap.category,
+                notes=gap.proposed_repair,
+            )
+            helper_name = tool.name
+            session = kernel.load_session(session.session_id)
+        slug = normalize_slug(helper_name)
         helper_path = helpers_dir / f"{slug}.py"
         if not helper_path.exists():
             helper_path.write_text(
@@ -59,7 +81,7 @@ def main() -> int:
                 "from __future__ import annotations\n\n"
                 "import json\n\n"
                 "def main() -> int:\n"
-                f"    print(json.dumps({{'helper_name': {gap.proposed_tool_name!r}, 'status': 'scaffold', 'purpose': {gap.proposed_repair!r}}}, ensure_ascii=False))\n"
+                f"    print(json.dumps({{'helper_name': {helper_name!r}, 'status': 'scaffold', 'purpose': {gap.proposed_repair!r}}}, ensure_ascii=False))\n"
                 "    return 0\n\n"
                 "if __name__ == '__main__':\n"
                 "    raise SystemExit(main())\n",
@@ -67,14 +89,29 @@ def main() -> int:
             )
             helper_path.chmod(0o755)
         session = kernel.load_session(session.session_id)
-        tool = kernel.propose_helper_from_gap(
-            session,
-            gap.gap_id,
-            "script",
-            str(helper_path.relative_to(repo_root)).replace("\\", "/"),
-            scope=gap.category,
-            notes=gap.proposed_repair,
+        existing_tool = next(
+            (
+                item for item in session.helper_tools
+                if item.derived_from_gap_id == gap.gap_id and item.entrypoint == "__pending_helper_entrypoint__"
+            ),
+            None,
         )
+        if existing_tool is not None:
+            existing_tool.entrypoint = str(helper_path.relative_to(repo_root)).replace("\\", "/")
+            existing_tool.notes = gap.proposed_repair
+            existing_tool.status = "registered"
+            existing_tool.updated_at = utc_now()
+            kernel.save_session(session)
+            tool = existing_tool
+        else:
+            tool = kernel.propose_helper_from_gap(
+                session,
+                gap.gap_id,
+                "script",
+                str(helper_path.relative_to(repo_root)).replace("\\", "/"),
+                scope=gap.category,
+                notes=gap.proposed_repair,
+            )
         helper_payload = {
             "tool_id": tool.tool_id,
             "name": tool.name,

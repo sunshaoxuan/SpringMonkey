@@ -125,6 +125,7 @@ The current direct-task failure bridge now also supports:
 11. when the gap is reusable, a bounded helper scaffold can be created under `scripts/openclaw/helpers/`
 12. LINE direct auto-reply exceptions can also be recorded as durable runtime failures instead of disappearing into logs only
 13. LINE direct watchdog timeout can also be recorded as a durable `runtime_timeout` style gap
+14. the current reusable-helper path covers the already hooked `execution_blocked`, `runtime_timeout`, and `tool_missing` categories, so those failures do not stop at gap recording only
 
 ## Current Limitation
 
