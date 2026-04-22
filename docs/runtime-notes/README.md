@@ -18,6 +18,7 @@ These notes may change over time, but they should remain factual and should not 
 - qwen 超时三次重试后才允许切 codex：`qwen-timeout-retry-policy-2026-04.md`
 - 任务执行从单轮聊天向 Goal / Intent / Task / Step / Agent Society 过渡：`agent-society-runtime-guard-2026-04.md`
 - Agent Society 开始记录 capability gap 与 helper tool：`agent-society-self-repair-loop-2026-04.md`
+- 自增强计算总册：`../policies/AGENT_SELF_IMPROVEMENT_AND_TOOLSMITH_ARCHITECTURE.md`
 - 通用定时任务落地与验收：`generic-cron-task-domain-2026-04.md`
 - `memory-lancedb` embeddings 维度漂移修复与启动级自愈：`memory-lancedb-raw-embeddings-fix.md`
 - 新闻 cron 自动投递只发执行报告的修复：`news-cron-final-broadcast-delivery-fix.md`
