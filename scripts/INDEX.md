@@ -26,6 +26,14 @@
   - 用途：在宿主机安装每日 recovery bundle 定时备份与自动清理，默认每日生成恢复包，并保留近 7 日、近 8 周、近 6 月的关键备份。
   - 典型用法：`python SpringMonkey/scripts/remote_install_openclaw_recovery_timer.py`
 
+- `local_sync_openclaw_recovery_bundle.py`
+  - 用途：在本地机器调用远程恢复包导出脚本，并按本地保留策略自动清理旧包。
+  - 典型用法：`python SpringMonkey/scripts/local_sync_openclaw_recovery_bundle.py`
+
+- `install_local_openclaw_recovery_pull_task.py`
+  - 用途：在 Windows 本地安装每日 Scheduled Task，自动执行 `local_sync_openclaw_recovery_bundle.py`。
+  - 典型用法：`python SpringMonkey/scripts/install_local_openclaw_recovery_pull_task.py`
+
 ## 2. OpenClaw 远程诊断与修复
 
 - `remote_diag_openclaw_webhook.py`

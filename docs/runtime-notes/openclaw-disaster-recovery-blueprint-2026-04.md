@@ -160,6 +160,13 @@ The scheduled backup installer for this policy is:
 
 - `scripts/remote_install_openclaw_recovery_timer.py`
 
+An optional local pull loop also exists:
+
+- `scripts/local_sync_openclaw_recovery_bundle.py`
+- `scripts/install_local_openclaw_recovery_pull_task.py`
+
+That loop is useful when the operator wants one local mirror without turning the main Git repository into a binary backup store.
+
 ## Minimum Rebuild Order
 
 ### 1. Recover Host Access

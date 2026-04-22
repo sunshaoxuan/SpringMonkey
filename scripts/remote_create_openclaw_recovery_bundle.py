@@ -27,6 +27,7 @@ ARCHIVE="${ROOT}/${BASENAME}.tar.gz"
 
 mkdir -p "$WORKDIR"
 mkdir -p "${WORKDIR}/meta"
+export WORKDIR
 
 python3 <<'PY'
 import json
