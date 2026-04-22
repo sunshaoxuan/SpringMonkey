@@ -97,6 +97,7 @@ chmod 755 /usr/local/lib/openclaw/check_memory_lancedb_dims.sh
 
 cat >/etc/systemd/system/openclaw.service.d/20-memory-lancedb-guard.conf <<'EOF'
 [Service]
+TimeoutStartSec=120
 ExecStartPre=/usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh
 ExecStartPost=/usr/local/lib/openclaw/check_memory_lancedb_dims.sh
 EOF
@@ -133,6 +134,12 @@ def main() -> int:
         )
         return 1
 
+    if not LOCAL_PATCH.is_file():
+        print(f"missing local patch script: {LOCAL_PATCH}", file=sys.stderr)
+        return 1
+    if not LOCAL_AUTOCAPTURE_PATCH.is_file():
+        print(f"missing local patch script: {LOCAL_AUTOCAPTURE_PATCH}", file=sys.stderr)
+        return 1
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     c.connect(
@@ -144,24 +151,6 @@ def main() -> int:
         allow_agent=False,
         look_for_keys=False,
     )
-    if not LOCAL_PATCH.is_file():
-        print(f"missing local patch script: {LOCAL_PATCH}", file=sys.stderr)
-        c.close()
-        return 1
-    if not LOCAL_AUTOCAPTURE_PATCH.is_file():
-        print(f"missing local patch script: {LOCAL_AUTOCAPTURE_PATCH}", file=sys.stderr)
-        c.close()
-        return 1
-    sftp = c.open_sftp()
-    try:
-        try:
-            sftp.mkdir("/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw")
-        except OSError:
-            pass
-        sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
-        sftp.put(str(LOCAL_AUTOCAPTURE_PATCH), REMOTE_AUTOCAPTURE_PATCH)
-    finally:
-        sftp.close()
     stdin, stdout, stderr = c.exec_command(REMOTE, get_pty=True, timeout=900)
     out = stdout.read().decode("utf-8", errors="replace")
     err = stderr.read().decode("utf-8", errors="replace")
