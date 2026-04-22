@@ -30,9 +30,9 @@ shutil.copy2(cfg_path, cfg_backup)
 cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
 comp = cfg.setdefault("agents", {}).setdefault("defaults", {}).setdefault("compaction", {})
 comp["mode"] = "safeguard"
-comp["reserveTokens"] = 42000
+comp["reserveTokens"] = 12000
 comp["keepRecentTokens"] = 8000
-comp["reserveTokensFloor"] = 32000
+comp["reserveTokensFloor"] = 12000
 comp["recentTurnsPreserve"] = 6
 cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(f"CONFIG_BACKUP {cfg_backup}")

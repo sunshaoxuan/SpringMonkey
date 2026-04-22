@@ -50,15 +50,15 @@
 当前宿主机基线：
 
 - `agents.defaults.compaction.mode = "safeguard"`
-- `agents.defaults.compaction.reserveTokens = 42000`
+- `agents.defaults.compaction.reserveTokens = 12000`
 - `agents.defaults.compaction.keepRecentTokens = 8000`
-- `agents.defaults.compaction.reserveTokensFloor = 64000`
+- `agents.defaults.compaction.reserveTokensFloor = 12000`
 - `agents.defaults.compaction.recentTurnsPreserve = 6`
 
 说明：
 
-- 这条基线用于降低 Discord / LINE 长会话在高日志、高工具结果场景下突然触发 `Context limit exceeded` 的概率。
-- `reserveTokensFloor` 过低时，系统会更容易在关键回合临近上限时被迫压缩或直接重置会话。
+- 这条基线必须与当前主模型 `ollama/qwen3:14b` 的真实上下文窗匹配；当前宿主机日志显示 `contextWindow=32768`，因此不能再使用高于上下文窗的保留余量。
+- 当前值的目标是降低 Discord / LINE 长会话在高日志、高工具结果场景下突然触发 `Context limit exceeded` 的概率，同时避免把 qwen 路径的 prompt budget 直接压坏。
 - 该项是全局 `agents.defaults` 配置，Discord 与 LINE 共用，不是单独 channel 配置。
 - 当前宿主机还启用了“任务前预压缩守卫”：如果任务未超限但已逼近 prompt 预算，也会在运行前先 compact，而不是等到中途溢出。
 

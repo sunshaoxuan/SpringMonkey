@@ -11,9 +11,9 @@ Reduce task failures caused by context overflow before the run reaches the hard 
 Current host baseline:
 
 - `agents.defaults.compaction.mode = "safeguard"`
-- `agents.defaults.compaction.reserveTokens = 42000`
+- `agents.defaults.compaction.reserveTokens = 12000`
 - `agents.defaults.compaction.keepRecentTokens = 8000`
-- `agents.defaults.compaction.reserveTokensFloor = 32000`
+- `agents.defaults.compaction.reserveTokensFloor = 12000`
 - `agents.defaults.compaction.recentTurnsPreserve = 6`
 
 ## Runtime pre-task guard
@@ -34,6 +34,7 @@ the runtime chooses `compact_only` before the task continues.
 
 OpenClaw already had a pre-prompt compaction framework, but the stock threshold was too conservative.
 This guard makes compaction happen earlier for long-lived Discord / LINE task sessions.
+The reserve baseline must still fit the active model context window; for the current `ollama/qwen3:14b` route, oversized reserve values can themselves trigger prompt overflow before the run starts.
 
 ## Host application
 
