@@ -121,6 +121,21 @@ class CapabilityGap:
 
 
 @dataclass
+class FailurePattern:
+    pattern_id: str
+    signature: str
+    category: str
+    summary: str
+    occurrence_count: int
+    example_gap_ids: list[str]
+    proposed_response: str
+    proposed_helper_name: str | None
+    status: str
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+
+@dataclass
 class HelperTool:
     tool_id: str
     name: str
@@ -149,6 +164,7 @@ class KernelSession:
     steps: list[Step]
     observations: list[dict[str, Any]]
     capability_gaps: list[CapabilityGap]
+    failure_patterns: list[FailurePattern]
     helper_tools: list[HelperTool]
 
 
@@ -255,6 +271,7 @@ Current limitation:
             steps=steps,
             observations=[],
             capability_gaps=[],
+            failure_patterns=[],
             helper_tools=[],
         )
         self.save_session(session)
@@ -294,6 +311,7 @@ Current limitation:
             steps=[Step(**item) for item in data["steps"]],
             observations=data.get("observations", []),
             capability_gaps=[CapabilityGap(**item) for item in data.get("capability_gaps", [])],
+            failure_patterns=[FailurePattern(**item) for item in data.get("failure_patterns", [])],
             helper_tools=[HelperTool(**item) for item in data.get("helper_tools", [])],
         )
 
@@ -384,8 +402,73 @@ Current limitation:
             status="open",
         )
         session.capability_gaps.append(gap)
+        self._record_failure_pattern(session, step, gap)
         self.save_session(session)
         return gap
+
+    def _record_failure_pattern(self, session: KernelSession, step: Step, gap: CapabilityGap) -> FailurePattern:
+        signature = self._infer_failure_pattern_signature(step, gap)
+        summary = self._infer_failure_pattern_summary(gap)
+        pattern = next((item for item in session.failure_patterns if item.signature == signature), None)
+        if pattern is None:
+            pattern = FailurePattern(
+                pattern_id=make_id("pattern"),
+                signature=signature,
+                category=gap.category,
+                summary=summary,
+                occurrence_count=1,
+                example_gap_ids=[gap.gap_id],
+                proposed_response=gap.proposed_repair,
+                proposed_helper_name=gap.proposed_tool_name,
+                status="candidate",
+            )
+            session.failure_patterns.append(pattern)
+            return pattern
+        pattern.occurrence_count += 1
+        if gap.gap_id not in pattern.example_gap_ids:
+            pattern.example_gap_ids = (pattern.example_gap_ids + [gap.gap_id])[-5:]
+        pattern.summary = summary
+        pattern.proposed_response = gap.proposed_repair
+        if gap.proposed_tool_name:
+            pattern.proposed_helper_name = gap.proposed_tool_name
+        pattern.status = self._infer_failure_pattern_status(pattern)
+        pattern.updated_at = utc_now()
+        return pattern
+
+    def _infer_failure_pattern_signature(self, step: Step, gap: CapabilityGap) -> str:
+        tokens = re.findall(r"[a-z0-9]+", gap.summary.lower())
+        synonyms = {
+            "timed": "timeout",
+            "stalled": "timeout",
+            "hang": "timeout",
+            "generated": "response",
+            "missing": "missing",
+            "unsupported": "missing",
+        }
+        semantic = [synonyms.get(token, token) for token in tokens if token not in {"the", "and", "for", "with", "while", "again", "before", "after", "out"}]
+        if gap.category == "runtime_timeout":
+            semantic = [token for token in semantic if token in {"timeout", "waiting", "response", "visible", "output", "first"}]
+        elif gap.category == "tool_missing":
+            semantic = [token for token in semantic if token in {"missing", "tool", "watchdog", "direct", "visibility"}]
+        elif gap.category == "execution_blocked":
+            semantic = [token for token in semantic if token in {"response", "execution", "direct", "task", "blocked"}]
+        deduped: list[str] = []
+        for token in semantic:
+            if token not in deduped:
+                deduped.append(token)
+        semantic_shape = "_".join(deduped[:6]).strip("_") or "generic"
+        return f"{gap.category}:{semantic_shape}"
+
+    def _infer_failure_pattern_summary(self, gap: CapabilityGap) -> str:
+        base = gap.summary[:160] if gap.summary else gap.category
+        return f"{gap.category} recurring pattern around: {base}"[:240]
+
+    def _infer_failure_pattern_status(self, pattern: FailurePattern) -> str:
+        if pattern.occurrence_count >= 3:
+            return "learned"
+        if pattern.occurrence_count >= 2:
+            return "emerging"
+        return "candidate"
 
     def register_helper_tool(
         self,
@@ -518,6 +601,7 @@ Current limitation:
             "task_count": len(session.tasks),
             "step_count": len(session.steps),
             "open_capability_gaps": len([gap for gap in session.capability_gaps if gap.status in {"open", "addressing"}]),
+            "failure_pattern_count": len(session.failure_patterns),
             "helper_tool_count": len(session.helper_tools),
             "next_step": asdict(next_step) if next_step else None,
         }
@@ -527,6 +611,11 @@ Current limitation:
         helpers = [tool for tool in session.helper_tools if tool.status in {"validated", "promoted"}]
         helpers.sort(key=lambda item: item.updated_at, reverse=True)
         return helpers
+
+    def list_failure_patterns(self, session: KernelSession) -> list[FailurePattern]:
+        patterns = list(session.failure_patterns)
+        patterns.sort(key=lambda item: (item.occurrence_count, item.updated_at), reverse=True)
+        return patterns
 
 
 def emit_json(payload: str) -> None:
@@ -597,6 +686,9 @@ def parse_args() -> argparse.Namespace:
 
     helpers = sub.add_parser("list-helpers")
     helpers.add_argument("--session-id", required=True)
+
+    patterns = sub.add_parser("list-patterns")
+    patterns.add_argument("--session-id", required=True)
     return parser.parse_args()
 
 
@@ -672,6 +764,11 @@ def main() -> int:
     if args.command == "list-helpers":
         session = kernel.load_session(args.session_id)
         payload = [asdict(item) for item in kernel.list_reusable_helpers(session)]
+        emit_json(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "list-patterns":
+        session = kernel.load_session(args.session_id)
+        payload = [asdict(item) for item in kernel.list_failure_patterns(session)]
         emit_json(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
     raise SystemExit(f"unsupported command: {args.command}")

@@ -56,11 +56,21 @@ def main() -> int:
 
     step = kernel.next_step(session)
     if step is None:
-        raise SystemExit("no active step available")
+        if not session.steps:
+            raise SystemExit("no active step available")
+        step = sorted(session.steps, key=lambda item: item.updated_at, reverse=True)[0]
 
     kernel.record_observation(session, step.step_id, args.observation, args.next_decision, args.failure_status)
     session = kernel.load_session(session.session_id)
     gap = kernel.analyze_capability_gap(session, step.step_id, args.observation)
+    session = kernel.load_session(session.session_id)
+    pattern = next(
+        (
+            item for item in session.failure_patterns
+            if item.category == gap.category and gap.gap_id in item.example_gap_ids
+        ),
+        None,
+    )
 
     helper_payload = None
     repo_root = Path(args.repo_root)
@@ -156,6 +166,12 @@ def main() -> int:
         "gap_id": gap.gap_id,
         "gap_category": gap.category,
         "gap_status": gap.status,
+        "pattern": None if pattern is None else {
+            "pattern_id": pattern.pattern_id,
+            "signature": pattern.signature,
+            "status": pattern.status,
+            "occurrence_count": pattern.occurrence_count,
+        },
         "helper": helper_payload,
     }, ensure_ascii=False))
     return 0

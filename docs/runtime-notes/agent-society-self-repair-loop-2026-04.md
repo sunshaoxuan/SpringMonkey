@@ -128,6 +128,7 @@ The current direct-task failure bridge now also supports:
 14. the current reusable-helper path covers the already hooked `execution_blocked`, `runtime_timeout`, and `tool_missing` categories, so those failures do not stop at gap recording only
 15. generated helpers are now self-validated immediately after creation and can return `validated` instead of remaining at `registered` or `scaffold`
 16. for the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths, a ready helper can now auto-promote into durable reusable capability
+17. repeated failures can now accumulate into durable `failure_patterns` with a lifecycle such as `candidate -> emerging -> learned`, so error handling no longer depends only on hard-coded categories
 
 ## Current Limitation
 
@@ -138,6 +139,7 @@ It still lacks:
 - automatic interception of every direct task
 - automatic code generation for helper tools
 - automatic promotion for categories beyond the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths
+- broader semantic clustering so related failure sub-shapes can merge without being manually enumerated first
 
 But it provides the durable state model needed for those later steps.
 

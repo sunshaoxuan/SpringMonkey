@@ -340,6 +340,7 @@ The current system still lacks:
 - automatic promotion of validated helpers into stable host capability
 - automatic retirement of obsolete helpers
 - first-class scheduler support for toolsmith sub-roles
+- broader semantic clustering so adjacent failure sub-shapes can be learned without manual category edits
 
 So the architecture is now defined more completely than the implementation.
 
@@ -354,6 +355,7 @@ This architecture should be considered meaningfully implemented only when all ar
 3. repeated gaps can produce `helper_tool` records
 4. at least one helper path can be generated, validated, and reused
 5. successful helpers survive host restart or recovery via repo or recovery bundle
+6. repeated similar failures can accumulate into durable `failure_pattern` state instead of being forgotten after one repair
 
 ## Disaster Recovery Requirement
 
