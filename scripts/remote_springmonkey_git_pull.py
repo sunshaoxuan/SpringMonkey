@@ -64,6 +64,11 @@ REPO="{repo}"
 echo "=== git fetch/merge in $REPO ==="
 cd "$REPO"
 git status -sb || true
+if [ -n "$(git status --porcelain)" ]; then
+  STASH_NAME="autostash-before-origin-main-merge-$(date +%Y%m%d-%H%M%S)"
+  echo "=== stash dirty repo state: $STASH_NAME ==="
+  git stash push -u -m "$STASH_NAME"
+fi
 git fetch origin
 git merge --no-edit origin/main
 git status -sb

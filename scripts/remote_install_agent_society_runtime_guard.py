@@ -132,32 +132,18 @@ def main() -> int:
         )
         return 1
 
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(HOST, port=PORT, username=USER, password=pw, timeout=120, allow_agent=False, look_for_keys=False)
     if not LOCAL_PATCH.is_file():
         print(f"missing local patch script: {LOCAL_PATCH}", file=sys.stderr)
-        client.close()
         return 1
     if not LOCAL_PREEMPTIVE_PATCH.is_file():
         print(f"missing local patch script: {LOCAL_PREEMPTIVE_PATCH}", file=sys.stderr)
-        client.close()
         return 1
     if not LOCAL_KERNEL.is_file():
         print(f"missing local kernel script: {LOCAL_KERNEL}", file=sys.stderr)
-        client.close()
         return 1
-    sftp = client.open_sftp()
-    try:
-        try:
-            sftp.mkdir("/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw")
-        except OSError:
-            pass
-        sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
-        sftp.put(str(LOCAL_PREEMPTIVE_PATCH), REMOTE_PREEMPTIVE_PATCH)
-        sftp.put(str(LOCAL_KERNEL), REMOTE_KERNEL)
-    finally:
-        sftp.close()
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(HOST, port=PORT, username=USER, password=pw, timeout=120, allow_agent=False, look_for_keys=False)
     _, stdout, stderr = client.exec_command(REMOTE.strip(), get_pty=True)
     out = stdout.read().decode("utf-8", errors="replace")
     err = stderr.read().decode("utf-8", errors="replace")
