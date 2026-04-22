@@ -87,7 +87,7 @@ if not selection_candidates:
     raise SystemExit("selection bundle not found during verification")
 selection_text = selection_candidates[0].read_text(encoding="utf-8")
 print({
-    "preemptive_compaction_guard": "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .82));" in selection_text,
+    "preemptive_compaction_guard": "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .9));" in selection_text,
     "preemptive_message_threshold": "const proactiveMessageThreshold = 48;" in selection_text,
 })
 workspace_file = Path("/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md")

@@ -66,7 +66,7 @@ if not candidates:
     raise SystemExit("selection bundle not found during verification")
 text = candidates[0].read_text(encoding="utf-8")
 checks = {
-    "proactive_threshold": "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .82));" in text,
+    "proactive_threshold": "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .9));" in text,
     "proactive_message_threshold": "const proactiveMessageThreshold = 48;" in text,
     "proactive_route": 'else if (params.messages.length >= proactiveMessageThreshold && estimatedPromptTokens >= proactiveThresholdTokens) route = "compact_only";' in text,
 }

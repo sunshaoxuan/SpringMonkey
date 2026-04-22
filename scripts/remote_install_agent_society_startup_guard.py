@@ -83,7 +83,7 @@ if not selection_candidates:
     raise SystemExit("[agent-society-guard] selection bundle not found after patch")
 selection_text = selection_candidates[0].read_text(encoding="utf-8")
 selection_required = [
-    "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .82));",
+    "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .9));",
     "const proactiveMessageThreshold = 48;",
 ]
 selection_missing = [item for item in selection_required if item not in selection_text]

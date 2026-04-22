@@ -60,7 +60,7 @@
 - 这条基线必须与当前主模型 `ollama/qwen3:14b` 的真实上下文窗匹配；当前宿主机日志显示 `contextWindow=32768`，因此不能再使用高于上下文窗的保留余量。
 - 当前值的目标是降低 Discord / LINE 长会话在高日志、高工具结果场景下突然触发 `Context limit exceeded` 的概率，同时避免把 qwen 路径的 prompt budget 直接压坏。
 - 该项是全局 `agents.defaults` 配置，Discord 与 LINE 共用，不是单独 channel 配置。
-- 当前宿主机还启用了“任务前预压缩守卫”：如果任务未超限但已逼近 prompt 预算，也会在运行前先 compact，而不是等到中途溢出。
+- 当前宿主机还启用了“任务前预压缩守卫”：当估算 prompt 已达到预算约 `90%`，且会话已进入长任务区间时，会在运行前先 compact，并保留最近若干轮原文，而不是等到中途溢出。
 
 ## 3. 联网与浏览器能力
 

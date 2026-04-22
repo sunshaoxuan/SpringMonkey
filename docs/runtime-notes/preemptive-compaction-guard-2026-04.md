@@ -26,14 +26,14 @@ The current `pi-embedded` bundle is patched so that before prompt execution:
 Current proactive threshold:
 
 - when message count is at least `48`
-- and estimated prompt tokens reach about `82%` of the prompt budget before reserve
+- and estimated prompt tokens reach about `90%` of the prompt budget before reserve
 
 the runtime chooses `compact_only` before the task continues.
 
 ## Why this exists
 
 OpenClaw already had a pre-prompt compaction framework, but the stock threshold was too conservative.
-This guard makes compaction happen earlier for long-lived Discord / LINE task sessions.
+This guard makes compaction happen before hard overflow for long-lived Discord / LINE task sessions while still leaving room to preserve recent raw turns.
 The reserve baseline must still fit the active model context window; for the current `ollama/qwen3:14b` route, oversized reserve values can themselves trigger prompt overflow before the run starts.
 
 ## Host application
@@ -45,6 +45,6 @@ Use:
 It will:
 
 1. raise the global compaction baseline in `openclaw.json`
-2. patch the current `pi-embedded-*.js` bundle preemptive compaction threshold
+2. patch the current `selection-*.js` bundle preemptive compaction threshold
 3. restart `openclaw.service`
 4. verify `healthz` and LINE webhook
