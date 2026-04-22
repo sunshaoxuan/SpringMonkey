@@ -38,7 +38,19 @@ python3 "$PATCH" >/tmp/agent-society-runtime-guard.log 2>&1 || {
 }
 python3 - <<'PY'
 from pathlib import Path
-text = Path("/usr/lib/node_modules/openclaw/dist/agent-runner.runtime-CTlghBhJ.js").read_text(encoding="utf-8")
+dist = Path("/usr/lib/node_modules/openclaw/dist")
+candidates = sorted(
+    [
+        p
+        for p in dist.glob("agent-runner.runtime-*.js")
+        if p.name != "agent-runner.runtime.js" and p.is_file()
+    ],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+if not candidates:
+    raise SystemExit("[agent-society-guard] runtime bundle not found after patch")
+text = candidates[0].read_text(encoding="utf-8")
 required = [
     "[runtime-goal-intent-task-agent-society-protocol]",
     "shouldApplyAgentSocietyProtocol",

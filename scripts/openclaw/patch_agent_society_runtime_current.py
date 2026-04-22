@@ -6,11 +6,24 @@ from pathlib import Path
 import shutil
 
 
+def resolve_runtime_bundle(dist: Path) -> Path:
+    candidates = sorted(
+        [
+            p
+            for p in dist.glob("agent-runner.runtime-*.js")
+            if p.name != "agent-runner.runtime.js" and p.is_file()
+        ],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        raise SystemExit("agent-runner runtime bundle not found")
+    return candidates[0]
+
+
 def main() -> int:
     dist = Path("/usr/lib/node_modules/openclaw/dist")
-    target = dist / "agent-runner.runtime-CTlghBhJ.js"
-    if not target.exists():
-        raise SystemExit("agent-runner runtime bundle not found")
+    target = resolve_runtime_bundle(dist)
 
     text = target.read_text(encoding="utf-8")
 

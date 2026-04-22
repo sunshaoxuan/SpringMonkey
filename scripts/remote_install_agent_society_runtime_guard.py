@@ -50,7 +50,19 @@ raise SystemExit(1)
 PY
 python3 <<'PY'
 from pathlib import Path
-text = Path("/usr/lib/node_modules/openclaw/dist/agent-runner.runtime-CTlghBhJ.js").read_text(encoding="utf-8")
+dist = Path("/usr/lib/node_modules/openclaw/dist")
+candidates = sorted(
+    [
+        p
+        for p in dist.glob("agent-runner.runtime-*.js")
+        if p.name != "agent-runner.runtime.js" and p.is_file()
+    ],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+if not candidates:
+    raise SystemExit("runtime bundle not found during verification")
+text = candidates[0].read_text(encoding="utf-8")
 checks = {
     "agent_society_protocol_token": "[runtime-goal-intent-task-agent-society-protocol]" in text,
     "agent_society_guard": "shouldApplyAgentSocietyProtocol" in text,
