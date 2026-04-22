@@ -124,6 +124,7 @@ The current direct-task failure bridge now also supports:
 10. LINE direct no-response fallback can classify that failure as a durable `capability_gap`
 11. when the gap is reusable, a bounded helper scaffold can be created under `scripts/openclaw/helpers/`
 12. LINE direct auto-reply exceptions can also be recorded as durable runtime failures instead of disappearing into logs only
+13. LINE direct watchdog timeout can also be recorded as a durable `runtime_timeout` style gap
 
 ## Current Limitation
 

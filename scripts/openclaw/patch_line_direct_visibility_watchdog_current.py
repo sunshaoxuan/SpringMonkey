@@ -57,7 +57,7 @@ def main() -> int:
     if '"收到，我已经开始处理这项任务；如果耗时较长，我会继续汇报进度。"' not in text:
         text, count = re.subn(
             r'const textLimit = 5e3;\s*let replyTokenUsed = false;',
-            'const textLimit = 5e3;\n\t\t\t\tlet replyTokenUsed = false;\n\t\t\t\tif (ctx.userId && !ctx.isGroup) {\n\t\t\t\t\tawait pushMessageLine(ctxPayload.From, "收到，我已经开始处理这项任务；如果耗时较长，我会继续汇报进度。", { accountId: ctx.accountId }).catch((ackErr) => {\n\t\t\t\t\t\tlogVerbose(`line: initial direct-task ack failed (non-fatal): ${String(ackErr)}`);\n\t\t\t\t\t});\n\t\t\t\t\tdirectVisibleWatchdog = setTimeout(() => {\n\t\t\t\t\t\tpushMessageLine(ctxPayload.From, "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。", { accountId: ctx.accountId }).catch((watchdogErr) => {\n\t\t\t\t\t\t\tlogVerbose(`line: direct-task watchdog update failed (non-fatal): ${String(watchdogErr)}`);\n\t\t\t\t\t\t});\n\t\t\t\t\t}, 45e3);\n\t\t\t\t}',
+            'const textLimit = 5e3;\n\t\t\t\tlet replyTokenUsed = false;\n\t\t\t\tif (ctx.userId && !ctx.isGroup) {\n\t\t\t\t\tawait pushMessageLine(ctxPayload.From, "收到，我已经开始处理这项任务；如果耗时较长，我会继续汇报进度。", { accountId: ctx.accountId }).catch((ackErr) => {\n\t\t\t\t\t\tlogVerbose(`line: initial direct-task ack failed (non-fatal): ${String(ackErr)}`);\n\t\t\t\t\t});\n\t\t\t\t\tdirectVisibleWatchdog = setTimeout(() => {\n\t\t\t\t\t\trecordKernelGap("direct task timeout waiting for visible progress update").catch(() => {});\n\t\t\t\t\t\tpushMessageLine(ctxPayload.From, "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。", { accountId: ctx.accountId }).catch((watchdogErr) => {\n\t\t\t\t\t\t\tlogVerbose(`line: direct-task watchdog update failed (non-fatal): ${String(watchdogErr)}`);\n\t\t\t\t\t\t});\n\t\t\t\t\t}, 45e3);\n\t\t\t\t}',
             text,
             count=1,
         )
