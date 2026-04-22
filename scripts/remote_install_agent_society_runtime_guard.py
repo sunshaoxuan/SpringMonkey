@@ -16,18 +16,26 @@ PORT = int(os.environ.get("OPENCLAW_SSH_PORT", "8822"))
 USER = "root"
 LOCAL_PATCH = _SCRIPTS / "openclaw" / "patch_agent_society_runtime_current.py"
 REMOTE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_agent_society_runtime_current.py"
+LOCAL_PREEMPTIVE_PATCH = _SCRIPTS / "openclaw" / "patch_preemptive_compaction_runtime_current.py"
+REMOTE_PREEMPTIVE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
 
 REMOTE = r"""
 set -euo pipefail
 
 REPO=/var/lib/openclaw/repos/SpringMonkey
 PATCH="${REPO}/scripts/openclaw/patch_agent_society_runtime_current.py"
+PREEMPTIVE_PATCH="${REPO}/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
 if [ ! -f "$PATCH" ]; then
   echo "missing patch script: $PATCH" >&2
   exit 1
 fi
+if [ ! -f "$PREEMPTIVE_PATCH" ]; then
+  echo "missing patch script: $PREEMPTIVE_PATCH" >&2
+  exit 1
+fi
 
 python3 "$PATCH"
+python3 "$PREEMPTIVE_PATCH"
 
 systemctl restart openclaw.service
 systemctl is-active openclaw.service
@@ -70,6 +78,18 @@ checks = {
     "tool_ecology_rule": "create or refine a helper tool" in text,
 }
 print(checks)
+selection_candidates = sorted(
+    [p for p in dist.glob("selection-*.js") if p.is_file()],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+if not selection_candidates:
+    raise SystemExit("selection bundle not found during verification")
+selection_text = selection_candidates[0].read_text(encoding="utf-8")
+print({
+    "preemptive_compaction_guard": "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .82));" in selection_text,
+    "preemptive_message_threshold": "const proactiveMessageThreshold = 48;" in selection_text,
+})
 workspace_file = Path("/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md")
 print({"workspace_policy": workspace_file.exists()})
 PY
@@ -98,6 +118,10 @@ def main() -> int:
         print(f"missing local patch script: {LOCAL_PATCH}", file=sys.stderr)
         client.close()
         return 1
+    if not LOCAL_PREEMPTIVE_PATCH.is_file():
+        print(f"missing local patch script: {LOCAL_PREEMPTIVE_PATCH}", file=sys.stderr)
+        client.close()
+        return 1
     sftp = client.open_sftp()
     try:
         try:
@@ -105,6 +129,7 @@ def main() -> int:
         except OSError:
             pass
         sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
+        sftp.put(str(LOCAL_PREEMPTIVE_PATCH), REMOTE_PREEMPTIVE_PATCH)
     finally:
         sftp.close()
     _, stdout, stderr = client.exec_command(REMOTE.strip(), get_pty=True)
@@ -114,7 +139,7 @@ def main() -> int:
     sys.stdout.write(out)
     if err.strip():
         sys.stderr.write(err)
-    return 0 if "HEALTH_OK" in out and "agent_society_protocol_token" in out else 1
+    return 0 if "HEALTH_OK" in out and "agent_society_protocol_token" in out and "preemptive_compaction_guard" in out else 1
 
 
 if __name__ == "__main__":

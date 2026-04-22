@@ -14,6 +14,8 @@ from openclaw_ssh_password import load_openclaw_ssh_password, missing_password_h
 HOST = os.environ.get("OPENCLAW_SSH_HOST", "ccnode.briconbric.com")
 PORT = int(os.environ.get("OPENCLAW_SSH_PORT", "8822"))
 USER = "root"
+LOCAL_PATCH = _SCRIPTS / "openclaw" / "patch_preemptive_compaction_runtime_current.py"
+REMOTE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
 
 REMOTE = r"""
 set -euo pipefail
@@ -36,31 +38,40 @@ comp["reserveTokensFloor"] = 12000
 comp["recentTurnsPreserve"] = 6
 cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(f"CONFIG_BACKUP {cfg_backup}")
-
-dist = Path("/usr/lib/node_modules/openclaw/dist")
-candidates = sorted(dist.glob("pi-embedded-*.js"), key=lambda p: p.stat().st_mtime, reverse=True)
-if not candidates:
-    raise SystemExit("pi-embedded bundle not found")
-target = candidates[0]
-text = target.read_text(encoding="utf-8")
-old = '''function shouldPreemptivelyCompactBeforePrompt(params) {\n\tconst estimatedPromptTokens = estimatePrePromptTokens(params);\n\tconst promptBudgetBeforeReserve = Math.max(1, Math.floor(params.contextTokenBudget) - Math.max(0, Math.floor(params.reserveTokens)));\n\tconst overflowTokens = Math.max(0, estimatedPromptTokens - promptBudgetBeforeReserve);\n\tconst toolResultPotential = estimateToolResultReductionPotential({\n\t\tmessages: params.messages,\n\t\tcontextWindowTokens: params.contextTokenBudget\n\t});\n\tconst overflowChars = overflowTokens * ESTIMATED_CHARS_PER_TOKEN;\n\tconst truncationBufferChars = TRUNCATION_ROUTE_BUFFER_TOKENS * ESTIMATED_CHARS_PER_TOKEN;\n\tconst truncateOnlyThresholdChars = Math.max(overflowChars + truncationBufferChars, Math.ceil(overflowChars * 1.5));\n\tconst toolResultReducibleChars = toolResultPotential.maxReducibleChars;\n\tlet route = "fits";\n\tif (overflowTokens > 0) if (toolResultReducibleChars <= 0) route = "compact_only";\n\telse if (toolResultReducibleChars >= truncateOnlyThresholdChars) route = "truncate_tool_results_only";\n\telse route = "compact_then_truncate";\n\treturn {\n\t\troute,\n\t\tshouldCompact: route === "compact_only" || route === "compact_then_truncate",\n\t\testimatedPromptTokens,\n\t\tpromptBudgetBeforeReserve,\n\t\toverflowTokens,\n\t\ttoolResultReducibleChars\n\t};\n}\n'''
-new = '''function shouldPreemptivelyCompactBeforePrompt(params) {\n\tconst estimatedPromptTokens = estimatePrePromptTokens(params);\n\tconst promptBudgetBeforeReserve = Math.max(1, Math.floor(params.contextTokenBudget) - Math.max(0, Math.floor(params.reserveTokens)));\n\tconst overflowTokens = Math.max(0, estimatedPromptTokens - promptBudgetBeforeReserve);\n\tconst toolResultPotential = estimateToolResultReductionPotential({\n\t\tmessages: params.messages,\n\t\tcontextWindowTokens: params.contextTokenBudget\n\t});\n\tconst overflowChars = overflowTokens * ESTIMATED_CHARS_PER_TOKEN;\n\tconst truncationBufferChars = TRUNCATION_ROUTE_BUFFER_TOKENS * ESTIMATED_CHARS_PER_TOKEN;\n\tconst truncateOnlyThresholdChars = Math.max(overflowChars + truncationBufferChars, Math.ceil(overflowChars * 1.5));\n\tconst toolResultReducibleChars = toolResultPotential.maxReducibleChars;\n\tconst proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .82));\n\tconst proactiveMessageThreshold = 48;\n\tlet route = "fits";\n\tif (overflowTokens > 0) if (toolResultReducibleChars <= 0) route = "compact_only";\n\telse if (toolResultReducibleChars >= truncateOnlyThresholdChars) route = "truncate_tool_results_only";\n\telse route = "compact_then_truncate";\n\telse if (params.messages.length >= proactiveMessageThreshold && estimatedPromptTokens >= proactiveThresholdTokens) route = "compact_only";\n\treturn {\n\t\troute,\n\t\tshouldCompact: route === "compact_only" || route === "compact_then_truncate",\n\t\testimatedPromptTokens,\n\t\tpromptBudgetBeforeReserve,\n\t\toverflowTokens,\n\t\ttoolResultReducibleChars\n\t};\n}\n'''
-if new not in text:
-    if old not in text:
-        raise SystemExit("preemptive compaction function anchor not found")
-    backup = target.with_name(f"{target.name}.bak-preemptive-compaction-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
-    shutil.copy2(target, backup)
-    text = text.replace(old, new, 1)
-    target.write_text(text, encoding="utf-8")
-    print(f"BUNDLE_BACKUP {backup}")
-print(f"PATCHED_BUNDLE {target}")
 PY
+
+REPO=/var/lib/openclaw/repos/SpringMonkey
+PATCH="${REPO}/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
+if [ ! -f "$PATCH" ]; then
+  echo "missing patch script: $PATCH" >&2
+  exit 1
+fi
+
+python3 "$PATCH"
 
 systemctl restart openclaw.service
 sleep 12
 systemctl is-active openclaw.service
 curl -fsS http://127.0.0.1:18789/healthz >/dev/null
 curl -fsS http://127.0.0.1:18789/line/webhook >/dev/null
+python3 <<'PY'
+from pathlib import Path
+dist = Path("/usr/lib/node_modules/openclaw/dist")
+candidates = sorted(
+    [p for p in dist.glob("selection-*.js") if p.is_file()],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+)
+if not candidates:
+    raise SystemExit("selection bundle not found during verification")
+text = candidates[0].read_text(encoding="utf-8")
+checks = {
+    "proactive_threshold": "const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .82));" in text,
+    "proactive_message_threshold": "const proactiveMessageThreshold = 48;" in text,
+    "proactive_route": 'else if (params.messages.length >= proactiveMessageThreshold && estimatedPromptTokens >= proactiveThresholdTokens) route = "compact_only";' in text,
+}
+print(checks)
+PY
 python3 <<'PY'
 import json
 from pathlib import Path
@@ -88,6 +99,19 @@ def main() -> int:
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(HOST, port=PORT, username=USER, password=pw, timeout=120, allow_agent=False, look_for_keys=False)
+    if not LOCAL_PATCH.is_file():
+        print(f"missing local patch script: {LOCAL_PATCH}", file=sys.stderr)
+        client.close()
+        return 1
+    sftp = client.open_sftp()
+    try:
+        try:
+            sftp.mkdir("/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw")
+        except OSError:
+            pass
+        sftp.put(str(LOCAL_PATCH), REMOTE_PATCH)
+    finally:
+        sftp.close()
     _, stdout, stderr = client.exec_command(REMOTE.strip(), get_pty=True)
     out = stdout.read().decode("utf-8", errors="replace")
     err = stderr.read().decode("utf-8", errors="replace")
@@ -95,7 +119,7 @@ def main() -> int:
     sys.stdout.write(out)
     if err.strip():
         sys.stderr.write(err)
-    return 0 if "active" in out else 1
+    return 0 if "active" in out and "proactive_threshold" in out else 1
 
 
 if __name__ == "__main__":
