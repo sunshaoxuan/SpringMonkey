@@ -123,6 +123,7 @@ The current direct-task failure bridge now also supports:
 9. `scripts/openclaw/agent_society_runtime_record_gap.py` can record a real direct-task failure into durable kernel state
 10. LINE direct no-response fallback can classify that failure as a durable `capability_gap`
 11. when the gap is reusable, a bounded helper scaffold can be created under `scripts/openclaw/helpers/`
+12. LINE direct auto-reply exceptions can also be recorded as durable runtime failures instead of disappearing into logs only
 
 ## Current Limitation
 

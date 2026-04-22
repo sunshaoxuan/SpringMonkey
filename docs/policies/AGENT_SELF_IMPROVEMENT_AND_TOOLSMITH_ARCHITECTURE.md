@@ -230,6 +230,7 @@ The current MVP implementation direction also includes:
 - `scripts/openclaw/agent_society_helper_toolsmith.py` so a reusable helper proposal can land as a bounded repo scaffold
 - reuse of validated helper entrypoints as future preferred step tool candidates
 - `scripts/openclaw/agent_society_runtime_record_gap.py` so a real runtime failure can be persisted as a gap and optionally materialized into a helper scaffold
+- LINE direct runtime failure hooks currently cover both `no response generated` and `auto-reply failed` paths
 
 The durable state is meant to answer:
 

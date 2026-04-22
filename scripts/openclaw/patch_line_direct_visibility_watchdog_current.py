@@ -90,6 +90,13 @@ def main() -> int:
         'if (ctx.userId && !ctx.isGroup) await pushMessageLine(ctxPayload.From, "这轮处理没有正常产出结果文本。我已记录为执行异常，接下来需要检查阻塞点。", { accountId: ctx.accountId })',
     )
 
+    auto_reply_error_anchor = '''\t\t\t} catch (err) {\n\t\t\t\truntime.error?.(danger(`line: auto-reply failed: ${String(err)}`));\n'''
+    auto_reply_error_replacement = '''\t\t\t} catch (err) {\n\t\t\t\tawait recordKernelGap(`direct task auto-reply failed: ${String(err)}`);\n\t\t\t\truntime.error?.(danger(`line: auto-reply failed: ${String(err)}`));\n'''
+    if "direct task auto-reply failed" not in text:
+        if auto_reply_error_anchor not in text:
+            raise SystemExit("line auto-reply failure anchor not found")
+        text = text.replace(auto_reply_error_anchor, auto_reply_error_replacement, 1)
+
     finally_anchor = '''} finally {\n\t\t\t\tstopLoading?.();\n\t\t\t}\n'''
     finally_replacement = '''} finally {\n\t\t\t\tif (directVisibleWatchdog) {\n\t\t\t\t\tclearTimeout(directVisibleWatchdog);\n\t\t\t\t\tdirectVisibleWatchdog = null;\n\t\t\t\t}\n\t\t\t\tstopLoading?.();\n\t\t\t}\n'''
     if 'clearTimeout(directVisibleWatchdog);' not in text:
