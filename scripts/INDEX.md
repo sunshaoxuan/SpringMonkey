@@ -64,6 +64,10 @@
   - 用途：给 direct chat 安装“三段式可见性”补丁，确保先回执、长任务给进度、空结果时给兜底收尾，而不是石沉大海。
   - 典型用法：`python SpringMonkey/scripts/remote_install_three_phase_reply_guard.py`
 
+- `remote_install_line_direct_visibility_watchdog.py`
+  - 用途：给 LINE 直连任务安装非模型回执与长时 watchdog；即使模型卡在首包阶段，也会先发“已收到”的可见文本，而不是只转圈。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_line_direct_visibility_watchdog.py`
+
 - `remote_install_operational_execution_guard.py`
   - 用途：给操作型任务安装 plan-execute-observe-replan 执行协议，网站/账号类任务优先走 browser-first，而不是只靠一段长 thinking。
   - 典型用法：`python SpringMonkey/scripts/remote_install_operational_execution_guard.py`
