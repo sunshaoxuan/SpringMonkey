@@ -118,6 +118,12 @@ The current bridge direction is now explicit too:
 7. `scripts/openclaw/agent_society_helper_toolsmith.py` can land a helper proposal as a bounded repo scaffold
 8. validated helper entrypoints are fed back into later step `tool_candidates`
 
+The current direct-task failure bridge now also supports:
+
+9. `scripts/openclaw/agent_society_runtime_record_gap.py` can record a real direct-task failure into durable kernel state
+10. LINE direct no-response fallback can classify that failure as a durable `capability_gap`
+11. when the gap is reusable, a bounded helper scaffold can be created under `scripts/openclaw/helpers/`
+
 ## Current Limitation
 
 This is not yet a full autonomous toolsmith runtime.

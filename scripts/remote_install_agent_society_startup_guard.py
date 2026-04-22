@@ -21,6 +21,8 @@ LOCAL_PREEMPTIVE_PATCH = _SCRIPTS / "openclaw" / "patch_preemptive_compaction_ru
 REMOTE_PREEMPTIVE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
 LOCAL_KERNEL = _SCRIPTS / "openclaw" / "agent_society_kernel.py"
 REMOTE_KERNEL = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/agent_society_kernel.py"
+LOCAL_RUNTIME_GAP = _SCRIPTS / "openclaw" / "agent_society_runtime_record_gap.py"
+REMOTE_RUNTIME_GAP = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/agent_society_runtime_record_gap.py"
 
 REMOTE = r"""
 set -e
@@ -34,6 +36,7 @@ REPO=/var/lib/openclaw/repos/SpringMonkey
 PATCH="${REPO}/scripts/openclaw/patch_agent_society_runtime_current.py"
 PREEMPTIVE_PATCH="${REPO}/scripts/openclaw/patch_preemptive_compaction_runtime_current.py"
 KERNEL="${REPO}/scripts/openclaw/agent_society_kernel.py"
+RUNTIME_GAP="${REPO}/scripts/openclaw/agent_society_runtime_record_gap.py"
 if [ ! -f "$PATCH" ]; then
   echo "[agent-society-guard] missing patch script: $PATCH" >&2
   exit 1
@@ -44,6 +47,10 @@ if [ ! -f "$PREEMPTIVE_PATCH" ]; then
 fi
 if [ ! -f "$KERNEL" ]; then
   echo "[agent-society-guard] missing kernel script: $KERNEL" >&2
+  exit 1
+fi
+if [ ! -f "$RUNTIME_GAP" ]; then
+  echo "[agent-society-guard] missing runtime gap script: $RUNTIME_GAP" >&2
   exit 1
 fi
 python3 "$PATCH" >/tmp/agent-society-runtime-guard.log 2>&1 || {
@@ -159,6 +166,9 @@ def main() -> int:
         return 1
     if not LOCAL_KERNEL.is_file():
         print(f"missing local kernel script: {LOCAL_KERNEL}", file=sys.stderr)
+        return 1
+    if not LOCAL_RUNTIME_GAP.is_file():
+        print(f"missing local runtime gap script: {LOCAL_RUNTIME_GAP}", file=sys.stderr)
         return 1
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())

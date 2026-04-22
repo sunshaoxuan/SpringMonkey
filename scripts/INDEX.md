@@ -158,6 +158,7 @@
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
 - `openclaw/patch_news_manual_rerun_current.py`：面向当前 `pi-embedded` bundle 的手动新闻重跑修复；自动定位当前活跃 `runEmbeddedAttempt` 文件，强制 Discord 手动重跑走正式 `cron run`，并禁止主会话自由发挥
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
+- `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 helper scaffold 到 `scripts/openclaw/helpers/`
 - `openclaw/integration_verify_host.py`：宿主机集成验证
 - `openclaw/test_manual_news_heuristics.py`：启发式路由测试
 

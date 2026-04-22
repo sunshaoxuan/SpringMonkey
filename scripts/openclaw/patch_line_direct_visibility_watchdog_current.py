@@ -43,6 +43,17 @@ def main() -> int:
             raise SystemExit("line direct visibility ack line terminator not found")
         text = text[: line_end + 1] + "\t\t\tlet directVisibleWatchdog = null;\n" + text[line_end + 1 :]
 
+    record_gap_helper = '''\t\t\t\tconst recordKernelGap = async (observationText) => {\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst runtimeRequire = typeof require === "function" ? require : globalThis?.process?.mainModule?.require?.bind(globalThis.process.mainModule);\n\t\t\t\t\t\tif (!runtimeRequire) return;\n\t\t\t\t\t\tconst fs = runtimeRequire("node:fs");\n\t\t\t\t\t\tconst childProcess = runtimeRequire("node:child_process");\n\t\t\t\t\t\tconst scriptPath = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/agent_society_runtime_record_gap.py";\n\t\t\t\t\t\tif (!fs.existsSync(scriptPath)) return;\n\t\t\t\t\t\tconst promptText = typeof text === "string" ? text : "";\n\t\t\t\t\t\tif (!promptText.trim()) return;\n\t\t\t\t\t\tchildProcess.execFileSync("python3", [scriptPath, "--root", "/var/lib/openclaw/.openclaw/workspace/agent_society_kernel", "--repo-root", "/var/lib/openclaw/repos/SpringMonkey", "--channel", "line", "--user-id", String(ctxPayload.From || ctx.userId || "unknown"), "--prompt", promptText, "--observation", observationText, "--failure-status", "blocked"], { stdio: ["ignore", "ignore", "ignore"] });\n\t\t\t\t\t} catch (gapErr) {\n\t\t\t\t\t\tlogVerbose(`line: runtime gap recording failed (non-fatal): ${String(gapErr)}`);\n\t\t\t\t\t}\n\t\t\t\t};\n'''
+    if "const recordKernelGap = async (observationText) => {" not in text:
+        text, count = re.subn(
+            r'const textLimit = 5e3;\s*let replyTokenUsed = false;',
+            'const textLimit = 5e3;\n\t\t\t\tlet replyTokenUsed = false;\n' + record_gap_helper,
+            text,
+            count=1,
+        )
+        if count != 1:
+            raise SystemExit("line runtime gap helper anchor not found")
+
     if '"收到，我已经开始处理这项任务；如果耗时较长，我会继续汇报进度。"' not in text:
         text, count = re.subn(
             r'const textLimit = 5e3;\s*let replyTokenUsed = false;',
@@ -69,7 +80,7 @@ def main() -> int:
         text = text.replace(deliver_anchor, deliver_replacement, 1)
 
     no_response_anchor = '''if (!queuedFinal) logVerbose(`line: no response generated for message from ${ctxPayload.From}`);\n'''
-    no_response_replacement = '''if (!queuedFinal) {\n\t\t\t\t\tif (directVisibleWatchdog) {\n\t\t\t\t\t\tclearTimeout(directVisibleWatchdog);\n\t\t\t\t\t\tdirectVisibleWatchdog = null;\n\t\t\t\t\t}\n\t\t\t\t\tif (ctx.userId && !ctx.isGroup) await pushMessageLine(ctxPayload.From, "这轮处理没有正常产出结果文本。我已记录为执行异常，接下来需要检查阻塞点。", { accountId: ctx.accountId }).catch((fallbackErr) => {\n\t\t\t\t\t\tlogVerbose(`line: no-response fallback push failed (non-fatal): ${String(fallbackErr)}`);\n\t\t\t\t\t});\n\t\t\t\t\tlogVerbose(`line: no response generated for message from ${ctxPayload.From}`);\n\t\t\t\t}\n'''
+    no_response_replacement = '''if (!queuedFinal) {\n\t\t\t\t\tif (directVisibleWatchdog) {\n\t\t\t\t\t\tclearTimeout(directVisibleWatchdog);\n\t\t\t\t\t\tdirectVisibleWatchdog = null;\n\t\t\t\t\t}\n\t\t\t\t\tawait recordKernelGap("no response generated after direct task execution");\n\t\t\t\t\tif (ctx.userId && !ctx.isGroup) await pushMessageLine(ctxPayload.From, "这轮处理没有正常产出结果文本。我已记录为执行异常，接下来需要检查阻塞点。", { accountId: ctx.accountId }).catch((fallbackErr) => {\n\t\t\t\t\t\tlogVerbose(`line: no-response fallback push failed (non-fatal): ${String(fallbackErr)}`);\n\t\t\t\t\t});\n\t\t\t\t\tlogVerbose(`line: no response generated for message from ${ctxPayload.From}`);\n\t\t\t\t}\n'''
     if '"这轮处理没有正常产出结果文本。我已记录为执行异常，接下来需要检查阻塞点。"' not in text:
         if no_response_anchor not in text:
             raise SystemExit("line direct visibility no-response anchor not found")
