@@ -225,6 +225,8 @@ This layer is the first self-growth mechanism for error handling:
 Current implemented step:
 
 - a `learned` pattern can already affect later helper naming and promotion decisions in the durable repair loop
+- a `learned` pattern can now also affect later step routing, including helper-first `tool_candidates`, `chosen_tool`, and repair-oriented `next_decision`
+- cron failure is no longer limited to human-visible timeout notifications; a host watcher can now record cron failure into the same durable self-improvement loop
 
 Current boundary:
 

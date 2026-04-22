@@ -159,12 +159,15 @@
 - `openclaw/patch_news_manual_rerun_current.py`：面向当前 `pi-embedded` bundle 的手动新闻重跑修复；自动定位当前活跃 `runEmbeddedAttempt` 文件，强制 Discord 手动重跑走正式 `cron run`，并禁止主会话自由发挥
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
 - `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；当前已接通 LINE direct `no-response`、`auto-reply failed` 与 watchdog `timeout`，并已对齐 `execution_blocked`、`runtime_timeout`、`tool_missing` 这三类失败的 helper 产出、即时验证与自动 promotion 路径
+- `openclaw/cron_failure_self_heal.py`：扫描宿主机 journal 里的 cron failure，去重后写入 durable kernel；同样走 `gap -> helper -> pattern -> promotion` 闭环，而不是只给用户发一条失败通知
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核，现已包含 `failure_pattern` 累积与 `candidate -> emerging -> learned` 生命周期
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词
 - `openclaw/test_agent_society_entry_policy.py`：回归验证 direct task 入口策略不会漏掉真实委托，也不会把寒暄和简单闲聊误接入
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper
 - `openclaw/test_agent_society_failure_patterns.py`：验证重复失败可聚合成 durable `failure_pattern`
 - `openclaw/test_agent_society_pattern_influenced_promotion.py`：验证 `learned failure_pattern` 会反过来影响后续 helper promotion
+- `openclaw/test_agent_society_pattern_routing.py`：验证 `learned failure_pattern` 会影响后续 step 的 `tool_candidates / chosen_tool / next_decision`
+- `openclaw/test_cron_failure_self_heal.py`：验证 cron failure 会被 watcher 自动写入 durable kernel，并且同一失败会被去重
 - `openclaw/integration_verify_host.py`：宿主机集成验证
 - `openclaw/test_manual_news_heuristics.py`：启发式路由测试
 

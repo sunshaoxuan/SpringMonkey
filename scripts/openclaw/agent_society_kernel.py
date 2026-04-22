@@ -330,6 +330,7 @@ Current limitation:
                 step.tool_candidates = merged
                 if step.chosen_tool not in merged:
                     step.chosen_tool = merged[0]
+            self._apply_learned_patterns_to_step(session, step)
         task_order = {task.task_id: index for index, task in enumerate(session.tasks)}
         pending_steps.sort(key=lambda step: task_order.get(step.parent_task_id, 10**6))
         return pending_steps[0]
@@ -445,6 +446,50 @@ Current limitation:
         elif not gap.proposed_tool_name:
             gap.proposed_tool_name = self._suggest_helper_tool_name(step, suffix="repair")
         gap.updated_at = utc_now()
+
+    def _apply_learned_patterns_to_step(self, session: KernelSession, step: Step) -> None:
+        learned_patterns = [item for item in session.failure_patterns if item.status == "learned"]
+        if not learned_patterns:
+            return
+        related_gaps = [gap for gap in session.capability_gaps if gap.parent_step_id == step.step_id]
+        related_categories = {gap.category for gap in related_gaps}
+        applicable: list[FailurePattern] = []
+        if related_categories:
+            applicable.extend([item for item in learned_patterns if item.category in related_categories])
+        else:
+            step_text = f"{step.summary} {step.expected_observation} {step.next_decision}".lower()
+            for item in learned_patterns:
+                tokens = [token for token in item.signature.split(":", 1)[-1].split("_") if token and token != "generic"]
+                if tokens and any(token in step_text for token in tokens):
+                    applicable.append(item)
+            if not applicable:
+                applicable.extend(learned_patterns)
+        if not applicable:
+            return
+        helper_by_name = {
+            tool.name: tool.entrypoint
+            for tool in session.helper_tools
+            if tool.status in {"validated", "promoted"} and tool.entrypoint
+        }
+        for pattern in applicable:
+            if pattern.proposed_helper_name:
+                entrypoint = helper_by_name.get(pattern.proposed_helper_name)
+                if entrypoint:
+                    if entrypoint not in step.tool_candidates:
+                        step.tool_candidates = [entrypoint] + step.tool_candidates
+                    deduped_candidates: list[str] = []
+                    for candidate in step.tool_candidates:
+                        if candidate not in deduped_candidates:
+                            deduped_candidates.append(candidate)
+                    step.tool_candidates = deduped_candidates
+                    step.chosen_tool = entrypoint
+            if pattern.proposed_response:
+                learned_note = f"prefer learned repair path: {pattern.proposed_response}"
+                if learned_note not in step.next_decision:
+                    step.next_decision = normalize_text(f"{learned_note}; {step.next_decision}")
+            if step.expected_observation and "learned pattern" not in step.expected_observation.lower():
+                step.expected_observation = normalize_text(f"{step.expected_observation}; verify with learned pattern guidance")
+            step.updated_at = utc_now()
 
     def _infer_failure_pattern_signature(self, step: Step, gap: CapabilityGap) -> str:
         tokens = re.findall(r"[a-z0-9]+", gap.summary.lower())

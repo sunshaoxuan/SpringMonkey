@@ -130,6 +130,8 @@ The current direct-task failure bridge now also supports:
 16. for the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths, a ready helper can now auto-promote into durable reusable capability
 17. repeated failures can now accumulate into durable `failure_patterns` with a lifecycle such as `candidate -> emerging -> learned`, so error handling no longer depends only on hard-coded categories
 18. a `learned` failure pattern can now feed back into later gap handling, including helper naming and promotion decisions, instead of remaining passive history
+19. `learned` failure patterns can now also influence later step routing, including `tool_candidates`, `chosen_tool`, and `next_decision`
+20. cron failure can now be scanned from host journal and recorded into the same durable `capability_gap -> helper -> pattern` loop instead of stopping at a plain failure notification
 
 In other words, error classification is no longer only a static table.
 
