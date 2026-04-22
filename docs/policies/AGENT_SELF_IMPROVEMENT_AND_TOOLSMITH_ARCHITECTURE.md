@@ -199,6 +199,35 @@ They should eventually map to:
 - runtime registration
 - future preference in tool selection
 
+### Layer G: Failure Pattern Learning
+
+Error classification itself should also improve over time.
+
+The durable kernel should not rely only on a fixed list of gap categories.
+It should also accumulate repeated similar failures into `failure_pattern` state.
+
+Each pattern should carry:
+
+- a stable signature
+- the current base category
+- an occurrence count
+- example gap ids
+- a proposed response
+- an optional proposed helper name
+- a lifecycle such as `candidate -> emerging -> learned`
+
+This layer is the first self-growth mechanism for error handling:
+
+- one-off failures stay local
+- repeated failures become durable patterns
+- learned patterns can later influence helper generation, promotion, and routing
+
+Current boundary:
+
+- pattern learning is durable and tested
+- semantic clustering is still conservative
+- adjacent sub-shapes are not merged unless the current signature logic can justify it
+
 ## Durable State Model
 
 The current kernel already persists:

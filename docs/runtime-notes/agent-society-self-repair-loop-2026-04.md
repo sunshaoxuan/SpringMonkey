@@ -130,6 +130,16 @@ The current direct-task failure bridge now also supports:
 16. for the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths, a ready helper can now auto-promote into durable reusable capability
 17. repeated failures can now accumulate into durable `failure_patterns` with a lifecycle such as `candidate -> emerging -> learned`, so error handling no longer depends only on hard-coded categories
 
+In other words, error classification is no longer only a static table.
+
+The current direction is:
+
+- first classify a concrete runtime failure into a `capability_gap`
+- then accumulate repeated similar failures into durable `failure_pattern` state
+- let those patterns become the next layer of reusable repair knowledge
+
+This is the current minimum self-growth path for error handling.
+
 ## Current Limitation
 
 This is not yet a full autonomous toolsmith runtime.
