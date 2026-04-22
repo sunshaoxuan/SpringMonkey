@@ -23,6 +23,12 @@ REUSABLE_HELPER_CATEGORIES = {
     "tool_missing",
 }
 
+AUTO_PROMOTION_CATEGORIES = {
+    "execution_blocked",
+    "runtime_timeout",
+    "tool_missing",
+}
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Record direct-task runtime failures into the durable kernel.")
@@ -123,11 +129,20 @@ def main() -> int:
             ensure_ascii=False,
         )
         session = kernel.load_session(session.session_id)
+        promoted_status = "registered"
+        if helper_output.get("status") == "ready":
+            promoted_status = "validated"
+            if (
+                gap.category in AUTO_PROMOTION_CATEGORIES
+                and helper_output.get("category") == gap.category
+                and len(helper_output.get("checks", [])) > 0
+            ):
+                promoted_status = "promoted"
         tool = kernel.validate_helper_tool(
             session,
             tool.tool_id,
             observation=validation_note,
-            status="validated" if helper_output.get("status") == "ready" else "registered",
+            status=promoted_status,
         )
         helper_payload = {
             "tool_id": tool.tool_id,

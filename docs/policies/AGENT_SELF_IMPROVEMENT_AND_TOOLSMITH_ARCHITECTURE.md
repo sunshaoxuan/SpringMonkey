@@ -234,6 +234,7 @@ The current MVP implementation direction also includes:
 - LINE direct runtime failure hooks now also cover the watchdog timeout path
 - the current reusable-helper path is aligned for the already hooked `execution_blocked`, `runtime_timeout`, and `tool_missing` categories
 - generated helpers can now self-validate immediately and re-enter the durable state as `validated`
+- the same three aligned categories can now auto-promote a ready helper into durable reusable capability
 
 The durable state is meant to answer:
 

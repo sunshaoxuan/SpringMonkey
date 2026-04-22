@@ -116,7 +116,7 @@ The current bridge direction is now explicit too:
 
 6. `ensure-session` can create or reuse a durable direct-task session
 7. `scripts/openclaw/agent_society_helper_toolsmith.py` can land a helper proposal as a bounded executable repo helper
-8. validated helper entrypoints are fed back into later step `tool_candidates`
+8. validated or promoted helper entrypoints are fed back into later step `tool_candidates`
 
 The current direct-task failure bridge now also supports:
 
@@ -127,6 +127,7 @@ The current direct-task failure bridge now also supports:
 13. LINE direct watchdog timeout can also be recorded as a durable `runtime_timeout` style gap
 14. the current reusable-helper path covers the already hooked `execution_blocked`, `runtime_timeout`, and `tool_missing` categories, so those failures do not stop at gap recording only
 15. generated helpers are now self-validated immediately after creation and can return `validated` instead of remaining at `registered` or `scaffold`
+16. for the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths, a ready helper can now auto-promote into durable reusable capability
 
 ## Current Limitation
 
@@ -136,7 +137,7 @@ It still lacks:
 
 - automatic interception of every direct task
 - automatic code generation for helper tools
-- automatic validation-triggered promotion of helper tools into standard host capability without an explicit runtime wrapper
+- automatic promotion for categories beyond the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths
 
 But it provides the durable state model needed for those later steps.
 
