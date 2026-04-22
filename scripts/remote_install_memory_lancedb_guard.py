@@ -71,26 +71,32 @@ cat >/usr/local/lib/openclaw/check_memory_lancedb_dims.sh <<'EOF'
 set -euo pipefail
 python3 - <<'PY'
 import json
+import time
 import urllib.request
+from urllib.error import URLError
 
-url = "http://ccnode.briconbric.com:22545/v1/embeddings"
 payload = json.dumps({"model": "bge-m3:latest", "input": "memory lancedb health check"}).encode()
-req = urllib.request.Request(
-    url,
-    data=payload,
-    headers={
-        "Content-Type": "application/json",
-        "Authorization": "Bearer ollama-local-placeholder",
-    },
-    method="POST",
-)
-with urllib.request.urlopen(req, timeout=30) as resp:
-    data = json.loads(resp.read().decode("utf-8"))
-vec = data["data"][0]["embedding"]
-dims = len(vec)
-if dims != 1024:
-    raise SystemExit(f"[memory-guard] embedding dims mismatch: {dims}")
-print(f"[memory-guard] embedding dims ok: {dims}")
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer ollama-local-placeholder",
+}
+url = "http://ccnode.briconbric.com:22545/v1/embeddings"
+errors = []
+for attempt in range(1, 5):
+    try:
+        req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        vec = data["data"][0]["embedding"]
+        dims = len(vec)
+        if dims != 1024:
+            raise SystemExit(f"[memory-guard] embedding dims mismatch via {url}: {dims}")
+        print(f"[memory-guard] embedding dims ok via {url}: {dims}")
+        raise SystemExit(0)
+    except Exception as exc:
+        errors.append(f"{url} attempt {attempt}: {exc}")
+        time.sleep(2)
+raise SystemExit("[memory-guard] embedding health check failed after retries: " + " | ".join(errors[-4:]))
 PY
 EOF
 chmod 755 /usr/local/lib/openclaw/check_memory_lancedb_dims.sh

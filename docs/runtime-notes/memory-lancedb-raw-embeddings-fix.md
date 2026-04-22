@@ -71,6 +71,8 @@
 
 1. `ExecStartPre` 必须先重打补丁，并验证插件文件仍包含 raw HTTP `/v1/embeddings` 路径与维度校验逻辑。
 2. `ExecStartPost` 必须实际请求 embeddings 接口，并确认返回维度为 `1024`。
+   - 当前基线端点是 `http://ccnode.briconbric.com:22545/v1/embeddings`
+   - 必须带短重试，避免瞬时断链把 service 误杀
 3. 若补丁缺失或维度校验失败，`openclaw.service` 不应默默带病启动。
 
 ## 验证口径
