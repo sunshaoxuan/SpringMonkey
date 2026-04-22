@@ -130,6 +130,7 @@ class HelperTool:
     status: str
     derived_from_gap_id: str | None
     notes: str
+    validation_observation: str | None = None
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
 
@@ -405,6 +406,68 @@ Current limitation:
         self.save_session(session)
         return tool
 
+    def propose_helper_from_gap(
+        self,
+        session: KernelSession,
+        gap_id: str,
+        kind: str,
+        entrypoint: str,
+        scope: str | None = None,
+        notes: str | None = None,
+    ) -> HelperTool:
+        gap = next((item for item in session.capability_gaps if item.gap_id == gap_id), None)
+        if gap is None:
+            raise KeyError(f"gap not found: {gap_id}")
+        if not gap.proposed_tool_name:
+            parent_step = next((item for item in session.steps if item.step_id == gap.parent_step_id), None)
+            if parent_step is None:
+                raise ValueError(f"gap does not include a proposed tool name and parent step is missing: {gap_id}")
+            gap.proposed_tool_name = self._suggest_helper_tool_name(parent_step, suffix="repair")
+            gap.updated_at = utc_now()
+        inferred_scope = normalize_text(scope or gap.category)
+        inferred_notes = normalize_text(notes or gap.proposed_repair)
+        return self.register_helper_tool(
+            session=session,
+            name=gap.proposed_tool_name,
+            scope=inferred_scope,
+            kind=kind,
+            entrypoint=entrypoint,
+            notes=inferred_notes,
+            derived_from_gap_id=gap_id,
+        )
+
+    def validate_helper_tool(self, session: KernelSession, tool_id: str, observation: str, status: str) -> HelperTool:
+        tool = next((item for item in session.helper_tools if item.tool_id == tool_id), None)
+        if tool is None:
+            raise KeyError(f"helper tool not found: {tool_id}")
+        tool.validation_observation = normalize_text(observation)
+        tool.status = status
+        tool.updated_at = utc_now()
+        if tool.derived_from_gap_id:
+            for gap in session.capability_gaps:
+                if gap.gap_id != tool.derived_from_gap_id:
+                    continue
+                if status in {"validated", "promoted"}:
+                    gap.status = "closed"
+                elif status in {"failed", "deprecated"}:
+                    gap.status = "open"
+                else:
+                    gap.status = "addressing"
+                gap.updated_at = utc_now()
+                break
+        self.save_session(session)
+        return tool
+
+    def close_capability_gap(self, session: KernelSession, gap_id: str, resolution: str) -> CapabilityGap:
+        gap = next((item for item in session.capability_gaps if item.gap_id == gap_id), None)
+        if gap is None:
+            raise KeyError(f"gap not found: {gap_id}")
+        gap.summary = normalize_text(f"{gap.summary} | resolution: {resolution}")[:400]
+        gap.status = "closed"
+        gap.updated_at = utc_now()
+        self.save_session(session)
+        return gap
+
     def _suggest_helper_tool_name(self, step: Step, suffix: str = "helper") -> str:
         base = re.sub(r"[^a-z0-9]+", "_", step.summary.lower()).strip("_")
         if not base:
@@ -491,6 +554,25 @@ def parse_args() -> argparse.Namespace:
     tool.add_argument("--entrypoint", required=True)
     tool.add_argument("--notes", required=True)
     tool.add_argument("--derived-from-gap-id")
+
+    propose = sub.add_parser("propose-helper")
+    propose.add_argument("--session-id", required=True)
+    propose.add_argument("--gap-id", required=True)
+    propose.add_argument("--kind", required=True)
+    propose.add_argument("--entrypoint", required=True)
+    propose.add_argument("--scope")
+    propose.add_argument("--notes")
+
+    validate = sub.add_parser("validate-tool")
+    validate.add_argument("--session-id", required=True)
+    validate.add_argument("--tool-id", required=True)
+    validate.add_argument("--observation", required=True)
+    validate.add_argument("--status", required=True, choices=["registered", "validated", "promoted", "failed", "deprecated"])
+
+    close_gap = sub.add_parser("close-gap")
+    close_gap.add_argument("--session-id", required=True)
+    close_gap.add_argument("--gap-id", required=True)
+    close_gap.add_argument("--resolution", required=True)
     return parser.parse_args()
 
 
@@ -527,6 +609,28 @@ def main() -> int:
             derived_from_gap_id=args.derived_from_gap_id,
         )
         emit_json(json.dumps(asdict(tool), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "propose-helper":
+        session = kernel.load_session(args.session_id)
+        tool = kernel.propose_helper_from_gap(
+            session=session,
+            gap_id=args.gap_id,
+            kind=args.kind,
+            entrypoint=args.entrypoint,
+            scope=args.scope,
+            notes=args.notes,
+        )
+        emit_json(json.dumps(asdict(tool), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "validate-tool":
+        session = kernel.load_session(args.session_id)
+        tool = kernel.validate_helper_tool(session, args.tool_id, args.observation, args.status)
+        emit_json(json.dumps(asdict(tool), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "close-gap":
+        session = kernel.load_session(args.session_id)
+        gap = kernel.close_capability_gap(session, args.gap_id, args.resolution)
+        emit_json(json.dumps(asdict(gap), ensure_ascii=False, indent=2))
         return 0
     raise SystemExit(f"unsupported command: {args.command}")
 

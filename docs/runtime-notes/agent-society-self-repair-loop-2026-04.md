@@ -92,6 +92,9 @@ The kernel CLI now supports:
 - `record`
 - `analyze-gap`
 - `register-tool`
+- `propose-helper`
+- `validate-tool`
+- `close-gap`
 
 This means a runtime or wrapper can:
 
@@ -101,6 +104,14 @@ This means a runtime or wrapper can:
 4. register a helper tool proposal
 5. continue work with that new tool context
 
+The current minimum self-repair closure is now:
+
+1. `record` a failed or blocked observation
+2. `analyze-gap` to classify the failure
+3. `propose-helper` to bind a reusable helper proposal to the gap
+4. `validate-tool` after the helper path is exercised
+5. `close-gap` once the repair path is proven or otherwise resolved
+
 ## Current Limitation
 
 This is not yet a full autonomous toolsmith runtime.
@@ -109,7 +120,7 @@ It still lacks:
 
 - automatic interception of every direct task
 - automatic code generation for helper tools
-- automatic validation and promotion of helper tools into standard host capability
+- automatic validation-triggered promotion of helper tools into standard host capability without an explicit runtime wrapper
 
 But it provides the durable state model needed for those later steps.
 

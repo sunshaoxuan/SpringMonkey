@@ -211,6 +211,19 @@ The current kernel already persists:
 - `capability_gap`
 - `helper_tool`
 
+The current kernel CLI also supports an explicit minimum repair lifecycle:
+
+- `analyze-gap`
+- `propose-helper`
+- `validate-tool`
+- `close-gap`
+
+This means the durable state can now represent not only that a gap was noticed, but also:
+
+- which helper was proposed from that gap
+- whether the helper path was validated
+- whether the gap is still open, being addressed, or closed
+
 The durable state is meant to answer:
 
 - what failed
