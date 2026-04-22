@@ -20,6 +20,7 @@ It currently adds three kinds of behavior on the host:
 1. direct-chat three-phase visibility
 2. operational-task execution protocol
 3. goal-intent-task-agent-society protocol injection
+4. self-improvement / toolsmith protocol injection
 
 ## Installed Host Patches
 
@@ -62,6 +63,8 @@ Behavior:
 - allows bounded sub-intent expansion
 - requires convergence back to the parent goal
 - encourages reusable helper-tool creation when stable capability gaps are detected
+- instructs the runtime to classify repeated failures into durable capability-gap categories
+- pushes repeated blockers toward bounded helper-tool or repair-path creation instead of blind retries
 - writes a host workspace bridge file at `/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md`
 - can now be re-applied from the repo patch source `scripts/openclaw/patch_agent_society_runtime_current.py`
 

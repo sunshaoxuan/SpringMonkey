@@ -88,6 +88,8 @@ checks = {
     "agent_society_guard": "shouldApplyAgentSocietyProtocol" in text,
     "multi_intent_rule": "extract all relevant intents" in text,
     "tool_ecology_rule": "create or refine a helper tool" in text,
+    "self_improvement_rule": "[runtime-self-improvement-toolsmith-protocol]" in text,
+    "capability_gap_rule": "classify the failure into a capability gap" in text,
 }
 print(checks)
 selection_candidates = sorted(

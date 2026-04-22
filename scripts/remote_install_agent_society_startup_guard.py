@@ -79,6 +79,8 @@ required = [
     "shouldApplyAgentSocietyProtocol",
     "extract all relevant intents",
     "create or refine a helper tool",
+    "[runtime-self-improvement-toolsmith-protocol]",
+    "classify the failure into a capability gap",
 ]
 missing = [item for item in required if item not in text]
 if missing:
