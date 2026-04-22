@@ -38,21 +38,28 @@ def main() -> int:
             if fallback_anchor not in text:
                 raise SystemExit("agent society protocol anchor not found")
             text = text.replace(fallback_anchor, new_block, 1)
-    elif "[runtime-self-improvement-toolsmith-protocol]" not in text or "[runtime-cross-channel-delivery-protocol]" not in text:
-        cross_channel_const_anchor = '''\tconst GOAL_INTENT_TASK_AGENT_SOCIETY_PROTOCOL = `[runtime-goal-intent-task-agent-society-protocol]\\nTreat this as a controlled agent-society task, not a single-pass reply.\\nExecution model:\\n1. derive one primary goal and any bounded secondary goals\\n2. extract all relevant intents from the user request, including operational, verification, memory, reporting, and continuation intents\\n3. convert intents into tasks with priorities and success conditions\\n4. convert only the current active task into concrete executable steps\\n5. for each step, choose the best tool path, execute one step, inspect the observation, and then decide the next step\\n6. allow new sub-intents or helper tasks only when they are justified by observation\\n7. force every child intent or task to converge back to the parent goal\\nConvergence rules:\\n- Never let a child task drift away from the primary goal.\\n- If a new subproblem does not clearly serve the goal, defer or discard it.\\n- Prefer finite progress over uncontrolled branching.\\nTask decomposition rules:\\n- Support multiple intents in one message.\\n- Support multiple tasks per intent when needed.\\n- Support verification and reporting as first-class tasks instead of afterthoughts.\\nStep execution rules:\\n- Each step must have one immediate objective, one expected observation, and one success check.\\n- Do not jump to final claims before observed evidence exists.\\n- If a step fails, classify the blocker and replan instead of repeating blind attempts.\\nTool ecology rules:\\n- Prefer proven existing tools first.\\n- If a reusable capability gap appears, create or refine a helper tool, script, parser, or procedure instead of repeating the same failed tactic.\\n- Treat good helper tools as reusable capability, not one-off hacks.\\nRole rules:\\n- Act internally as governor, decomposer, worker, verifier, and reporter even if one model instance performs multiple roles.\\n- Governor protects the primary goal and boundaries.\\n- Decomposer extracts intents and tasks.\\n- Worker executes the current step.\\n- Verifier checks real end state and evidence.\\n- Reporter keeps the user informed about status and result.\\nReporting rules:\\n- Make it clear which goal is being advanced now.\\n- If work expands, say why that expansion is necessary.\\n- Final output must include achieved end state, evidence, remaining blocker, or next action.`;\n'''
+    else:
+        goal_const_anchor = "const GOAL_INTENT_TASK_AGENT_SOCIETY_PROTOCOL = `[runtime-goal-intent-task-agent-society-protocol]"
+        protocol_push_anchor = "\t\tprotocolParts.push(GOAL_INTENT_TASK_AGENT_SOCIETY_PROTOCOL);\n"
+        if goal_const_anchor not in text:
+            raise SystemExit("agent society goal protocol anchor not found during normalization")
+
         self_improvement_const = '''\tconst SELF_IMPROVEMENT_TOOLSMITH_PROTOCOL = `[runtime-self-improvement-toolsmith-protocol]\\nTreat repeated failure as a capability problem, not just a bad turn.\\nSelf-improvement rules:\\n1. when a step fails, first classify the failure into a capability gap such as runtime_timeout, tool_missing, runtime_drift, target_discovery_missing, access_blocked, or execution_blocked\\n2. decide whether the gap is one-off or reusable\\n3. if reusable, prefer creating or refining a bounded helper tool, script, parser, verifier, bundle probe, or procedure instead of repeating the same failed tactic\\n4. verify the helper path with a concrete observation before trusting it\\n5. return to the parent task after the repair step instead of drifting forever\\nToolsmith rules:\\n- only create helpers that clearly serve the current primary goal or a stable recurring gap\\n- do not create unlimited one-off tools\\n- if the blocker is actually missing credentials, approval, 2FA, captcha, or user input, report that blocker instead of pretending a tool can solve it\\n- if the blocker is runtime drift, inspect the active bundle, active config, and active host path instead of assuming old filenames or anchors\\nAccumulation rules:\\n- record the gap, the proposed repair, and the helper name internally\\n- prefer helpers that are reusable across similar future tasks\\n- do not claim the system learned something unless a real observation proved the repair path works.`;\n'''
         cross_channel_const = '''\tconst CROSS_CHANNEL_DELIVERY_PROTOCOL = `[runtime-cross-channel-delivery-protocol]\\nCross-channel delivery rules:\\n- When the current conversation is LINE direct chat and the user asks to send, post, report, or forward something to Discord without an explicit Discord target, default the Discord target to channel 1483636573235843072.\\n- Never reuse a LINE user id, LINE peer id, or line:... identifier as a Discord target.\\n- For Discord delivery, valid targets are Discord channel ids, channel:ID, or Discord user ids, not LINE ids.\\n- If the user explicitly names a different Discord target, use that explicit target instead of the default channel.\\n- If a cross-channel delivery fails, report the exact target and error instead of claiming Discord is disconnected.`;\n'''
-        cross_channel_protocol_anchor = '''\t\tprotocolParts.push(GOAL_INTENT_TASK_AGENT_SOCIETY_PROTOCOL);\n\t\tfollowupRun.prompt = `${protocolParts.join("\\n\\n")}\\n\\nUser task:\\n${followupRun.prompt}`;\n'''
-        cross_channel_protocol_upgrade = '''\t\tprotocolParts.push(GOAL_INTENT_TASK_AGENT_SOCIETY_PROTOCOL);\n\t\tif (shouldApplySelfImprovementProtocol) protocolParts.push(SELF_IMPROVEMENT_TOOLSMITH_PROTOCOL);\n\t\tif (sessionCtx.channelKey === "line") protocolParts.push(CROSS_CHANNEL_DELIVERY_PROTOCOL);\n\t\tfollowupRun.prompt = `${protocolParts.join("\\n\\n")}\\n\\nUser task:\\n${followupRun.prompt}`;\n'''
-        if cross_channel_const_anchor not in text or cross_channel_protocol_anchor not in text:
-            raise SystemExit("cross-channel protocol upgrade anchor not found")
-        injected = cross_channel_const_anchor
         if "[runtime-self-improvement-toolsmith-protocol]" not in text:
-            injected += self_improvement_const
+            text = text.replace(goal_const_anchor, self_improvement_const + "\t" + goal_const_anchor, 1)
         if "[runtime-cross-channel-delivery-protocol]" not in text:
-            injected += cross_channel_const
-        text = text.replace(cross_channel_const_anchor, injected, 1)
-        text = text.replace(cross_channel_protocol_anchor, cross_channel_protocol_upgrade, 1)
+            text = text.replace(goal_const_anchor, cross_channel_const + "\t" + goal_const_anchor, 1)
+
+        if protocol_push_anchor not in text:
+            raise SystemExit("agent society protocol push anchor not found during normalization")
+
+        self_improvement_push = "\t\tif (shouldApplySelfImprovementProtocol) protocolParts.push(SELF_IMPROVEMENT_TOOLSMITH_PROTOCOL);\n"
+        cross_channel_push = "\t\tif (sessionCtx.channelKey === \"line\") protocolParts.push(CROSS_CHANNEL_DELIVERY_PROTOCOL);\n"
+        if self_improvement_push not in text:
+            text = text.replace(protocol_push_anchor, protocol_push_anchor + self_improvement_push, 1)
+        if cross_channel_push not in text:
+            text = text.replace(protocol_push_anchor, protocol_push_anchor + cross_channel_push, 1)
 
     workspace = Path("/var/lib/openclaw/.openclaw/workspace")
     workspace.mkdir(parents=True, exist_ok=True)

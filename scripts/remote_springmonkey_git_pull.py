@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-在汤猴网关宿主机上对 SpringMonkey 仓库执行 git pull（可选 pull 后重启 openclaw）。
+在汤猴网关宿主机上对 SpringMonkey 仓库执行 git fetch + merge（可选 merge 后重启 openclaw）。
 
 典型流程（与 docs/ops/TOOLS_REGISTRY.md §7 一致）：
-  本地改完 push → 本脚本远程 pull → 按需 apply_news_config / 补丁 → 重启服务。
+  本地改完 push → 本脚本远程 fetch/merge → 按需 apply_news_config / 补丁 → 重启服务。
 
 环境变量：
   OPENCLAW_SSH_PASSWORD 或 SSH_ROOT_PASSWORD — root SSH
-  OPENCLAW_RESTART_AFTER_PULL — 设为 "1" 或 "true" 时在 pull 成功后执行 systemctl restart openclaw.service
+  OPENCLAW_RESTART_AFTER_PULL — 设为 "1" 或 "true" 时在 merge 成功后执行 systemctl restart openclaw.service
   SPRINGMONKEY_REPO_PATH — 可选，默认 /var/lib/openclaw/repos/SpringMonkey
 
 依赖：paramiko（见 requirements-ssh.txt）
@@ -61,10 +61,11 @@ systemctl is-active openclaw.service || true
     remote = f"""
 set -e
 REPO="{repo}"
-echo "=== git pull in $REPO ==="
+echo "=== git fetch/merge in $REPO ==="
 cd "$REPO"
 git status -sb || true
-git pull --ff-only
+git fetch origin
+git merge --no-edit origin/main
 git status -sb
 {restart_block}
 echo "DONE"
