@@ -19,6 +19,7 @@
 | **工具注册表与场景映射** | 何时用哪个脚本、参数约定、分裂 vs 组合 | `docs/ops/TOOLS_REGISTRY.md` |
 | **远程统一 CLI** | `openclaw_remote_cli.py`（git-pull / diag / doctor / line-install / line-push / recover） | `scripts/openclaw_remote_cli.py` |
 | **宿主机拉取 SpringMonkey** | `git pull` + 可选重启；见 §7 | `scripts/remote_springmonkey_git_pull.py`、`docs/ops/TOOLS_REGISTRY.md` §7 |
+| **宿主机恢复包导出** | 把当前宿主机关键状态打成本地 recovery bundle，供灾难后快速恢复 | `scripts/remote_create_openclaw_recovery_bundle.py`、`docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |
 | 宿主机密钥 / 私网 IP | **勿写入仓库**；若本地有仅本机 `HOST_ACCESS.md`，与仓库 **脱敏版** 对照使用 | 仓库仅 `HOST_ACCESS_REDACTED.md` |
 
 **红线**：未经明确授权，不执行改变 Tailscale 认证/暴露态的命令（见 `HOST_ACCESS_REDACTED.md` § Tailscale Red Line）。
@@ -41,6 +42,7 @@
 | 分层故障模型 | 将 LINE/Discord/news/runtime 失败拆成 Host/Channel/Artifact/Run/Reply/Orchestration 六层 | `docs/runtime-notes/openclaw-failure-layer-model-2026-04.md` |
 | 发布验收与抗漂移 | 运行时修复的发布顺序、artifact 选择、验收证据与禁用说法 | `docs/policies/OPENCLAW_RELEASE_ACCEPTANCE_AND_DRIFT_CONTROL.md` |
 | 任务执行内核过渡层 | direct chat 已增加“三段式可见性 + 操作型任务执行协议 + Goal/Intent/Task/Step/Agent Society 协议”补丁，目标是从单轮聊天执行器过渡到受控 Agent 群 | `scripts/remote_install_three_phase_reply_guard.py`、`scripts/remote_install_operational_execution_guard.py`、`scripts/remote_install_agent_society_runtime_guard.py`、`docs/runtime-notes/agent-society-runtime-guard-2026-04.md`、`docs/policies/GOAL_INTENT_TASK_AGENT_SOCIETY.md` |
+| 自修复与工具沉淀 | Agent Society kernel 开始持久化 capability gap 与 helper tool，目标是不再把同类失败当新问题重复踩坑 | `scripts/openclaw/agent_society_kernel.py`、`docs/runtime-notes/agent-society-self-repair-loop-2026-04.md` |
 | Browser backend | 常驻 Chrome + raw CDP，默认 `127.0.0.1:18800`，OpenClaw profile `openclaw` | `scripts/remote_enable_persistent_browser_backend.py`、`scripts/remote_install_browser_guardrails.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 长记忆 | `memory-lancedb`、LanceDB 路径、embedding 策略 | `HOST_ACCESS_REDACTED.md`、`docs/ops/OPENCLAW_VECTOR_BACKEND_PLAN.md` |
 | 监控与审计 | 日志路径、`openclaw-snapshot.timer` 等 | `docs/ops/OPENCLAW_MONITORING_PLAN.md` |
@@ -48,6 +50,7 @@
 | Discord 入口 | 服务器 `PKROCOHR001`、频道 `public`、策略要点 | `HOST_ACCESS_REDACTED.md` |
 | 新闻播报 | 定时任务、流水线、`broadcast.json` 域；成功分支最终回答必须直接等于 `final_broadcast.md` 正文 | `docs/runtime-notes/news-task-domain.md`、`news-deploy-checklist.md`、`docs/runtime-notes/news-cron-final-broadcast-delivery-fix.md` |
 | 年度再部署 / 灾备 | 汇总 2026 已落地运行时改动、宿主机真值与恢复顺序 | `docs/runtime-notes/openclaw-redeployment-runbook-2026.md` |
+| 灾难恢复蓝图 | 定义 repo、host bundle、secrets 三类恢复源，以及 recovery bundle 内容与恢复顺序 | `docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |
 | 通用定时任务 | 普通 recurring task 的真实落地入口与验收规则；不能只凭对话宣称任务已创建 | `docs/runtime-notes/generic-cron-task-domain-2026-04.md`、`scripts/cron/upsert_generic_cron_job.py` |
 | LINE | Webhook 路径默认 `/line/webhook`、插件 `@openclaw/line`、需 HTTPS 公网；`dmPolicy` / pairing / open / frpc 映射见专项基线文档 | `docs/runtime-notes/line-runtime-baseline-2026-04.md`、本仓库 `scripts/remote_*.py`、`remote_line_*.sh` |
 | TimesCar 自动化 | 登录入口不再写死为单一 URL；采用“缓存优先，失效后自主探查并回写缓存” | `docs/runtime-notes/timescar-site-discovery-baseline-2026-04.md` |

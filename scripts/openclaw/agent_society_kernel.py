@@ -107,6 +107,34 @@ class Step:
 
 
 @dataclass
+class CapabilityGap:
+    gap_id: str
+    parent_step_id: str
+    category: str
+    summary: str
+    severity: str
+    proposed_repair: str
+    proposed_tool_name: str | None
+    status: str
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+
+@dataclass
+class HelperTool:
+    tool_id: str
+    name: str
+    scope: str
+    kind: str
+    entrypoint: str
+    status: str
+    derived_from_gap_id: str | None
+    notes: str
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+
+@dataclass
 class KernelSession:
     session_id: str
     created_at: str
@@ -119,6 +147,8 @@ class KernelSession:
     tasks: list[Task]
     steps: list[Step]
     observations: list[dict[str, Any]]
+    capability_gaps: list[CapabilityGap]
+    helper_tools: list[HelperTool]
 
 
 class AgentSocietyKernel:
@@ -147,6 +177,8 @@ Current expectations:
 - tasks map to concrete observable steps
 - each step should identify current tool candidates and one chosen tool
 - observations should be written back into durable state instead of living only in prompt text
+- repeated failures should be classified into durable capability gaps
+- stable repeated gaps should produce helper tool proposals instead of blind retries
 
 Current limitation:
 
@@ -221,6 +253,8 @@ Current limitation:
             tasks=tasks,
             steps=steps,
             observations=[],
+            capability_gaps=[],
+            helper_tools=[],
         )
         self.save_session(session)
         return session
@@ -258,6 +292,8 @@ Current limitation:
             tasks=[Task(**item) for item in data["tasks"]],
             steps=[Step(**item) for item in data["steps"]],
             observations=data.get("observations", []),
+            capability_gaps=[CapabilityGap(**item) for item in data.get("capability_gaps", [])],
+            helper_tools=[HelperTool(**item) for item in data.get("helper_tools", [])],
         )
 
     def next_step(self, session: KernelSession) -> Step | None:
@@ -289,6 +325,91 @@ Current limitation:
             self.save_session(session)
             return step
         raise KeyError(f"step not found: {step_id}")
+
+    def analyze_capability_gap(self, session: KernelSession, step_id: str, observation: str) -> CapabilityGap:
+        step = next((item for item in session.steps if item.step_id == step_id), None)
+        if step is None:
+            raise KeyError(f"step not found: {step_id}")
+        normalized = normalize_text(observation)
+        lowered = normalized.lower()
+        category = "execution_blocked"
+        severity = "medium"
+        proposed_repair = "narrow the blocker and choose the next bounded recovery step"
+        proposed_tool_name: str | None = None
+
+        if any(token in lowered for token in ("timeout", "timed out", "卡住", "hang", "stalled")):
+            category = "runtime_timeout"
+            severity = "high"
+            proposed_repair = "retry with a bounded timeout-recovery path and inspect runtime/tool latency before continuing"
+        elif any(token in lowered for token in ("not found", "找不到", "missing tool", "no tool", "unsupported")):
+            category = "tool_missing"
+            severity = "high"
+            proposed_tool_name = self._suggest_helper_tool_name(step)
+            proposed_repair = f"create or refine helper tool `{proposed_tool_name}` for this repeated gap"
+        elif any(token in lowered for token in ("selector", "anchor", "bundle", "patch", "drift", "版本", "锚点")):
+            category = "runtime_drift"
+            severity = "high"
+            proposed_tool_name = "runtime_bundle_probe"
+            proposed_repair = "probe the active runtime artifact, verify markers, and patch the currently active bundle instead of guessing by filename"
+        elif any(token in lowered for token in ("login", "2fa", "验证码", "permission", "forbidden", "denied", "权限")):
+            category = "access_blocked"
+            severity = "high"
+            proposed_repair = "classify the access blocker, preserve current state, and request or discover the minimum missing credential or approval"
+        elif any(token in lowered for token in ("unknown system", "不确定系统", "unclear target", "入口未知")):
+            category = "target_discovery_missing"
+            severity = "medium"
+            proposed_tool_name = self._suggest_helper_tool_name(step, suffix="discovery")
+            proposed_repair = f"create a bounded discovery helper such as `{proposed_tool_name}` to identify the real target before continuing"
+
+        gap = CapabilityGap(
+            gap_id=make_id("gap"),
+            parent_step_id=step_id,
+            category=category,
+            summary=normalized[:400] or "unclassified execution gap",
+            severity=severity,
+            proposed_repair=proposed_repair,
+            proposed_tool_name=proposed_tool_name,
+            status="open",
+        )
+        session.capability_gaps.append(gap)
+        self.save_session(session)
+        return gap
+
+    def register_helper_tool(
+        self,
+        session: KernelSession,
+        name: str,
+        scope: str,
+        kind: str,
+        entrypoint: str,
+        notes: str,
+        derived_from_gap_id: str | None = None,
+    ) -> HelperTool:
+        tool = HelperTool(
+            tool_id=make_id("tool"),
+            name=normalize_text(name),
+            scope=normalize_text(scope),
+            kind=normalize_text(kind),
+            entrypoint=normalize_text(entrypoint),
+            status="registered",
+            derived_from_gap_id=derived_from_gap_id,
+            notes=normalize_text(notes),
+        )
+        session.helper_tools.append(tool)
+        if derived_from_gap_id:
+            for gap in session.capability_gaps:
+                if gap.gap_id == derived_from_gap_id:
+                    gap.status = "addressing"
+                    gap.updated_at = utc_now()
+                    break
+        self.save_session(session)
+        return tool
+
+    def _suggest_helper_tool_name(self, step: Step, suffix: str = "helper") -> str:
+        base = re.sub(r"[^a-z0-9]+", "_", step.summary.lower()).strip("_")
+        if not base:
+            base = "task"
+        return f"{base[:32]}_{suffix}"
 
     def _sync_task_and_intent_status(self, session: KernelSession, step: Step) -> None:
         task = next(task for task in session.tasks if task.task_id == step.parent_task_id)
@@ -322,6 +443,8 @@ Current limitation:
             "intent_count": len(session.intents),
             "task_count": len(session.tasks),
             "step_count": len(session.steps),
+            "open_capability_gaps": len([gap for gap in session.capability_gaps if gap.status in {"open", "addressing"}]),
+            "helper_tool_count": len(session.helper_tools),
             "next_step": asdict(next_step) if next_step else None,
         }
         return json.dumps(payload, ensure_ascii=False, indent=2)
@@ -354,6 +477,20 @@ def parse_args() -> argparse.Namespace:
     record.add_argument("--observation", required=True)
     record.add_argument("--next-decision", required=True)
     record.add_argument("--status", required=True, choices=["pending", "in_progress", "completed", "blocked", "failed"])
+
+    gap = sub.add_parser("analyze-gap")
+    gap.add_argument("--session-id", required=True)
+    gap.add_argument("--step-id", required=True)
+    gap.add_argument("--observation", required=True)
+
+    tool = sub.add_parser("register-tool")
+    tool.add_argument("--session-id", required=True)
+    tool.add_argument("--name", required=True)
+    tool.add_argument("--scope", required=True)
+    tool.add_argument("--kind", required=True)
+    tool.add_argument("--entrypoint", required=True)
+    tool.add_argument("--notes", required=True)
+    tool.add_argument("--derived-from-gap-id")
     return parser.parse_args()
 
 
@@ -372,6 +509,24 @@ def main() -> int:
         session = kernel.load_session(args.session_id)
         kernel.record_observation(session, args.step_id, args.observation, args.next_decision, args.status)
         emit_json(kernel.render_summary(session))
+        return 0
+    if args.command == "analyze-gap":
+        session = kernel.load_session(args.session_id)
+        gap = kernel.analyze_capability_gap(session, args.step_id, args.observation)
+        emit_json(json.dumps(asdict(gap), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "register-tool":
+        session = kernel.load_session(args.session_id)
+        tool = kernel.register_helper_tool(
+            session,
+            name=args.name,
+            scope=args.scope,
+            kind=args.kind,
+            entrypoint=args.entrypoint,
+            notes=args.notes,
+            derived_from_gap_id=args.derived_from_gap_id,
+        )
+        emit_json(json.dumps(asdict(tool), ensure_ascii=False, indent=2))
         return 0
     raise SystemExit(f"unsupported command: {args.command}")
 
