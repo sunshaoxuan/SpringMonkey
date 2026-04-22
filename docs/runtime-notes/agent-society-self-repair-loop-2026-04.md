@@ -112,6 +112,12 @@ The current minimum self-repair closure is now:
 4. `validate-tool` after the helper path is exercised
 5. `close-gap` once the repair path is proven or otherwise resolved
 
+The current bridge direction is now explicit too:
+
+6. `ensure-session` can create or reuse a durable direct-task session
+7. `scripts/openclaw/agent_society_helper_toolsmith.py` can land a helper proposal as a bounded repo scaffold
+8. validated helper entrypoints are fed back into later step `tool_candidates`
+
 ## Current Limitation
 
 This is not yet a full autonomous toolsmith runtime.

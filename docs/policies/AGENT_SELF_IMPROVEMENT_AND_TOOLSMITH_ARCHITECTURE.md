@@ -224,6 +224,12 @@ This means the durable state can now represent not only that a gap was noticed, 
 - whether the helper path was validated
 - whether the gap is still open, being addressed, or closed
 
+The current MVP implementation direction also includes:
+
+- `ensure-session` so direct tasks can reuse or create a durable kernel session
+- `scripts/openclaw/agent_society_helper_toolsmith.py` so a reusable helper proposal can land as a bounded repo scaffold
+- reuse of validated helper entrypoints as future preferred step tool candidates
+
 The durable state is meant to answer:
 
 - what failed

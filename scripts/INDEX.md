@@ -100,6 +100,10 @@
   - 用途：安装 agent society 的最小原生内核，把 `goal -> intent -> task -> step` 的持久化状态根落到宿主机 workspace，而不是只靠 runtime prompt 注入。
   - 典型用法：`python SpringMonkey/scripts/remote_install_agent_society_kernel.py`
 
+- `remote_install_agent_society_kernel_bridge.py`
+  - 用途：初始化 direct task -> durable kernel 的 bridge 目录与 bootstrap session，并要求 repo 中存在 helper toolsmith 脚本。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_agent_society_kernel_bridge.py`
+
 - `remote_enable_international_channels.py`
   - 用途：启用一批国际向官方渠道插件并预注册空配置入口，默认不写入 token、不主动上线。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_international_channels.py`

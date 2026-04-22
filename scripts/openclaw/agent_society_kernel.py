@@ -301,6 +301,17 @@ Current limitation:
         pending_steps = [step for step in session.steps if step.status in {"pending", "in_progress"}]
         if not pending_steps:
             return None
+        validated_helpers = [
+            tool for tool in session.helper_tools
+            if tool.status in {"validated", "promoted"} and tool.entrypoint
+        ]
+        helper_candidates = [tool.entrypoint for tool in validated_helpers]
+        for step in pending_steps:
+            if helper_candidates:
+                merged = helper_candidates + [candidate for candidate in step.tool_candidates if candidate not in helper_candidates]
+                step.tool_candidates = merged
+                if step.chosen_tool not in merged:
+                    step.chosen_tool = merged[0]
         task_order = {task.task_id: index for index, task in enumerate(session.tasks)}
         pending_steps.sort(key=lambda step: task_order.get(step.parent_task_id, 10**6))
         return pending_steps[0]
@@ -512,6 +523,11 @@ Current limitation:
         }
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
+    def list_reusable_helpers(self, session: KernelSession) -> list[HelperTool]:
+        helpers = [tool for tool in session.helper_tools if tool.status in {"validated", "promoted"}]
+        helpers.sort(key=lambda item: item.updated_at, reverse=True)
+        return helpers
+
 
 def emit_json(payload: str) -> None:
     try:
@@ -533,6 +549,11 @@ def parse_args() -> argparse.Namespace:
 
     show = sub.add_parser("show")
     show.add_argument("--session-id", required=True)
+
+    ensure = sub.add_parser("ensure-session")
+    ensure.add_argument("--prompt", required=True)
+    ensure.add_argument("--channel", default="direct")
+    ensure.add_argument("--user-id", default="unknown")
 
     record = sub.add_parser("record")
     record.add_argument("--session-id", required=True)
@@ -573,6 +594,9 @@ def parse_args() -> argparse.Namespace:
     close_gap.add_argument("--session-id", required=True)
     close_gap.add_argument("--gap-id", required=True)
     close_gap.add_argument("--resolution", required=True)
+
+    helpers = sub.add_parser("list-helpers")
+    helpers.add_argument("--session-id", required=True)
     return parser.parse_args()
 
 
@@ -585,6 +609,19 @@ def main() -> int:
         return 0
     if args.command == "show":
         session = kernel.load_session(args.session_id)
+        emit_json(kernel.render_summary(session))
+        return 0
+    if args.command == "ensure-session":
+        root = kernel.sessions_dir
+        existing = sorted(root.glob("session_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        prompt = normalize_text(args.prompt)
+        for path in existing[:20]:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data.get("channel") == args.channel and data.get("user_id") == args.user_id and normalize_text(data.get("raw_request", "")) == prompt:
+                session = kernel.load_session(data["session_id"])
+                emit_json(kernel.render_summary(session))
+                return 0
+        session = kernel.bootstrap_session(args.prompt, args.channel, args.user_id)
         emit_json(kernel.render_summary(session))
         return 0
     if args.command == "record":
@@ -631,6 +668,11 @@ def main() -> int:
         session = kernel.load_session(args.session_id)
         gap = kernel.close_capability_gap(session, args.gap_id, args.resolution)
         emit_json(json.dumps(asdict(gap), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "list-helpers":
+        session = kernel.load_session(args.session_id)
+        payload = [asdict(item) for item in kernel.list_reusable_helpers(session)]
+        emit_json(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
     raise SystemExit(f"unsupported command: {args.command}")
 
