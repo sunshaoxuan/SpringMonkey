@@ -5,5 +5,8 @@ Rules:
 - If stdout is non-empty, return stdout exactly as the only user-facing message.
 - If the command fails or times out, return a short Chinese failure message with the concrete reason.
 - Do not use web_search, web_fetch, or browser in this task.
+- Do not call `message.send` or any other explicit delivery tool in this task.
+- Do not invent or infer a delivery target from the current chat/session.
+- The only correct behavior is to return plain text; the cron delivery target is already fixed to Discord channel `1483636573235843072`.
 - Do not add explanation, prefix, suffix, markdown tables, or extra commentary.
 - This final plain-text result will be delivered automatically to Discord.
