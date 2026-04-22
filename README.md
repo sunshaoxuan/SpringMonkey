@@ -32,6 +32,7 @@ The live system still depends on the on-host runtime configuration. This reposit
   - `INTENT_TOOL_ROUTING_AND_ACCUMULATION.md` — intent → tool registry → execution, and ad-hoc formalization loop for `汤猴`
 - `docs/runtime-notes/`
   - semi-stable environment notes that may be updated with review
+  - `docs/runtime-notes/agent-society-kernel-mvp-2026-04.md` — first durable `goal -> intent -> task -> step` kernel layer
 - `docs/reports/`
   - operational reports, traces, and postmortems
 - `docs/ops/`

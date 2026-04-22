@@ -76,6 +76,10 @@
   - 用途：为 agent society runtime 安装启动级自愈守护；以后宿主机只要 `git pull` 到新 patch 脚本，`openclaw.service` 启动前就会从 repo 重打补丁，不再依赖手改残留。
   - 典型用法：`python SpringMonkey/scripts/remote_install_agent_society_startup_guard.py`
 
+- `remote_install_agent_society_kernel.py`
+  - 用途：安装 agent society 的最小原生内核，把 `goal -> intent -> task -> step` 的持久化状态根落到宿主机 workspace，而不是只靠 runtime prompt 注入。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_agent_society_kernel.py`
+
 - `remote_enable_international_channels.py`
   - 用途：启用一批国际向官方渠道插件并预注册空配置入口，默认不写入 token、不主动上线。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_international_channels.py`
