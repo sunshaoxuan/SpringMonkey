@@ -21,6 +21,7 @@ It currently adds three kinds of behavior on the host:
 2. operational-task execution protocol
 3. goal-intent-task-agent-society protocol injection
 4. self-improvement / toolsmith protocol injection
+5. direct-task kernel session bridge
 
 ## Installed Host Patches
 
@@ -65,6 +66,8 @@ Behavior:
 - encourages reusable helper-tool creation when stable capability gaps are detected
 - instructs the runtime to classify repeated failures into durable capability-gap categories
 - pushes repeated blockers toward bounded helper-tool or repair-path creation instead of blind retries
+- creates or reuses a durable kernel session for direct tasks through `ensure-session`
+- may inject a kernel session summary back into the active prompt as `[runtime-kernel-session]`
 - writes a host workspace bridge file at `/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md`
 - can now be re-applied from the repo patch source `scripts/openclaw/patch_agent_society_runtime_current.py`
 
@@ -120,6 +123,8 @@ After installation, confirm all of the following:
    - `[runtime-operational-execution-protocol]`
    - `[runtime-goal-intent-task-agent-society-protocol]`
    - `shouldApplyAgentSocietyProtocol`
+   - `[runtime-kernel-session]`
+   - `ensure-session`
 4. a direct LINE operational request now:
    - receives an acknowledgement
    - receives progress if it runs long enough

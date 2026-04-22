@@ -90,6 +90,7 @@ checks = {
     "tool_ecology_rule": "create or refine a helper tool" in text,
     "self_improvement_rule": "[runtime-self-improvement-toolsmith-protocol]" in text,
     "capability_gap_rule": "classify the failure into a capability gap" in text,
+    "kernel_bridge_rule": "[runtime-kernel-session]" in text and "ensure-session" in text,
 }
 print(checks)
 selection_candidates = sorted(
