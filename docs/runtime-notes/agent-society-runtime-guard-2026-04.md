@@ -59,6 +59,7 @@ Host installer:
 Behavior:
 
 - upgrades the operational protocol into a broader goal-intent-task-step-agent-society protocol
+- automatically attaches future direct user tasking into the kernel/session bridge when the message looks like a real assignment, investigation, repair request, follow-up, or reporting request
 - tells the runtime to extract multiple intents
 - requires task and step decomposition
 - allows bounded sub-intent expansion
@@ -70,6 +71,22 @@ Behavior:
 - may inject a kernel session summary back into the active prompt as `[runtime-kernel-session]`
 - writes a host workspace bridge file at `/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md`
 - can now be re-applied from the repo patch source `scripts/openclaw/patch_agent_society_runtime_current.py`
+
+## Entry Policy
+
+The entry layer is no longer limited to obvious "login/password/browser" tasks.
+
+Direct chat should now auto-enter the agent-society bridge when the user message is a real assignment such as:
+
+- asking `汤猴` to investigate, repair, verify, monitor, report, create, configure, restart, forward, or re-run something
+- multi-step delegated work with follow-up or reporting requirements
+- bounded repair or self-improvement work
+
+Direct chat should not auto-enter for:
+
+- casual greetings
+- trivial one-shot small talk
+- short questions like current time with no execution or delegation signal
 
 ## Why This Exists
 
