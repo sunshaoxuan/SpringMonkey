@@ -52,6 +52,14 @@ def main() -> int:
         )
         if count != 1:
             raise SystemExit("line direct visibility try anchor not found")
+    text = text.replace(
+        'await pushMessageLine(ctxPayload.From, [{\n\t\t\t\t\t\ttype: "text",\n\t\t\t\t\t\ttext: "收到，我已经开始处理这项任务；如果耗时较长，我会继续汇报进度。"\n\t\t\t\t\t}], { accountId: ctx.accountId })',
+        'await pushMessageLine(ctxPayload.From, "收到，我已经开始处理这项任务；如果耗时较长，我会继续汇报进度。", { accountId: ctx.accountId })',
+    )
+    text = text.replace(
+        'pushMessageLine(ctxPayload.From, [{\n\t\t\t\t\t\t\ttype: "text",\n\t\t\t\t\t\t\ttext: "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。"\n\t\t\t\t\t\t}], { accountId: ctx.accountId })',
+        'pushMessageLine(ctxPayload.From, "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。", { accountId: ctx.accountId })',
+    )
 
     deliver_anchor = '''recordChannelRuntimeState({\n\t\t\t\t\t\t\t\tchannel: "line",\n\t\t\t\t\t\t\t\taccountId: resolvedAccountId,\n\t\t\t\t\t\t\t\tstate: { lastOutboundAt: Date.now() }\n\t\t\t\t\t\t\t});\n'''
     deliver_replacement = '''recordChannelRuntimeState({\n\t\t\t\t\t\t\t\tchannel: "line",\n\t\t\t\t\t\t\t\taccountId: resolvedAccountId,\n\t\t\t\t\t\t\t\tstate: { lastOutboundAt: Date.now() }\n\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\tif (directVisibleWatchdog) {\n\t\t\t\t\t\t\t\tclearTimeout(directVisibleWatchdog);\n\t\t\t\t\t\t\t\tdirectVisibleWatchdog = null;\n\t\t\t\t\t\t\t}\n'''
@@ -66,6 +74,10 @@ def main() -> int:
         if no_response_anchor not in text:
             raise SystemExit("line direct visibility no-response anchor not found")
         text = text.replace(no_response_anchor, no_response_replacement, 1)
+    text = text.replace(
+        'if (ctx.userId && !ctx.isGroup) await pushMessageLine(ctxPayload.From, [{\n\t\t\t\t\t\ttype: "text",\n\t\t\t\t\t\ttext: "这轮处理没有正常产出结果文本。我已记录为执行异常，接下来需要检查阻塞点。"\n\t\t\t\t\t}], { accountId: ctx.accountId })',
+        'if (ctx.userId && !ctx.isGroup) await pushMessageLine(ctxPayload.From, "这轮处理没有正常产出结果文本。我已记录为执行异常，接下来需要检查阻塞点。", { accountId: ctx.accountId })',
+    )
 
     finally_anchor = '''} finally {\n\t\t\t\tstopLoading?.();\n\t\t\t}\n'''
     finally_replacement = '''} finally {\n\t\t\t\tif (directVisibleWatchdog) {\n\t\t\t\t\tclearTimeout(directVisibleWatchdog);\n\t\t\t\t\tdirectVisibleWatchdog = null;\n\t\t\t\t}\n\t\t\t\tstopLoading?.();\n\t\t\t}\n'''
