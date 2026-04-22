@@ -22,6 +22,10 @@
   - 用途：从宿主机打包当前 OpenClaw 恢复包到本地，包含 `openclaw.json`、`cron/jobs.json`、workspace、state、sessions、memory、systemd drop-in、`/usr/local/lib/openclaw` 与 manifest。
   - 典型用法：`python SpringMonkey/scripts/remote_create_openclaw_recovery_bundle.py`
 
+- `remote_install_openclaw_recovery_timer.py`
+  - 用途：在宿主机安装每日 recovery bundle 定时备份与自动清理，默认每日生成恢复包，并保留近 7 日、近 8 周、近 6 月的关键备份。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_openclaw_recovery_timer.py`
+
 ## 2. OpenClaw 远程诊断与修复
 
 - `remote_diag_openclaw_webhook.py`

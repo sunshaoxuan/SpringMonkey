@@ -134,6 +134,32 @@ The recommended recovery bundle should contain:
 
 These should be backed up in a secure system, but not committed into this repository.
 
+## Scheduled Backup Policy
+
+The host should not depend on ad hoc human-triggered backups.
+
+The target operating mode is:
+
+- create one recovery bundle every day on the host
+- prune non-key historical bundles automatically
+- keep a rolling mix of near-term and long-term checkpoints
+
+Current retention policy:
+
+- keep the latest `7` daily bundles
+- keep the latest `8` weekly anchors
+- keep the latest `6` monthly anchors
+
+This is intended to balance:
+
+- quick rollback for recent breakage
+- enough older anchors for delayed discovery of corruption
+- bounded disk growth
+
+The scheduled backup installer for this policy is:
+
+- `scripts/remote_install_openclaw_recovery_timer.py`
+
 ## Minimum Rebuild Order
 
 ### 1. Recover Host Access

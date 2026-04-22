@@ -20,6 +20,7 @@
 | **远程统一 CLI** | `openclaw_remote_cli.py`（git-pull / diag / doctor / line-install / line-push / recover） | `scripts/openclaw_remote_cli.py` |
 | **宿主机拉取 SpringMonkey** | `git pull` + 可选重启；见 §7 | `scripts/remote_springmonkey_git_pull.py`、`docs/ops/TOOLS_REGISTRY.md` §7 |
 | **宿主机恢复包导出** | 把当前宿主机关键状态打成本地 recovery bundle，供灾难后快速恢复 | `scripts/remote_create_openclaw_recovery_bundle.py`、`docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |
+| **宿主机恢复包定时备份** | 在宿主机安装每日 recovery bundle 与自动清理循环 | `scripts/remote_install_openclaw_recovery_timer.py`、`docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |
 | 宿主机密钥 / 私网 IP | **勿写入仓库**；若本地有仅本机 `HOST_ACCESS.md`，与仓库 **脱敏版** 对照使用 | 仓库仅 `HOST_ACCESS_REDACTED.md` |
 
 **红线**：未经明确授权，不执行改变 Tailscale 认证/暴露态的命令（见 `HOST_ACCESS_REDACTED.md` § Tailscale Red Line）。
