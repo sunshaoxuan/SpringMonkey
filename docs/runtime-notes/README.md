@@ -11,6 +11,8 @@ These notes may change over time, but they should remain factual and should not 
 
 - Discord 手动重跑新闻未走 `cron run`：`discord-news-manual-rerun-intent-override.md`
 - 当前宿主机恢复基线：`openclaw-runtime-baseline-2026-04.md`
+- 当前环境运行基线：`openclaw-current-environment-baseline-2026-04.md`
+- 分层故障模型：`openclaw-failure-layer-model-2026-04.md`
 - LINE 运行基线：`line-runtime-baseline-2026-04.md`
 - LINE / TimesCar 定时任务根因修复与回归：`line-timescar-cron-repair-2026-04.md`
 - qwen 超时三次重试后才允许切 codex：`qwen-timeout-retry-policy-2026-04.md`
