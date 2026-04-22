@@ -162,6 +162,7 @@
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核，现已包含 `failure_pattern` 累积与 `candidate -> emerging -> learned` 生命周期
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper
 - `openclaw/test_agent_society_failure_patterns.py`：验证重复失败可聚合成 durable `failure_pattern`
+- `openclaw/test_agent_society_pattern_influenced_promotion.py`：验证 `learned failure_pattern` 会反过来影响后续 helper promotion
 - `openclaw/integration_verify_host.py`：宿主机集成验证
 - `openclaw/test_manual_news_heuristics.py`：启发式路由测试
 

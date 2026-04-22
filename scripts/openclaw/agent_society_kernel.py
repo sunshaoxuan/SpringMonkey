@@ -402,7 +402,8 @@ Current limitation:
             status="open",
         )
         session.capability_gaps.append(gap)
-        self._record_failure_pattern(session, step, gap)
+        pattern = self._record_failure_pattern(session, step, gap)
+        self._apply_learned_pattern_to_gap(gap, pattern, step)
         self.save_session(session)
         return gap
 
@@ -434,6 +435,16 @@ Current limitation:
         pattern.status = self._infer_failure_pattern_status(pattern)
         pattern.updated_at = utc_now()
         return pattern
+
+    def _apply_learned_pattern_to_gap(self, gap: CapabilityGap, pattern: FailurePattern, step: Step) -> None:
+        if pattern.status != "learned":
+            return
+        gap.proposed_repair = pattern.proposed_response
+        if pattern.proposed_helper_name:
+            gap.proposed_tool_name = pattern.proposed_helper_name
+        elif not gap.proposed_tool_name:
+            gap.proposed_tool_name = self._suggest_helper_tool_name(step, suffix="repair")
+        gap.updated_at = utc_now()
 
     def _infer_failure_pattern_signature(self, step: Step, gap: CapabilityGap) -> str:
         tokens = re.findall(r"[a-z0-9]+", gap.summary.lower())
@@ -520,6 +531,12 @@ Current limitation:
             gap.updated_at = utc_now()
         inferred_scope = normalize_text(scope or gap.category)
         inferred_notes = normalize_text(notes or gap.proposed_repair)
+        for pattern in session.failure_patterns:
+            if gap.gap_id in pattern.example_gap_ids or pattern.category == gap.category:
+                if pattern.signature.startswith(f"{gap.category}:"):
+                    pattern.proposed_helper_name = gap.proposed_tool_name
+                    pattern.proposed_response = inferred_notes
+                    pattern.updated_at = utc_now()
         return self.register_helper_tool(
             session=session,
             name=gap.proposed_tool_name,

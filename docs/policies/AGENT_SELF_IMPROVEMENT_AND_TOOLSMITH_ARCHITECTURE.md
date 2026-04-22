@@ -222,6 +222,10 @@ This layer is the first self-growth mechanism for error handling:
 - repeated failures become durable patterns
 - learned patterns can later influence helper generation, promotion, and routing
 
+Current implemented step:
+
+- a `learned` pattern can already affect later helper naming and promotion decisions in the durable repair loop
+
 Current boundary:
 
 - pattern learning is durable and tested

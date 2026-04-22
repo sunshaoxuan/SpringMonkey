@@ -143,7 +143,10 @@ def main() -> int:
         if helper_output.get("status") == "ready":
             promoted_status = "validated"
             if (
-                gap.category in AUTO_PROMOTION_CATEGORIES
+                (
+                    gap.category in AUTO_PROMOTION_CATEGORIES
+                    or (pattern is not None and pattern.status == "learned")
+                )
                 and helper_output.get("category") == gap.category
                 and len(helper_output.get("checks", [])) > 0
             ):
