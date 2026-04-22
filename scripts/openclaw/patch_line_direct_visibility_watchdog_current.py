@@ -71,6 +71,12 @@ def main() -> int:
         'pushMessageLine(ctxPayload.From, [{\n\t\t\t\t\t\t\ttype: "text",\n\t\t\t\t\t\t\ttext: "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。"\n\t\t\t\t\t\t}], { accountId: ctx.accountId })',
         'pushMessageLine(ctxPayload.From, "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。", { accountId: ctx.accountId })',
     )
+    if 'direct task timeout waiting for visible progress update' not in text:
+        timeout_watchdog_old = '''\t\t\t\t\tdirectVisibleWatchdog = setTimeout(() => {\n\t\t\t\t\t\tpushMessageLine(ctxPayload.From, "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。", { accountId: ctx.accountId }).catch((watchdogErr) => {\n\t\t\t\t\t\t\tlogVerbose(`line: direct-task watchdog update failed (non-fatal): ${String(watchdogErr)}`);\n\t\t\t\t\t\t});\n\t\t\t\t\t}, 45e3);\n'''
+        timeout_watchdog_new = '''\t\t\t\t\tdirectVisibleWatchdog = setTimeout(() => {\n\t\t\t\t\t\trecordKernelGap("direct task timeout waiting for visible progress update").catch(() => {});\n\t\t\t\t\t\tpushMessageLine(ctxPayload.From, "任务仍在处理中。我已经进入执行阶段；如果当前步骤卡住，稍后会继续汇报阻塞点或结果。", { accountId: ctx.accountId }).catch((watchdogErr) => {\n\t\t\t\t\t\t\tlogVerbose(`line: direct-task watchdog update failed (non-fatal): ${String(watchdogErr)}`);\n\t\t\t\t\t\t});\n\t\t\t\t\t}, 45e3);\n'''
+        if timeout_watchdog_old not in text:
+            raise SystemExit("line timeout watchdog upgrade anchor not found")
+        text = text.replace(timeout_watchdog_old, timeout_watchdog_new, 1)
 
     deliver_anchor = '''recordChannelRuntimeState({\n\t\t\t\t\t\t\t\tchannel: "line",\n\t\t\t\t\t\t\t\taccountId: resolvedAccountId,\n\t\t\t\t\t\t\t\tstate: { lastOutboundAt: Date.now() }\n\t\t\t\t\t\t\t});\n'''
     deliver_replacement = '''recordChannelRuntimeState({\n\t\t\t\t\t\t\t\tchannel: "line",\n\t\t\t\t\t\t\t\taccountId: resolvedAccountId,\n\t\t\t\t\t\t\t\tstate: { lastOutboundAt: Date.now() }\n\t\t\t\t\t\t\t});\n\t\t\t\t\t\t\tif (directVisibleWatchdog) {\n\t\t\t\t\t\t\t\tclearTimeout(directVisibleWatchdog);\n\t\t\t\t\t\t\t\tdirectVisibleWatchdog = null;\n\t\t\t\t\t\t\t}\n'''
