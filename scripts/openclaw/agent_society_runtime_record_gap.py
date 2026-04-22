@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,7 +11,7 @@ _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
-from agent_society_helper_toolsmith import normalize_slug
+from agent_society_helper_toolsmith import create_helper_tool
 from agent_society_kernel import AgentSocietyKernel, utc_now
 
 
@@ -58,8 +59,6 @@ def main() -> int:
     helper_payload = None
     repo_root = Path(args.repo_root)
     if gap.category in REUSABLE_HELPER_CATEGORIES:
-        helpers_dir = repo_root / "scripts" / "openclaw" / "helpers"
-        helpers_dir.mkdir(parents=True, exist_ok=True)
         helper_name = gap.proposed_tool_name
         if not helper_name:
             session = kernel.load_session(session.session_id)
@@ -73,21 +72,13 @@ def main() -> int:
             )
             helper_name = tool.name
             session = kernel.load_session(session.session_id)
-        slug = normalize_slug(helper_name)
-        helper_path = helpers_dir / f"{slug}.py"
-        if not helper_path.exists():
-            helper_path.write_text(
-                "#!/usr/bin/env python3\n"
-                "from __future__ import annotations\n\n"
-                "import json\n\n"
-                "def main() -> int:\n"
-                f"    print(json.dumps({{'helper_name': {helper_name!r}, 'status': 'scaffold', 'purpose': {gap.proposed_repair!r}}}, ensure_ascii=False))\n"
-                "    return 0\n\n"
-                "if __name__ == '__main__':\n"
-                "    raise SystemExit(main())\n",
-                encoding="utf-8",
-            )
-            helper_path.chmod(0o755)
+        helper_result = create_helper_tool(
+            repo_root=repo_root,
+            helper_name=helper_name,
+            purpose=gap.proposed_repair,
+            category=gap.category,
+        )
+        helper_entrypoint = str(helper_result["entrypoint"])
         session = kernel.load_session(session.session_id)
         existing_tool = next(
             (
@@ -97,7 +88,7 @@ def main() -> int:
             None,
         )
         if existing_tool is not None:
-            existing_tool.entrypoint = str(helper_path.relative_to(repo_root)).replace("\\", "/")
+            existing_tool.entrypoint = helper_entrypoint
             existing_tool.notes = gap.proposed_repair
             existing_tool.status = "registered"
             existing_tool.updated_at = utc_now()
@@ -108,10 +99,36 @@ def main() -> int:
                 session,
                 gap.gap_id,
                 "script",
-                str(helper_path.relative_to(repo_root)).replace("\\", "/"),
+                helper_entrypoint,
                 scope=gap.category,
                 notes=gap.proposed_repair,
             )
+        helper_cmd = [
+            sys.executable,
+            str(repo_root.joinpath(*helper_entrypoint.split("/"))),
+            "--repo-root",
+            str(repo_root),
+            "--observation",
+            args.observation,
+        ]
+        helper_run = subprocess.run(helper_cmd, capture_output=True, text=True, check=True)
+        helper_output = json.loads(helper_run.stdout)
+        validation_note = json.dumps(
+            {
+                "status": helper_output.get("status"),
+                "category": helper_output.get("category"),
+                "check_count": len(helper_output.get("checks", [])),
+                "action_count": len(helper_output.get("suggested_actions", [])),
+            },
+            ensure_ascii=False,
+        )
+        session = kernel.load_session(session.session_id)
+        tool = kernel.validate_helper_tool(
+            session,
+            tool.tool_id,
+            observation=validation_note,
+            status="validated" if helper_output.get("status") == "ready" else "registered",
+        )
         helper_payload = {
             "tool_id": tool.tool_id,
             "name": tool.name,

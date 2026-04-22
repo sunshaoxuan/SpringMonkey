@@ -115,17 +115,18 @@ The current minimum self-repair closure is now:
 The current bridge direction is now explicit too:
 
 6. `ensure-session` can create or reuse a durable direct-task session
-7. `scripts/openclaw/agent_society_helper_toolsmith.py` can land a helper proposal as a bounded repo scaffold
+7. `scripts/openclaw/agent_society_helper_toolsmith.py` can land a helper proposal as a bounded executable repo helper
 8. validated helper entrypoints are fed back into later step `tool_candidates`
 
 The current direct-task failure bridge now also supports:
 
 9. `scripts/openclaw/agent_society_runtime_record_gap.py` can record a real direct-task failure into durable kernel state
 10. LINE direct no-response fallback can classify that failure as a durable `capability_gap`
-11. when the gap is reusable, a bounded helper scaffold can be created under `scripts/openclaw/helpers/`
+11. when the gap is reusable, a bounded executable helper can be created under `scripts/openclaw/helpers/`
 12. LINE direct auto-reply exceptions can also be recorded as durable runtime failures instead of disappearing into logs only
 13. LINE direct watchdog timeout can also be recorded as a durable `runtime_timeout` style gap
 14. the current reusable-helper path covers the already hooked `execution_blocked`, `runtime_timeout`, and `tool_missing` categories, so those failures do not stop at gap recording only
+15. generated helpers are now self-validated immediately after creation and can return `validated` instead of remaining at `registered` or `scaffold`
 
 ## Current Limitation
 
