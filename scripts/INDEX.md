@@ -166,6 +166,8 @@
 - `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；当前已接通 LINE direct `no-response`、`auto-reply failed` 与 watchdog `timeout`，并已对齐 `execution_blocked`、`runtime_timeout`、`tool_missing` 这三类失败的 helper 产出、即时验证与自动 promotion 路径
 - `openclaw/cron_failure_self_heal.py`：扫描宿主机 journal 里的 cron failure，去重后写入 durable kernel；同样走 `gap -> helper -> pattern -> promotion` 闭环，而不是只给用户发一条失败通知
 - `openclaw/job_orchestrator.py`：cron/pipeline job 的通用执行包装器；把脚本命令作为 kernel step 的 action/tool 执行，成功保持 stdout 契约，失败写 gap、触发 helper、自修复后 bounded retry
+- `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核；记录 order/dependency/parallel/shared-context 元数据，并可通过 `tree-report` 输出长流程树状报告
+- `openclaw/test_agent_society_tree_report.py`：验证 orchestrated job 不再被拆成 metadata 平铺项，而是保留 intent/task/step 树、依赖和共享上下文
 - `openclaw/test_job_orchestrator_success.py`：验证 orchestrator 成功路径保持 stdout 并写 completed observation
 - `openclaw/test_job_orchestrator_failure_self_repair.py`：验证 orchestrator 失败路径写 gap、生成 helper，并在一次 bounded retry 后完成
 - `openclaw/test_helper_retirement.py`：验证 helper 被 drift gate 连续拒绝后会 deprecated，且不会再进入 future tool candidates
@@ -175,7 +177,7 @@
 - `openclaw/test_agent_society_step_drift_guard.py`：验证 planner 会在 step 选择时重新做 drift gate，把已经不匹配当前 failure surface 的 promoted repairer 过滤掉
 - `openclaw/test_agent_society_repair_graph_budget.py`：验证组合 repair pipeline 会带每步预算上限与 rollback policy，而不是无限扩展 repair graph
 - `remote_install_timescar_task_runtime.py`：把 repo 中的 TimesCar 任务脚本同步到宿主机 workspace；不改 cron job 定义，但把“外部单步、内部多步”的订车/续订/查询任务升级为阶段可观察脚本
-- `timescar/task_runtime.py`：TimesCar 任务运行时；把阶段、步骤、最终结果写入 `workspace/state/timescar_traces/*.latest.json`
+- `timescar/task_runtime.py`：TimesCar 任务运行时；把阶段、步骤、依赖、共享上下文和最终结果写入 `workspace/state/timescar_traces/*.latest.json`
 - `timescar/timescar_fetch_reservations.py`：TimesCar 查询脚本的 repo 基线版；保留现有输出契约，但把登录、打开列表、解析预约等步骤显式写进 trace
 - `timescar/timescar_next24h_notice.py`：24 小时取消提醒；保留现有用户消息格式，但把读取预约、解析、筛选候选变成可观察步骤
 - `timescar/timescar_book_sat_3weeks.py`：周六订车任务；把“检查现有预约、登录、打开表单、校验确认、提交、回查验证”拆成显式阶段

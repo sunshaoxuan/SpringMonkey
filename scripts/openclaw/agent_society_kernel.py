@@ -53,6 +53,23 @@ def infer_intent_kind(text: str) -> str:
     return "general"
 
 
+def parse_job_request(prompt: str) -> dict[str, str] | None:
+    fields: dict[str, str] = {}
+    current_key: str | None = None
+    for raw_line in prompt.splitlines():
+        line = raw_line.rstrip()
+        match = re.match(r"^(job_name|category|execution_model|command|prompt):\s*(.*)$", line, re.IGNORECASE)
+        if match:
+            current_key = match.group(1).lower()
+            fields[current_key] = match.group(2).strip()
+            continue
+        if current_key == "prompt":
+            fields[current_key] = normalize_text(f"{fields.get(current_key, '')} {line}")
+    if {"job_name", "category", "command"}.issubset(fields):
+        return fields
+    return None
+
+
 @dataclass
 class Goal:
     goal_id: str
@@ -74,6 +91,10 @@ class Intent:
     priority: int
     status: str
     reason_to_exist: str
+    order_mode: str = "sequential"
+    depends_on: list[str] = field(default_factory=list)
+    parallel_group: str | None = None
+    tree_path: str = ""
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
 
@@ -87,6 +108,10 @@ class Task:
     success_condition: str
     evidence_required: str
     status: str
+    order_mode: str = "sequential"
+    depends_on: list[str] = field(default_factory=list)
+    parallel_group: str | None = None
+    tree_path: str = ""
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
 
@@ -102,6 +127,12 @@ class Step:
     actual_observation: str | None
     next_decision: str
     status: str
+    sequence: int = 1
+    depends_on: list[str] = field(default_factory=list)
+    shared_context_keys: list[str] = field(default_factory=list)
+    context_policy: str = "inherit"
+    action_kind: str = "tool"
+    tree_path: str = ""
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
 
@@ -230,7 +261,6 @@ Current limitation:
     def bootstrap_session(self, prompt: str, channel: str, user_id: str) -> KernelSession:
         session_id = make_id("session")
         goal_id = make_id("goal")
-        clauses = split_candidate_clauses(prompt) or [normalize_text(prompt) or "advance the user request"]
         goal = Goal(
             goal_id=goal_id,
             primary=infer_goal(prompt),
@@ -238,49 +268,12 @@ Current limitation:
             completion_criteria=["produce a verified result or a concrete blocker", "keep work converged to the primary goal"],
             boundaries=["avoid unbounded branching", "prefer tool-grounded execution over unsupported claims"],
         )
-        intents: list[Intent] = []
-        tasks: list[Task] = []
-        steps: list[Step] = []
-        for index, clause in enumerate(clauses, start=1):
-            intent_id = make_id("intent")
-            task_id = make_id("task")
-            step_id = make_id("step")
-            intent_kind = infer_intent_kind(clause)
-            intents.append(
-                Intent(
-                    intent_id=intent_id,
-                    parent_goal_id=goal.goal_id,
-                    source="user_request",
-                    kind=intent_kind,
-                    priority=index,
-                    status="pending",
-                    reason_to_exist=clause,
-                )
-            )
-            tasks.append(
-                Task(
-                    task_id=task_id,
-                    parent_intent_id=intent_id,
-                    owner="decomposer",
-                    summary=clause,
-                    success_condition=f"the request segment is completed or explicitly blocked: {clause}",
-                    evidence_required="observed tool output, machine state, or an explicit blocker",
-                    status="pending",
-                )
-            )
-            steps.append(
-                Step(
-                    step_id=step_id,
-                    parent_task_id=task_id,
-                    summary=clause,
-                    tool_candidates=self._default_tools_for_intent(intent_kind),
-                    chosen_tool=self._default_tools_for_intent(intent_kind)[0],
-                    expected_observation="a concrete observation that advances or blocks the task",
-                    actual_observation=None,
-                    next_decision="choose the next best bounded step based on observation",
-                    status="pending",
-                )
-            )
+        job_fields = parse_job_request(prompt)
+        if job_fields:
+            goal.primary = f"Run orchestrated job {job_fields['job_name']} and report verified result"
+            intents, tasks, steps = self._build_job_execution_tree(goal.goal_id, job_fields)
+        else:
+            intents, tasks, steps = self._build_request_execution_tree(goal.goal_id, prompt)
         session = KernelSession(
             session_id=session_id,
             created_at=utc_now(),
@@ -299,6 +292,116 @@ Current limitation:
         )
         self.save_session(session)
         return session
+
+    def _build_request_execution_tree(self, goal_id: str, prompt: str) -> tuple[list[Intent], list[Task], list[Step]]:
+        clauses = split_candidate_clauses(prompt) or [normalize_text(prompt) or "advance the user request"]
+        intents: list[Intent] = []
+        tasks: list[Task] = []
+        steps: list[Step] = []
+        previous_intent_id: str | None = None
+        previous_task_id: str | None = None
+        previous_step_id: str | None = None
+        parallel_group: str | None = "request-parallel" if self._looks_parallel(prompt) else None
+        for index, clause in enumerate(clauses, start=1):
+            intent_id = make_id("intent")
+            task_id = make_id("task")
+            step_id = make_id("step")
+            intent_kind = infer_intent_kind(clause)
+            order_mode = "parallel" if parallel_group else "sequential"
+            intents.append(
+                Intent(
+                    intent_id=intent_id,
+                    parent_goal_id=goal_id,
+                    source="user_request",
+                    kind=intent_kind,
+                    priority=index,
+                    status="pending",
+                    reason_to_exist=clause,
+                    order_mode=order_mode,
+                    depends_on=[] if parallel_group or previous_intent_id is None else [previous_intent_id],
+                    parallel_group=parallel_group,
+                    tree_path=f"1.{index}",
+                )
+            )
+            tasks.append(
+                Task(
+                    task_id=task_id,
+                    parent_intent_id=intent_id,
+                    owner="decomposer",
+                    summary=clause,
+                    success_condition=f"the request segment is completed or explicitly blocked: {clause}",
+                    evidence_required="observed tool output, machine state, or an explicit blocker",
+                    status="pending",
+                    order_mode=order_mode,
+                    depends_on=[] if parallel_group or previous_task_id is None else [previous_task_id],
+                    parallel_group=parallel_group,
+                    tree_path=f"1.{index}.1",
+                )
+            )
+            steps.append(
+                Step(
+                    step_id=step_id,
+                    parent_task_id=task_id,
+                    summary=clause,
+                    tool_candidates=self._default_tools_for_intent(intent_kind),
+                    chosen_tool=self._default_tools_for_intent(intent_kind)[0],
+                    expected_observation="a concrete observation that advances or blocks the task",
+                    actual_observation=None,
+                    next_decision="choose the next best bounded step based on observation",
+                    status="pending",
+                    sequence=1,
+                    depends_on=[] if parallel_group or previous_step_id is None else [previous_step_id],
+                    shared_context_keys=["conversation", "workspace"],
+                    context_policy="inherit",
+                    action_kind="tool",
+                    tree_path=f"1.{index}.1.1",
+                )
+            )
+            previous_intent_id = intent_id
+            previous_task_id = task_id
+            previous_step_id = step_id
+        return intents, tasks, steps
+
+    def _build_job_execution_tree(self, goal_id: str, fields: dict[str, str]) -> tuple[list[Intent], list[Task], list[Step]]:
+        job_name = fields["job_name"]
+        category = fields.get("category", "generic")
+        command = fields["command"]
+        prompt = fields.get("prompt", "")
+        intent_id = make_id("intent")
+        task_ids = [make_id("task") for _ in range(3)]
+        step_ids = [make_id("step") for _ in range(3)]
+        context_keys = self._shared_context_keys_for_category(job_name, category)
+        intent = Intent(
+            intent_id=intent_id,
+            parent_goal_id=goal_id,
+            source="job_orchestrator",
+            kind=infer_intent_kind(prompt) if prompt else "operational",
+            priority=1,
+            status="pending",
+            reason_to_exist=normalize_text(f"Run {job_name} under orchestrated execution semantics"),
+            order_mode="sequential",
+            tree_path="1",
+        )
+        tasks = [
+            Task(task_ids[0], intent_id, "orchestrator", f"Prepare shared execution context for {job_name}", "runtime context is available or explicitly blocked", "context keys and environment observation", "pending", tree_path="1.1"),
+            Task(task_ids[1], intent_id, "orchestrator", f"Execute job action for {job_name}", "command exits successfully or enters bounded repair", "stdout, stderr, exit code, and trace observation", "pending", depends_on=[task_ids[0]], tree_path="1.2"),
+            Task(task_ids[2], intent_id, "orchestrator", f"Verify and report {job_name}", "final payload is preserved or blocker report is emitted", "final stdout or blocker JSON", "pending", depends_on=[task_ids[1]], tree_path="1.3"),
+        ]
+        steps = [
+            Step(step_ids[0], task_ids[0], f"Reuse or initialize shared context for {job_name}", ["kernel_state", "environment"], "kernel_state", "shared context is identified before action execution", "context keys prepared", "continue to command action using the same context keys", "completed", sequence=1, shared_context_keys=context_keys, context_policy="reuse", action_kind="context", tree_path="1.1.1"),
+            Step(step_ids[1], task_ids[1], f"Run command action for {job_name}: {command}", [command, "helper_repairer"], command, "command return code and output are captured", None, "complete on success, otherwise record gap and attempt bounded repair", "pending", sequence=1, depends_on=[step_ids[0]], shared_context_keys=context_keys, context_policy="reuse", action_kind="tool", tree_path="1.2.1"),
+            Step(step_ids[2], task_ids[2], f"Preserve final output and report {job_name}", ["message", "stdout"], "stdout", "final output is available without changing delivery contract", None, "finish the job report", "pending", sequence=1, depends_on=[step_ids[1]], shared_context_keys=context_keys, context_policy="reuse", action_kind="report", tree_path="1.3.1"),
+        ]
+        return [intent], tasks, steps
+
+    def _looks_parallel(self, prompt: str) -> bool:
+        return bool(re.search(r"同时|并行|parallel|concurrent|in parallel", prompt, re.IGNORECASE))
+
+    def _shared_context_keys_for_category(self, job_name: str, category: str) -> list[str]:
+        keys = ["cron_job", f"job:{job_name}", f"category:{category}", "workspace"]
+        if category == "timescar":
+            keys.extend(["browser_cdp", "timescar_login_state", "timescar_storage_state"])
+        return keys
 
     def _default_tools_for_intent(self, intent_kind: str) -> list[str]:
         if intent_kind == "operational":
@@ -321,6 +424,29 @@ Current limitation:
     def load_session(self, session_id: str) -> KernelSession:
         path = self.sessions_dir / f"{session_id}.json"
         data = json.loads(path.read_text(encoding="utf-8"))
+        intents = []
+        for item in data["intents"]:
+            item.setdefault("order_mode", "sequential")
+            item.setdefault("depends_on", [])
+            item.setdefault("parallel_group", None)
+            item.setdefault("tree_path", "")
+            intents.append(Intent(**item))
+        tasks = []
+        for item in data["tasks"]:
+            item.setdefault("order_mode", "sequential")
+            item.setdefault("depends_on", [])
+            item.setdefault("parallel_group", None)
+            item.setdefault("tree_path", "")
+            tasks.append(Task(**item))
+        steps = []
+        for index, item in enumerate(data["steps"], start=1):
+            item.setdefault("sequence", index)
+            item.setdefault("depends_on", [])
+            item.setdefault("shared_context_keys", [])
+            item.setdefault("context_policy", "inherit")
+            item.setdefault("action_kind", "tool")
+            item.setdefault("tree_path", "")
+            steps.append(Step(**item))
         return KernelSession(
             session_id=data["session_id"],
             created_at=data["created_at"],
@@ -329,9 +455,9 @@ Current limitation:
             user_id=data["user_id"],
             raw_request=data["raw_request"],
             goal=Goal(**data["goal"]),
-            intents=[Intent(**item) for item in data["intents"]],
-            tasks=[Task(**item) for item in data["tasks"]],
-            steps=[Step(**item) for item in data["steps"]],
+            intents=intents,
+            tasks=tasks,
+            steps=steps,
             observations=data.get("observations", []),
             capability_gaps=[CapabilityGap(**item) for item in data.get("capability_gaps", [])],
             failure_patterns=[FailurePattern(**item) for item in data.get("failure_patterns", [])],
@@ -1027,6 +1153,43 @@ Current limitation:
         }
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
+    def render_tree_report(self, session: KernelSession) -> str:
+        lines = [
+            f"Goal [{session.goal.status}]: {session.goal.primary}",
+            f"Session: {session.session_id}",
+        ]
+        tasks_by_intent: dict[str, list[Task]] = {}
+        for task in session.tasks:
+            tasks_by_intent.setdefault(task.parent_intent_id, []).append(task)
+        steps_by_task: dict[str, list[Step]] = {}
+        for step in session.steps:
+            steps_by_task.setdefault(step.parent_task_id, []).append(step)
+        for intent in sorted(session.intents, key=lambda item: (item.priority, item.tree_path)):
+            intent_meta = self._tree_meta(intent.order_mode, intent.depends_on, intent.parallel_group)
+            lines.append(f"- Intent {intent.priority} [{intent.kind}/{intent.status}{intent_meta}]: {intent.reason_to_exist}")
+            for task_index, task in enumerate(sorted(tasks_by_intent.get(intent.intent_id, []), key=lambda item: item.tree_path), start=1):
+                task_meta = self._tree_meta(task.order_mode, task.depends_on, task.parallel_group)
+                lines.append(f"  - Task {task_index} [{task.status}{task_meta}]: {task.summary}")
+                for step in sorted(steps_by_task.get(task.task_id, []), key=lambda item: (item.sequence, item.tree_path)):
+                    deps = f"; depends_on={len(step.depends_on)}" if step.depends_on else ""
+                    context = ",".join(step.shared_context_keys) if step.shared_context_keys else "none"
+                    lines.append(
+                        f"    - Step {step.sequence} [{step.status}; action={step.action_kind}; tool={step.chosen_tool}; context={context}; policy={step.context_policy}{deps}]: {step.summary}"
+                    )
+                    if step.actual_observation:
+                        lines.append(f"      observation: {step.actual_observation[:500]}")
+                    if step.next_decision:
+                        lines.append(f"      next: {step.next_decision}")
+        return "\n".join(lines)
+
+    def _tree_meta(self, order_mode: str, depends_on: list[str], parallel_group: str | None) -> str:
+        parts = [f"order={order_mode}"]
+        if parallel_group:
+            parts.append(f"parallel_group={parallel_group}")
+        if depends_on:
+            parts.append(f"depends_on={len(depends_on)}")
+        return "; " + "; ".join(parts)
+
     def list_reusable_helpers(self, session: KernelSession) -> list[HelperTool]:
         helpers = [tool for tool in session.helper_tools if tool.status in {"validated", "promoted"}]
         helpers.sort(key=lambda item: item.updated_at, reverse=True)
@@ -1058,6 +1221,9 @@ def parse_args() -> argparse.Namespace:
 
     show = sub.add_parser("show")
     show.add_argument("--session-id", required=True)
+
+    tree = sub.add_parser("tree-report")
+    tree.add_argument("--session-id", required=True)
 
     ensure = sub.add_parser("ensure-session")
     ensure.add_argument("--prompt", required=True)
@@ -1122,6 +1288,10 @@ def main() -> int:
     if args.command == "show":
         session = kernel.load_session(args.session_id)
         emit_json(kernel.render_summary(session))
+        return 0
+    if args.command == "tree-report":
+        session = kernel.load_session(args.session_id)
+        print(kernel.render_tree_report(session))
         return 0
     if args.command == "ensure-session":
         root = kernel.sessions_dir

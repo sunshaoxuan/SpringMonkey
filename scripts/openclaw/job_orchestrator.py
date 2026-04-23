@@ -72,6 +72,9 @@ def ensure_session(kernel: AgentSocietyKernel, *, job_name: str, category: str, 
         f"command exits successfully and produces the final {category} output for delivery to {job_name}"
     )
     step.next_decision = "execute command and inspect stdout/stderr before deciding completion or repair"
+    step.shared_context_keys = kernel._shared_context_keys_for_category(job_name, category)
+    step.context_policy = "reuse"
+    step.action_kind = "tool"
     step.status = "in_progress"
     step.updated_at = utc_now()
     kernel.save_session(session)
@@ -178,6 +181,16 @@ def main() -> int:
                 "command succeeded; preserve stdout as final delivery payload",
                 "completed",
             )
+            session = kernel.load_session(session.session_id)
+            report_step = next((item for item in session.steps if item.action_kind == "report" and item.status == "pending"), None)
+            if report_step is not None:
+                kernel.record_observation(
+                    session,
+                    report_step.step_id,
+                    f"stdout bytes={len(result.stdout.encode('utf-8'))}",
+                    "final delivery payload preserved without changing stdout contract",
+                    "completed",
+                )
             sys.stdout.write(result.stdout)
             if result.stdout and not result.stdout.endswith("\n"):
                 sys.stdout.write("\n")

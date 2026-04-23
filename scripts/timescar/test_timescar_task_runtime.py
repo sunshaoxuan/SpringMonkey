@@ -17,7 +17,16 @@ def main() -> int:
 
         runtime = runtime_module.TimesCarTaskRuntime("timescar-book-sat-3weeks", "write", ttl_seconds=120)
         runtime.start("init")
-        runtime.record_step(step="open-page", status="ok", tool="browser", detail="opened page")
+        runtime.record_step(
+            step="open-page",
+            status="ok",
+            tool="browser",
+            detail="opened page",
+            parent="fetch-reservations",
+            level=2,
+            depends_on=["load-credentials"],
+            context=["browser_cdp", "timescar_login_state"],
+        )
         runtime.heartbeat("login", note="session requires login")
         runtime.finish("ok", "done", final_message="booked")
 
@@ -26,6 +35,9 @@ def main() -> int:
         assert payload["currentPhase"] == "done"
         assert payload["finalMessage"] == "booked"
         assert payload["steps"][0]["step"] == "open-page"
+        assert payload["steps"][0]["parent"] == "fetch-reservations"
+        assert payload["steps"][0]["dependsOn"] == ["load-credentials"]
+        assert "timescar_login_state" in payload["steps"][0]["context"]
         print(json.dumps({"trace_steps": len(payload["steps"]), "status": payload["status"]}, ensure_ascii=False))
     return 0
 

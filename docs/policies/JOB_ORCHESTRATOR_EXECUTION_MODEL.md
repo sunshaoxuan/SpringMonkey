@@ -69,6 +69,43 @@ The long-term direction is:
 - self-improvement uses the observations to grow helpers
 - helper drift and retirement are enforced before reuse
 
+## Tree Log Model
+
+Long-running work must be auditable as a tree, not only as a flat stream of
+messages.
+
+The runtime stores these structure fields directly on kernel objects:
+
+- intents: `order_mode`, `depends_on`, `parallel_group`, `tree_path`
+- tasks: `order_mode`, `depends_on`, `parallel_group`, `tree_path`
+- steps: `sequence`, `depends_on`, `shared_context_keys`, `context_policy`,
+  `action_kind`, `tree_path`
+
+Interpretation:
+
+- ordered intents or tasks are siblings with explicit `depends_on`
+- unordered or parallel intents/tasks share the same `parallel_group`
+- steps remain concrete and sequential inside a task unless the task explicitly
+  splits into parallel children
+- actions/tools are discrete selections, but they may reuse shared context by
+  named keys
+- browser or login state must be represented as shared context, not recreated
+  blindly for each step
+
+Examples of shared context keys:
+
+- `workspace`
+- `browser_cdp`
+- `timescar_login_state`
+- `timescar_storage_state`
+- `cron_job`
+- `job:<job-name>`
+- `category:<category>`
+
+Reports for long processes should render this tree so humans can see parallel
+siblings at the same level and ordered dependencies through indentation and
+dependency markers.
+
 ## Acceptance Standard
 
 A scheduled job is considered aligned only when:
@@ -80,3 +117,5 @@ A scheduled job is considered aligned only when:
 5. reusable failures can generate, validate, and promote helpers
 6. one bounded retry can return to the original step
 7. stale helpers can be deprecated instead of reused forever
+8. the run can produce a tree report showing intent, task, step, tool,
+   dependency, and shared-context evidence

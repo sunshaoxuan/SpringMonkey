@@ -62,6 +62,14 @@ Each intent should carry:
 - `priority`
 - `status`
 - `reason_to_exist`
+- `order_mode`
+- `depends_on`
+- `parallel_group`
+- `tree_path`
+
+Intent extraction may be mechanically discrete. It must still preserve whether
+the intents are ordered, unordered, or parallel. Over-smoothing intent space is
+not required; losing dependency structure is not acceptable.
 
 ### 3. Task Layer
 
@@ -83,6 +91,14 @@ Each task should carry:
 - `success_condition`
 - `evidence_required`
 - `status`
+- `order_mode`
+- `depends_on`
+- `parallel_group`
+- `tree_path`
+
+Parallel tasks may run as peers only when they do not require each other's
+observations. Dependent tasks must carry explicit `depends_on` instead of
+relying on hidden natural-language ordering.
 
 ### 4. Step Layer
 
@@ -104,6 +120,17 @@ Each step should carry:
 - `expected_observation`
 - `actual_observation`
 - `next_decision`
+- `sequence`
+- `depends_on`
+- `shared_context_keys`
+- `context_policy`
+- `action_kind`
+- `tree_path`
+
+Steps are discrete execution choices, but they are not isolated sandboxes.
+Shared environment such as browser sessions, login state, workspace paths, and
+job artifacts must be named and inherited when the parent intent requires
+continuity.
 
 ### 5. Action / Tool Layer
 
@@ -123,6 +150,22 @@ task as one black-box job.
 Cron jobs must follow the same model. Even if the scheduler invokes one command,
 the job must still be represented as intent, task, step, action/tool,
 observation, repair, retry, and report.
+
+## Reporting Shape
+
+Long-process reports must be tree-shaped:
+
+- goal at the root
+- intents as first-level children
+- tasks nested under their intent
+- steps nested under their task
+- parallel siblings displayed at the same indentation level
+- ordered dependencies shown by `depends_on` or equivalent markers
+- each step shows chosen tool/action and shared context keys
+
+This requirement applies to direct chat tasks, cron jobs, and pipeline jobs.
+Flat logs may exist for machines, but human reports must preserve the execution
+tree.
 
 ## Expansion And Convergence
 

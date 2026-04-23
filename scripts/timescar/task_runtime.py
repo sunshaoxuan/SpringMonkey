@@ -69,6 +69,10 @@ class TimesCarTaskRuntime:
         tool: str = "",
         detail: str = "",
         observation: str = "",
+        parent: str = "",
+        level: int = 1,
+        depends_on: list[str] | None = None,
+        context: list[str] | None = None,
     ) -> None:
         self.state["updatedAtMs"] = now_ms()
         self.state["currentPhase"] = step
@@ -79,6 +83,10 @@ class TimesCarTaskRuntime:
                 "tool": _safe_text(tool),
                 "detail": _safe_text(detail),
                 "observation": _safe_text(observation),
+                "parent": _safe_text(parent),
+                "level": level,
+                "dependsOn": [_safe_text(item) for item in (depends_on or [])],
+                "context": [_safe_text(item) for item in (context or [])],
                 "atMs": now_ms(),
             }
         )
@@ -113,4 +121,3 @@ class TimesCarTaskRuntime:
         tmp = self.trace_path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(self.state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, self.trace_path)
-

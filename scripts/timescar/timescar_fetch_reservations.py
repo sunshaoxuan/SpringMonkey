@@ -155,7 +155,15 @@ def fetch(runtime: TimesCarTaskRuntime | None = None) -> dict[str, Any]:
     runtime = runtime or TimesCarTaskRuntime("timescar-fetch-reservations", "read", ttl_seconds=900)
     runtime.start("load-credentials")
     p1, p2, password = load_credentials()
-    runtime.record_step(step="load-credentials", status="ok", tool="secret.sh", detail="loaded TimesCar credentials")
+    runtime.record_step(
+        step="load-credentials",
+        status="ok",
+        tool="secret.sh",
+        detail="loaded TimesCar credentials",
+        parent="prepare-shared-context",
+        level=2,
+        context=["timescar_secret"],
+    )
     last_exc: Exception | None = None
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     with redirect_process_stderr(STDERR_LOG):
@@ -172,16 +180,43 @@ def fetch(runtime: TimesCarTaskRuntime | None = None) -> dict[str, Any]:
                         raise RuntimeError("openclaw browser backend has no default context")
                     page = context.new_page()
                     page.set_default_timeout(15000)
-                    runtime.record_step(step="open-reservation-list", status="running", tool="browser", detail=RESERVE_LIST)
+                    runtime.record_step(
+                        step="open-reservation-list",
+                        status="running",
+                        tool="browser",
+                        detail=RESERVE_LIST,
+                        parent="fetch-reservations",
+                        level=2,
+                        depends_on=["load-credentials"],
+                        context=["browser_cdp", "timescar_login_state"],
+                    )
                     page.goto(RESERVE_LIST, wait_until="load", timeout=30000)
                     if is_login_page(page):
-                        runtime.record_step(step="login-required", status="running", tool="browser", detail="session requires login")
+                        runtime.record_step(
+                            step="login-required",
+                            status="running",
+                            tool="browser",
+                            detail="session requires login",
+                            parent="fetch-reservations",
+                            level=3,
+                            depends_on=["open-reservation-list"],
+                            context=["browser_cdp", "timescar_login_state", "timescar_storage_state"],
+                        )
                         for candidate in load_candidates():
                             try:
                                 page.goto(candidate, wait_until="load", timeout=30000)
                                 if is_login_page(page):
                                     ensure_logged_in(page, p1, p2, password)
-                                    runtime.record_step(step="login-required", status="ok", tool="browser", detail=f"login via {candidate}")
+                                    runtime.record_step(
+                                        step="login-required",
+                                        status="ok",
+                                        tool="browser",
+                                        detail=f"login via {candidate}",
+                                        parent="fetch-reservations",
+                                        level=3,
+                                        depends_on=["open-reservation-list"],
+                                        context=["browser_cdp", "timescar_login_state", "timescar_storage_state"],
+                                    )
                                     break
                             except Exception as exc:
                                 last_exc = exc
@@ -199,6 +234,10 @@ def fetch(runtime: TimesCarTaskRuntime | None = None) -> dict[str, Any]:
                         tool="browser",
                         detail=f"parsed {len(reservations)} reservations",
                         observation=page.url,
+                        parent="fetch-reservations",
+                        level=2,
+                        depends_on=["open-reservation-list", "login-required"],
+                        context=["browser_cdp", "timescar_login_state"],
                     )
                     runtime.finish("ok", "done", final_message=f"{len(reservations)} reservations fetched")
                     return {"ok": True, "entryUrl": page.url, "title": page.title(), "reservations": reservations}
@@ -209,6 +248,10 @@ def fetch(runtime: TimesCarTaskRuntime | None = None) -> dict[str, Any]:
                         status="failed",
                         tool="browser",
                         detail=str(exc),
+                        parent="fetch-reservations",
+                        level=2,
+                        depends_on=["open-reservation-list"],
+                        context=["browser_cdp", "timescar_login_state"],
                     )
                     if STORAGE_STATE.exists():
                         try:
