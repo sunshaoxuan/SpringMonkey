@@ -25,15 +25,19 @@ def main() -> int:
         assert session.intents[0].reason_to_exist == "Fetch TimesCar reservations, render a Chinese daily report, and preserve delivery output."
         action_step = next(step for step in session.steps if step.action_kind == "tool")
         assert action_step.depends_on
-        assert "browser_cdp" in action_step.shared_context_keys
-        assert "timescar_login_state" in action_step.shared_context_keys
+        assert action_step.shared_context_keys == [
+            "cron_job",
+            "job:timescar-daily-report-2200",
+            "category:timescar",
+            "workspace",
+        ]
         report = kernel.render_tree_report(session)
         assert "Goal [active]" in report
         assert "Intent 1" in report
         assert "Fetch TimesCar reservations, render a Chinese daily report" in report
         assert "Run timescar-daily-report-2200 under orchestrated execution semantics" not in report
         assert "Task 2" in report
-        assert "context=cron_job,job:timescar-daily-report-2200,category:timescar,workspace,browser_cdp" in report
+        assert "context=cron_job,job:timescar-daily-report-2200,category:timescar,workspace" in report
         assert "depends_on=1" in report
         print("agent_society_tree_report_ok")
     return 0

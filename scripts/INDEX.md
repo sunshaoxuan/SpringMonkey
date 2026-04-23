@@ -168,6 +168,7 @@
 - `openclaw/job_orchestrator.py`：cron/pipeline job 的通用执行包装器；把脚本命令作为 kernel step 的 action/tool 执行，成功保持 stdout 契约，失败写 gap、触发 helper、自修复后 bounded retry
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核；记录 order/dependency/parallel/shared-context 元数据，并可通过 `tree-report` 输出长流程树状报告
 - `openclaw/test_agent_society_tree_report.py`：验证 orchestrated job 不再被拆成 metadata 平铺项，而是保留 intent/task/step 树、依赖和共享上下文
+- `openclaw/test_framework_domain_purity.py`：框架纯度回归测试；禁止 kernel / orchestrator 这类通用框架文件硬编码业务域内容
 - `openclaw/test_job_orchestrator_success.py`：验证 orchestrator 成功路径保持 stdout 并写 completed observation
 - `openclaw/test_job_orchestrator_failure_self_repair.py`：验证 orchestrator 失败路径写 gap、生成 helper，并在一次 bounded retry 后完成
 - `openclaw/test_helper_retirement.py`：验证 helper 被 drift gate 连续拒绝后会 deprecated，且不会再进入 future tool candidates

@@ -24,6 +24,30 @@ This policy is **not** asking for:
 - a chatbot that only adds more explanations
 - a static tool list that is retried until it fails
 
+## Framework Purity Baseline
+
+Framework code must not contain business-domain content.
+
+Allowed in framework code:
+
+- abstract behavior names
+- abstract action/tool types
+- generic metadata keys
+- generic execution policies
+- generic state transitions
+
+Not allowed in framework code:
+
+- business names
+- channel-specific routing rules
+- domain-specific context keys
+- domain-specific intent summaries
+- special-case branches for one product, website, channel, or cron job
+
+Business content belongs in domain scripts, job prompts, configuration, or
+domain adapters. The framework may store and pass that content as data, but it
+must not understand or hardcode it.
+
 ## Core Runtime Model
 
 The runtime should reason in layers.

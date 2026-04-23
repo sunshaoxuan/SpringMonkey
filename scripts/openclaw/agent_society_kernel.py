@@ -398,10 +398,7 @@ Current limitation:
         return bool(re.search(r"同时|并行|parallel|concurrent|in parallel", prompt, re.IGNORECASE))
 
     def _shared_context_keys_for_category(self, job_name: str, category: str) -> list[str]:
-        keys = ["cron_job", f"job:{job_name}", f"category:{category}", "workspace"]
-        if category == "timescar":
-            keys.extend(["browser_cdp", "timescar_login_state", "timescar_storage_state"])
-        return keys
+        return ["cron_job", f"job:{job_name}", f"category:{category}", "workspace"]
 
     def _business_intent_summary(self, job_name: str, category: str, prompt: str) -> str:
         cleaned_prompt = normalize_text(prompt)

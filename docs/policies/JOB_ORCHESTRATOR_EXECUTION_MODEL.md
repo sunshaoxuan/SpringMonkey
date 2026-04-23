@@ -27,6 +27,19 @@ This applies to:
 - browser workflows
 - account and website operations
 
+## Framework Purity Rule
+
+The orchestrator and kernel are framework code.
+
+They may define abstract execution concepts such as goal, intent, task, step,
+action, tool, observation, repair, retry, report, dependency, and shared
+context.
+
+They must not contain business-domain logic or business names. Domain-specific
+meaning must arrive as data from prompts, cron configuration, domain scripts, or
+explicit adapters. The framework can record that data, but it cannot branch on
+it.
+
 ## Orchestrator Contract
 
 The repo-managed job orchestrator is the production bridge for jobs that are
