@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -27,7 +28,17 @@ def infer_helper_category(helper_name: str, purpose: str, category: str | None) 
     return "generic"
 
 
+def purpose_hash(purpose: str) -> str:
+    return hashlib.sha1(purpose.strip().encode("utf-8")).hexdigest()[:12]
+
+
 def render_helper(helper_name: str, purpose: str, category: str) -> str:
+    contract = {
+        "helper_name": helper_name,
+        "purpose": purpose,
+        "purpose_hash": purpose_hash(purpose),
+        "category": category,
+    }
     return f"""#!/usr/bin/env python3
 from __future__ import annotations
 
@@ -36,9 +47,7 @@ import json
 from pathlib import Path
 
 
-HELPER_NAME = {helper_name!r}
-PURPOSE = {purpose!r}
-CATEGORY = {category!r}
+HELPER_CONTRACT = {json.dumps(contract, ensure_ascii=False, indent=2)}
 
 
 def collect_checks(repo_root: Path, observation: str) -> tuple[list[dict[str, object]], list[str]]:
@@ -47,7 +56,7 @@ def collect_checks(repo_root: Path, observation: str) -> tuple[list[dict[str, ob
     expected = [
         "scripts/openclaw/agent_society_runtime_record_gap.py",
         "scripts/openclaw/agent_society_helper_toolsmith.py",
-        "scripts/openclaw/patch_line_direct_visibility_watchdog_current.py",
+        "scripts/openclaw/agent_society_kernel.py",
     ]
     for rel in expected:
         path = repo_root.joinpath(*rel.split("/"))
@@ -57,39 +66,103 @@ def collect_checks(repo_root: Path, observation: str) -> tuple[list[dict[str, ob
             "ok": path.exists(),
         }})
     lowered = observation.lower()
-    if CATEGORY == "runtime_timeout":
+    category = HELPER_CONTRACT["category"]
+    if category == "runtime_timeout":
         suggestions.append("inspect direct-task timeout and first-response watchdog thresholds before retrying")
         if "line" in lowered or "response" in lowered:
             suggestions.append("verify LINE direct visibility watchdog and no-response fallback are both patched in the active runtime")
-    elif CATEGORY == "execution_blocked":
+    elif category == "execution_blocked":
         suggestions.append("classify whether the block is channel delivery, runtime execution, or missing target discovery")
         if "no response" in lowered:
             suggestions.append("check whether no-response fallback is present before escalating to model/runtime diagnosis")
-    elif CATEGORY == "tool_missing":
+    elif category == "tool_missing":
         suggestions.append("identify the smallest missing helper or runtime probe and add it as a bounded repo script")
-    elif CATEGORY == "runtime_drift":
+    elif category == "runtime_drift":
         suggestions.append("probe the active bundle by content markers instead of relying on filenames")
     else:
         suggestions.append("reduce the failure into a bounded observable probe before proposing a larger repair")
     return checks, suggestions
 
 
+def build_repair_workflow(observation: str) -> list[dict[str, str]]:
+    category = HELPER_CONTRACT["category"]
+    if category == "runtime_timeout":
+        return [
+            {{"step": "classify timeout surface", "action": "separate model wait, tool wait, and delivery wait using current observation"}},
+            {{"step": "verify timeout guard", "action": "inspect active watchdog / timeout thresholds and compare them against the observed hang stage"}},
+            {{"step": "apply bounded repair path", "action": "prefer timeout-specific helper or retry policy before changing unrelated runtime paths"}},
+            {{"step": "verify visible recovery", "action": "confirm a later run emits visible progress or a concrete blocker instead of silent hanging"}},
+        ]
+    if category == "runtime_drift":
+        return [
+            {{"step": "identify active artifact", "action": "probe the currently active bundle or runtime file by content markers, not filenames"}},
+            {{"step": "check expected anchor contract", "action": "verify the intended marker, anchor, or injected protocol still exists in the active artifact"}},
+            {{"step": "repair active target only", "action": "patch the current active artifact and avoid editing stale filenames"}},
+            {{"step": "re-verify markers", "action": "confirm required runtime markers exist after repair before trusting the fix"}},
+        ]
+    if category == "tool_missing":
+        return [
+            {{"step": "identify missing capability", "action": "narrow the exact missing tool, helper, or probe instead of broad retrying"}},
+            {{"step": "generate bounded helper", "action": "add the smallest repo helper that closes the missing capability gap"}},
+            {{"step": "validate helper output", "action": "run the helper and check that it produces structured ready output"}},
+            {{"step": "promote if reusable", "action": "register the helper only if validation proves it is reusable"}},
+        ]
+    if category == "execution_blocked":
+        return [
+            {{"step": "classify block layer", "action": "separate channel delivery, runtime execution, access blocker, and target-discovery blocker"}},
+            {{"step": "pick narrow repair path", "action": "use the smallest repair path that directly addresses the blocking layer"}},
+            {{"step": "verify unblock", "action": "confirm the task now yields visible progress, concrete output, or an explicit blocker"}},
+        ]
+    return [
+        {{"step": "reduce to bounded probe", "action": "turn the failure into a smaller observable repair loop before wider changes"}},
+    ]
+
+
+def assess_drift(checks: list[dict[str, object]], repair_workflow: list[dict[str, str]], observation: str) -> dict[str, object]:
+    reasons: list[str] = []
+    if not repair_workflow:
+        reasons.append("repair workflow is empty")
+    missing = [check["path"] for check in checks if not check.get("ok")]
+    if missing:
+        reasons.append("missing expected repo paths: " + ", ".join(missing))
+    lowered = observation.lower()
+    category = HELPER_CONTRACT["category"]
+    if category == "runtime_timeout" and not any(token in lowered for token in ("timeout", "timed out", "stalled", "hang", "hung", "卡住", "response")):
+        reasons.append("observation no longer looks like a timeout-shaped failure")
+    if category == "runtime_drift" and not any(token in lowered for token in ("drift", "bundle", "anchor", "selector", "patch", "upgrade")):
+        reasons.append("observation no longer looks like runtime drift")
+    if category == "tool_missing" and not any(token in lowered for token in ("missing", "not found", "unsupported", "helper", "tool")):
+        reasons.append("observation no longer looks like tool-missing")
+    if category == "execution_blocked" and not any(token in lowered for token in ("blocked", "no response", "stuck", "silent", "empty result")):
+        reasons.append("observation no longer looks like execution-blocked")
+    return {{
+        "ok": not reasons,
+        "reasons": reasons,
+        "purpose_hash": HELPER_CONTRACT["purpose_hash"],
+    }}
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Bounded helper generated by the agent society toolsmith.")
+    parser = argparse.ArgumentParser(description="Bounded business repairer generated by the agent society toolsmith.")
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--observation", default="")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root)
     checks, suggestions = collect_checks(repo_root, args.observation)
+    repair_workflow = build_repair_workflow(args.observation)
+    drift = assess_drift(checks, repair_workflow, args.observation)
     payload = {{
-        "helper_name": HELPER_NAME,
-        "purpose": PURPOSE,
-        "category": CATEGORY,
-        "status": "ready",
+        "helper_name": HELPER_CONTRACT["helper_name"],
+        "purpose": HELPER_CONTRACT["purpose"],
+        "category": HELPER_CONTRACT["category"],
+        "status": "ready" if drift["ok"] else "drifted",
         "repo_root": str(repo_root),
+        "contract": HELPER_CONTRACT,
         "checks": checks,
         "suggested_actions": suggestions,
+        "repair_workflow": repair_workflow,
+        "drift": drift,
     }}
     print(json.dumps(payload, ensure_ascii=False))
     return 0
@@ -114,6 +187,7 @@ def create_helper_tool(repo_root: Path, helper_name: str, purpose: str, category
         "entrypoint": str(target.relative_to(repo_root)).replace("\\", "/"),
         "created": True,
         "category": inferred_category,
+        "purpose_hash": purpose_hash(purpose),
     }
 
 

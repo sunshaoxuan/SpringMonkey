@@ -135,6 +135,8 @@ def main() -> int:
                 "category": helper_output.get("category"),
                 "check_count": len(helper_output.get("checks", [])),
                 "action_count": len(helper_output.get("suggested_actions", [])),
+                "workflow_count": len(helper_output.get("repair_workflow", [])),
+                "drift_ok": bool(helper_output.get("drift", {}).get("ok")),
             },
             ensure_ascii=False,
         )
@@ -149,6 +151,8 @@ def main() -> int:
                 )
                 and helper_output.get("category") == gap.category
                 and len(helper_output.get("checks", [])) > 0
+                and len(helper_output.get("repair_workflow", [])) > 0
+                and bool(helper_output.get("drift", {}).get("ok"))
             ):
                 promoted_status = "promoted"
         tool = kernel.validate_helper_tool(

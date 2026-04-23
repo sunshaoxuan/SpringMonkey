@@ -179,6 +179,12 @@ The toolsmith function decides whether to:
 - register a reusable helper
 - escalate a blocker to the user
 
+Current implemented step:
+
+- the toolsmith can now generate a bounded business repairer, not just a thin scaffold
+- generated repairers include a helper contract, a multi-step repair workflow, and a drift guard
+- promotion now requires not only executable output, but also a non-empty repair workflow and a passing drift check
+
 ### Layer E: Verification
 
 Every repair step must generate:
