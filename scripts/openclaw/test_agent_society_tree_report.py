@@ -22,6 +22,7 @@ def main() -> int:
         assert len(session.tasks) == 3
         assert len(session.steps) == 3
         assert session.tasks[0].status == "completed"
+        assert session.intents[0].reason_to_exist == "Generate the TimesCar daily reservation report and preserve the LINE delivery payload evidence"
         action_step = next(step for step in session.steps if step.action_kind == "tool")
         assert action_step.depends_on
         assert "browser_cdp" in action_step.shared_context_keys
@@ -29,6 +30,8 @@ def main() -> int:
         report = kernel.render_tree_report(session)
         assert "Goal [active]" in report
         assert "Intent 1" in report
+        assert "Generate the TimesCar daily reservation report" in report
+        assert "Run timescar-daily-report-2200 under orchestrated execution semantics" not in report
         assert "Task 2" in report
         assert "context=cron_job,job:timescar-daily-report-2200,category:timescar,workspace,browser_cdp" in report
         assert "depends_on=1" in report

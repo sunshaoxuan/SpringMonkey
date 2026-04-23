@@ -378,7 +378,7 @@ Current limitation:
             kind=infer_intent_kind(prompt) if prompt else "operational",
             priority=1,
             status="pending",
-            reason_to_exist=normalize_text(f"Run {job_name} under orchestrated execution semantics"),
+            reason_to_exist=self._business_intent_summary(job_name, category, prompt),
             order_mode="sequential",
             tree_path="1",
         )
@@ -402,6 +402,24 @@ Current limitation:
         if category == "timescar":
             keys.extend(["browser_cdp", "timescar_login_state", "timescar_storage_state"])
         return keys
+
+    def _business_intent_summary(self, job_name: str, category: str, prompt: str) -> str:
+        cleaned_prompt = normalize_text(prompt)
+        if category == "timescar" and "daily-report" in job_name:
+            return "Generate the TimesCar daily reservation report and preserve the LINE delivery payload evidence"
+        if category == "timescar" and "cancel-next24h" in job_name:
+            return "Inspect TimesCar reservations in the next 24 hours and report cancellation candidates"
+        if category == "timescar" and "book" in job_name:
+            return "Book the target TimesCar reservation through the browser workflow and verify the result"
+        if category == "timescar" and "extend" in job_name:
+            return "Extend the target TimesCar reservation through the browser workflow and verify the result"
+        if category == "weather":
+            return "Fetch weather data, compose the scheduled weather report, and preserve the configured delivery payload"
+        if category == "news":
+            return "Collect news sources, summarize them, verify references, and preserve the configured digest payload"
+        if cleaned_prompt:
+            return cleaned_prompt[:240]
+        return f"Complete {job_name} as a {category} job with observable evidence"
 
     def _default_tools_for_intent(self, intent_kind: str) -> list[str]:
         if intent_kind == "operational":
