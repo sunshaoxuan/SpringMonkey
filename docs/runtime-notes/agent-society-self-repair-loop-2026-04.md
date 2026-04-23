@@ -154,6 +154,7 @@ It still lacks:
 - automatic code generation for helper tools
 - automatic promotion for categories beyond the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths
 - broader semantic clustering so related failure sub-shapes can merge without being manually enumerated first
+  current progress: common timeout / drift / tool-missing / execution-blocked phrasing variants now cluster more aggressively into the same durable pattern
 
 But it provides the durable state model needed for those later steps.
 

@@ -368,7 +368,7 @@ Current limitation:
         proposed_repair = "narrow the blocker and choose the next bounded recovery step"
         proposed_tool_name: str | None = None
 
-        if any(token in lowered for token in ("timeout", "timed out", "卡住", "hang", "stalled")):
+        if any(token in lowered for token in ("timeout", "timed out", "卡住", "hang", "hung", "stalled", "etimedout", "first token", "visible progress")):
             category = "runtime_timeout"
             severity = "high"
             proposed_repair = "retry with a bounded timeout-recovery path and inspect runtime/tool latency before continuing"
@@ -492,28 +492,91 @@ Current limitation:
             step.updated_at = utc_now()
 
     def _infer_failure_pattern_signature(self, step: Step, gap: CapabilityGap) -> str:
-        tokens = re.findall(r"[a-z0-9]+", gap.summary.lower())
-        synonyms = {
-            "timed": "timeout",
-            "stalled": "timeout",
-            "hang": "timeout",
-            "generated": "response",
-            "missing": "missing",
-            "unsupported": "missing",
-        }
-        semantic = [synonyms.get(token, token) for token in tokens if token not in {"the", "and", "for", "with", "while", "again", "before", "after", "out"}]
-        if gap.category == "runtime_timeout":
-            semantic = [token for token in semantic if token in {"timeout", "waiting", "response", "visible", "output", "first"}]
-        elif gap.category == "tool_missing":
-            semantic = [token for token in semantic if token in {"missing", "tool", "watchdog", "direct", "visibility"}]
-        elif gap.category == "execution_blocked":
-            semantic = [token for token in semantic if token in {"response", "execution", "direct", "task", "blocked"}]
+        semantic = self._semantic_tokens_for_gap(gap, step)
         deduped: list[str] = []
         for token in semantic:
             if token not in deduped:
                 deduped.append(token)
         semantic_shape = "_".join(deduped[:6]).strip("_") or "generic"
         return f"{gap.category}:{semantic_shape}"
+
+    def _semantic_tokens_for_gap(self, gap: CapabilityGap, step: Step) -> list[str]:
+        text = f"{gap.summary} {step.summary}".lower()
+        raw_tokens = re.findall(r"[a-z0-9]+", text)
+        stopwords = {"the", "and", "for", "with", "while", "again", "before", "after", "out", "this", "that", "from"}
+        synonyms = {
+            "timed": "timeout",
+            "stalled": "timeout",
+            "stall": "timeout",
+            "hang": "timeout",
+            "hung": "timeout",
+            "latency": "waiting",
+            "first": "first",
+            "packet": "response",
+            "token": "response",
+            "generated": "response",
+            "empty": "response",
+            "selector": "selector",
+            "anchor": "anchor",
+            "bundle": "bundle",
+            "patch": "patch",
+            "renamed": "drift",
+            "rename": "drift",
+            "version": "drift",
+            "missing": "missing",
+            "unsupported": "missing",
+            "absent": "missing",
+            "helper": "tool",
+            "script": "tool",
+        }
+        tokens = [synonyms.get(token, token) for token in raw_tokens if token not in stopwords]
+
+        if gap.category == "runtime_timeout":
+            bucket: list[str] = []
+            if any(token in text for token in ("timeout", "timed out", "etimedout", "stalled", "hang", "hung", "卡住")):
+                bucket.append("timeout")
+            if any(token in text for token in ("first response", "first token", "first packet", "visible progress")):
+                bucket.append("response")
+                bucket.append("first")
+            elif any(token in text for token in ("response", "output", "visible")):
+                bucket.append("response")
+            return bucket or ["timeout"]
+
+        if gap.category == "runtime_drift":
+            bucket = []
+            if any(token in text for token in ("bundle", "dist", "artifact")):
+                bucket.append("bundle")
+            if any(token in text for token in ("anchor", "selector", "patch", "marker")):
+                bucket.append("anchor")
+            if any(token in text for token in ("drift", "renamed", "rename", "version", "upgrade", "update")):
+                bucket.append("drift")
+            return bucket or ["drift"]
+
+        if gap.category == "tool_missing":
+            bucket = []
+            if any(token in text for token in ("missing", "not found", "no such", "unsupported", "absent")):
+                bucket.append("missing")
+            if any(token in text for token in ("tool", "helper", "script")):
+                bucket.append("tool")
+            if "watchdog" in text:
+                bucket.append("watchdog")
+            if "browser" in text:
+                bucket.append("browser")
+            return bucket or ["missing", "tool"]
+
+        if gap.category == "execution_blocked":
+            bucket = []
+            if any(token in text for token in ("no response", "empty response", "no result", "silent output")):
+                bucket.append("response")
+            if any(token in text for token in ("blocked", "stuck", "cannot continue", "failed to continue")):
+                bucket.append("blocked")
+            if "direct" in text:
+                bucket.append("direct")
+            if "task" in text:
+                bucket.append("task")
+            return bucket or ["blocked"]
+
+        return tokens or [gap.category]
 
     def _infer_failure_pattern_summary(self, gap: CapabilityGap) -> str:
         base = gap.summary[:160] if gap.summary else gap.category

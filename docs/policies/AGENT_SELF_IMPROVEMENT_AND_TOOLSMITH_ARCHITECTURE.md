@@ -231,8 +231,8 @@ Current implemented step:
 Current boundary:
 
 - pattern learning is durable and tested
-- semantic clustering is still conservative
-- adjacent sub-shapes are not merged unless the current signature logic can justify it
+- semantic clustering is now broader for common timeout / drift / tool-missing / execution-blocked variants
+- truly distant adjacent sub-shapes are still not merged unless the current signature logic can justify it
 
 ## Durable State Model
 
