@@ -375,6 +375,22 @@ Defines the control model and role boundaries.
 
 Provides behavior shaping inside current OpenClaw runtime.
 
+### Current Job Orchestrator Layer
+
+- `scripts/openclaw/job_orchestrator.py`
+- `JOB_ORCHESTRATOR_EXECUTION_MODEL.md`
+
+This is the production bridge for cron and pipeline jobs.
+
+It makes a scheduled job enter durable kernel state before running its
+underlying script command. The command is treated as an action/tool inside a
+step, not as the whole task. On failure, the orchestrator records observation,
+writes a capability gap, lets helper generation and validation run, and performs
+only one bounded retry before returning blocker evidence.
+
+This means helper growth is no longer limited to direct chat. Cron and pipeline
+jobs can now contribute to the same self-improvement loop.
+
 ### Current Durable Kernel Layer
 
 - `scripts/openclaw/agent_society_kernel.py`
@@ -391,6 +407,14 @@ The current system still lacks:
 - automatic retirement of obsolete helpers
 - first-class scheduler support for toolsmith sub-roles
 - automatic composition of more than a few bounded repairers into a larger verified workflow graph with explicit rollback and cost control
+
+Current implementation direction:
+
+- obsolete helper retirement is handled by drift rejection counts in the durable
+  registry
+- after three step-level drift rejects, a promoted helper is marked
+  `deprecated`
+- deprecated helpers are no longer selected as future tool candidates
 
 So the architecture is now defined more completely than the implementation.
 

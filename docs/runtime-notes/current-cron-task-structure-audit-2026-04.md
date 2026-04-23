@@ -160,7 +160,7 @@ More accurate summary:
 
 ## Remaining Gap
 
-These jobs are not yet native scheduler graph jobs.
+These jobs are not yet orchestrator-driven job graph jobs.
 
 They are:
 
@@ -172,4 +172,7 @@ That question is now settled.
 
 The next step is:
 
-- move selected staged jobs from wrapper scripts into first-class native scheduler job types
+- wrap selected staged jobs with `scripts/openclaw/job_orchestrator.py`
+- make the script command an action/tool inside a durable kernel step
+- let failures write capability gaps and trigger bounded helper repair / retry
+- keep native scheduler migration optional instead of making it the acceptance target

@@ -59,10 +59,16 @@ Default rule:
 - For `staged` and `agentic` jobs, the writer prepends a runtime task-creation
   policy block to the stored message so the job itself exposes steps, tools,
   observations, failure surfaces, and final evidence.
+- For `staged` and `agentic` jobs, the writer also prepends a job-orchestrator
+  policy by default. The job must treat any underlying script command as an
+  action/tool inside the durable execution loop, not as the whole task.
 - Use `--execution-depth atomic|staged|agentic` only when the automatic
   classifier needs an explicit override.
 - `--no-task-policy-wrap` is reserved for already-wrapped prompts or migration
   tooling; it must not be used to hide a multi-step job as one black-box exec.
+- `--orchestrator-mode off` is reserved for migration/debugging. Production
+  default is `auto`, and `required` forces wrapper policy even for an explicit
+  atomic classification.
 
 ## Generic Job Writer
 

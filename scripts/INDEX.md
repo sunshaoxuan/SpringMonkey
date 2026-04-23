@@ -165,6 +165,10 @@
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
 - `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；当前已接通 LINE direct `no-response`、`auto-reply failed` 与 watchdog `timeout`，并已对齐 `execution_blocked`、`runtime_timeout`、`tool_missing` 这三类失败的 helper 产出、即时验证与自动 promotion 路径
 - `openclaw/cron_failure_self_heal.py`：扫描宿主机 journal 里的 cron failure，去重后写入 durable kernel；同样走 `gap -> helper -> pattern -> promotion` 闭环，而不是只给用户发一条失败通知
+- `openclaw/job_orchestrator.py`：cron/pipeline job 的通用执行包装器；把脚本命令作为 kernel step 的 action/tool 执行，成功保持 stdout 契约，失败写 gap、触发 helper、自修复后 bounded retry
+- `openclaw/test_job_orchestrator_success.py`：验证 orchestrator 成功路径保持 stdout 并写 completed observation
+- `openclaw/test_job_orchestrator_failure_self_repair.py`：验证 orchestrator 失败路径写 gap、生成 helper，并在一次 bounded retry 后完成
+- `openclaw/test_helper_retirement.py`：验证 helper 被 drift gate 连续拒绝后会 deprecated，且不会再进入 future tool candidates
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核，现已包含 `failure_pattern` 累积与 `candidate -> emerging -> learned` 生命周期
 - `openclaw/agent_society_helper_toolsmith.py`：生成 bounded business repairer；输出 helper contract、repair workflow 与 drift guard，而不再只是薄 scaffold
 - `openclaw/test_agent_society_composed_repairer_plan.py`：验证 planner 会把多个 promoted business repairer 组合成 bounded repair pipeline，而不是只挑一个 helper
@@ -186,6 +190,8 @@
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词
 - `openclaw/test_agent_society_entry_policy.py`：回归验证 direct task 入口策略不会漏掉真实委托，也不会把寒暄和简单闲聊误接入
 - `cron/test_upsert_generic_cron_job_policy.py`：验证通用 cron 创建器会自动把天气、新闻、登录、搜索、翻译、投递、自增强等任务判成 staged/agentic，而不是黑盒单步。
+- `cron/migrate_existing_cron_to_orchestrator.py`：按审计清单迁移现有多步 cron payload，给 staged 任务补 orchestrator policy wrapper
+- `cron/test_migrate_existing_cron_to_orchestrator.py`：验证现有 cron 迁移脚本 dry-run 会命中需要迁移的任务
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper
 - `openclaw/test_agent_society_failure_patterns.py`：验证重复失败可聚合成 durable `failure_pattern`
 - `openclaw/test_agent_society_pattern_influenced_promotion.py`：验证 `learned failure_pattern` 会反过来影响后续 helper promotion

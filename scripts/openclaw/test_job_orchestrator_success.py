@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+
+def main() -> int:
+    repo_root = Path(__file__).resolve().parents[2]
+    script = repo_root / "scripts" / "openclaw" / "job_orchestrator.py"
+    with tempfile.TemporaryDirectory(prefix="job_orchestrator_success_") as tmp:
+        root = Path(tmp)
+        command = root / "ok.py"
+        command.write_text("print('final weather report')\n", encoding="utf-8")
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(script),
+                "--job-name",
+                "weather-report-jst-0700",
+                "--category",
+                "weather",
+                "--prompt",
+                "create weather report",
+                "--kernel-root",
+                str(root / "kernel"),
+                "--repo-root",
+                str(repo_root),
+                "--command",
+                sys.executable,
+                str(command),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=True,
+        )
+        if proc.stdout.strip() != "final weather report":
+            raise AssertionError(f"stdout contract changed: {proc.stdout!r}")
+        sessions = list((root / "kernel" / "sessions").glob("session_*.json"))
+        if len(sessions) != 1:
+            raise AssertionError("expected exactly one kernel session")
+        data = json.loads(sessions[0].read_text(encoding="utf-8"))
+        observations = data.get("observations", [])
+        if not observations or observations[-1].get("status") != "completed":
+            raise AssertionError(f"expected completed observation, got {observations}")
+        if "final weather report" not in observations[-1].get("observation", ""):
+            raise AssertionError("expected stdout in observation")
+        print("job_orchestrator_success_ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

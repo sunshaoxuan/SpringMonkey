@@ -166,6 +166,8 @@ class PromotedHelperRecord:
     usage_count: int
     last_selected_at: str | None
     status: str
+    drift_reject_count: int = 0
+    replaced_by: str | None = None
     created_at: str = field(default_factory=utc_now)
     updated_at: str = field(default_factory=utc_now)
 
@@ -388,15 +390,31 @@ Current limitation:
 
     def _select_registry_helpers_for_step(self, session: KernelSession, step: Step) -> tuple[list[PromotedHelperRecord], list[str]]:
         chosen = self._select_registry_helpers_for_session(session)
+        registry = self.load_promoted_helper_registry()
         applicable: list[PromotedHelperRecord] = []
         drift_notes: list[str] = []
+        registry_updated = False
         for record in chosen:
             ok, reasons = self._step_drift_ok_for_record(session, step, record)
             if ok:
+                if record.drift_reject_count:
+                    record.drift_reject_count = 0
+                    record.updated_at = utc_now()
+                    registry_updated = True
                 applicable.append(record)
                 continue
             reason_text = ", ".join(reasons) if reasons else "no concrete reason recorded"
             drift_notes.append(f"{record.name}: {reason_text}")
+            record.drift_reject_count += 1
+            record.updated_at = utc_now()
+            if record.drift_reject_count >= 3:
+                record.status = "deprecated"
+                drift_notes.append(f"{record.name}: deprecated after {record.drift_reject_count} drift rejects")
+            registry_updated = True
+        if registry_updated:
+            by_id = {item.record_id: item for item in chosen}
+            merged_records = [by_id.get(item.record_id, item) for item in registry]
+            self.save_promoted_helper_registry(merged_records)
         return applicable, drift_notes
 
     def _step_drift_ok_for_record(self, session: KernelSession, step: Step, record: PromotedHelperRecord) -> tuple[bool, list[str]]:
@@ -878,6 +896,8 @@ Current limitation:
             normalized.setdefault("helper_contract", None)
             normalized.setdefault("repair_workflow", [])
             normalized.setdefault("drift", None)
+            normalized.setdefault("drift_reject_count", 0)
+            normalized.setdefault("replaced_by", None)
             normalized_records.append(PromotedHelperRecord(**normalized))
         return normalized_records
 
@@ -919,9 +939,22 @@ Current limitation:
                 usage_count=0,
                 last_selected_at=None,
                 status="promoted",
+                drift_reject_count=0,
+                replaced_by=None,
             )
             records.append(existing)
         else:
+            for record in records:
+                if (
+                    record.record_id != existing.record_id
+                    and record.source_gap_category
+                    and source_gap_category
+                    and record.source_gap_category == source_gap_category
+                    and record.status == "promoted"
+                ):
+                    record.status = "deprecated"
+                    record.replaced_by = name
+                    record.updated_at = utc_now()
             existing.name = normalize_text(name)
             existing.scope = normalize_text(scope)
             existing.kind = normalize_text(kind)
@@ -933,6 +966,8 @@ Current limitation:
             existing.repair_workflow = repair_workflow or []
             existing.drift = drift
             existing.status = "promoted"
+            existing.drift_reject_count = 0
+            existing.replaced_by = None
             existing.updated_at = utc_now()
         self.save_promoted_helper_registry(records)
         return existing

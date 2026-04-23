@@ -105,6 +105,25 @@ Each step should carry:
 - `actual_observation`
 - `next_decision`
 
+### 5. Action / Tool Layer
+
+Steps become actions only at execution time.
+
+An action may be:
+
+- a shell command
+- a browser operation
+- a parser or helper script
+- a pipeline worker
+- a message delivery step
+
+`exec` is only an action/tool. It is not allowed to hide a staged or agentic
+task as one black-box job.
+
+Cron jobs must follow the same model. Even if the scheduler invokes one command,
+the job must still be represented as intent, task, step, action/tool,
+observation, repair, retry, and report.
+
 ## Expansion And Convergence
 
 ### Expansion Rule
@@ -247,3 +266,7 @@ Until a full task graph runtime exists, every patch or prompt protocol should mo
 - more tool-grounded execution
 - more bounded expansion
 - more reliable convergence
+
+Staged trace is a bridge, not the final control point. The orchestrator state is
+the production entry for closing the loop between cron execution, failure
+observation, helper growth, and retry.

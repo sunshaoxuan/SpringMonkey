@@ -23,6 +23,7 @@ from agent_society_entry_policy import (  # noqa: E402
 )
 
 TASK_CREATION_MARKER = "[runtime-task-creation-policy]"
+JOB_ORCHESTRATOR_MARKER = "[runtime-job-orchestrator-policy]"
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,6 +60,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not prepend staged/agentic task policy text to the stored message.",
     )
+    p.add_argument(
+        "--orchestrator-mode",
+        choices=["auto", "off", "required"],
+        default="auto",
+        help="Whether staged/agentic jobs should be instructed to use job_orchestrator. Default: auto.",
+    )
     p.add_argument("--verify-only", action="store_true", help="Do not write. Only print the current matching job JSON.")
     args = p.parse_args()
     if not args.name:
@@ -86,12 +93,46 @@ def resolve_execution_depth(message: str, requested_depth: str) -> str:
     return requested_depth
 
 
-def apply_task_creation_policy(message: str, *, requested_depth: str, no_wrap: bool = False) -> tuple[str, str]:
+def build_job_orchestrator_policy(depth: str) -> str:
+    return "\n".join(
+        [
+            JOB_ORCHESTRATOR_MARKER,
+            f"execution_depth: {depth}",
+            "When this scheduled job reaches an executable script or command, run that action through:",
+            "python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/job_orchestrator.py",
+            "The original script command is an action/tool inside the task, not the whole task.",
+            "The orchestrator must create kernel state, record observations, trigger self-repair on failure, and retry once when bounded repair is available.",
+        ]
+    )
+
+
+def should_apply_orchestrator(depth: str, mode: str) -> bool:
+    if mode == "off":
+        return False
+    if mode == "required":
+        return True
+    return depth in {STAGED_DEPTH, AGENTIC_DEPTH}
+
+
+def apply_task_creation_policy(
+    message: str,
+    *,
+    requested_depth: str,
+    no_wrap: bool = False,
+    orchestrator_mode: str = "auto",
+) -> tuple[str, str]:
     depth = resolve_execution_depth(message, requested_depth)
-    if no_wrap or depth == ATOMIC_DEPTH or TASK_CREATION_MARKER in message:
+    if no_wrap:
         return message, depth
-    policy = build_multistep_task_protocol(message, execution_depth=depth)
-    return f"{policy}\n\nUser scheduled task:\n{message}", depth
+    policies: list[str] = []
+    if depth != ATOMIC_DEPTH and TASK_CREATION_MARKER not in message:
+        policies.append(build_multistep_task_protocol(message, execution_depth=depth))
+    if should_apply_orchestrator(depth, orchestrator_mode) and JOB_ORCHESTRATOR_MARKER not in message:
+        policies.append(build_job_orchestrator_policy(depth))
+    if not policies:
+        return message, depth
+    policy_text = "\n\n".join(policies)
+    return f"{policy_text}\n\nUser scheduled task:\n{message}", depth
 
 
 def bool_arg(value: str) -> bool:
@@ -299,6 +340,7 @@ def main() -> int:
         raw_message,
         requested_depth=args.execution_depth,
         no_wrap=args.no_task_policy_wrap,
+        orchestrator_mode=args.orchestrator_mode,
     )
     if existing:
         cli_args = build_edit_args(existing["id"], args, message)
