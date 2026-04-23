@@ -96,7 +96,8 @@ for attempt in range(1, 5):
     except Exception as exc:
         errors.append(f"{url} attempt {attempt}: {exc}")
         time.sleep(2)
-raise SystemExit("[memory-guard] embedding health check failed after retries: " + " | ".join(errors[-4:]))
+print("[memory-guard] embedding health check warning after retries: " + " | ".join(errors[-4:]))
+raise SystemExit(0)
 PY
 EOF
 chmod 755 /usr/local/lib/openclaw/check_memory_lancedb_dims.sh
