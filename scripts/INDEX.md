@@ -165,6 +165,15 @@
 - `openclaw/test_agent_society_composed_repairer_plan.py`：验证 planner 会把多个 promoted business repairer 组合成 bounded repair pipeline，而不是只挑一个 helper
 - `openclaw/test_agent_society_step_drift_guard.py`：验证 planner 会在 step 选择时重新做 drift gate，把已经不匹配当前 failure surface 的 promoted repairer 过滤掉
 - `openclaw/test_agent_society_repair_graph_budget.py`：验证组合 repair pipeline 会带每步预算上限与 rollback policy，而不是无限扩展 repair graph
+- `remote_install_timescar_task_runtime.py`：把 repo 中的 TimesCar 任务脚本同步到宿主机 workspace；不改 cron job 定义，但把“外部单步、内部多步”的订车/续订/查询任务升级为阶段可观察脚本
+- `timescar/task_runtime.py`：TimesCar 任务运行时；把阶段、步骤、最终结果写入 `workspace/state/timescar_traces/*.latest.json`
+- `timescar/timescar_fetch_reservations.py`：TimesCar 查询脚本的 repo 基线版；保留现有输出契约，但把登录、打开列表、解析预约等步骤显式写进 trace
+- `timescar/timescar_next24h_notice.py`：24 小时取消提醒；保留现有用户消息格式，但把读取预约、解析、筛选候选变成可观察步骤
+- `timescar/timescar_book_sat_3weeks.py`：周六订车任务；把“检查现有预约、登录、打开表单、校验确认、提交、回查验证”拆成显式阶段
+- `timescar/timescar_extend_sun_3weeks.py`：周日续订任务；把“选择目标预约、定位修改入口、校验确认、提交、回查验证”拆成显式阶段
+- `timescar/timescar_daily_report_render.py`：日报渲染仍保持单步输出，但内部改为复用带 trace 的预约查询路径
+- `timescar/test_timescar_task_runtime.py`：验证 TimesCar 任务运行时会落 trace 文件并记录阶段状态
+- `timescar/test_timescar_next24h_notice.py`：验证 next24h 提醒的解析路径保持兼容
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词
 - `openclaw/test_agent_society_entry_policy.py`：回归验证 direct task 入口策略不会漏掉真实委托，也不会把寒暄和简单闲聊误接入
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper

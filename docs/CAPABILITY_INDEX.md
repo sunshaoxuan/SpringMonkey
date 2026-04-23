@@ -65,6 +65,7 @@
 | LINE | Webhook 路径默认 `/line/webhook`、插件 `@openclaw/line`、需 HTTPS 公网；`dmPolicy` / pairing / open / frpc 映射见专项基线文档 | `docs/runtime-notes/line-runtime-baseline-2026-04.md`、本仓库 `scripts/remote_*.py`、`remote_line_*.sh` |
 | TimesCar 自动化 | 登录入口不再写死为单一 URL；采用“缓存优先，失效后自主探查并回写缓存” | `docs/runtime-notes/timescar-site-discovery-baseline-2026-04.md` |
 | LINE TimesCar cron 修复 | 解释为什么 `LINE` 自修复会越修越差、`NO_REPLY` 的 `not-delivered` 应如何解读，以及 `timescar-*` 的当前稳定链路 | `docs/runtime-notes/line-timescar-cron-repair-2026-04.md` |
+| TimesCar 多步任务运行时 | 把订车/续订/预约查询这类“外部看似单步、内部实际多步”的任务收编进 repo 基线，并把阶段、步骤、失败点写入 trace，避免继续作为黑盒脚本运行 | `scripts/timescar/task_runtime.py`、`scripts/remote_install_timescar_task_runtime.py` |
 | 国际渠道预部署 | Telegram / Slack / Signal / Matrix / IRC / Twitch 等插件已预部署，但默认不写 token | `scripts/remote_enable_international_channels.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 
 **注意**：`OPENCLAW_MONITORING_PLAN.md` 前段曾有「未下令前不启动」等历史结论，后段与 `docs/ops/*` 中 **已稳定运行** 的描述可能并存；以**当前** `systemctl` 与最新 ops 为准。
