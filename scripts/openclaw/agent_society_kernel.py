@@ -383,7 +383,7 @@ Current limitation:
             tree_path="1",
         )
         tasks = [
-            Task(task_ids[0], intent_id, "orchestrator", f"Prepare shared execution context for {job_name}", "runtime context is available or explicitly blocked", "context keys and environment observation", "pending", tree_path="1.1"),
+            Task(task_ids[0], intent_id, "orchestrator", f"Prepare shared execution context for {job_name}", "runtime context is available or explicitly blocked", "context keys and environment observation", "completed", tree_path="1.1"),
             Task(task_ids[1], intent_id, "orchestrator", f"Execute job action for {job_name}", "command exits successfully or enters bounded repair", "stdout, stderr, exit code, and trace observation", "pending", depends_on=[task_ids[0]], tree_path="1.2"),
             Task(task_ids[2], intent_id, "orchestrator", f"Verify and report {job_name}", "final payload is preserved or blocker report is emitted", "final stdout or blocker JSON", "pending", depends_on=[task_ids[1]], tree_path="1.3"),
         ]

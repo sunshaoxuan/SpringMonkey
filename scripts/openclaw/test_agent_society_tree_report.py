@@ -21,6 +21,7 @@ def main() -> int:
         assert len(session.intents) == 1
         assert len(session.tasks) == 3
         assert len(session.steps) == 3
+        assert session.tasks[0].status == "completed"
         action_step = next(step for step in session.steps if step.action_kind == "tool")
         assert action_step.depends_on
         assert "browser_cdp" in action_step.shared_context_keys
