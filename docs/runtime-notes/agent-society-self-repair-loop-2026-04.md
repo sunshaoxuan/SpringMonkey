@@ -135,6 +135,7 @@ The current direct-task failure bridge now also supports:
 21. promoted helpers now enter a formal durable helper registry and can be reused by future sessions, instead of living only in the session that first created them
 22. generated helpers are now bounded business repairers with a helper contract, repair workflow, and drift guard, so promotion no longer accepts a helper that has already drifted away from its original purpose
 23. when more than one promoted business repairer matches the current session, the planner can now compose those repairers into one bounded repair pipeline and inject that plan into the next step instead of blindly selecting a single helper
+24. drift checking now also happens inside `next_step()` planning, so a promoted repairer can still be filtered out at execution time if the current session/step no longer matches its failure surface
 
 In other words, error classification is no longer only a static table.
 

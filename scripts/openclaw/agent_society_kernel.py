@@ -340,14 +340,16 @@ Current limitation:
         pending_steps = [step for step in session.steps if step.status in {"pending", "in_progress"}]
         if not pending_steps:
             return None
-        registry_records = self._select_registry_helpers_for_session(session)
-        registry_helpers = [record.entrypoint for record in registry_records]
         validated_helpers = [
             tool for tool in session.helper_tools
             if tool.status in {"validated", "promoted"} and tool.entrypoint
         ]
-        helper_candidates = registry_helpers + [tool.entrypoint for tool in validated_helpers if tool.entrypoint not in registry_helpers]
         for step in pending_steps:
+            registry_records, drift_notes = self._select_registry_helpers_for_step(session, step)
+            registry_helpers = [record.entrypoint for record in registry_records]
+            helper_candidates = registry_helpers + [
+                tool.entrypoint for tool in validated_helpers if tool.entrypoint not in registry_helpers
+            ]
             if helper_candidates:
                 merged = helper_candidates + [candidate for candidate in step.tool_candidates if candidate not in helper_candidates]
                 step.tool_candidates = merged
@@ -355,6 +357,7 @@ Current limitation:
                     step.chosen_tool = registry_helpers[0]
                 elif step.chosen_tool not in merged:
                     step.chosen_tool = merged[0]
+            self._apply_step_drift_guard(step, drift_notes)
             self._apply_registry_repairer_plan(step, registry_records)
             self._apply_learned_patterns_to_step(session, step)
         task_order = {task.task_id: index for index, task in enumerate(session.tasks)}
@@ -382,6 +385,75 @@ Current limitation:
         if updated:
             self.save_promoted_helper_registry(registry)
         return chosen
+
+    def _select_registry_helpers_for_step(self, session: KernelSession, step: Step) -> tuple[list[PromotedHelperRecord], list[str]]:
+        chosen = self._select_registry_helpers_for_session(session)
+        applicable: list[PromotedHelperRecord] = []
+        drift_notes: list[str] = []
+        for record in chosen:
+            ok, reasons = self._step_drift_ok_for_record(session, step, record)
+            if ok:
+                applicable.append(record)
+                continue
+            reason_text = ", ".join(reasons) if reasons else "no concrete reason recorded"
+            drift_notes.append(f"{record.name}: {reason_text}")
+        return applicable, drift_notes
+
+    def _step_drift_ok_for_record(self, session: KernelSession, step: Step, record: PromotedHelperRecord) -> tuple[bool, list[str]]:
+        reasons: list[str] = []
+        if record.drift and not bool(record.drift.get("ok")):
+            drift_reasons = record.drift.get("reasons") or []
+            if isinstance(drift_reasons, list) and drift_reasons:
+                reasons.extend(str(item) for item in drift_reasons)
+            else:
+                reasons.append("helper drift guard is already marked not ok")
+
+        text = " ".join(
+            [
+                session.raw_request,
+                session.goal.primary,
+                step.summary,
+                step.expected_observation,
+                step.next_decision,
+            ]
+        ).lower()
+        category = (record.source_gap_category or "").lower()
+
+        if category == "runtime_timeout" and not any(
+            token in text for token in ("timeout", "timed out", "etimedout", "stalled", "hang", "hung", "response", "卡住")
+        ):
+            reasons.append("current step no longer looks timeout-shaped")
+        elif category == "runtime_drift" and not any(
+            token in text for token in ("drift", "bundle", "anchor", "selector", "patch", "upgrade", "artifact")
+        ):
+            reasons.append("current step no longer looks like runtime drift")
+        elif category == "tool_missing" and not any(
+            token in text for token in ("missing", "not found", "unsupported", "helper", "tool", "no such")
+        ):
+            reasons.append("current step no longer looks tool-missing")
+        elif category == "execution_blocked" and not any(
+            token in text for token in ("blocked", "no response", "stuck", "silent", "empty result", "failed to continue")
+        ):
+            reasons.append("current step no longer looks execution-blocked")
+
+        if record.helper_contract:
+            contract_category = str(record.helper_contract.get("category", "")).strip().lower()
+            if contract_category and category and contract_category != category:
+                reasons.append("helper contract category no longer matches registry category")
+
+        return (len(reasons) == 0), reasons
+
+    def _apply_step_drift_guard(self, step: Step, drift_notes: list[str]) -> None:
+        if not drift_notes:
+            return
+        drift_note = "drift guard filtered repairers: " + " | ".join(drift_notes[:3])
+        if drift_note not in step.next_decision:
+            step.next_decision = normalize_text(f"{drift_note}; {step.next_decision}")
+        if step.expected_observation and "drift guard" not in step.expected_observation.lower():
+            step.expected_observation = normalize_text(
+                f"{step.expected_observation}; verify each selected repairer still matches the current failure surface before execution"
+            )
+        step.updated_at = utc_now()
 
     def _apply_registry_repairer_plan(self, step: Step, registry_records: list[PromotedHelperRecord]) -> None:
         if not registry_records:
