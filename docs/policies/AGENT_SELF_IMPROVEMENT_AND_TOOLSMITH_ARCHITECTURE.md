@@ -214,6 +214,7 @@ Current implemented step:
 - helper reuse no longer depends only on the original session that produced the helper
 - the planner can now pull multiple promoted business repairers from that registry and compose their first repair stages into one bounded repair pipeline instead of choosing only a single helper in isolation
 - the planner also performs a per-step drift gate on registry repairers, so a helper that no longer matches the active failure surface is filtered before execution instead of being trusted just because it was once promoted
+- composed repair pipelines now carry an explicit per-step budget and rollback policy, so larger repair graphs cannot silently sprawl without bounded stage count and a defined return path to the parent task
 
 ### Layer G: Failure Pattern Learning
 

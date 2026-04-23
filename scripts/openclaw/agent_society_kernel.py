@@ -458,21 +458,36 @@ Current limitation:
     def _apply_registry_repairer_plan(self, step: Step, registry_records: list[PromotedHelperRecord]) -> None:
         if not registry_records:
             return
+        bounded_records = registry_records[:3]
         workflows: list[str] = []
-        for record in registry_records[:3]:
+        rollback_steps: list[str] = []
+        for record in bounded_records:
             if not record.repair_workflow:
                 continue
             first_two = [item.get("step", "") for item in record.repair_workflow[:2] if item.get("step")]
             if not first_two:
                 continue
             workflows.append(f"{record.name}: {' -> '.join(first_two)}")
+            rollback_steps.append(f"{record.name}: stop after current bounded probe and return to the parent task with concrete blocker evidence")
         if not workflows:
             return
         plan_note = "compose repairers in order: " + " | ".join(workflows)
+        budget_note = (
+            f"repair graph budget: max {len(bounded_records)} repairers and max 2 workflow stages per repairer in this step"
+        )
+        rollback_note = "rollback policy: " + " | ".join(rollback_steps[:3])
         if plan_note not in step.next_decision:
             step.next_decision = normalize_text(f"{plan_note}; {step.next_decision}")
+        if budget_note not in step.next_decision:
+            step.next_decision = normalize_text(f"{budget_note}; {step.next_decision}")
+        if rollback_note not in step.next_decision:
+            step.next_decision = normalize_text(f"{rollback_note}; {step.next_decision}")
         if step.expected_observation and "combined repairer evidence" not in step.expected_observation.lower():
             step.expected_observation = normalize_text(f"{step.expected_observation}; collect combined repairer evidence before closing the task")
+        if step.expected_observation and "rollback evidence" not in step.expected_observation.lower():
+            step.expected_observation = normalize_text(
+                f"{step.expected_observation}; if the bounded repair graph fails, record rollback evidence before expanding the plan"
+            )
         step.updated_at = utc_now()
 
     def _infer_relevant_helper_scopes(self, session: KernelSession) -> set[str]:

@@ -164,6 +164,7 @@
 - `openclaw/agent_society_helper_toolsmith.py`：生成 bounded business repairer；输出 helper contract、repair workflow 与 drift guard，而不再只是薄 scaffold
 - `openclaw/test_agent_society_composed_repairer_plan.py`：验证 planner 会把多个 promoted business repairer 组合成 bounded repair pipeline，而不是只挑一个 helper
 - `openclaw/test_agent_society_step_drift_guard.py`：验证 planner 会在 step 选择时重新做 drift gate，把已经不匹配当前 failure surface 的 promoted repairer 过滤掉
+- `openclaw/test_agent_society_repair_graph_budget.py`：验证组合 repair pipeline 会带每步预算上限与 rollback policy，而不是无限扩展 repair graph
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词
 - `openclaw/test_agent_society_entry_policy.py`：回归验证 direct task 入口策略不会漏掉真实委托，也不会把寒暄和简单闲聊误接入
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper
