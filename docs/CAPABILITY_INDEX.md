@@ -19,6 +19,7 @@
 | **工具注册表与场景映射** | 何时用哪个脚本、参数约定、分裂 vs 组合 | `docs/ops/TOOLS_REGISTRY.md` |
 | **远程统一 CLI** | `openclaw_remote_cli.py`（git-pull / diag / doctor / line-install / line-push / recover） | `scripts/openclaw_remote_cli.py` |
 | **宿主机拉取 SpringMonkey** | `git pull` + 可选重启；见 §7 | `scripts/remote_springmonkey_git_pull.py`、`docs/ops/TOOLS_REGISTRY.md` §7 |
+| **宿主机仓库自动同步** | 通过 `openclaw-repo-sync.timer` 定期 `fetch + merge` SpringMonkey，不重启服务；适合 repo 脚本/文档自动落地 | `scripts/remote_install_repo_sync_timer.py` |
 | **宿主机恢复包导出** | 把当前宿主机关键状态打成本地 recovery bundle，供灾难后快速恢复 | `scripts/remote_create_openclaw_recovery_bundle.py`、`docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |
 | **宿主机恢复包定时备份** | 在宿主机安装每日 recovery bundle 与自动清理循环 | `scripts/remote_install_openclaw_recovery_timer.py`、`docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |
 | 宿主机密钥 / 私网 IP | **勿写入仓库**；若本地有仅本机 `HOST_ACCESS.md`，与仓库 **脱敏版** 对照使用 | 仓库仅 `HOST_ACCESS_REDACTED.md` |

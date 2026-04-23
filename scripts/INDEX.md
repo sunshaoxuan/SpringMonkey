@@ -18,6 +18,10 @@
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。
 
+- `remote_install_repo_sync_timer.py`
+  - 用途：在宿主机安装 `openclaw-repo-sync.timer`，每 10 分钟自动 `fetch + merge` SpringMonkey 仓库，不重启服务。
+  - 注意：这只同步 repo，不自动重打 `dist` 补丁；涉及 runtime patch 的改动仍要靠 installer 或重启时 startup guard 生效。
+
 - `remote_create_openclaw_recovery_bundle.py`
   - 用途：从宿主机打包当前 OpenClaw 恢复包到本地，包含 `openclaw.json`、`cron/jobs.json`、workspace、state、sessions、memory、systemd drop-in、`/usr/local/lib/openclaw` 与 manifest。
   - 典型用法：`python SpringMonkey/scripts/remote_create_openclaw_recovery_bundle.py`
