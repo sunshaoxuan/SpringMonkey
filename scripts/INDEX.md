@@ -174,6 +174,10 @@
 - `timescar/timescar_daily_report_render.py`：日报渲染仍保持单步输出，但内部改为复用带 trace 的预约查询路径
 - `timescar/test_timescar_task_runtime.py`：验证 TimesCar 任务运行时会落 trace 文件并记录阶段状态
 - `timescar/test_timescar_next24h_notice.py`：验证 next24h 提醒的解析路径保持兼容
+- `staged_jobs/task_trace.py`：轻量 staged task trace 运行时；把多步任务的阶段、步骤、产物和最终结果写进 `workspace/state/task_traces/`
+- `staged_jobs/test_task_trace.py`：验证 staged task trace 会落 latest trace 并记录步骤与产物
+- `weather/test_discord_weather_report.py`：验证天气任务在假数据下保持输出契约，同时可接受 staged trace 接入
+- `news/test_run_news_pipeline_trace.py`：验证新闻流水线在 dry-run / skip-finalize 下仍会写出 staged trace，而不是继续做黑盒 exec
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词
 - `openclaw/test_agent_society_entry_policy.py`：回归验证 direct task 入口策略不会漏掉真实委托，也不会把寒暄和简单闲聊误接入
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper

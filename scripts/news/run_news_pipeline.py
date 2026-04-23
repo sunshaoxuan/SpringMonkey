@@ -39,6 +39,12 @@ from typing import Any
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+SCRIPTS_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_ROOT))
+
+from staged_jobs.task_trace import StagedTaskTrace
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPO_ROOT / "config" / "news" / "broadcast.json"
@@ -550,10 +556,15 @@ def main() -> int:
         run_dir = REPO_ROOT / "var" / "news-runs" / f"{ts}_{args.job}"
     run_dir = run_dir.resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
+    trace = StagedTaskTrace(args.job, "news")
+    trace.start("build-plan")
 
     plan = build_plan(cfg, job)
     window_start_ts, window_end_ts = compute_window_bounds(job, cfg.get("timezone", "Asia/Tokyo"))
     save_json(run_dir / "plan.json", plan)
+    trace.artifact("run_dir", str(run_dir))
+    trace.artifact("window_label", job["windowLabel"])
+    trace.step("build-plan", "ok", detail=f"batches={len(plan['batches'])}", tool="planner")
     save_json(
         run_dir / "meta.json",
         {
@@ -578,6 +589,7 @@ def main() -> int:
 
     # --- discover + fetch ---
     fetcher = _load_fetcher()
+    trace.step("load-fetcher", "ok", detail="news_fetcher loaded", tool="python")
     all_articles: dict[str, list] = {}
     NEWS_STATE_DIR.mkdir(parents=True, exist_ok=True)
     recent_items = load_recent_items(RECENT_ITEMS_PATH, ts, dedupe_hours)
@@ -591,8 +603,10 @@ def main() -> int:
         bid = b["id"]
         if args.skip_discover or args.dry_run:
             all_articles[bid] = []
+            trace.step("discover", "skipped", detail=bid, tool="rss")
             continue
         print(f"[pipeline] discover {bid}...", file=sys.stderr)
+        trace.step("discover", "running", detail=bid, tool="rss")
         articles = fetcher.discover_articles(
             bid,
             max_per_batch=8,
@@ -603,6 +617,7 @@ def main() -> int:
         )
         if not args.skip_fetch:
             print(f"[pipeline] fetch {bid}: {len(articles)} articles...", file=sys.stderr)
+            trace.step("fetch", "running", detail=f"{bid}: {len(articles)} articles", tool="http")
             fetcher.fetch_and_fill(articles, max_chars=max_worker_chars)
         all_articles[bid] = [
             {
@@ -622,6 +637,12 @@ def main() -> int:
             if fp:
                 seen_fingerprints.add(fp)
         save_json(run_dir / f"articles_{bid}.json", all_articles[bid])
+        trace.step(
+            "discover-fetch",
+            "ok",
+            detail=f"{bid}: discovered {len(articles)} articles, fetched {len([a for a in all_articles[bid] if a.get('fetch_ok')])}",
+            tool="rss+http",
+        )
 
     # --- worker: Qwen 逐条总结 ---
     for b in plan["batches"]:
@@ -632,11 +653,13 @@ def main() -> int:
                 f"• 【skip-worker】{b['outline_line']} 占位草稿。\n",
                 encoding="utf-8",
             )
+            trace.step("worker", "skipped", detail=bid, tool="ollama")
             continue
         articles = all_articles.get(bid, [])
         if args.dry_run:
             text = f"• 【干跑占位】{b['outline_line']}\n链接：https://example.com\n"
         else:
+            trace.step("worker", "running", detail=f"{bid}: {len(articles)} articles", tool=ollama_worker_model)
             text = _summarize_articles_with_qwen(
                 articles=articles,
                 ollama_host=ollama_host,
@@ -647,10 +670,12 @@ def main() -> int:
                 bid=bid,
             )
         out_path.write_text(text.strip() + "\n", encoding="utf-8")
+        trace.step("worker", "ok", detail=f"{bid}: wrote {out_path.name}", tool=ollama_worker_model)
 
     # --- merge (已格式化：标题+时间窗+小节标题+内容) ---
     draft = merge_workers(run_dir, plan)
     (run_dir / "draft_merged.md").write_text(draft, encoding="utf-8")
+    trace.step("merge", "ok", detail="draft_merged.md ready", tool="merge")
 
     # --- finalize ---
     final_path = run_dir / "final_broadcast.md"
@@ -658,6 +683,7 @@ def main() -> int:
 
     if args.skip_finalize:
         final_path.write_text(draft, encoding="utf-8")
+        trace.finish("ok", "skip-finalize", final_message=str(final_path))
         print(f"PIPELINE_OK skip_finalize -> {final_path}")
         return 0
 
@@ -669,12 +695,14 @@ def main() -> int:
         if ok_draft:
             print("[pipeline] merged draft passes verify directly, skipping finalize model", file=sys.stderr)
             final_path.write_text(draft, encoding="utf-8")
+            trace.step("verify", "ok", detail="merged draft passed verify directly", tool="verify")
             append_recent_items(
                 RECENT_ITEMS_PATH,
                 recent_items,
                 [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
                 ts,
             )
+            trace.finish("ok", "done", final_message=str(final_path))
             print("PIPELINE_OK", run_dir)
             return 0
         else:
@@ -684,6 +712,7 @@ def main() -> int:
     last_errors: list[str] = []
 
     for attempt in range(1, max_finalize_attempts + 1):
+        trace.step("finalize", "running", detail=f"attempt {attempt}", tool=ollama_finalize_model)
         fin_sys = finalize_system_prompt(cfg, plan, last_errors if attempt > 1 else None)
         fin_user = "以下是已格式化的合并草稿，只需微调格式即可输出最终成稿（不要改写内容或链接）：\n\n" + draft
 
@@ -714,6 +743,7 @@ def main() -> int:
         ok, errors = verify_text_fn(final_text, cfg)
         if ok:
             print(f"[pipeline] finalize attempt {attempt}/{max_finalize_attempts}: VERIFY_OK")
+            trace.step("verify", "ok", detail=f"attempt {attempt}", tool="verify")
             break
         last_errors = errors
         print(
@@ -721,10 +751,12 @@ def main() -> int:
             file=sys.stderr,
         )
         save_json(run_dir / f"verify_errors_attempt{attempt}.json", {"errors": errors})
+        trace.step("verify", "failed", detail=f"attempt {attempt}: {errors}", tool="verify")
     else:
         print("[pipeline] finalize attempts failed; applying mechanical fallback", file=sys.stderr)
         fallback_text = _mechanical_fallback(cfg, plan, draft)
         final_path.write_text(fallback_text, encoding="utf-8")
+        trace.step("finalize", "fallback", detail="mechanical fallback applied", tool="fallback")
         if verify_text_fn:
             ok2, err2 = verify_text_fn(fallback_text, cfg)
             if not ok2:
@@ -732,6 +764,7 @@ def main() -> int:
                 for e in err2:
                     print(e, file=sys.stderr)
                 save_json(run_dir / "verify_errors.json", {"errors": err2})
+                trace.finish("failed", "verify-failed", final_message=str(err2))
                 return 3
 
     append_recent_items(
@@ -740,6 +773,7 @@ def main() -> int:
         [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
         ts,
     )
+    trace.finish("ok", "done", final_message=str(final_path))
     print("PIPELINE_OK", run_dir)
     return 0
 

@@ -2,13 +2,19 @@
 from __future__ import annotations
 
 import json
-import math
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+import sys
+
+_SCRIPTS = Path(__file__).resolve().parents[1]
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+from staged_jobs.task_trace import StagedTaskTrace
 
 TZ = ZoneInfo("Asia/Tokyo")
 STATE_DIR = Path("/var/lib/openclaw/.openclaw/workspace/state")
@@ -32,34 +38,34 @@ HOME_LOCATIONS = [
 OFFICE_LOCATION = Location("会社", "品川区", 35.6265, 139.7236)
 
 WEATHER_TEXT = {
-    0: "晴",
-    1: "概ね晴",
-    2: "晴れ時々くもり",
-    3: "くもり",
-    45: "霧",
-    48: "着氷性の霧",
-    51: "弱い霧雨",
-    53: "霧雨",
-    55: "強い霧雨",
-    56: "弱い着氷性霧雨",
-    57: "強い着氷性霧雨",
-    61: "弱い雨",
-    63: "雨",
-    65: "強い雨",
-    66: "弱い着氷性の雨",
-    67: "強い着氷性の雨",
-    71: "弱い雪",
-    73: "雪",
-    75: "強い雪",
+    0: "晴朗",
+    1: "大致晴朗",
+    2: "晴间多云",
+    3: "多云",
+    45: "有雾",
+    48: "冻雾",
+    51: "小毛毛雨",
+    53: "毛毛雨",
+    55: "强毛毛雨",
+    56: "小冻毛雨",
+    57: "强冻毛雨",
+    61: "小雨",
+    63: "降雨",
+    65: "大雨",
+    66: "小冻雨",
+    67: "强冻雨",
+    71: "小雪",
+    73: "降雪",
+    75: "大雪",
     77: "雪粒",
-    80: "にわか雨",
-    81: "強いにわか雨",
-    82: "激しいにわか雨",
-    85: "にわか雪",
-    86: "強いにわか雪",
+    80: "阵雨",
+    81: "强阵雨",
+    82: "暴雨阵雨",
+    85: "阵雪",
+    86: "强阵雪",
     95: "雷雨",
-    96: "ひょうを伴う雷雨",
-    99: "激しい雷雨",
+    96: "伴冰雹雷雨",
+    99: "强烈雷雨",
 }
 
 
@@ -114,14 +120,14 @@ def traffic_advice(current_precip: float | None, max_precip_prob: float | None, 
     wind_kmh = wind or 0.0
     temp_c = temp or 0.0
     if precip_now >= 0.5 or precip_prob >= 60:
-        return "雨具必携。路面が滑りやすいので移動時間に余裕を。"
+        return "建议携带雨具，路面可能湿滑，出行时间尽量留出余量。"
     if wind_kmh >= 35:
-        return "風が強め。電車や歩行時の遅延・横風に注意。"
+        return "风力偏强，乘车和步行时要留意延误与横风影响。"
     if temp_c >= 28:
-        return "暑さ対策を。水分補給を優先。"
+        return "气温偏高，注意防暑并优先补水。"
     if temp_c <= 3:
-        return "朝は冷え込み注意。橋上や日陰の路面に注意。"
-    return "大きな移動支障は見込み小。通常運行前提で可。"
+        return "早晨气温偏低，桥面和背阴处路面要多留意。"
+    return "预计通勤和出行影响较小，可按常规安排。"
 
 
 def format_number(value: float | int | None, suffix: str = "", digits: int = 0) -> str:
@@ -179,16 +185,23 @@ def fetch_weather(location: Location) -> str:
 
 
 def main() -> int:
+    trace = StagedTaskTrace("weather-report-jst-0700", "weather")
+    trace.start("decide-day-kind")
     now = datetime.now(TZ)
     rest_day, day_kind = is_rest_day(now)
+    trace.step("decide-day-kind", "ok", detail=f"{'rest-day' if rest_day else 'workday'} / {day_kind}", tool="calendar")
     locations = list(HOME_LOCATIONS)
     if not rest_day:
         locations.append(OFFICE_LOCATION)
 
     lines = [f"天气预报 {now:%Y-%m-%d} {('休息日' if rest_day else '工作日')}（{day_kind}）"]
     for loc in locations:
+        trace.step("fetch-weather", "running", detail=loc.label, tool="open-meteo")
         lines.append(fetch_weather(loc))
-    print("\n".join(lines))
+    message = "\n".join(lines)
+    trace.artifact("locations", [loc.label for loc in locations])
+    trace.finish("ok", "report-ready", final_message=message)
+    print(message)
     return 0
 
 

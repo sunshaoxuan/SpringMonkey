@@ -52,6 +52,7 @@
 | 多 repairer 组合规划 | planner 可以从 durable promoted-helper registry 里挑出多个 business repairer，并把它们组合成一个 bounded repair pipeline 注入后续 step 决策 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_composed_repairer_plan.py` |
 | step 级漂移门控 | planner 在每个 step 选择前重审 promoted repairer 是否仍匹配当前 failure surface；漂移 helper 会被过滤并写入计划说明，而不是继续执行 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_step_drift_guard.py` |
 | repair graph 预算与回滚 | 多 repairer 组合计划现在自带每步预算上限和 rollback policy，防止修复图无约束扩张，并要求失败时先回写 rollback evidence | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_repair_graph_budget.py` |
+| 新闻/天气显式阶段化 | 新闻与天气不再只以“单次 exec”视角存在；现在至少会把阶段、步骤、产物和最终结果写入 staged trace，为后续 scheduler 接管提供可观察面 | `scripts/staged_jobs/task_trace.py`、`scripts/news/run_news_pipeline.py`、`scripts/weather/discord_weather_report.py` |
 | 自增强计算总册 | 汤猴如何参考 Reflexion / Voyager / 状态图思路实现 capability gap、toolsmith、验证、沉淀与灾后恢复 | `docs/policies/AGENT_SELF_IMPROVEMENT_AND_TOOLSMITH_ARCHITECTURE.md` |
 | Browser backend | 常驻 Chrome + raw CDP，默认 `127.0.0.1:18800`，OpenClaw profile `openclaw` | `scripts/remote_enable_persistent_browser_backend.py`、`scripts/remote_install_browser_guardrails.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 长记忆 | `memory-lancedb`、LanceDB 路径、embedding 策略 | `HOST_ACCESS_REDACTED.md`、`docs/ops/OPENCLAW_VECTOR_BACKEND_PLAN.md` |
