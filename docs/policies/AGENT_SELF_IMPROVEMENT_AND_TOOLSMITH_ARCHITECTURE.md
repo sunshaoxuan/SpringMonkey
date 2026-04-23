@@ -199,6 +199,12 @@ They should eventually map to:
 - runtime registration
 - future preference in tool selection
 
+Current implemented step:
+
+- promoted helpers now enter a formal durable registry under the kernel state root
+- that registry is used as a cross-session capability source for future tool selection
+- helper reuse no longer depends only on the original session that produced the helper
+
 ### Layer G: Failure Pattern Learning
 
 Error classification itself should also improve over time.

@@ -151,6 +151,23 @@ class HelperTool:
 
 
 @dataclass
+class PromotedHelperRecord:
+    record_id: str
+    name: str
+    scope: str
+    kind: str
+    entrypoint: str
+    source_tool_id: str
+    source_gap_category: str | None
+    validation_observation: str | None
+    usage_count: int
+    last_selected_at: str | None
+    status: str
+    created_at: str = field(default_factory=utc_now)
+    updated_at: str = field(default_factory=utc_now)
+
+
+@dataclass
 class KernelSession:
     session_id: str
     created_at: str
@@ -172,6 +189,7 @@ class AgentSocietyKernel:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.sessions_dir = root / "sessions"
+        self.registry_path = root / "helper_registry.json"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
         self.ensure_workspace_bridge()
 
@@ -319,21 +337,63 @@ Current limitation:
         pending_steps = [step for step in session.steps if step.status in {"pending", "in_progress"}]
         if not pending_steps:
             return None
+        registry_helpers = self._select_registry_helpers_for_session(session)
         validated_helpers = [
             tool for tool in session.helper_tools
             if tool.status in {"validated", "promoted"} and tool.entrypoint
         ]
-        helper_candidates = [tool.entrypoint for tool in validated_helpers]
+        helper_candidates = registry_helpers + [tool.entrypoint for tool in validated_helpers if tool.entrypoint not in registry_helpers]
         for step in pending_steps:
             if helper_candidates:
                 merged = helper_candidates + [candidate for candidate in step.tool_candidates if candidate not in helper_candidates]
                 step.tool_candidates = merged
-                if step.chosen_tool not in merged:
+                if registry_helpers:
+                    step.chosen_tool = registry_helpers[0]
+                elif step.chosen_tool not in merged:
                     step.chosen_tool = merged[0]
             self._apply_learned_patterns_to_step(session, step)
         task_order = {task.task_id: index for index, task in enumerate(session.tasks)}
         pending_steps.sort(key=lambda step: task_order.get(step.parent_task_id, 10**6))
         return pending_steps[0]
+
+    def _select_registry_helpers_for_session(self, session: KernelSession) -> list[str]:
+        registry = self.load_promoted_helper_registry()
+        if not registry:
+            return []
+        relevant = self._infer_relevant_helper_scopes(session)
+        chosen: list[str] = []
+        updated = False
+        for record in registry:
+            if record.status != "promoted":
+                continue
+            if relevant and record.scope not in relevant and record.source_gap_category not in relevant:
+                continue
+            if record.entrypoint not in chosen:
+                chosen.append(record.entrypoint)
+                record.usage_count += 1
+                record.last_selected_at = utc_now()
+                record.updated_at = utc_now()
+                updated = True
+        if updated:
+            self.save_promoted_helper_registry(registry)
+        return chosen
+
+    def _infer_relevant_helper_scopes(self, session: KernelSession) -> set[str]:
+        text = " ".join(
+            [session.raw_request, session.goal.primary] + [step.summary for step in session.steps]
+        ).lower()
+        scopes: set[str] = set()
+        if any(token in text for token in ("timeout", "timed out", "etimedout", "stalled", "hang", "hung", "卡住")):
+            scopes.add("runtime_timeout")
+        if any(token in text for token in ("missing tool", "missing helper", "unsupported", "not found", "缺少工具")):
+            scopes.add("tool_missing")
+        if any(token in text for token in ("bundle", "patch", "drift", "anchor", "selector", "upgrade")):
+            scopes.add("runtime_drift")
+        if any(token in text for token in ("no response", "blocked", "stuck", "无响应", "阻塞")):
+            scopes.add("execution_blocked")
+        if any(token in text for token in ("discover", "unknown system", "入口未知", "unclear target")):
+            scopes.add("target_discovery_missing")
+        return scopes
 
     def record_observation(self, session: KernelSession, step_id: str, observation: str, next_decision: str, status: str) -> Step:
         for step in session.steps:
@@ -673,9 +733,72 @@ Current limitation:
                 else:
                     gap.status = "addressing"
                 gap.updated_at = utc_now()
+                if status == "promoted":
+                    self.register_promoted_helper(
+                        name=tool.name,
+                        scope=tool.scope,
+                        kind=tool.kind,
+                        entrypoint=tool.entrypoint,
+                        source_tool_id=tool.tool_id,
+                        source_gap_category=gap.category,
+                        validation_observation=tool.validation_observation,
+                    )
                 break
         self.save_session(session)
         return tool
+
+    def load_promoted_helper_registry(self) -> list[PromotedHelperRecord]:
+        if not self.registry_path.is_file():
+            return []
+        data = json.loads(self.registry_path.read_text(encoding="utf-8"))
+        return [PromotedHelperRecord(**item) for item in data.get("promoted_helpers", [])]
+
+    def save_promoted_helper_registry(self, records: list[PromotedHelperRecord]) -> None:
+        payload = {
+            "promoted_helpers": [asdict(item) for item in records],
+        }
+        self.registry_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def register_promoted_helper(
+        self,
+        *,
+        name: str,
+        scope: str,
+        kind: str,
+        entrypoint: str,
+        source_tool_id: str,
+        source_gap_category: str | None,
+        validation_observation: str | None,
+    ) -> PromotedHelperRecord:
+        records = self.load_promoted_helper_registry()
+        existing = next((item for item in records if item.entrypoint == entrypoint or item.name == name), None)
+        if existing is None:
+            existing = PromotedHelperRecord(
+                record_id=make_id("registry"),
+                name=normalize_text(name),
+                scope=normalize_text(scope),
+                kind=normalize_text(kind),
+                entrypoint=normalize_text(entrypoint),
+                source_tool_id=source_tool_id,
+                source_gap_category=source_gap_category,
+                validation_observation=normalize_text(validation_observation or ""),
+                usage_count=0,
+                last_selected_at=None,
+                status="promoted",
+            )
+            records.append(existing)
+        else:
+            existing.name = normalize_text(name)
+            existing.scope = normalize_text(scope)
+            existing.kind = normalize_text(kind)
+            existing.entrypoint = normalize_text(entrypoint)
+            existing.source_tool_id = source_tool_id
+            existing.source_gap_category = source_gap_category
+            existing.validation_observation = normalize_text(validation_observation or "")
+            existing.status = "promoted"
+            existing.updated_at = utc_now()
+        self.save_promoted_helper_registry(records)
+        return existing
 
     def close_capability_gap(self, session: KernelSession, gap_id: str, resolution: str) -> CapabilityGap:
         gap = next((item for item in session.capability_gaps if item.gap_id == gap_id), None)

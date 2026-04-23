@@ -168,6 +168,7 @@
 - `openclaw/test_agent_society_pattern_influenced_promotion.py`：验证 `learned failure_pattern` 会反过来影响后续 helper promotion
 - `openclaw/test_agent_society_pattern_routing.py`：验证 `learned failure_pattern` 会影响后续 step 的 `tool_candidates / chosen_tool / next_decision`
 - `openclaw/test_cron_failure_self_heal.py`：验证 cron failure 会被 watcher 自动写入 durable kernel，并且同一失败会被去重
+- `openclaw/test_agent_society_promoted_helper_registry.py`：验证 promoted helper 会进入正式 durable registry，并在后续新 session 中被默认选中
 - `openclaw/integration_verify_host.py`：宿主机集成验证
 - `openclaw/test_manual_news_heuristics.py`：启发式路由测试
 

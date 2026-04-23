@@ -132,6 +132,7 @@ The current direct-task failure bridge now also supports:
 18. a `learned` failure pattern can now feed back into later gap handling, including helper naming and promotion decisions, instead of remaining passive history
 19. `learned` failure patterns can now also influence later step routing, including `tool_candidates`, `chosen_tool`, and `next_decision`
 20. cron failure can now be scanned from host journal and recorded into the same durable `capability_gap -> helper -> pattern` loop instead of stopping at a plain failure notification
+21. promoted helpers now enter a formal durable helper registry and can be reused by future sessions, instead of living only in the session that first created them
 
 In other words, error classification is no longer only a static table.
 
