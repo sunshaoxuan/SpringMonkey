@@ -134,6 +134,7 @@ The current direct-task failure bridge now also supports:
 20. cron failure can now be scanned from host journal and recorded into the same durable `capability_gap -> helper -> pattern` loop instead of stopping at a plain failure notification
 21. promoted helpers now enter a formal durable helper registry and can be reused by future sessions, instead of living only in the session that first created them
 22. generated helpers are now bounded business repairers with a helper contract, repair workflow, and drift guard, so promotion no longer accepts a helper that has already drifted away from its original purpose
+23. when more than one promoted business repairer matches the current session, the planner can now compose those repairers into one bounded repair pipeline and inject that plan into the next step instead of blindly selecting a single helper
 
 In other words, error classification is no longer only a static table.
 
@@ -155,8 +156,7 @@ It still lacks:
 - automatic interception of every direct task
 - automatic code generation for helper tools
 - automatic promotion for categories beyond the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths
-- broader semantic clustering so related failure sub-shapes can merge without being manually enumerated first
-  current progress: common timeout / drift / tool-missing / execution-blocked phrasing variants now cluster more aggressively into the same durable pattern
+- composition beyond a small bounded set of promoted business repairers, including explicit rollback / budget policies for larger repair graphs
 
 But it provides the durable state model needed for those later steps.
 

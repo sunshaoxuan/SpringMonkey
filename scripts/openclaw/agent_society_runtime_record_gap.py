@@ -129,17 +129,7 @@ def main() -> int:
         ]
         helper_run = subprocess.run(helper_cmd, capture_output=True, text=True, check=True)
         helper_output = json.loads(helper_run.stdout)
-        validation_note = json.dumps(
-            {
-                "status": helper_output.get("status"),
-                "category": helper_output.get("category"),
-                "check_count": len(helper_output.get("checks", [])),
-                "action_count": len(helper_output.get("suggested_actions", [])),
-                "workflow_count": len(helper_output.get("repair_workflow", [])),
-                "drift_ok": bool(helper_output.get("drift", {}).get("ok")),
-            },
-            ensure_ascii=False,
-        )
+        validation_note = json.dumps(helper_output, ensure_ascii=False)
         session = kernel.load_session(session.session_id)
         promoted_status = "registered"
         if helper_output.get("status") == "ready":

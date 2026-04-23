@@ -49,6 +49,7 @@
 | Cron 失败自动自修复入口 | cron timeout / failed 不再只能发失败通知；宿主机 watcher 会把失败写进 durable kernel，走同一条 `gap -> helper -> pattern` 自增强链 | `scripts/openclaw/cron_failure_self_heal.py`、`scripts/remote_install_cron_failure_self_heal.py`、`scripts/openclaw/test_cron_failure_self_heal.py` |
 | Promoted Helper 正式注册层 | promoted helper 不再只存在于单个 session；现在会进入 durable helper registry，并影响后续新 session 的默认工具选择 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_promoted_helper_registry.py` |
 | 自动生成业务修复器 | helper 不再只是薄模板；现在会生成带 contract、repair workflow、drift guard 的 bounded business repairer，并把漂移校验纳入 promotion 条件 | `scripts/openclaw/agent_society_helper_toolsmith.py`、`scripts/openclaw/test_agent_society_business_repairer.py` |
+| 多 repairer 组合规划 | planner 可以从 durable promoted-helper registry 里挑出多个 business repairer，并把它们组合成一个 bounded repair pipeline 注入后续 step 决策 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_composed_repairer_plan.py` |
 | 自增强计算总册 | 汤猴如何参考 Reflexion / Voyager / 状态图思路实现 capability gap、toolsmith、验证、沉淀与灾后恢复 | `docs/policies/AGENT_SELF_IMPROVEMENT_AND_TOOLSMITH_ARCHITECTURE.md` |
 | Browser backend | 常驻 Chrome + raw CDP，默认 `127.0.0.1:18800`，OpenClaw profile `openclaw` | `scripts/remote_enable_persistent_browser_backend.py`、`scripts/remote_install_browser_guardrails.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | 长记忆 | `memory-lancedb`、LanceDB 路径、embedding 策略 | `HOST_ACCESS_REDACTED.md`、`docs/ops/OPENCLAW_VECTOR_BACKEND_PLAN.md` |

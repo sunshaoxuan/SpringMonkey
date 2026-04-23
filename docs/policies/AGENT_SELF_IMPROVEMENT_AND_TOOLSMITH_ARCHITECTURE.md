@@ -184,6 +184,7 @@ Current implemented step:
 - the toolsmith can now generate a bounded business repairer, not just a thin scaffold
 - generated repairers include a helper contract, a multi-step repair workflow, and a drift guard
 - promotion now requires not only executable output, but also a non-empty repair workflow and a passing drift check
+- promoted repairers can now be composed by the planner into a bounded multi-repairer workflow when the current session matches more than one durable failure surface
 
 ### Layer E: Verification
 
@@ -210,6 +211,7 @@ Current implemented step:
 - promoted helpers now enter a formal durable registry under the kernel state root
 - that registry is used as a cross-session capability source for future tool selection
 - helper reuse no longer depends only on the original session that produced the helper
+- the planner can now pull multiple promoted business repairers from that registry and compose their first repair stages into one bounded repair pipeline instead of choosing only a single helper in isolation
 
 ### Layer G: Failure Pattern Learning
 
@@ -383,11 +385,9 @@ Provides the first durable state needed for self-improvement.
 The current system still lacks:
 
 - automatic interception of every direct task into kernel state
-- automatic generation of helper code from open capability gaps
-- automatic promotion of validated helpers into stable host capability
 - automatic retirement of obsolete helpers
 - first-class scheduler support for toolsmith sub-roles
-- broader semantic clustering so adjacent failure sub-shapes can be learned without manual category edits
+- automatic composition of more than a few bounded repairers into a larger verified workflow graph with explicit rollback and cost control
 
 So the architecture is now defined more completely than the implementation.
 
@@ -403,6 +403,7 @@ This architecture should be considered meaningfully implemented only when all ar
 4. at least one helper path can be generated, validated, and reused
 5. successful helpers survive host restart or recovery via repo or recovery bundle
 6. repeated similar failures can accumulate into durable `failure_pattern` state instead of being forgotten after one repair
+7. when more than one promoted business repairer is relevant, the planner can compose them into a bounded repair workflow without drifting away from the parent goal
 
 ## Disaster Recovery Requirement
 

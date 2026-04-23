@@ -160,6 +160,9 @@ class PromotedHelperRecord:
     source_tool_id: str
     source_gap_category: str | None
     validation_observation: str | None
+    helper_contract: dict[str, Any] | None
+    repair_workflow: list[dict[str, str]]
+    drift: dict[str, Any] | None
     usage_count: int
     last_selected_at: str | None
     status: str
@@ -337,7 +340,8 @@ Current limitation:
         pending_steps = [step for step in session.steps if step.status in {"pending", "in_progress"}]
         if not pending_steps:
             return None
-        registry_helpers = self._select_registry_helpers_for_session(session)
+        registry_records = self._select_registry_helpers_for_session(session)
+        registry_helpers = [record.entrypoint for record in registry_records]
         validated_helpers = [
             tool for tool in session.helper_tools
             if tool.status in {"validated", "promoted"} and tool.entrypoint
@@ -351,25 +355,26 @@ Current limitation:
                     step.chosen_tool = registry_helpers[0]
                 elif step.chosen_tool not in merged:
                     step.chosen_tool = merged[0]
+            self._apply_registry_repairer_plan(step, registry_records)
             self._apply_learned_patterns_to_step(session, step)
         task_order = {task.task_id: index for index, task in enumerate(session.tasks)}
         pending_steps.sort(key=lambda step: task_order.get(step.parent_task_id, 10**6))
         return pending_steps[0]
 
-    def _select_registry_helpers_for_session(self, session: KernelSession) -> list[str]:
+    def _select_registry_helpers_for_session(self, session: KernelSession) -> list[PromotedHelperRecord]:
         registry = self.load_promoted_helper_registry()
         if not registry:
             return []
         relevant = self._infer_relevant_helper_scopes(session)
-        chosen: list[str] = []
+        chosen: list[PromotedHelperRecord] = []
         updated = False
         for record in registry:
             if record.status != "promoted":
                 continue
             if relevant and record.scope not in relevant and record.source_gap_category not in relevant:
                 continue
-            if record.entrypoint not in chosen:
-                chosen.append(record.entrypoint)
+            if not any(item.entrypoint == record.entrypoint for item in chosen):
+                chosen.append(record)
                 record.usage_count += 1
                 record.last_selected_at = utc_now()
                 record.updated_at = utc_now()
@@ -377,6 +382,26 @@ Current limitation:
         if updated:
             self.save_promoted_helper_registry(registry)
         return chosen
+
+    def _apply_registry_repairer_plan(self, step: Step, registry_records: list[PromotedHelperRecord]) -> None:
+        if not registry_records:
+            return
+        workflows: list[str] = []
+        for record in registry_records[:3]:
+            if not record.repair_workflow:
+                continue
+            first_two = [item.get("step", "") for item in record.repair_workflow[:2] if item.get("step")]
+            if not first_two:
+                continue
+            workflows.append(f"{record.name}: {' -> '.join(first_two)}")
+        if not workflows:
+            return
+        plan_note = "compose repairers in order: " + " | ".join(workflows)
+        if plan_note not in step.next_decision:
+            step.next_decision = normalize_text(f"{plan_note}; {step.next_decision}")
+        if step.expected_observation and "combined repairer evidence" not in step.expected_observation.lower():
+            step.expected_observation = normalize_text(f"{step.expected_observation}; collect combined repairer evidence before closing the task")
+        step.updated_at = utc_now()
 
     def _infer_relevant_helper_scopes(self, session: KernelSession) -> set[str]:
         text = " ".join(
@@ -734,6 +759,12 @@ Current limitation:
                     gap.status = "addressing"
                 gap.updated_at = utc_now()
                 if status == "promoted":
+                    helper_payload: dict[str, Any] | None = None
+                    if tool.validation_observation:
+                        try:
+                            helper_payload = json.loads(tool.validation_observation)
+                        except Exception:
+                            helper_payload = None
                     self.register_promoted_helper(
                         name=tool.name,
                         scope=tool.scope,
@@ -742,6 +773,9 @@ Current limitation:
                         source_tool_id=tool.tool_id,
                         source_gap_category=gap.category,
                         validation_observation=tool.validation_observation,
+                        helper_contract=None if helper_payload is None else helper_payload.get("contract"),
+                        repair_workflow=None if helper_payload is None else helper_payload.get("repair_workflow"),
+                        drift=None if helper_payload is None else helper_payload.get("drift"),
                     )
                 break
         self.save_session(session)
@@ -751,7 +785,14 @@ Current limitation:
         if not self.registry_path.is_file():
             return []
         data = json.loads(self.registry_path.read_text(encoding="utf-8"))
-        return [PromotedHelperRecord(**item) for item in data.get("promoted_helpers", [])]
+        normalized_records: list[PromotedHelperRecord] = []
+        for item in data.get("promoted_helpers", []):
+            normalized = dict(item)
+            normalized.setdefault("helper_contract", None)
+            normalized.setdefault("repair_workflow", [])
+            normalized.setdefault("drift", None)
+            normalized_records.append(PromotedHelperRecord(**normalized))
+        return normalized_records
 
     def save_promoted_helper_registry(self, records: list[PromotedHelperRecord]) -> None:
         payload = {
@@ -769,6 +810,9 @@ Current limitation:
         source_tool_id: str,
         source_gap_category: str | None,
         validation_observation: str | None,
+        helper_contract: dict[str, Any] | None,
+        repair_workflow: list[dict[str, str]] | None,
+        drift: dict[str, Any] | None,
     ) -> PromotedHelperRecord:
         records = self.load_promoted_helper_registry()
         existing = next((item for item in records if item.entrypoint == entrypoint or item.name == name), None)
@@ -782,6 +826,9 @@ Current limitation:
                 source_tool_id=source_tool_id,
                 source_gap_category=source_gap_category,
                 validation_observation=normalize_text(validation_observation or ""),
+                helper_contract=helper_contract,
+                repair_workflow=repair_workflow or [],
+                drift=drift,
                 usage_count=0,
                 last_selected_at=None,
                 status="promoted",
@@ -795,6 +842,9 @@ Current limitation:
             existing.source_tool_id = source_tool_id
             existing.source_gap_category = source_gap_category
             existing.validation_observation = normalize_text(validation_observation or "")
+            existing.helper_contract = helper_contract
+            existing.repair_workflow = repair_workflow or []
+            existing.drift = drift
             existing.status = "promoted"
             existing.updated_at = utc_now()
         self.save_promoted_helper_registry(records)
