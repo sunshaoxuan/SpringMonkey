@@ -37,6 +37,33 @@ For ordinary recurring tasks:
 4. if `--verify-only` does not show the expected job, never say the task is already created
 5. a conversational summary is never evidence of success
 
+## Execution Depth Rule
+
+New scheduled jobs must not be treated as black-box single-step jobs just because
+the user described them in one short chat message.
+
+The writer now classifies every new or updated job as:
+
+- `atomic`: truly one local step with no external state
+- `staged`: multiple observable phases, for example fetch, parse, summarize,
+  translate, verify, and deliver
+- `agentic`: dynamic task execution that may need replanning, tool creation,
+  debugging, or self-repair
+
+Default rule:
+
+- If the task touches websites, login, account state, search, fetching,
+  summarization, translation, delivery, cron creation, verification, or
+  reporting, it must be treated as `staged` or `agentic`.
+- `atomic` is only allowed when the task is demonstrably a single local action.
+- For `staged` and `agentic` jobs, the writer prepends a runtime task-creation
+  policy block to the stored message so the job itself exposes steps, tools,
+  observations, failure surfaces, and final evidence.
+- Use `--execution-depth atomic|staged|agentic` only when the automatic
+  classifier needs an explicit override.
+- `--no-task-policy-wrap` is reserved for already-wrapped prompts or migration
+  tooling; it must not be used to hide a multi-step job as one black-box exec.
+
 ## Generic Job Writer
 
 Use:

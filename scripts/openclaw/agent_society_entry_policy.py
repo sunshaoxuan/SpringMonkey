@@ -3,6 +3,12 @@ from __future__ import annotations
 
 import re
 
+CHAT_KIND = "chat"
+TASK_KIND = "task"
+
+ATOMIC_DEPTH = "atomic"
+STAGED_DEPTH = "staged"
+AGENTIC_DEPTH = "agentic"
 
 CASUAL_PATTERN = re.compile(
     r"^\s*(你好|您好|hi|hello|早上好|晚上好|谢谢|thanks|ok|好的|收到|嗯|在吗|拜拜|bye)[!！,.，。 ]*\s*$",
@@ -44,9 +50,66 @@ REPAIR_SIGNAL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+MULTI_STEP_SIGNAL_PATTERN = re.compile(
+    r"(登录|登入|邮箱|账号|password|密码|网站|网页|browser|portal|dashboard|查询|搜索|search|查找|点击|进入|提交|下单|预约|订车|取消|支付|核对|验证|翻译|总结|归纳|整理|成文|引用|链接|网址|报告|汇报|同步|转发|发到|discord|line|抓取|fetch|discover|merge|finalize)",
+    re.IGNORECASE,
+)
+
+AGENTIC_SIGNAL_PATTERN = re.compile(
+    r"(自己判断|自己分辨|自己决定|自行|自动|动态|多步|多阶段|拆解|重规划|replan|self\s?repair|toolsmith|写工具|调试|上线新工具|增强自己的能力|不断增强|持续改进|创建任务|定时任务|cron|schedule|pipeline)",
+    re.IGNORECASE,
+)
+
 
 def normalize_prompt(prompt: str) -> str:
     return re.sub(r"\s+", " ", prompt or "").strip()
+
+
+def classify_interaction_kind(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> str:
+    return TASK_KIND if should_apply_agent_society_protocol(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat) else CHAT_KIND
+
+
+def classify_execution_depth(prompt: str) -> str:
+    text = normalize_prompt(prompt)
+    if not text:
+        return ATOMIC_DEPTH
+    if AGENTIC_SIGNAL_PATTERN.search(text):
+        return AGENTIC_DEPTH
+    if MULTI_STEP_SIGNAL_PATTERN.search(text):
+        return STAGED_DEPTH
+    if REQUEST_SIGNAL_PATTERN.search(text) and EXECUTION_SIGNAL_PATTERN.search(text):
+        return STAGED_DEPTH
+    return ATOMIC_DEPTH
+
+
+def build_multistep_task_protocol(prompt: str, *, execution_depth: str | None = None) -> str:
+    depth = execution_depth or classify_execution_depth(prompt)
+    if depth == ATOMIC_DEPTH:
+        return ""
+    depth_label = "staged" if depth == STAGED_DEPTH else "agentic"
+    lines = [
+        "[runtime-task-creation-policy]",
+        f"execution_depth: {depth_label}",
+        "This is a real task, not casual chat.",
+        "You must decide goal, tasks, steps, tools, observations, and success checks before claiming completion.",
+        "If the task involves websites, login, querying, searching, submission, translation, summarization, reporting, or delivery, treat it as multi-step by default.",
+        "Write or refine helper tools when repeated capability gaps appear, validate them, and reuse them.",
+        "Keep visible progress updates and a final result or blocker report.",
+    ]
+    if depth == AGENTIC_DEPTH:
+        lines.extend(
+            [
+                "This task is agentic. You must dynamically replan after observations instead of following a fixed one-shot script.",
+                "If a new reusable tool is needed, create it, debug it, validate it, and fold it back into the task.",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "This task is staged. Expose the phases and failure surfaces instead of hiding them in one black-box exec.",
+            ]
+        )
+    return "\n".join(lines)
 
 
 def should_apply_operational_execution_protocol(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> bool:
@@ -83,6 +146,14 @@ def should_apply_self_improvement_protocol(prompt: str, *, is_direct: bool = Tru
 
 
 __all__ = [
+    "AGENTIC_DEPTH",
+    "ATOMIC_DEPTH",
+    "CHAT_KIND",
+    "TASK_KIND",
+    "STAGED_DEPTH",
+    "build_multistep_task_protocol",
+    "classify_execution_depth",
+    "classify_interaction_kind",
     "normalize_prompt",
     "should_apply_agent_society_protocol",
     "should_apply_operational_execution_protocol",

@@ -9,6 +9,20 @@ import sys
 from pathlib import Path
 
 JOBS_PATH = Path("/var/lib/openclaw/.openclaw/cron/jobs.json")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+OPENCLAW_SCRIPTS = REPO_ROOT / "scripts" / "openclaw"
+if str(OPENCLAW_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(OPENCLAW_SCRIPTS))
+
+from agent_society_entry_policy import (  # noqa: E402
+    AGENTIC_DEPTH,
+    ATOMIC_DEPTH,
+    STAGED_DEPTH,
+    build_multistep_task_protocol,
+    classify_execution_depth,
+)
+
+TASK_CREATION_MARKER = "[runtime-task-creation-policy]"
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +48,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--agent-id", default="main", help="Target agent id. Default: main.")
     p.add_argument("--session-target", default="isolated", help="Session target. Default: isolated.")
     p.add_argument("--wake-mode", default="now", help="Wake mode. Default: now.")
+    p.add_argument(
+        "--execution-depth",
+        choices=[ATOMIC_DEPTH, STAGED_DEPTH, AGENTIC_DEPTH, "auto"],
+        default="auto",
+        help="Task execution depth. auto classifies from the message and wraps staged/agentic jobs.",
+    )
+    p.add_argument(
+        "--no-task-policy-wrap",
+        action="store_true",
+        help="Do not prepend staged/agentic task policy text to the stored message.",
+    )
     p.add_argument("--verify-only", action="store_true", help="Do not write. Only print the current matching job JSON.")
     args = p.parse_args()
     if not args.name:
@@ -53,6 +78,20 @@ def load_message(args: argparse.Namespace) -> str:
     if args.message:
         return args.message
     raise SystemExit("One of --message-file or --message is required.")
+
+
+def resolve_execution_depth(message: str, requested_depth: str) -> str:
+    if requested_depth == "auto":
+        return classify_execution_depth(message)
+    return requested_depth
+
+
+def apply_task_creation_policy(message: str, *, requested_depth: str, no_wrap: bool = False) -> tuple[str, str]:
+    depth = resolve_execution_depth(message, requested_depth)
+    if no_wrap or depth == ATOMIC_DEPTH or TASK_CREATION_MARKER in message:
+        return message, depth
+    policy = build_multistep_task_protocol(message, execution_depth=depth)
+    return f"{policy}\n\nUser scheduled task:\n{message}", depth
 
 
 def bool_arg(value: str) -> bool:
@@ -255,7 +294,12 @@ def main() -> int:
         print(stdout.strip())
         return 0
 
-    message = load_message(args)
+    raw_message = load_message(args)
+    message, execution_depth = apply_task_creation_policy(
+        raw_message,
+        requested_depth=args.execution_depth,
+        no_wrap=args.no_task_policy_wrap,
+    )
     if existing:
         cli_args = build_edit_args(existing["id"], args, message)
     else:
@@ -267,6 +311,7 @@ def main() -> int:
 
     job = find_job_by_name(args.name)
     job = expect_job_matches(job, args, message=message)
+    job.setdefault("_springmonkeyVerification", {})["executionDepth"] = execution_depth
     print(json.dumps(job, ensure_ascii=False, indent=2))
     return 0
 

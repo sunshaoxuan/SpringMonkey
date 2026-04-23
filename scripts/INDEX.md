@@ -156,6 +156,7 @@
     - 创建/更新：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --expr "<cron>" --message-file <prompt.txt> --delivery-channel <channel> --delivery-to <target>`
     - 校验：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --verify-only`
     - 删除：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --delete`
+  - 新建任务会自动做 `execution_depth` 判定；非 `atomic` 任务会被写入 staged/agentic runtime policy wrapper，避免把多步任务藏进黑盒 exec。
 
 ## 5. OpenClaw 补丁与验证
 
@@ -184,6 +185,7 @@
 - `news/test_run_news_pipeline_trace.py`：验证新闻流水线在 dry-run / skip-finalize 下仍会写出 staged trace，而不是继续做黑盒 exec
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词
 - `openclaw/test_agent_society_entry_policy.py`：回归验证 direct task 入口策略不会漏掉真实委托，也不会把寒暄和简单闲聊误接入
+- `cron/test_upsert_generic_cron_job_policy.py`：验证通用 cron 创建器会自动把天气、新闻、登录、搜索、翻译、投递、自增强等任务判成 staged/agentic，而不是黑盒单步。
 - `openclaw/test_agent_society_runtime_record_gap.py`：回归验证当前三类已对齐失败会产出并 promotion helper
 - `openclaw/test_agent_society_failure_patterns.py`：验证重复失败可聚合成 durable `failure_pattern`
 - `openclaw/test_agent_society_pattern_influenced_promotion.py`：验证 `learned failure_pattern` 会反过来影响后续 helper promotion

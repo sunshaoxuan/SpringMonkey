@@ -88,6 +88,30 @@ Direct chat should not auto-enter for:
 - trivial one-shot small talk
 - short questions like current time with no execution or delegation signal
 
+## Execution Depth Policy
+
+The user is not expected to write long prompt templates in production chat.
+After deciding that a message is a real task, the runtime must classify the
+execution depth:
+
+- `atomic`: truly one local action with no external state
+- `staged`: ordered phases with observable steps and failure surfaces
+- `agentic`: dynamic work that may need replanning, helper-tool creation,
+  debugging, validation, and self-repair
+
+Default rule:
+
+- `atomic` is allowed only when it is proven simple.
+- website, login, account, search, fetch, summarize, translate, deliver,
+  schedule, verify, and report tasks default to `staged`.
+- tasks that require dynamic decisions, debugging, tool creation, or
+  self-improvement default to `agentic`.
+
+For `staged` and `agentic` work, `汤猴` must infer the multi-step structure
+itself, choose tools per step, observe outcomes, and create or improve helper
+tools when a reusable capability gap appears. The user should not need to say
+this every time.
+
 ## Why This Exists
 
 The earlier failure mode was not just `NO_REPLY`.
