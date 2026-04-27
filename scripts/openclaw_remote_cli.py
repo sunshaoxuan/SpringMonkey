@@ -49,6 +49,7 @@ TOOLS: dict[str, str] = {
     "line-connect": "remote_line_connect_now.py",
     "stabilize": "remote_stabilize_host.py",
     "cron-run": "remote_cron_run_by_name.py",
+    "cron-enable": "remote_enable_cron_jobs.py",
 }
 
 
