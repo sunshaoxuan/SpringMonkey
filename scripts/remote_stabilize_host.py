@@ -5,14 +5,14 @@ from pathlib import Path
 
 # Add parent dir to path for shared modules if any
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from openclaw_ssh_password import get_ssh_password
+from openclaw_ssh_password import load_openclaw_ssh_password
 
 HOST = "ccnode.briconbric.com"
 PORT = 8822
 USER = "root"
 
 def main():
-    pw = get_ssh_password()
+    pw = load_openclaw_ssh_password()
     if not pw:
         print("Error: OPENCLAW_SSH_PASSWORD not set.")
         sys.exit(1)
