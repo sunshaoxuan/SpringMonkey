@@ -48,16 +48,19 @@ TOOLS: dict[str, str] = {
     "line-approve": "remote_line_pairing_approve.py",
     "line-connect": "remote_line_connect_now.py",
     "stabilize": "remote_stabilize_host.py",
+    "cron-run": "remote_cron_run_by_name.py",
 }
 
 
-def run_script(name: str) -> int:
+def run_script(name: str, extra_args: list[str] | None = None) -> int:
     script = SCRIPT_DIR / TOOLS[name]
     if not script.is_file():
         print(f"找不到脚本: {script}", file=sys.stderr)
         return 2
-    # 使用当前解释器，避免 PATH 上 python 不一致
-    return subprocess.call([sys.executable, str(script)])
+    cmd = [sys.executable, str(script)]
+    if extra_args:
+        cmd.extend(extra_args)
+    return subprocess.call(cmd)
 
 
 def cmd_recover() -> int:
@@ -77,20 +80,21 @@ def main() -> int:
 
     for cmd in TOOLS:
         p = sub.add_parser(cmd, help=f"运行 {TOOLS[cmd]}")
-        p.set_defaults(_fn=lambda c=cmd: run_script(c))
+        p.add_argument("extra", nargs="*", help="传递给脚本的额外参数")
+        p.set_defaults(_fn=lambda args, c=cmd: run_script(c, args.extra))
 
-    sub.add_parser("list", help="列出子命令与对应脚本").set_defaults(_fn=lambda: list_tools())
+    sub.add_parser("list", help="列出子命令与对应脚本").set_defaults(_fn=lambda args: list_tools())
     sub.add_parser(
         "recover",
         help="依次执行 diag + doctor（配置修复流水线，不执行 line-push）",
-    ).set_defaults(_fn=lambda: cmd_recover())
+    ).set_defaults(_fn=lambda args: cmd_recover())
 
     args = parser.parse_args()
     fn = getattr(args, "_fn", None)
     if fn is None:
         parser.print_help()
         return 1
-    return int(fn())
+    return int(fn(args))
 
 
 def list_tools() -> int:
