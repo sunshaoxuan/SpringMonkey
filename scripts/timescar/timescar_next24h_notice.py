@@ -83,19 +83,22 @@ def main() -> int:
             detail=f"found {len(candidates)} reservations in next 24h",
         )
         if not candidates:
-            runtime.finish("skipped", "no-match", final_message="NO_REPLY")
-            print("NO_REPLY")
+            # Modified: "Talk like a human" as requested by user
+            msg = "🚗 已检查未来 24 小时的 TimesCar 预约列表：目前没有即将开始（24小时内）的订单，无需处理。"
+            runtime.finish("skipped", "no-match", final_message=msg)
+            print(msg)
             return 0
+            
         _, reservation = sorted(candidates, key=lambda item: item[0])[0]
         message = "\n".join(
             [
-                "接下来 24 小时内有一单即将开始的预约，是否需要取消？",
+                "🔔 接下来 24 小时内有一单即将开始的预约，是否需要取消？",
                 f'开始：{reservation.get("startText", "")}',
                 f'结束：{reservation.get("returnText", "")}',
                 f'站点：{reservation.get("station", "")}',
                 f'车辆：{reservation.get("vehicle", "")}',
                 f'预约编号：{reservation.get("bookingNumber", "")}',
-                "请回复：取消这单 或 保留这单",
+                "\n请回复：**取消这单** 或 **保留这单**",
             ]
         )
         runtime.finish("ok", "notice-ready", final_message=message)
