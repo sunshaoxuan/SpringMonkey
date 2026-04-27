@@ -7,6 +7,23 @@ import re
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
+
+def extract_json(raw: str) -> dict:
+    raw = raw.strip()
+    if not raw:
+        raise ValueError("empty output")
+    try:
+        import json
+        return json.loads(raw)
+    except Exception:
+        pass
+    import re
+    m = re.search(r"(\{[\s\S]*\})\s*$", raw)
+    if not m:
+        raise ValueError(f"no trailing json object found in: {raw[:200]}...")
+    import json
+    return json.loads(m.group(1))
+
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright
@@ -30,7 +47,7 @@ class ExtendError(RuntimeError):
 
 
 def run_json(cmd: list[str]) -> dict:
-    return json.loads(subprocess.check_output(cmd, text=True))
+    return extract_json(subprocess.check_output(cmd, text=True))
 
 
 def load_credentials() -> tuple[str, str, str]:
