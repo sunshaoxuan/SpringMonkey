@@ -47,6 +47,7 @@ TOOLS: dict[str, str] = {
     "line-force-open": "remote_line_force_open.py",
     "line-approve": "remote_line_pairing_approve.py",
     "line-connect": "remote_line_connect_now.py",
+    "stabilize": "remote_stabilize_host.py",
 }
 
 
