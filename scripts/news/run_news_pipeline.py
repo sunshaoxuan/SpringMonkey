@@ -311,6 +311,16 @@ def summarize_article_prompt(title: str, url: str, content: str, max_chars: int 
     return sys_p, user_p
 
 
+def deterministic_summary_from_article(title: str, url: str) -> str:
+    """模型摘要失败时的最小可用兜底（保留来源链接）。"""
+    title_clean = " ".join((title or "").split()).strip()
+    if len(title_clean) > 120:
+        title_clean = title_clean[:117] + "..."
+    if not title_clean:
+        title_clean = "本条新闻来源可用，但摘要模型未返回有效文本。"
+    return f"• {title_clean}\n链接：{url}"
+
+
 def strip_think_blocks(text: str) -> str:
     """移除模型可能泄漏的 <think>...</think> 思维链块。"""
     if not text:
@@ -343,10 +353,13 @@ def _summarize_articles_with_qwen(
             result = ollama_chat(ollama_host, model, sys_p, user_p, timeout)
         except Exception as e:
             print(f"[pipeline] summarize {bid}[{i}] failed: {e}", file=sys.stderr)
+            fragments.append(deterministic_summary_from_article(art["title"], art["url"]))
             continue
         cleaned = strip_think_blocks(result)
         if cleaned and not cleaned.startswith("[") and len(cleaned) > 10:
             fragments.append(cleaned)
+        else:
+            fragments.append(deterministic_summary_from_article(art["title"], art["url"]))
 
     if not fragments:
         return f"• {fallback_line}\n"

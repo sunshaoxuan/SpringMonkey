@@ -112,6 +112,29 @@ class TestPlanAndTemplate(unittest.TestCase):
         )
         self.assertIn("本节无合格新增新闻条目", result)
 
+    def test_summarize_articles_falls_back_to_title_link_when_model_empty(self):
+        articles = [
+            {
+                "title": "Sample market headline",
+                "url": "https://example.com/market",
+                "content": "content",
+                "fetch_ok": True,
+                "snippet": "",
+            }
+        ]
+        with patch.object(self.m, "ollama_chat", return_value=""):
+            result = self.m._summarize_articles_with_qwen(
+                articles=articles,
+                ollama_host="http://localhost:9999",
+                model="test",
+                timeout=5,
+                fallback_line="本节无合格新增新闻条目。",
+                max_input_chars=1500,
+                bid="markets",
+            )
+        self.assertIn("• Sample market headline", result)
+        self.assertIn("链接：https://example.com/market", result)
+
     def test_resolve_ollama_base_url_from_config(self):
         cfg = {"model": {"ollamaBaseUrl": "http://remote.example:22545"}}
         with patch.dict(os.environ, {}, clear=False):
