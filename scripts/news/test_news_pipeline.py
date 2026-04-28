@@ -511,6 +511,19 @@ class TestFetcherDegradedFallback(unittest.TestCase):
         self.assertIn("degraded_to_snippet", out[0].fetch_error)
         self.assertGreater(len(out[0].content), 20)
 
+    def test_fetch_error_uses_title_when_snippet_short(self):
+        f = _load_fetcher()
+        article = f.Article(
+            title="Markets open mixed after policy signal",
+            url="https://example.com/m1",
+            source_feed="feed",
+            snippet="",
+        )
+        with patch.object(f, "fetch_article_content", return_value="[fetch_error: HTTP 502]"):
+            out = f.fetch_and_fill([article])
+        self.assertTrue(out[0].fetch_ok)
+        self.assertIn("Markets open mixed", out[0].content)
+
     def test_batch_relevant_filters_japan_non_japan(self):
         f = _load_fetcher()
         self.assertFalse(

@@ -48,7 +48,7 @@ RSS_FEEDS: dict[str, list[str]] = {
 FETCH_TIMEOUT = 15
 MAX_ARTICLES_PER_FEED = 5
 MAX_CONTENT_CHARS = 3000
-MIN_DEGRADED_SNIPPET_CHARS = 40
+MIN_DEGRADED_SNIPPET_CHARS = 10
 
 USER_AGENT = "SpringMonkey/1.0 (news-pipeline)"
 
@@ -327,8 +327,9 @@ def fetch_and_fill(articles: list[Article], max_chars: int = MAX_CONTENT_CHARS) 
             # 降级策略：正文抓取失败时，若 RSS snippet 足够长，仍允许该条进入后续摘要，
             # 避免整批因为站点反爬/临时 5xx 退化为“无合格新增新闻条目”。
             snippet = (art.snippet or "").strip()
-            if len(snippet) >= MIN_DEGRADED_SNIPPET_CHARS:
-                art.content = snippet
+            degraded = " ".join(x for x in [(art.title or "").strip(), snippet] if x).strip()
+            if len(degraded) >= MIN_DEGRADED_SNIPPET_CHARS:
+                art.content = degraded
                 art.fetch_ok = True
                 art.fetch_error = f"{content} [degraded_to_snippet]"
             else:
