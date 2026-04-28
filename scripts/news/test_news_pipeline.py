@@ -511,6 +511,25 @@ class TestFetcherDegradedFallback(unittest.TestCase):
         self.assertIn("degraded_to_snippet", out[0].fetch_error)
         self.assertGreater(len(out[0].content), 20)
 
+    def test_batch_relevant_filters_japan_non_japan(self):
+        f = _load_fetcher()
+        self.assertFalse(
+            f._batch_relevant(
+                "japan",
+                "Mali Terror Attack",
+                "https://example.com/world/mali",
+                "Mali news",
+            )
+        )
+        self.assertTrue(
+            f._batch_relevant(
+                "japan",
+                "Tokyo inflation rises",
+                "https://example.com/japan/tokyo",
+                "Tokyo CPI update",
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

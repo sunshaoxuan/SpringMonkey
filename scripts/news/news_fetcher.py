@@ -55,6 +55,31 @@ USER_AGENT = "SpringMonkey/1.0 (news-pipeline)"
 BLOCKED_DOMAINS = {"theguardian.com", "www.theguardian.com"}
 AGGREGATOR_DOMAINS = {"news.google.com", "google.com", "news.yahoo.com", "yahoo.com"}
 
+JAPAN_KEYWORDS = (
+    "japan",
+    "japanese",
+    "tokyo",
+    "osaka",
+    "kyoto",
+    "hokkaido",
+    "yen",
+    "nikkei",
+    "jpx",
+)
+
+CHINA_KEYWORDS = (
+    "china",
+    "chinese",
+    "beijing",
+    "shanghai",
+    "shenzhen",
+    "hong kong",
+    "hongkong",
+    "taiwan",
+    "yuan",
+    "renminbi",
+)
+
 
 @dataclass
 class Article:
@@ -106,6 +131,15 @@ def build_article_fingerprint(title: str, url: str) -> str:
     norm_title = re.sub(r"\s+", " ", (title or "").strip().lower())
     norm_title = re.sub(r"[^\w\u4e00-\u9fff]+", "", norm_title)
     return f"{host}|{norm_title}"
+
+
+def _batch_relevant(batch_id: str, title: str, url: str, snippet: str) -> bool:
+    text = f"{title} {url} {snippet}".lower()
+    if batch_id == "japan":
+        return any(k in text for k in JAPAN_KEYWORDS)
+    if batch_id == "china":
+        return any(k in text for k in CHINA_KEYWORDS)
+    return True
 
 
 def fetch_rss(feed_url: str, timeout: int = FETCH_TIMEOUT) -> list[dict[str, Any]]:
@@ -254,6 +288,8 @@ def discover_articles(
                         continue
                 elif require_timestamp:
                     continue
+            if not _batch_relevant(batch_id, item.get("title", ""), url, item.get("snippet", "")):
+                continue
             seen_urls.add(url)
             articles.append(
                 Article(
