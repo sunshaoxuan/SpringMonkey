@@ -158,6 +158,8 @@
     - 删除：`python SpringMonkey/scripts/cron/upsert_generic_cron_job.py --name <job> --delete`
   - 新建任务会自动做 `execution_depth` 判定；非 `atomic` 任务会被写入 staged/agentic runtime policy wrapper，避免把多步任务藏进黑盒 exec。
 
+- `cron/verify_timescar_delivery_channels.py`：校驗拷出的 `cron/jobs.json` 中，所有 `timescar-*` 的 `delivery.to` 必为私聊频道（见 `docs/runtime-notes/discord-timescar-public-channel-leak.md`），防止租车内容误投公共 Discord。
+
 ## 5. OpenClaw 补丁与验证
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
