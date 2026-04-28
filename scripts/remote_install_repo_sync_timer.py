@@ -35,18 +35,37 @@ LOG=$LOGDIR/repo-sync.log
 
 mkdir -p "$LOGDIR"
 touch "$LOG"
+exec >>"$LOG" 2>&1
 
-{
-  echo "=== repo-sync $(date -Is) ==="
-  if [ ! -d "$REPO/.git" ]; then
-    echo "missing repo: $REPO"
-    exit 1
-  fi
-  cd "$REPO"
-  git fetch origin --prune
-  git merge --no-edit origin/main
-  git status -sb
-} >>"$LOG" 2>&1
+echo "=== repo-sync $(date -Is) ==="
+if [ ! -d "$REPO/.git" ]; then
+  echo "missing repo: $REPO"
+  exit 1
+fi
+cd "$REPO"
+
+# Match remote_springmonkey_git_pull.py: avoid merge failing on local edits
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+  STASH_NAME="repo-sync-autostash-$(date +%Y%m%d-%H%M%S)"
+  echo "=== dirty tree; git stash push: $STASH_NAME ==="
+  git stash push -u -m "$STASH_NAME" || true
+fi
+
+# Policy: host checkout must track origin/main (see INTENT_TOOL_ROUTING / REPOSITORY_GUARDRAILS)
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$branch" != "main" ]; then
+  echo "=== git checkout main (was: $branch) ==="
+  git checkout main
+fi
+
+git fetch origin --prune
+# Fast-forward only: if this fails, log and exit 1 — do not create merge commits on timer
+if ! git merge --ff-only origin/main; then
+  echo "=== ERROR: ff-only merge failed (diverged from origin/main). Fix on host or reset after review. ==="
+  exit 1
+fi
+git status -sb
+echo "=== repo-sync ok $(date -Is) ==="
 EOF
 
 chmod 755 "$SCRIPT"
@@ -83,6 +102,7 @@ systemctl start openclaw-repo-sync.service
 systemctl is-active openclaw-repo-sync.timer
 systemctl status openclaw-repo-sync.service --no-pager -n 20 || true
 tail -n 20 /var/log/openclaw/repo-sync.log || true
+echo INSTALL_OK
 """
 
 
@@ -111,7 +131,7 @@ def main() -> int:
     sys.stdout.write(out)
     if err.strip():
         sys.stderr.write(err)
-    return 0 if "active" in out else 1
+    return 0 if "INSTALL_OK" in out else 1
 
 
 if __name__ == "__main__":

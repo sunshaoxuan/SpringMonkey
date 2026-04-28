@@ -19,7 +19,7 @@
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。
 
 - `remote_install_repo_sync_timer.py`
-  - 用途：在宿主机安装 `openclaw-repo-sync.timer`，每 10 分钟自动 `fetch + merge` SpringMonkey 仓库，不重启服务。
+  - 用途：在宿主机安装 `openclaw-repo-sync.timer`，每 10 分钟自动同步 SpringMonkey（`fetch`、**仅 fast-forward** 的 `origin/main`、非 `main` 时 `checkout main`、脏工作区先 `stash`）；不重启 `openclaw.service`。升级内嵌脚本时在本机重跑本安装器。详见 `docs/runtime-notes/repo-sync-timer-baseline-2026-04.md`。
   - 注意：这只同步 repo，不自动重打 `dist` 补丁；涉及 runtime patch 的改动仍要靠 installer 或重启时 startup guard 生效。
 
 - `remote_create_openclaw_recovery_bundle.py`
