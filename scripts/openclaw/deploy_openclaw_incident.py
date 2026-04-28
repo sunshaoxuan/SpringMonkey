@@ -71,7 +71,16 @@ def main():
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     c.connect("ccnode.briconbric.com", 8822, "root", pw, timeout=60)
     repo = "/var/lib/openclaw/repos/SpringMonkey"
-    print("git pull:\n", run(c, "cd " + repo + " && git pull --ff-only origin main 2>&1", 90)[:3000])
+    print(
+        "git sync (hard reset to origin/main; fixes diverged host clone):\n",
+        run(
+            c,
+            "cd "
+            + repo
+            + " && git fetch origin && git reset --hard origin/main 2>&1",
+            90,
+        )[:3000],
+    )
     print("patch:\n", run(c, "cd " + repo + " && python3 scripts/openclaw/patch_preemptive_compaction_runtime_current.py 2>&1", 60))
     inrepo = repo + "/scripts/openclaw/ensure_agent_society_runtime_guard.sh"
     print("install ensure from repo (if present):\n", run(c, "test -f " + inrepo + " && install -m 755 " + inrepo + " /usr/local/lib/openclaw/ensure_agent_society_runtime_guard.sh && echo OK || echo NOFILE", 20))
