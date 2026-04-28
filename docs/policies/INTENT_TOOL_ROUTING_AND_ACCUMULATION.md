@@ -6,6 +6,9 @@
 
 本策略与下列文档同阶配合阅读：
 
+- `SELF_ENHANCING_PIPELINE_AND_GATES.md`（自增强主链路与每步目标校准/成果复核）
+- `OPENCLAW_UPGRADE_POLICY.md`（升级前检查；若破坏本仓护栏与传播链则禁止该次升级）
+- `../registry/GATEWAY.md`（人类可读的意图 → 脚本/工具/验证/文档入口）
 - `EXECUTION_AND_RECOVERY_LOOP.md`（执行、验证、恢复）
 - `TASK_DELIVERY_STANDARD.md`（交付形态与证据）
 - `REPOSITORY_GUARDRAILS.md`（仓库与权限边界）

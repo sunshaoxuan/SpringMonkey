@@ -17,6 +17,7 @@
 | 仓库现场路径 | 常见 `/var/lib/openclaw/repos/SpringMonkey/` | `README.md` |
 | **本机→宿主机 SSH 工具链**（Python、`paramiko`、一次性安装） | 固定 `OPENCLAW_PYTHON`、不重复 `pip install` | `docs/ops/SSH_TOOLCHAIN.md`、`scripts/requirements-ssh.txt` |
 | **工具注册表与场景映射** | 何时用哪个脚本、参数约定、分裂 vs 组合 | `docs/ops/TOOLS_REGISTRY.md` |
+| **Registry Gateway + 机器 manifest** | 意图/工具导航与可校验清单；与自增强流水线同维 | `docs/registry/GATEWAY.md`、`docs/registry/tools_and_skills_manifest.json`、`docs/policies/SELF_ENHANCING_PIPELINE_AND_GATES.md` |
 | **远程统一 CLI** | `openclaw_remote_cli.py`（git-pull / diag / doctor / line-install / line-push / recover） | `scripts/openclaw_remote_cli.py` |
 | **宿主机拉取 SpringMonkey** | `git pull` + 可选重启；见 §7 | `scripts/remote_springmonkey_git_pull.py`、`docs/ops/TOOLS_REGISTRY.md` §7 |
 | **宿主机仓库自动同步** | 通过 `openclaw-repo-sync.timer` 定期 `fetch + merge` SpringMonkey，不重启服务；适合 repo 脚本/文档自动落地 | `scripts/remote_install_repo_sync_timer.py` |

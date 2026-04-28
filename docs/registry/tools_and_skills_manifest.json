@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "description": "机器可读的 SpringMonkey 工具与政策入口；与 docs/registry/GATEWAY.md 成对维护。",
+  "items": [
+    {
+      "id": "policy.intent_routing",
+      "type": "policy_doc",
+      "path": "docs/policies/INTENT_TOOL_ROUTING_AND_ACCUMULATION.md",
+      "summary": "意图分类、工具注册表、策略传播链"
+    },
+    {
+      "id": "policy.self_enhancing_pipeline",
+      "type": "policy_doc",
+      "path": "docs/policies/SELF_ENHANCING_PIPELINE_AND_GATES.md",
+      "summary": "自增强主链路与每步目标校准/成果复核"
+    },
+    {
+      "id": "policy.openclaw_upgrade",
+      "type": "policy_doc",
+      "path": "docs/policies/OPENCLAW_UPGRADE_POLICY.md",
+      "summary": "OpenClaw 升级前检查；破坏本仓护栏则禁止该次升级"
+    },
+    {
+      "id": "registry.gateway",
+      "type": "doc",
+      "path": "docs/registry/GATEWAY.md",
+      "summary": "人类可读的意图到工具/验证导航"
+    },
+    {
+      "id": "ops.tools_matrix",
+      "type": "doc",
+      "path": "docs/ops/TOOLS_REGISTRY.md",
+      "summary": "场景到脚本的运维工具矩阵"
+    },
+    {
+      "id": "script.openclaw_remote_cli",
+      "type": "script",
+      "path": "scripts/openclaw_remote_cli.py",
+      "summary": "本机统一入口：远程 OpenClaw 子命令"
+    },
+    {
+      "id": "script.ensure_runtime_guard",
+      "type": "script",
+      "path": "scripts/openclaw/ensure_agent_society_runtime_guard.sh",
+      "summary": "agent-society 运行时护栏（升级/打补丁后必跑）"
+    },
+    {
+      "id": "script.patch_preemptive_compaction",
+      "type": "script",
+      "path": "scripts/openclaw/patch_preemptive_compaction_runtime_current.py",
+      "summary": "preemptive-compaction 包 dist 补丁（锚点随上游包名变化）"
+    }
+  ]
+}
