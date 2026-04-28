@@ -17,9 +17,25 @@ def resolve_selection_bundle(dist: Path) -> Path:
     return candidates[0]
 
 
+def resolve_compaction_bundle(dist: Path) -> Path:
+    """
+    OpenClaw 约 2026-04 起：shouldPreemptivelyCompactBeforePrompt 与 let route = "fits"
+    从 selection-*.js 迁到独立的 preemptive-compaction-*.js。旧版仅存在 selection 包。
+    """
+    for p in sorted(
+        [p for p in dist.glob("preemptive-compaction-*.js") if p.is_file()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    ):
+        t = p.read_text(encoding="utf-8")
+        if "let route = \"fits\"" in t and "shouldPreemptivelyCompactBeforePrompt" in t:
+            return p
+    return resolve_selection_bundle(dist)
+
+
 def main() -> int:
     dist = Path("/usr/lib/node_modules/openclaw/dist")
-    target = resolve_selection_bundle(dist)
+    target = resolve_compaction_bundle(dist)
     text = target.read_text(encoding="utf-8")
 
     old_block = '''\tlet route = "fits";\n\tif (overflowTokens > 0) if (toolResultReducibleChars <= 0) route = "compact_only";\n\telse if (toolResultReducibleChars >= truncateOnlyThresholdChars) route = "truncate_tool_results_only";\n\telse route = "compact_then_truncate";\n\treturn {\n\t\troute,\n\t\tshouldCompact: route === "compact_only" || route === "compact_then_truncate",\n\t\testimatedPromptTokens,\n\t\tpromptBudgetBeforeReserve,\n\t\toverflowTokens,\n\t\ttoolResultReducibleChars,\n\t\teffectiveReserveTokens\n\t};\n}\n'''
