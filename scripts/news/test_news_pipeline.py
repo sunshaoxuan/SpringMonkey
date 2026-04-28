@@ -37,6 +37,19 @@ def _load_verify():
     return m
 
 
+def _load_fetcher():
+    import importlib.util
+    import sys
+
+    p = NEWS_DIR / "news_fetcher.py"
+    spec = importlib.util.spec_from_file_location("news_fetcher", p)
+    assert spec and spec.loader
+    m = importlib.util.module_from_spec(spec)
+    sys.modules["news_fetcher"] = m
+    spec.loader.exec_module(m)
+    return m
+
+
 class TestPlanAndTemplate(unittest.TestCase):
     def setUp(self):
         self.cfg = json.loads(CFG.read_text(encoding="utf-8"))
@@ -481,6 +494,22 @@ class TestRssReachabilityHelpers(unittest.TestCase):
         ok, detail = vr.any_rss_host_resolves(["bad.test", "good.test"])
         self.assertTrue(ok)
         self.assertIsNone(detail)
+
+
+class TestFetcherDegradedFallback(unittest.TestCase):
+    def test_fetch_error_uses_snippet_when_long_enough(self):
+        f = _load_fetcher()
+        article = f.Article(
+            title="T",
+            url="https://example.com/a",
+            source_feed="feed",
+            snippet="这是一段足够长的摘要片段，用于在正文抓取失败时降级保底输出，避免整批变成无新闻。",
+        )
+        with patch.object(f, "fetch_article_content", return_value="[fetch_error: HTTP 502]"):
+            out = f.fetch_and_fill([article])
+        self.assertTrue(out[0].fetch_ok)
+        self.assertIn("degraded_to_snippet", out[0].fetch_error)
+        self.assertGreater(len(out[0].content), 20)
 
 
 if __name__ == "__main__":
