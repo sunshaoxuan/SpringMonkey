@@ -366,6 +366,8 @@ class TestCliSmoke(unittest.TestCase):
                     "--skip-worker",
                     "--skip-finalize",
                     "--skip-verify",
+                    "--ignore-recent",
+                    "--no-record-recent",
                 ],
                 cwd=str(REPO),
                 capture_output=True,

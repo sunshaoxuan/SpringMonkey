@@ -545,6 +545,12 @@ def main() -> int:
     parser.add_argument("--skip-finalize", action="store_true", help="不调用终稿模型，draft 即结束")
     parser.add_argument("--skip-worker", action="store_true", help="不调用 Qwen，写入占位 worker_*.md")
     parser.add_argument("--skip-verify", action="store_true", help="跳过机械校验")
+    parser.add_argument("--ignore-recent", action="store_true", help="手动验收用：忽略跨运行去重状态")
+    parser.add_argument(
+        "--no-record-recent",
+        action="store_true",
+        help="手动验收用：不把本次文章写入跨运行去重状态",
+    )
     parser.add_argument("--openai-timeout", type=int, default=120)
     parser.add_argument("--ollama-timeout", type=int, default=300)
     args = parser.parse_args()
@@ -604,6 +610,8 @@ def main() -> int:
             "window_end_ts": window_end_ts,
             "cross_run_dedupe_hours": dedupe_hours,
             "require_timestamp_in_window": require_timestamp,
+            "ignore_recent": args.ignore_recent,
+            "record_recent": not args.no_record_recent,
         },
     )
 
@@ -614,7 +622,11 @@ def main() -> int:
     trace.step("load-fetcher", "ok", detail="news_fetcher loaded", tool="python")
     all_articles: dict[str, list] = {}
     NEWS_STATE_DIR.mkdir(parents=True, exist_ok=True)
-    recent_items = load_recent_items(RECENT_ITEMS_PATH, ts, dedupe_hours)
+    recent_items = (
+        {"version": 1, "items": []}
+        if args.ignore_recent
+        else load_recent_items(RECENT_ITEMS_PATH, ts, dedupe_hours)
+    )
     seen_fingerprints = {
         str(item.get("fingerprint") or "")
         for item in recent_items.get("items", [])
@@ -763,12 +775,13 @@ def main() -> int:
             print("[pipeline] merged draft passes verify directly, skipping finalize model", file=sys.stderr)
             final_path.write_text(draft, encoding="utf-8")
             trace.step("verify", "ok", detail="merged draft passed verify directly", tool="verify")
-            append_recent_items(
-                RECENT_ITEMS_PATH,
-                recent_items,
-                [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
-                ts,
-            )
+            if not args.no_record_recent:
+                append_recent_items(
+                    RECENT_ITEMS_PATH,
+                    recent_items,
+                    [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
+                    ts,
+                )
             trace.finish("ok", "done", final_message=str(final_path))
             print("PIPELINE_OK", run_dir)
             return 0
@@ -834,12 +847,13 @@ def main() -> int:
                 trace.finish("failed", "verify-failed", final_message=str(err2))
                 return 3
 
-    append_recent_items(
-        RECENT_ITEMS_PATH,
-        recent_items,
-        [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
-        ts,
-    )
+    if not args.no_record_recent:
+        append_recent_items(
+            RECENT_ITEMS_PATH,
+            recent_items,
+            [art for batch in all_articles.values() for art in batch if art.get("fetch_ok")],
+            ts,
+        )
     trace.finish("ok", "done", final_message=str(final_path))
     print("PIPELINE_OK", run_dir)
     return 0
