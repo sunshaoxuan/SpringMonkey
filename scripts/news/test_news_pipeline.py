@@ -168,6 +168,12 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertEqual(self.m.ollama_api_model_name("qwen3:14b"), "qwen3:14b")
         self.assertEqual(self.m.ollama_api_model_name("Ollama/foo:bar"), "foo:bar")
 
+    def test_strip_think_blocks(self):
+        raw = "<think>internal plan</think>\n• 新闻摘要条目\n链接：https://example.com"
+        cleaned = self.m.strip_think_blocks(raw)
+        self.assertNotIn("<think>", cleaned)
+        self.assertIn("• 新闻摘要条目", cleaned)
+
     def test_broadcast_json_has_ollama_base_url(self):
         url = self.cfg.get("model", {}).get("ollamaBaseUrl", "")
         self.assertTrue(url.startswith("http://"), "model.ollamaBaseUrl should be set for pipeline hosts")
@@ -237,6 +243,23 @@ class TestVerifyDraft(unittest.TestCase):
         ok, err = self.v.verify_text(text, self.cfg)
         self.assertFalse(ok)
         self.assertTrue(any("numbered_inside_bullet_cn" in e for e in err))
+
+    def test_think_block_fails(self):
+        text = """新闻简报
+窗口
+**1. 日本**
+<think>internal</think>
+• ok
+**2. 中国**
+• ok
+**3. 国际**
+• ok
+**4. 市场或风险提示**
+• ok
+"""
+        ok, err = self.v.verify_text(text, self.cfg)
+        self.assertFalse(ok)
+        self.assertTrue(any("contains_think_block" in e for e in err))
 
     def test_bare_dash_bullet_fails(self):
         """Discord 会把 - 开头渲染成列表，应该用 • 而不是 -"""

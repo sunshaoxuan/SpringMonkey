@@ -30,6 +30,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -310,6 +311,14 @@ def summarize_article_prompt(title: str, url: str, content: str, max_chars: int 
     return sys_p, user_p
 
 
+def strip_think_blocks(text: str) -> str:
+    """移除模型可能泄漏的 <think>...</think> 思维链块。"""
+    if not text:
+        return ""
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    return cleaned.strip()
+
+
 def _summarize_articles_with_qwen(
     articles: list[dict],
     ollama_host: str,
@@ -335,7 +344,7 @@ def _summarize_articles_with_qwen(
         except Exception as e:
             print(f"[pipeline] summarize {bid}[{i}] failed: {e}", file=sys.stderr)
             continue
-        cleaned = result.strip()
+        cleaned = strip_think_blocks(result)
         if cleaned and not cleaned.startswith("[") and len(cleaned) > 10:
             fragments.append(cleaned)
 
@@ -735,7 +744,7 @@ def main() -> int:
             else:
                 final_text = _mechanical_fallback(cfg, plan, draft)
 
-        final_text = final_text.strip() + "\n"
+        final_text = strip_think_blocks(final_text).strip() + "\n"
         final_path.write_text(final_text, encoding="utf-8")
 
         if verify_text_fn is None:

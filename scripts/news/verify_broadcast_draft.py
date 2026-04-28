@@ -33,6 +33,9 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
     flat = "\n".join(lines)
     outline_set = set(outline)
 
+    if re.search(r"<think>.*?</think>", flat, flags=re.IGNORECASE | re.DOTALL):
+        errors.append("contains_think_block: 成稿中出现 <think> 思维链内容")
+
     if title not in flat:
         errors.append(f"missing_title: 正文中应出现标题「{title}」")
 
