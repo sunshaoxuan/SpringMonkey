@@ -1,0 +1,16 @@
+---
+description: Durable SpringMonkey / Tanghou changes must land in Git before counting as done; SSH is for pull/apply/evidence only.
+alwaysApply: true
+---
+
+# Git first; host executes
+
+When changing SpringMonkey or gateway `/汤猴`/OpenClaw-related behavior:
+
+1. Edit this repo first (including `scripts/openclaw/patch_*.py`, policies, domain scripts/templates), then **commit and push** to the agreed remote and branch.
+2. On the host only: **git pull** (or approved repo sync), run repo-pinned apply/patch scripts, collect logs evidence.
+3. Do **not** treat ephemeral SSH edits, undocumented `node_modules` tweaks, or unreplicated hotfixes as shipped work—they diverge across restarts/upgrades/pulls.
+
+Emergency host-only mitigation must be reconciled back into Git promptly and noted under `docs/reports/` or runtime notes.
+
+Canonical policy: `docs/policies/REPOSITORY_GUARDRAILS.md` (Change of Record and Deployment).

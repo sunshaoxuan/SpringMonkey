@@ -53,3 +53,35 @@ Even if a document is changed here, it does not grant:
 - new network exposure
 - new Tailscale authority
 - new GitHub authority outside the existing deploy key
+
+## Change of Record and Deployment: Git First, Host Second
+
+**Rule of record:** durable work (policy, scripts, patch sources, task-domain
+configuration, verification, and anything that must survive a reboot) must exist
+on a **Git branch in this repository** before it is treated as “landed.”
+
+**What this rejects as a system of record:**
+
+- one-off edits on the gateway host that are never committed (session-only state)
+- ad-hoc `node_modules` hand-edits without a matching `scripts/openclaw/patch_*.py`
+  in this repo and a reproducible apply path
+- “it works on the box” changes that disappear on the next `git pull`,
+  package upgrade, or service restart
+
+**Permitted sequence (default):**
+
+1. implement in the repo (or mirror), `commit`, `push` to the agreed remote/branch
+2. on the host: `git pull --ff-only` (or the approved sync path) so disk matches Git
+3. run the **repo-pinned** apply/installer (e.g. patch script) and restart only
+   when the change is supposed to touch the live runtime
+
+SSH is for **execution and evidence** (pull, run, collect logs), not for
+silently becoming the primary source of truth.
+
+**Why this matters for `汤猴` / OpenClaw:** restarts, package updates, and
+recovery procedures re-hydrate from **what is in Git plus your apply steps**,
+not from a chat thread. If work is not in Git, a later pull or redeploy can
+revert visible behavior even when the last session “looked fine.”
+
+See also: `INTENT_TOOL_ROUTING_AND_ACCUMULATION.md` (Strategy Propagation:
+Git push + host pull) and `docs/policies/DOCS_AUTHORITY_MODEL.md`.
