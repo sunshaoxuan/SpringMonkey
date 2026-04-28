@@ -133,6 +133,13 @@ def build_article_fingerprint(title: str, url: str) -> str:
     return f"{host}|{norm_title}"
 
 
+def _classification_text(title: str, url: str, snippet: str) -> str:
+    parsed = urlparse(url or "")
+    # 域名代表媒体来源，不代表新闻发生地；只用 path/query 辅助识别分区。
+    url_context = f"{parsed.path} {parsed.query}"
+    return f"{title} {url_context} {snippet}".lower()
+
+
 def batch_relevant(
     batch_id: str,
     title: str,
@@ -140,7 +147,7 @@ def batch_relevant(
     snippet: str,
     keyword_map: dict[str, list[str] | tuple[str, ...]] | None = None,
 ) -> bool:
-    text = f"{title} {url} {snippet}".lower()
+    text = _classification_text(title, url, snippet)
     km = keyword_map or {}
     japan_keys = tuple(k.lower() for k in (km.get("japan") or JAPAN_KEYWORDS))
     china_keys = tuple(k.lower() for k in (km.get("china") or CHINA_KEYWORDS))
@@ -160,7 +167,7 @@ def classify_article_batch(
     market_keywords: list[str] | tuple[str, ...] | None = None,
 ) -> str:
     """逐条新闻归类。区域不命中时归入国际，不做整批搬家。"""
-    text = f"{title} {url} {snippet}".lower()
+    text = _classification_text(title, url, snippet)
     market_keys = tuple(
         k.lower()
         for k in (

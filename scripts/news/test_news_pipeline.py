@@ -600,6 +600,16 @@ class TestFetcherDegradedFallback(unittest.TestCase):
         )
         self.assertEqual(
             f.classify_article_batch(
+                "japan",
+                "Trump’s family and friends help revive a former Balkan pariah",
+                "https://www.japantimes.co.jp/news/2026/04/28/world/politics/trump-balkan/",
+                "A Balkan political story with no local angle.",
+                keywords,
+            ),
+            "world",
+        )
+        self.assertEqual(
+            f.classify_article_batch(
                 "world",
                 "Tokyo inflation rises",
                 "https://example.com/asia",
