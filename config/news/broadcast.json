@@ -65,6 +65,47 @@
       "BBC： https://feeds.bbci.co.uk/news/world/rss.xml",
       "NPR： https://feeds.npr.org/1001/rss.xml"
     ],
+    "rssFeedsByBatch": {
+      "japan": [
+        "https://www.japantimes.co.jp/feed/",
+        "https://www3.nhk.or.jp/rss/news/cat0.xml",
+        "https://feeds.reuters.com/reuters/worldNews",
+        "https://feeds.bbci.co.uk/news/world/asia/rss.xml"
+      ],
+      "china": [
+        "https://feeds.bbci.co.uk/news/world/asia/china/rss.xml",
+        "https://feeds.reuters.com/reuters/worldNews",
+        "https://www.cnbc.com/id/100727362/device/rss/rss.html"
+      ],
+      "world": [
+        "https://feeds.reuters.com/reuters/topNews",
+        "https://feeds.reuters.com/reuters/worldNews",
+        "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://feeds.npr.org/1001/rss.xml"
+      ],
+      "markets": [
+        "https://feeds.reuters.com/reuters/businessNews",
+        "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "https://www.cnbc.com/id/10001147/device/rss/rss.html"
+      ]
+    },
+    "priorityKeywords": [
+      "president",
+      "assassination",
+      "shooting",
+      "attack",
+      "threat",
+      "terror",
+      "war",
+      "election",
+      "总统",
+      "刺杀",
+      "枪击",
+      "袭击",
+      "战争",
+      "恐袭"
+    ],
+    "maxArticlesPerBatch": 12,
     "blockedDomains": [
       "theguardian.com",
       "www.theguardian.com"
@@ -178,8 +219,8 @@
     "mode": "pipeline",
     "repoPath": "/var/lib/openclaw/repos/SpringMonkey",
     "cronTimeoutSeconds": 7200,
-    "crossRunDedupeHours": 36,
-    "requireTimestampInWindow": true,
+    "crossRunDedupeHours": 12,
+    "requireTimestampInWindow": false,
     "pipelineCliArgs": []
   }
 }

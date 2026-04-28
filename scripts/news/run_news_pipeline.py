@@ -627,15 +627,25 @@ def main() -> int:
             all_articles[bid] = []
             trace.step("discover", "skipped", detail=bid, tool="rss")
             continue
+        source_policy = cfg.get("sourcePolicy", {}) or {}
+        configured_feeds = (source_policy.get("rssFeedsByBatch", {}) or {}).get(bid)
+        if configured_feeds and isinstance(configured_feeds, list):
+            feed_list = [str(x).strip() for x in configured_feeds if str(x).strip()]
+        else:
+            feed_list = None
+        priority_keywords = source_policy.get("priorityKeywords", []) or []
+        max_per_batch = int(source_policy.get("maxArticlesPerBatch", 8) or 8)
         print(f"[pipeline] discover {bid}...", file=sys.stderr)
         trace.step("discover", "running", detail=bid, tool="rss")
         articles = fetcher.discover_articles(
             bid,
-            max_per_batch=8,
+            feeds=feed_list,
+            max_per_batch=max_per_batch,
             window_start_ts=window_start_ts,
             window_end_ts=window_end_ts,
             exclude_fingerprints=seen_fingerprints,
             require_timestamp=require_timestamp,
+            priority_keywords=priority_keywords,
         )
         if not args.skip_fetch:
             print(f"[pipeline] fetch {bid}: {len(articles)} articles...", file=sys.stderr)

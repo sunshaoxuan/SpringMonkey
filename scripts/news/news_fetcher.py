@@ -46,7 +46,7 @@ RSS_FEEDS: dict[str, list[str]] = {
 }
 
 FETCH_TIMEOUT = 15
-MAX_ARTICLES_PER_FEED = 5
+MAX_ARTICLES_PER_FEED = 12
 MAX_CONTENT_CHARS = 3000
 MIN_DEGRADED_SNIPPET_CHARS = 10
 
@@ -140,6 +140,37 @@ def _batch_relevant(batch_id: str, title: str, url: str, snippet: str) -> bool:
     if batch_id == "china":
         return any(k in text for k in CHINA_KEYWORDS)
     return True
+
+
+def _article_priority_score(
+    batch_id: str,
+    title: str,
+    url: str,
+    snippet: str,
+    source_feed: str,
+    published_ts: int,
+    priority_keywords: list[str] | tuple[str, ...] | None = None,
+) -> int:
+    text = f"{title} {url} {snippet}".lower()
+    score = 0
+    keys = [k.lower() for k in (priority_keywords or []) if isinstance(k, str) and k.strip()]
+    if keys and any(k in text for k in keys):
+        score += 100
+    source = (source_feed or "").lower()
+    if "reuters" in source:
+        score += 20
+    if "bbc" in source:
+        score += 12
+    if "apnews" in source or "ap-top-news" in source:
+        score += 12
+    if "npr" in source:
+        score += 8
+    if batch_id in ("japan", "china") and _batch_relevant(batch_id, title, url, snippet):
+        score += 10
+    if published_ts > 0:
+        # 按小时衰减，越新越优先，避免旧闻长期占坑。
+        score += min(24, int((published_ts // 3600) % 48))
+    return score
 
 
 def fetch_rss(feed_url: str, timeout: int = FETCH_TIMEOUT) -> list[dict[str, Any]]:
@@ -265,6 +296,7 @@ def discover_articles(
     window_end_ts: int = 0,
     exclude_fingerprints: set[str] | None = None,
     require_timestamp: bool = True,
+    priority_keywords: list[str] | tuple[str, ...] | None = None,
 ) -> list[Article]:
     """Discover articles for a batch via RSS feeds."""
     if feeds is None:
@@ -306,13 +338,22 @@ def discover_articles(
                 # 软约束：优先按区域关键词匹配；如果整批被筛空，后续回退到未匹配候选，
                 # 避免“本节无新闻”的误报。
                 fallback_articles.append(candidate)
-            if len(articles) >= max_per_batch:
-                break
-        if len(articles) >= max_per_batch:
-            break
-
     if not articles and fallback_articles:
-        articles = fallback_articles[:max_per_batch]
+        articles = fallback_articles
+
+    articles.sort(
+        key=lambda a: _article_priority_score(
+            batch_id,
+            a.title,
+            a.url,
+            a.snippet,
+            a.source_feed,
+            a.published_ts,
+            priority_keywords,
+        ),
+        reverse=True,
+    )
+    articles = articles[:max_per_batch]
 
     return articles
 
