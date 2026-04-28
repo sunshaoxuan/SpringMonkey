@@ -25,6 +25,6 @@
 ## 關鍵配置說明
 
 - **当前稳定链路（宿主机）**：`weather-report-jst-0700`、`news-digest-jst-0900`、`news-digest-jst-1700` 与 `timescar-*` 可切到 `/etc/cron.d/openclaw-direct-discord` 直投链路；该模式下对应 OpenClaw cron job 会被置为 `enabled=false` 避免重复触发。
-- **Direct Discord 权限模型**：`/etc/cron.d/openclaw-direct-discord` 中由 `root` 运行投递 helper 读取 Discord token，实际业务脚本通过 `runuser -u openclaw -- ...` 执行。不要改回由 `openclaw` 直接运行 helper，否则 `openclaw.json` 为 `600` 时会生成正文但无法投递。
+- **Direct Discord 权限模型**：`/etc/cron.d/openclaw-direct-discord` 中由 `root` 运行投递 helper 读取 Discord token，实际业务脚本通过 helper 的 `--run-as-openclaw` 以 `openclaw` 用户执行。不要改回由 `openclaw` 直接运行 helper，否则 `openclaw.json` 为 `600` 时会生成正文但无法投递。
 - **天氣預報 / 新聞播報**：公共频道必须是 `1483636573235843072`，不得误投私聊频道。
 - **TimesCar 監控**：涵蓋早間、深夜及自動訂單/續約邏輯。**務必**與宿主 `cron/jobs.json` 對照：`timescar-*` 只允許 `delivery.to = 1497009159940608020`；若發現任一誤為公共頻道 ID（例如曾出現在快照中的 ``timescar-ask-cancel-next24h-2300``），先做 `cron edit` 修正再跑上方校驗腳本。
