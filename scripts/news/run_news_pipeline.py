@@ -680,12 +680,16 @@ def main() -> int:
     # 日本/中国分区若出现明显不相关条目，自动回流到国际分区，避免串栏。
     source_policy = cfg.get("sourcePolicy", {}) or {}
     region_kw_map = source_policy.get("regionKeywordsByBatch", {}) or {}
+    regional_feeds_cfg = source_policy.get("rssFeedsByBatch", {}) or {}
+    min_regional_items = int(source_policy.get("minRegionalItems", 1) or 1)
     world_items = all_articles.get("world", [])
     world_fp = {str(x.get("fingerprint") or "") for x in world_items}
     moved = 0
     for regional in ("japan", "china"):
+        regional_feeds = {str(x).strip() for x in (regional_feeds_cfg.get(regional) or []) if str(x).strip()}
+        regional_articles = list(all_articles.get(regional, []))
         kept: list[dict] = []
-        for art in all_articles.get(regional, []):
+        for art in regional_articles:
             if fetcher.batch_relevant(
                 regional,
                 art.get("title", ""),
@@ -695,6 +699,11 @@ def main() -> int:
             ):
                 kept.append(art)
                 continue
+            # 安全阀：区域批次至少保留最小条目数（优先保留来自该区域feed的条目），
+            # 避免“全被重分类到国际”导致区域栏目长期空白。
+            if len(kept) < min_regional_items and art.get("source_feed") in regional_feeds:
+                kept.append(art)
+                continue
             fp = str(art.get("fingerprint") or "")
             if fp and fp in world_fp:
                 continue
@@ -702,6 +711,8 @@ def main() -> int:
             if fp:
                 world_fp.add(fp)
             moved += 1
+        if not kept and regional_articles:
+            kept.append(regional_articles[0])
         all_articles[regional] = kept
         save_json(run_dir / f"articles_{regional}.json", all_articles[regional])
     all_articles["world"] = world_items

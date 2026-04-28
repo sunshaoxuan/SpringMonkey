@@ -109,6 +109,10 @@
       "japan": [
         "japan",
         "japanese",
+        "日本",
+        "日元",
+        "东京",
+        "大阪",
         "tokyo",
         "osaka",
         "kyoto",
@@ -120,6 +124,10 @@
       "china": [
         "china",
         "chinese",
+        "中国",
+        "北京",
+        "上海",
+        "人民币",
         "beijing",
         "shanghai",
         "shenzhen",
@@ -130,6 +138,7 @@
         "renminbi"
       ]
     },
+    "minRegionalItems": 1,
     "maxArticlesPerBatch": 12,
     "blockedDomains": [
       "theguardian.com",
