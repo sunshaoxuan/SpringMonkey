@@ -151,6 +151,47 @@ def batch_relevant(
     return True
 
 
+def classify_article_batch(
+    current_batch: str,
+    title: str,
+    url: str,
+    snippet: str,
+    keyword_map: dict[str, list[str] | tuple[str, ...]] | None = None,
+    market_keywords: list[str] | tuple[str, ...] | None = None,
+) -> str:
+    """逐条新闻归类。区域不命中时归入国际，不做整批搬家。"""
+    text = f"{title} {url} {snippet}".lower()
+    market_keys = tuple(
+        k.lower()
+        for k in (
+            market_keywords
+            or (
+                "market",
+                "stock",
+                "shares",
+                "earnings",
+                "oil",
+                "currency",
+                "inflation",
+                "央行",
+                "股价",
+                "市场",
+                "油价",
+                "通胀",
+            )
+        )
+    )
+    if batch_relevant("japan", title, url, snippet, keyword_map):
+        return "japan"
+    if batch_relevant("china", title, url, snippet, keyword_map):
+        return "china"
+    if any(k in text for k in market_keys):
+        return "markets"
+    if current_batch == "markets":
+        return "markets"
+    return "world"
+
+
 def _article_priority_score(
     batch_id: str,
     title: str,

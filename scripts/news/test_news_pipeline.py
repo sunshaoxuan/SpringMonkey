@@ -580,6 +580,43 @@ class TestFetcherDegradedFallback(unittest.TestCase):
             )
         )
 
+    def test_classify_article_batch_is_per_article(self):
+        f = _load_fetcher()
+        keywords = {
+            "japan": ["japan", "tokyo", "日本", "東京"],
+            "china": ["china", "beijing", "中国", "北京"],
+        }
+        self.assertEqual(
+            f.classify_article_batch(
+                "japan",
+                "Mali Terror Attack",
+                "https://example.com/world/mali",
+                "Mali news",
+                keywords,
+            ),
+            "world",
+        )
+        self.assertEqual(
+            f.classify_article_batch(
+                "world",
+                "Tokyo inflation rises",
+                "https://example.com/asia",
+                "Tokyo CPI update",
+                keywords,
+            ),
+            "japan",
+        )
+        self.assertEqual(
+            f.classify_article_batch(
+                "world",
+                "China EV exports rise",
+                "https://example.com/business",
+                "Beijing policy update",
+                keywords,
+            ),
+            "china",
+        )
+
     def test_discover_fallback_when_relevance_filters_everything(self):
         f = _load_fetcher()
         item = {

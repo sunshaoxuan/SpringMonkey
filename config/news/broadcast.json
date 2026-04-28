@@ -105,6 +105,21 @@
       "战争",
       "恐袭"
     ],
+    "marketKeywords": [
+      "market",
+      "stock",
+      "shares",
+      "earnings",
+      "oil",
+      "currency",
+      "inflation",
+      "central bank",
+      "央行",
+      "股价",
+      "市场",
+      "油价",
+      "通胀"
+    ],
     "regionKeywordsByBatch": {
       "japan": [
         "japan",
