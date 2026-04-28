@@ -530,6 +530,29 @@ class TestFetcherDegradedFallback(unittest.TestCase):
             )
         )
 
+    def test_discover_fallback_when_relevance_filters_everything(self):
+        f = _load_fetcher()
+        item = {
+            "title": "Mali Terror Attack",
+            "url": "https://example.com/world/mali",
+            "snippet": "Mali news",
+            "published_at": "Mon, 01 Jan 2024 00:00:00 GMT",
+            "published_ts": 1704067200,
+            "fingerprint": "example.com|mali",
+        }
+        with patch.object(f, "fetch_rss", return_value=[item]):
+            arts = f.discover_articles(
+                "japan",
+                feeds=["https://example.com/feed.xml"],
+                max_per_batch=8,
+                window_start_ts=0,
+                window_end_ts=0,
+                exclude_fingerprints=set(),
+                require_timestamp=False,
+            )
+        self.assertEqual(len(arts), 1)
+        self.assertEqual(arts[0].title, "Mali Terror Attack")
+
 
 if __name__ == "__main__":
     unittest.main()

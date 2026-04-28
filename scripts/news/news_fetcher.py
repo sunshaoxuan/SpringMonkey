@@ -273,6 +273,7 @@ def discover_articles(
     seen_urls: set[str] = set()
     excluded = exclude_fingerprints or set()
     articles: list[Article] = []
+    fallback_articles: list[Article] = []
 
     for feed_url in feeds:
         items = fetch_rss(feed_url)
@@ -288,25 +289,30 @@ def discover_articles(
                         continue
                 elif require_timestamp:
                     continue
-            if not _batch_relevant(batch_id, item.get("title", ""), url, item.get("snippet", "")):
-                continue
-            seen_urls.add(url)
-            articles.append(
-                Article(
-                    title=item["title"],
-                    url=url,
-                    source_feed=feed_url,
-                    snippet=item.get("snippet", ""),
-                    published_at=item.get("published_at", ""),
-                    published_ts=published_ts,
-                    fingerprint=fingerprint,
-                    batch_id=batch_id,
-                )
+            candidate = Article(
+                title=item["title"],
+                url=url,
+                source_feed=feed_url,
+                snippet=item.get("snippet", ""),
+                published_at=item.get("published_at", ""),
+                published_ts=published_ts,
+                fingerprint=fingerprint,
+                batch_id=batch_id,
             )
+            if _batch_relevant(batch_id, item.get("title", ""), url, item.get("snippet", "")):
+                seen_urls.add(url)
+                articles.append(candidate)
+            else:
+                # 软约束：优先按区域关键词匹配；如果整批被筛空，后续回退到未匹配候选，
+                # 避免“本节无新闻”的误报。
+                fallback_articles.append(candidate)
             if len(articles) >= max_per_batch:
                 break
         if len(articles) >= max_per_batch:
             break
+
+    if not articles and fallback_articles:
+        articles = fallback_articles[:max_per_batch]
 
     return articles
 
