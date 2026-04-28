@@ -74,6 +74,8 @@ class TestPlanAndTemplate(unittest.TestCase):
             "Test Title", "https://example.com/article", "Article body text here."
         )
         self.assertIn("example.com/article", sys_p)
+        self.assertIn("不得补充背景知识", sys_p)
+        self.assertIn("公司隶属", sys_p)
         self.assertIn("Test Title", user_p)
         self.assertIn("Article body text here", user_p)
         self.assertIn("•", sys_p)
