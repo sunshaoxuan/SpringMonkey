@@ -133,12 +133,21 @@ def build_article_fingerprint(title: str, url: str) -> str:
     return f"{host}|{norm_title}"
 
 
-def _batch_relevant(batch_id: str, title: str, url: str, snippet: str) -> bool:
+def batch_relevant(
+    batch_id: str,
+    title: str,
+    url: str,
+    snippet: str,
+    keyword_map: dict[str, list[str] | tuple[str, ...]] | None = None,
+) -> bool:
     text = f"{title} {url} {snippet}".lower()
+    km = keyword_map or {}
+    japan_keys = tuple(k.lower() for k in (km.get("japan") or JAPAN_KEYWORDS))
+    china_keys = tuple(k.lower() for k in (km.get("china") or CHINA_KEYWORDS))
     if batch_id == "japan":
-        return any(k in text for k in JAPAN_KEYWORDS)
+        return any(k in text for k in japan_keys)
     if batch_id == "china":
-        return any(k in text for k in CHINA_KEYWORDS)
+        return any(k in text for k in china_keys)
     return True
 
 
@@ -165,7 +174,7 @@ def _article_priority_score(
         score += 12
     if "npr" in source:
         score += 8
-    if batch_id in ("japan", "china") and _batch_relevant(batch_id, title, url, snippet):
+    if batch_id in ("japan", "china") and batch_relevant(batch_id, title, url, snippet):
         score += 10
     if published_ts > 0:
         # 按小时衰减，越新越优先，避免旧闻长期占坑。
@@ -331,7 +340,7 @@ def discover_articles(
                 fingerprint=fingerprint,
                 batch_id=batch_id,
             )
-            if _batch_relevant(batch_id, item.get("title", ""), url, item.get("snippet", "")):
+            if batch_relevant(batch_id, item.get("title", ""), url, item.get("snippet", "")):
                 seen_urls.add(url)
                 articles.append(candidate)
             else:

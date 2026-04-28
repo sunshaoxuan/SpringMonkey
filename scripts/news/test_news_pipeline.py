@@ -564,7 +564,7 @@ class TestFetcherDegradedFallback(unittest.TestCase):
     def test_batch_relevant_filters_japan_non_japan(self):
         f = _load_fetcher()
         self.assertFalse(
-            f._batch_relevant(
+            f.batch_relevant(
                 "japan",
                 "Mali Terror Attack",
                 "https://example.com/world/mali",
@@ -572,7 +572,7 @@ class TestFetcherDegradedFallback(unittest.TestCase):
             )
         )
         self.assertTrue(
-            f._batch_relevant(
+            f.batch_relevant(
                 "japan",
                 "Tokyo inflation rises",
                 "https://example.com/japan/tokyo",

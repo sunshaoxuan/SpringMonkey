@@ -105,6 +105,31 @@
       "战争",
       "恐袭"
     ],
+    "regionKeywordsByBatch": {
+      "japan": [
+        "japan",
+        "japanese",
+        "tokyo",
+        "osaka",
+        "kyoto",
+        "hokkaido",
+        "yen",
+        "nikkei",
+        "jpx"
+      ],
+      "china": [
+        "china",
+        "chinese",
+        "beijing",
+        "shanghai",
+        "shenzhen",
+        "hong kong",
+        "hongkong",
+        "taiwan",
+        "yuan",
+        "renminbi"
+      ]
+    },
     "maxArticlesPerBatch": 12,
     "blockedDomains": [
       "theguardian.com",

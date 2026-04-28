@@ -676,6 +676,39 @@ def main() -> int:
             tool="rss+http",
         )
 
+    # --- cross-batch relevance correction ---
+    # 日本/中国分区若出现明显不相关条目，自动回流到国际分区，避免串栏。
+    source_policy = cfg.get("sourcePolicy", {}) or {}
+    region_kw_map = source_policy.get("regionKeywordsByBatch", {}) or {}
+    world_items = all_articles.get("world", [])
+    world_fp = {str(x.get("fingerprint") or "") for x in world_items}
+    moved = 0
+    for regional in ("japan", "china"):
+        kept: list[dict] = []
+        for art in all_articles.get(regional, []):
+            if fetcher.batch_relevant(
+                regional,
+                art.get("title", ""),
+                art.get("url", ""),
+                art.get("snippet", ""),
+                region_kw_map,
+            ):
+                kept.append(art)
+                continue
+            fp = str(art.get("fingerprint") or "")
+            if fp and fp in world_fp:
+                continue
+            world_items.append(art)
+            if fp:
+                world_fp.add(fp)
+            moved += 1
+        all_articles[regional] = kept
+        save_json(run_dir / f"articles_{regional}.json", all_articles[regional])
+    all_articles["world"] = world_items
+    save_json(run_dir / "articles_world.json", all_articles["world"])
+    if moved:
+        trace.step("reclassify", "ok", detail=f"moved_to_world={moved}", tool="region-filter")
+
     # --- worker: Qwen 逐条总结 ---
     for b in plan["batches"]:
         bid = b["id"]
