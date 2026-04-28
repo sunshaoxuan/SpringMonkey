@@ -24,6 +24,6 @@
 
 ## 關鍵配置說明
 
-- **全量啟用**：應用戶要求，目前系統中所有 11 個定時任務均已進入「已啟用 (Enabled)」狀態。
-- **天氣預報**：投遞至公共頻道，報告 3 個地點的天氣情況。
+- **当前稳定链路（宿主机）**：`weather-report-jst-0700`、`news-digest-jst-0900`、`news-digest-jst-1700` 与 `timescar-*` 可切到 `/etc/cron.d/openclaw-direct-discord` 直投链路；该模式下对应 OpenClaw cron job 会被置为 `enabled=false` 避免重复触发。
+- **天氣預報 / 新聞播報**：公共频道必须是 `1483636573235843072`，不得误投私聊频道。
 - **TimesCar 監控**：涵蓋早間、深夜及自動訂單/續約邏輯。**務必**與宿主 `cron/jobs.json` 對照：`timescar-*` 只允許 `delivery.to = 1497009159940608020`；若發現任一誤為公共頻道 ID（例如曾出現在快照中的 ``timescar-ask-cancel-next24h-2300``），先做 `cron edit` 修正再跑上方校驗腳本。
