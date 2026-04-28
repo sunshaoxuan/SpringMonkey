@@ -323,11 +323,11 @@ def fetch_and_fill(articles: list[Article], max_chars: int = MAX_CONTENT_CHARS) 
         if art.content:
             continue
         content = fetch_article_content(art.url, max_chars=max_chars)
+        snippet = (art.snippet or "").strip()
+        degraded = " ".join(x for x in [(art.title or "").strip(), snippet] if x).strip()
         if content.startswith("[fetch_error:"):
             # 降级策略：正文抓取失败时，若 RSS snippet 足够长，仍允许该条进入后续摘要，
             # 避免整批因为站点反爬/临时 5xx 退化为“无合格新增新闻条目”。
-            snippet = (art.snippet or "").strip()
-            degraded = " ".join(x for x in [(art.title or "").strip(), snippet] if x).strip()
             if len(degraded) >= MIN_DEGRADED_SNIPPET_CHARS:
                 art.content = degraded
                 art.fetch_ok = True
@@ -337,7 +337,14 @@ def fetch_and_fill(articles: list[Article], max_chars: int = MAX_CONTENT_CHARS) 
                 art.fetch_ok = False
         else:
             art.content = content
-            art.fetch_ok = bool(content.strip())
+            if content.strip():
+                art.fetch_ok = True
+            elif len(degraded) >= MIN_DEGRADED_SNIPPET_CHARS:
+                art.content = degraded
+                art.fetch_ok = True
+                art.fetch_error = "[fetch_error: empty_extract] [degraded_to_snippet]"
+            else:
+                art.fetch_ok = False
     return articles
 
 

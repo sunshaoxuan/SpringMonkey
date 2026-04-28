@@ -547,6 +547,20 @@ class TestFetcherDegradedFallback(unittest.TestCase):
         self.assertTrue(out[0].fetch_ok)
         self.assertIn("Markets open mixed", out[0].content)
 
+    def test_empty_extract_uses_title_snippet_degraded(self):
+        f = _load_fetcher()
+        article = f.Article(
+            title="Pharma bets a little-known form",
+            url="https://example.com/p",
+            source_feed="feed",
+            snippet="Novartis and peers are betting on new lipid drugs.",
+        )
+        with patch.object(f, "fetch_article_content", return_value=""):
+            out = f.fetch_and_fill([article])
+        self.assertTrue(out[0].fetch_ok)
+        self.assertIn("degraded_to_snippet", out[0].fetch_error)
+        self.assertIn("Pharma bets", out[0].content)
+
     def test_batch_relevant_filters_japan_non_japan(self):
         f = _load_fetcher()
         self.assertFalse(
