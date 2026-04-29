@@ -64,6 +64,11 @@
   - 用途：拉起常驻 Chrome raw CDP backend（默认 `127.0.0.1:18800`），并把 OpenClaw browser 默认 profile 指向该会话。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_persistent_browser_backend.py`
 
+- `remote_install_browser_human_control_helper.py`
+  - 用途：部署并 promotion `scripts/openclaw/helpers/browser_cdp_human.py`，让汤猴在 `browser` 工具 targetId/tab/ref 漂移时，能直接通过宿主机常驻 Chrome CDP 做打开、检查、点击、输入与等待文本等人类式动作。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_browser_human_control_helper.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py browser-human-helper`
+
 - `remote_refresh_capability_awareness.py`
   - 用途：刷新运行时 workspace 注入文件中的“能力认知基线”，避免 LINE / Discord 沿用过时的“没有上网能力”自我描述。
   - 典型用法：`python SpringMonkey/scripts/remote_refresh_capability_awareness.py`
@@ -176,6 +181,8 @@
 - `openclaw/test_helper_retirement.py`：验证 helper 被 drift gate 连续拒绝后会 deprecated，且不会再进入 future tool candidates
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核，现已包含 `failure_pattern` 累积与 `candidate -> emerging -> learned` 生命周期
 - `openclaw/agent_society_helper_toolsmith.py`：生成 bounded business repairer；输出 helper contract、repair workflow 与 drift guard，而不再只是薄 scaffold
+- `openclaw/helpers/browser_cdp_human.py`：真实浏览器 CDP fallback helper；当 OpenClaw `browser` 工具 targetId/tab/ref 漂移或误判为 headless/profile=user 时，直接连接宿主机常驻 Chrome CDP，并输出结构化证据
+- `openclaw/test_browser_control_helper.py`：验证浏览器控制漂移会被分类为 `browser_control`，并优先选择 `browser_cdp_human.py`
 - `openclaw/test_agent_society_composed_repairer_plan.py`：验证 planner 会把多个 promoted business repairer 组合成 bounded repair pipeline，而不是只挑一个 helper
 - `openclaw/test_agent_society_step_drift_guard.py`：验证 planner 会在 step 选择时重新做 drift gate，把已经不匹配当前 failure surface 的 promoted repairer 过滤掉
 - `openclaw/test_agent_society_repair_graph_budget.py`：验证组合 repair pipeline 会带每步预算上限与 rollback policy，而不是无限扩展 repair graph

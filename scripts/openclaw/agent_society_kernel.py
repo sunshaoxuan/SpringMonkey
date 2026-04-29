@@ -583,6 +583,26 @@ Current limitation:
             token in text for token in ("blocked", "no response", "stuck", "silent", "empty result", "failed to continue")
         ):
             reasons.append("current step no longer looks execution-blocked")
+        elif category == "browser_control" and not any(
+            token in text
+            for token in (
+                "browser",
+                "chrome",
+                "cdp",
+                "targetid",
+                "tab",
+                "selector",
+                "signup",
+                "sign up",
+                "login",
+                "google",
+                "注册",
+                "登录",
+                "浏览器",
+                "账号",
+            )
+        ):
+            reasons.append("current step no longer looks browser-control-shaped")
 
         if record.helper_contract:
             contract_category = str(record.helper_contract.get("category", "")).strip().lower()
@@ -653,6 +673,26 @@ Current limitation:
             scopes.add("execution_blocked")
         if any(token in text for token in ("discover", "unknown system", "入口未知", "unclear target")):
             scopes.add("target_discovery_missing")
+        if any(
+            token in text
+            for token in (
+                "browser",
+                "chrome",
+                "cdp",
+                "targetid",
+                "tab",
+                "selector",
+                "signup",
+                "sign up",
+                "login",
+                "google",
+                "注册",
+                "登录",
+                "浏览器",
+                "账号",
+            )
+        ):
+            scopes.add("browser_control")
         return scopes
 
     def record_observation(self, session: KernelSession, step_id: str, observation: str, next_decision: str, status: str) -> Step:
@@ -692,6 +732,28 @@ Current limitation:
             category = "runtime_timeout"
             severity = "high"
             proposed_repair = "retry with a bounded timeout-recovery path and inspect runtime/tool latency before continuing"
+        elif any(
+            token in lowered
+            for token in (
+                "targetid",
+                "target id",
+                "tab not found",
+                "browser tab",
+                "fill requires fields",
+                "headless fallback",
+                "profile=\"user\"",
+                "profile=user",
+                "真实浏览器",
+                "无头",
+            )
+        ):
+            category = "browser_control"
+            severity = "high"
+            proposed_tool_name = "browser_cdp_human"
+            proposed_repair = (
+                "switch to the persistent host Chrome CDP helper, verify non-headless-like runtime evidence, "
+                "reselect a live page target before every action, and report concrete blocker evidence"
+            )
         elif any(token in lowered for token in ("not found", "找不到", "missing tool", "no tool", "unsupported")):
             category = "tool_missing"
             severity = "high"
@@ -883,6 +945,17 @@ Current limitation:
             if "browser" in text:
                 bucket.append("browser")
             return bucket or ["missing", "tool"]
+
+        if gap.category == "browser_control":
+            bucket = ["browser"]
+            if any(token in text for token in ("targetid", "target id", "tab not found", "browser tab")):
+                bucket.append("target")
+                bucket.append("tab")
+            if any(token in text for token in ("headless", "无头", "profile=user", "profile=\"user\"")):
+                bucket.append("profile")
+            if any(token in text for token in ("selector", "fill requires fields", "ref")):
+                bucket.append("selector")
+            return bucket
 
         if gap.category == "execution_blocked":
             bucket = []

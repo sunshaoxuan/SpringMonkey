@@ -36,7 +36,10 @@ This file tells the runtime agent what is actually available on this host right 
   Node HTTPS is configured to use the system CA store.
 - Browser automation is enabled.
   Google Chrome is installed at `/usr/bin/google-chrome`.
-  Browser backend support is present on the host and may be used when visual navigation is needed.
+  Browser backend support is present on the remote host and may be used when visual navigation is needed.
+  The persistent browser is a host Chrome process controlled through CDP at `127.0.0.1:18800`; do not ask the user to open a local browser on their own machine.
+  If the OpenClaw `browser` tool reports targetId/tab/ref drift, use `/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/helpers/browser_cdp_human.py` through `exec` as the bounded fallback.
+  Treat `profile="user"` advice as invalid unless a real host-side profile named `user` is verified by tool evidence.
 - Playwright is installed on the host.
 - Exec and process tools are available from both Discord and LINE.
 - For established admin-authorized workflows, host-stored credentials, tokens, cookies, and encrypted secrets are approved inputs even when they are not shown inline in the current chat.
@@ -79,6 +82,9 @@ This file tells the runtime agent what is actually available on this host right 
 - If `web_search`, `web_fetch`, or `browser` fails in the current turn, describe it as a current execution failure, not as a permanent lack of capability.
 - Prefer `web_search` and `web_fetch` for ordinary page retrieval.
 - Use `browser` when a page needs visual interaction, JavaScript rendering, login state, or click/navigation behavior.
+- For remote-host browser work, first verify the host Chrome/CDP status; if `targetId must match request targetId`, `tab not found`, or stale element refs repeat, stop retrying the same `browser` shape and switch to the CDP human-control helper.
+- Do not describe the host Chrome as `headless fallback` unless current tool evidence shows `HeadlessChrome` or a `--headless` flag. Xvfb-hosted Chrome is still a real remote host browser, not the user's local desktop browser.
+- Never ask the user to open Chrome on their local machine for a task that must run on the OpenClaw host. The correct escalation is to report the concrete remote-host blocker: CAPTCHA, phone verification, policy block, target drift, credential issue, or CDP unavailable.
 - If browser backend is temporarily unavailable, say: `本轮 browser backend 不可用` or `本轮网页访问失败`, not `我没有上网能力`.
 - For established admin-authorized workflows, do not fall back to a generic safety refusal when the real issue is a concrete execution failure. Prefer the concrete reason: missing host credential, decryption failed, login failed, site changed, permission actually denied, page control missing, or verification failed.
 '''

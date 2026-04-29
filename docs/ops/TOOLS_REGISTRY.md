@@ -29,6 +29,7 @@
 | 浏览器 / 出网能力加固 | 修复 Node TLS 证书链，安装 `xvfb` + Playwright，固化 browser 基线 | `remote_enable_browser_capabilities.py` | `OPENCLAW_SSH_PASSWORD` |
 | 常驻浏览器后端 | 拉起 raw CDP Chrome backend，供 OpenClaw `browser` 工具长期复用 | `remote_enable_persistent_browser_backend.py` | `OPENCLAW_SSH_PASSWORD` |
 | 浏览器守护规则 | 安装哨兵标签、标签阈值与内存阈值守护，避免常驻浏览器失控 | `remote_install_browser_guardrails.py` | `OPENCLAW_SSH_PASSWORD` |
+| 真实浏览器 CDP 自修复 helper | `browser` 工具出现 `targetId` / tab / ref 漂移，或模型误称需要用户打开本机浏览器 | `remote_install_browser_human_control_helper.py`（部署） + `openclaw/helpers/browser_cdp_human.py`（运行时 helper） | `OPENCLAW_SSH_PASSWORD` |
 | 能力认知刷新 | 更新 runtime 注入提示，让模型按当前宿主机能力说话 | `remote_refresh_capability_awareness.py` | `OPENCLAW_SSH_PASSWORD` |
 | 长记忆修复 | 修复 `memory-lancedb` embeddings 路径与维度配置，重启 gateway 并做 recall 回归验证 | `remote_repair_memory_lancedb.py` | `OPENCLAW_SSH_PASSWORD` |
 | 长记忆启动级自愈 | 为 `memory-lancedb` 安装 `ExecStartPre`/`ExecStartPost` 守护：启动前自动重打补丁，启动后自动校验 1024 维 embeddings | `remote_install_memory_lancedb_guard.py` | `OPENCLAW_SSH_PASSWORD` |
