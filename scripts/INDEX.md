@@ -69,6 +69,12 @@
   - 典型用法：`python SpringMonkey/scripts/remote_install_browser_human_control_helper.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py browser-human-helper`
 
+- `remote_repair_reply_media_images.py`
+  - 用途：修复 OpenClaw 回复图片/浏览器截图发送链路；当日志出现 `dropping blocked reply media`、`Failed to optimize image` 或 `Optional dependency sharp is required` 时，安装/验证 `sharp` 并重启 OpenClaw。
+  - 典型用法：`python SpringMonkey/scripts/remote_repair_reply_media_images.py`
+  - 只验证：`python SpringMonkey/scripts/remote_repair_reply_media_images.py --check-only`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py reply-media-repair`
+
 - `remote_refresh_capability_awareness.py`
   - 用途：刷新运行时 workspace 注入文件中的“能力认知基线”，避免 LINE / Discord 沿用过时的“没有上网能力”自我描述。
   - 典型用法：`python SpringMonkey/scripts/remote_refresh_capability_awareness.py`

@@ -32,6 +32,7 @@ TOOLS: dict[str, str] = {
     "browser-guardrails": "remote_install_browser_guardrails.py",
     "browser-backend": "remote_enable_persistent_browser_backend.py",
     "browser-human-helper": "remote_install_browser_human_control_helper.py",
+    "reply-media-repair": "remote_repair_reply_media_images.py",
     "capability-awareness": "remote_refresh_capability_awareness.py",
     "memory-repair": "remote_repair_memory_lancedb.py",
     "memory-guard": "remote_install_memory_lancedb_guard.py",

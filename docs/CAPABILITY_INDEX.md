@@ -61,6 +61,7 @@
 | 自增强计算总册 | 汤猴如何参考 Reflexion / Voyager / 状态图思路实现 capability gap、toolsmith、验证、沉淀与灾后恢复 | `docs/policies/AGENT_SELF_IMPROVEMENT_AND_TOOLSMITH_ARCHITECTURE.md` |
 | Browser backend | 常驻 Chrome + raw CDP，默认 `127.0.0.1:18800`，OpenClaw profile `openclaw` | `scripts/remote_enable_persistent_browser_backend.py`、`scripts/remote_install_browser_guardrails.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | Browser CDP human-control helper | 当 OpenClaw `browser` 工具 targetId/tab/ref 漂移或误判为 headless/profile=user 时，直接通过宿主机常驻 Chrome CDP 做打开、检查、点击、输入、等待文本，并作为 promoted helper 进入自修复路由 | `scripts/openclaw/helpers/browser_cdp_human.py`、`scripts/remote_install_browser_human_control_helper.py` |
+| 回复图片/截图发送修复 | 当浏览器截图已生成但 Discord/LINE 回复前被媒体优化层丢弃（如 `dropping blocked reply media`、`Failed to optimize image`、缺少 `sharp`）时，验证并修复 OpenClaw 图片附件处理依赖 | `scripts/remote_repair_reply_media_images.py` |
 | 长记忆 | `memory-lancedb`、LanceDB 路径、embedding 策略 | `HOST_ACCESS_REDACTED.md`、`docs/ops/OPENCLAW_VECTOR_BACKEND_PLAN.md` |
 | 监控与审计 | 日志路径、`openclaw-snapshot.timer` 等 | `docs/ops/OPENCLAW_MONITORING_PLAN.md` |
 | 自动更新（root 侧） | `openclaw-update.timer`、脚本路径 | `docs/ops/OPENCLAW_AUTO_UPDATE_2026-03-26.md` |
