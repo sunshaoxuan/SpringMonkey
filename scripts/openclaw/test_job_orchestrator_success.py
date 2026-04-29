@@ -50,6 +50,9 @@ def main() -> int:
         if not any("final weather report" in item.get("observation", "") for item in observations):
             raise AssertionError("expected stdout in observation")
         steps = data.get("steps", [])
+        execute_steps = [step for step in steps if step.get("action_kind") == "tool"]
+        if not execute_steps or execute_steps[0].get("context_policy") != "cron_job_isolated":
+            raise AssertionError("expected cron job to use isolated context policy")
         if not any(step.get("action_kind") == "report" and step.get("status") == "completed" for step in steps):
             raise AssertionError("expected completed report step")
         print("job_orchestrator_success_ok")

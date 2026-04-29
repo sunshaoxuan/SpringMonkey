@@ -73,7 +73,9 @@ def ensure_session(kernel: AgentSocietyKernel, *, job_name: str, category: str, 
     )
     step.next_decision = "execute command and inspect stdout/stderr before deciding completion or repair"
     step.shared_context_keys = kernel._shared_context_keys_for_category(job_name, category)
-    step.context_policy = "reuse"
+    # Cron/pipeline jobs must never inherit direct-chat history. The durable
+    # kernel can reuse job-local observations, but not the chat transcript.
+    step.context_policy = "cron_job_isolated"
     step.action_kind = "tool"
     step.status = "in_progress"
     step.updated_at = utc_now()
