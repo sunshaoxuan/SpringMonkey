@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 OpenClaw Discord 意图路由 / 模型降级补丁 v8
-- 默认为 Ollama (Ollama-First)
-- 连续 3 次失败后降级到 Codex
+- 默认为 Codex (Codex-First)
+- Codex 连续失败后才降级到 Qwen/Ollama
 - 通过在 process 全局作用域注入失败计数器实现
 """
 from __future__ import annotations
@@ -38,8 +38,8 @@ def main():
 
     # 1. 注入全局计数器 (如果尚未注入)
     # 我们在文件开头注入，确保所有函数都能访问
-    if "global.consecutiveOllamaFailures" not in content:
-        content = "global.consecutiveOllamaFailures = global.consecutiveOllamaFailures || 0;\n" + content
+    if "global.consecutiveCodexFailures" not in content:
+        content = "global.consecutiveCodexFailures = global.consecutiveCodexFailures || 0;\n" + content
 
     # 2. 修改 maybeRouteDiscordIntent 逻辑
     # 我们寻找 v7 或原始逻辑中的 codex 硬编码部分并改写为动态逻辑
@@ -49,23 +49,23 @@ def main():
     # const modelId = "gpt-5.4";
     
     # 我们替换为:
-    # let provider = global.consecutiveOllamaFailures < 3 ? "ollama" : "openai-codex";
-    # let modelId = global.consecutiveOllamaFailures < 3 ? "qwen3:14b" : "gpt-5.4";
+    # let provider = global.consecutiveCodexFailures < 3 ? "openai-codex" : "ollama";
+    # let modelId = global.consecutiveCodexFailures < 3 ? "gpt-5.4" : "qwen3:14b";
 
     old_prov = 'const provider = "openai-codex";'
-    new_prov = 'let provider = global.consecutiveOllamaFailures < 3 ? "ollama" : "openai-codex";'
+    new_prov = 'let provider = global.consecutiveCodexFailures < 3 ? "openai-codex" : "ollama";'
     old_model = 'const modelId = "gpt-5.4";'
-    new_model = 'let modelId = global.consecutiveOllamaFailures < 3 ? "qwen3:14b" : "gpt-5.4";'
+    new_model = 'let modelId = global.consecutiveCodexFailures < 3 ? "gpt-5.4" : "qwen3:14b";'
 
     if old_prov in content:
         content = content.replace(old_prov, new_prov)
         content = content.replace(old_model, new_model)
-        print("Updated provider/model selection to Ollama-first with fallback.")
+        print("Updated provider/model selection to Codex-first with Qwen fallback.")
     else:
         # 如果已经是 let 或者被混淆了，可能需要更精确的正则。
         # 这里假设之前是 v7，所以应该是确定的。
         print("Warning: Standard provider anchor not found. Checking if already patched.")
-        if "global.consecutiveOllamaFailures < 3" in content:
+        if "global.consecutiveCodexFailures < 3" in content:
             print("Already patched or newer logic detected.")
         else:
             print("Error: Could not find patch anchors.")
@@ -77,8 +77,8 @@ def main():
     # 寻找 classifyDiscordIntent 的 fetch 调用
     # const response = await fetch("http://ccnode.briconbric.com:22545/api/generate", ...
     
-    success_injection = "\n\t\tglobal.consecutiveOllamaFailures = 0;"
-    fail_injection = "\n\t\tglobal.consecutiveOllamaFailures++;"
+    success_injection = "\n\t\tglobal.consecutiveCodexFailures = 0;"
+    fail_injection = "\n\t\tglobal.consecutiveCodexFailures++;"
 
     # 寻找成功读取 JSON 的位置
     if "const data = await response.json();" in content:

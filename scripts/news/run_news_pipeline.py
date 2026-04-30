@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
 """
-新闻多阶段流水线：RSS 发现 → HTTP 取回 → Qwen 逐条总结 → GPT-OSS 终稿 → 机械校验。
+新闻多阶段流水线：RSS 发现 → HTTP 取回 → Codex 逐条整理 → Codex 终稿 → 机械校验。
 
 阶段概览
 --------
 1. plan          从 broadcast.json + job 名生成 plan.json（按地区拆批，与 1–4 大纲对齐）。
 2. discover      RSS 抓取各地区新闻源，获取真实文章链接（无需 API key）。
 3. fetch         HTTP 取回每篇文章正文内容。
-4. worker        每篇文章独立调用 Qwen（Ollama），输入真实正文 → 输出中文摘要+保留原链接。
+4. worker        每篇文章独立调用 Codex 主模型，输入真实正文 → 输出中文摘要+保留原链接；Qwen/Ollama 仅兜底。
 5. merge         拼接为 draft_merged.md。
 6. finalize      GPT-OSS（本地 Ollama 20b，可靠）合并润色 → Codex API 降级备选 → 机械兜底。
 7. verify        调用 verify_broadcast_draft 规则做机械检查。
 
 模型分工
 --------
-- Qwen (qwen3:14b)  → 逐条处理器：短上下文、单篇文章摘要
-- GPT-OSS (gpt-oss:20b)        → 终稿格式化：本地可靠，无超量风险
-- Codex (openai-codex/gpt-5.4) → 降级备选：有超量拒绝风险
+- Codex (openai-codex/gpt-5.4) → 默认主模型：编排、逐条处理、终稿格式化
+- Qwen (qwen3:14b)             → 兜底处理器：仅在 Codex 不可用时尝试
 
 环境变量（常用）
 --------------
-OPENAI_API_KEY           降级用 Codex 编排/终稿（缺省则全走本地模型+机械兜底）
+OPENAI_API_KEY           Codex 主模型调用凭据
 OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
 model.ollamaBaseUrl      broadcast.json 中 Ollama 基址
 """
@@ -92,6 +91,43 @@ def ollama_api_model_name(model_id: str) -> str:
         rest = s.split("/", 1)[1].strip()
         return rest if rest else s
     return s
+
+
+def provider_api_model_name(model_id: str) -> str:
+    s = (model_id or "").strip()
+    for prefix in ("openai-codex/", "openai/", "ollama/"):
+        if s.lower().startswith(prefix):
+            return s.split("/", 1)[1].strip() or s
+    return s
+
+
+def is_openai_model(model_id: str) -> bool:
+    s = (model_id or "").strip().lower()
+    return s.startswith("openai-codex/") or s.startswith("openai/")
+
+
+def chat_with_model(
+    model_id: str,
+    *,
+    ollama_host: str,
+    openai_base_url: str,
+    openai_api_key: str,
+    system: str,
+    user: str,
+    timeout: int,
+) -> str:
+    if is_openai_model(model_id):
+        if not openai_api_key:
+            raise RuntimeError(f"missing OPENAI_API_KEY for {model_id}")
+        return openai_chat(
+            openai_base_url,
+            openai_api_key,
+            provider_api_model_name(model_id),
+            system,
+            user,
+            timeout,
+        )
+    return ollama_chat(ollama_host, ollama_api_model_name(model_id), system, user, timeout)
 
 
 def save_json(path: Path, data: Any) -> None:
@@ -315,14 +351,23 @@ def ollama_chat(host: str, model: str, system: str, user: str, timeout: int) -> 
         raise RuntimeError(f"unexpected Ollama response: {data!r}") from e
 
 
-def check_ollama_processor_health(host: str, model: str, timeout: int) -> tuple[bool, str]:
+def check_processor_health(
+    model: str,
+    *,
+    ollama_host: str,
+    openai_base_url: str,
+    openai_api_key: str,
+    timeout: int,
+) -> tuple[bool, str]:
     try:
-        result = ollama_chat(
-            host,
+        result = chat_with_model(
             model,
-            "只输出 JSON，不要解释。",
-            '输出 {"ok":true}',
-            min(max(timeout, 1), 20),
+            ollama_host=ollama_host,
+            openai_base_url=openai_base_url,
+            openai_api_key=openai_api_key,
+            system="只输出 JSON，不要解释。",
+            user='输出 {"ok":true}',
+            timeout=min(max(timeout, 1), 20),
         )
     except Exception as e:
         return False, f"{type(e).__name__}: {e}"
@@ -570,7 +615,10 @@ def process_raw_article_item(
     item: dict[str, Any],
     *,
     ollama_host: str,
+    openai_base_url: str,
+    openai_api_key: str,
     model: str,
+    fallback_model: str,
     timeout: int,
     max_input_chars: int,
 ) -> dict[str, Any]:
@@ -611,19 +659,50 @@ def process_raw_article_item(
         },
         ensure_ascii=False,
     )
+    used_model = model
     try:
-        parsed = _parse_json_object(
-            ollama_chat(ollama_host, model, ARTICLE_PROCESS_SYSTEM_PROMPT, user, timeout)
+        raw_response = chat_with_model(
+            model,
+            ollama_host=ollama_host,
+            openai_base_url=openai_base_url,
+            openai_api_key=openai_api_key,
+            system=ARTICLE_PROCESS_SYSTEM_PROMPT,
+            user=user,
+            timeout=timeout,
         )
+        parsed = _parse_json_object(raw_response)
         summary = str(parsed.get("summary_zh") or "").strip()
         region = str(parsed.get("region") or result["region"]).strip().lower()
         category = str(parsed.get("category") or "other").strip().lower()
     except Exception as e:
-        print(f"[pipeline] process item {item.get('item_id')} failed: {e}", file=sys.stderr)
-        summary = ""
-        region = result["region"]
-        category = "other"
-        result["skip_reason"] = "model_failed"
+        print(f"[pipeline] process item {item.get('item_id')} primary {model} failed: {e}", file=sys.stderr)
+        if fallback_model and fallback_model != model:
+            try:
+                used_model = fallback_model
+                raw_response = chat_with_model(
+                    fallback_model,
+                    ollama_host=ollama_host,
+                    openai_base_url=openai_base_url,
+                    openai_api_key=openai_api_key,
+                    system=ARTICLE_PROCESS_SYSTEM_PROMPT,
+                    user=user,
+                    timeout=timeout,
+                )
+                parsed = _parse_json_object(raw_response)
+                summary = str(parsed.get("summary_zh") or "").strip()
+                region = str(parsed.get("region") or result["region"]).strip().lower()
+                category = str(parsed.get("category") or "other").strip().lower()
+            except Exception as e2:
+                print(f"[pipeline] process item {item.get('item_id')} fallback {fallback_model} failed: {e2}", file=sys.stderr)
+                summary = ""
+                region = result["region"]
+                category = "other"
+                result["skip_reason"] = "model_failed"
+        else:
+            summary = ""
+            region = result["region"]
+            category = "other"
+            result["skip_reason"] = "model_failed"
 
     allowed_regions = {"japan", "china", "world", "markets"}
     allowed_categories = {
@@ -646,6 +725,7 @@ def process_raw_article_item(
     result["region"] = region
     result["category"] = category
     result["summary_zh"] = summary
+    result["processor"] = used_model
     if not summary:
         result["skip_reason"] = result["skip_reason"] or "no_chinese_summary"
     elif re.search(r"[\u3040-\u30ff]", summary) or not looks_mostly_chinese(summary):
@@ -662,7 +742,10 @@ def process_raw_article_items(
     raw_items: list[dict[str, Any]],
     *,
     ollama_host: str,
+    openai_base_url: str,
+    openai_api_key: str,
     model: str,
+    fallback_model: str,
     timeout: int,
     max_input_chars: int,
 ) -> list[dict[str, Any]]:
@@ -673,7 +756,10 @@ def process_raw_article_items(
         result = process_raw_article_item(
             item,
             ollama_host=ollama_host,
+            openai_base_url=openai_base_url,
+            openai_api_key=openai_api_key,
             model=model,
+            fallback_model=fallback_model,
             timeout=timeout,
             max_input_chars=max_input_chars,
         )
@@ -986,12 +1072,16 @@ def main() -> int:
 
     worker_model_raw = os.environ.get(
         "NEWS_WORKER_MODEL",
-        model_cfg.get("newsWorker", "qwen3:14b"),
+        model_cfg.get("newsWorker", "openai-codex/gpt-5.4"),
     )
-    finalize_model_raw = model_cfg.get("newsFinalize", "gpt-oss:20b")
+    fallback_model_raw = os.environ.get(
+        "NEWS_FALLBACK_MODEL",
+        model_cfg.get("chatFallback", "ollama/qwen3:14b"),
+    )
+    finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.4")
     orch_model = os.environ.get(
         "NEWS_ORCHESTRATOR_MODEL",
-        model_cfg.get("newsOrchestrator", "ollama/qwen3:14b"),
+        model_cfg.get("newsOrchestrator", "openai-codex/gpt-5.4"),
     )
 
     ollama_worker_model = ollama_api_model_name(worker_model_raw)
@@ -1025,6 +1115,7 @@ def main() -> int:
             "job": args.job,
             "dry_run": args.dry_run,
             "worker_model": worker_model_raw,
+            "fallback_model": fallback_model_raw,
             "finalize_model": finalize_model_raw,
             "orchestrator_model": orch_model,
             "worker_call_mode": "per-article",
@@ -1209,14 +1300,29 @@ def main() -> int:
         save_json(run_dir / "processed_items_index.json", {"version": 1, "items": processed_items})
         trace.step("process-items", "skipped", detail="dry-run placeholders", tool="ollama")
     else:
-        trace.step("process-items", "running", detail=f"items={len(raw_items)}", tool=ollama_worker_model)
+        trace.step("process-items", "running", detail=f"items={len(raw_items)}", tool=worker_model_raw)
         fetched_raw = len([x for x in raw_items if x.get("fetch_ok")])
         if fetched_raw > 0:
-            healthy, health_detail = check_ollama_processor_health(
-                ollama_host,
-                ollama_worker_model,
-                min(args.ollama_timeout, 20),
+            healthy, health_detail = check_processor_health(
+                worker_model_raw,
+                ollama_host=ollama_host,
+                openai_base_url=base_url,
+                openai_api_key=api_key,
+                timeout=min(args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout, 20),
             )
+            if not healthy and fallback_model_raw and fallback_model_raw != worker_model_raw:
+                fallback_healthy, fallback_detail = check_processor_health(
+                    fallback_model_raw,
+                    ollama_host=ollama_host,
+                    openai_base_url=base_url,
+                    openai_api_key=api_key,
+                    timeout=min(args.openai_timeout if is_openai_model(fallback_model_raw) else args.ollama_timeout, 20),
+                )
+                if fallback_healthy:
+                    healthy = True
+                    health_detail = f"primary_failed={health_detail}; fallback_ok={fallback_model_raw}"
+                else:
+                    health_detail = f"primary_failed={health_detail}; fallback_failed={fallback_detail}"
             if not healthy:
                 save_json(
                     run_dir / "processor_failure.json",
@@ -1226,12 +1332,13 @@ def main() -> int:
                         "fetched_raw": fetched_raw,
                         "processed": 0,
                         "skip_reasons": {"processor_healthcheck_failed": fetched_raw},
-                        "worker_model": ollama_worker_model,
+                        "worker_model": worker_model_raw,
+                        "fallback_model": fallback_model_raw,
                         "ollama_base_url": ollama_host,
                         "health_detail": health_detail,
                     },
                 )
-                trace.step("process-items", "failed", detail=f"healthcheck failed: {health_detail}", tool=ollama_worker_model)
+                trace.step("process-items", "failed", detail=f"healthcheck failed: {health_detail}", tool=worker_model_raw)
                 trace.finish("failed", "processor-unavailable", final_message=str(run_dir / "processor_failure.json"))
                 print(
                     "PIPELINE_FAIL processor_unavailable "
@@ -1243,12 +1350,15 @@ def main() -> int:
             run_dir,
             raw_items,
             ollama_host=ollama_host,
-            model=ollama_worker_model,
-            timeout=args.ollama_timeout,
+            openai_base_url=base_url,
+            openai_api_key=api_key,
+            model=worker_model_raw,
+            fallback_model=fallback_model_raw,
+            timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
             max_input_chars=max_worker_chars,
         )
         included = len([x for x in processed_items if x.get("included")])
-        trace.step("process-items", "ok", detail=f"included={included}/{len(processed_items)}", tool=ollama_worker_model)
+        trace.step("process-items", "ok", detail=f"included={included}/{len(processed_items)}", tool=worker_model_raw)
         if fetched_raw > 0 and included == 0:
             reasons: dict[str, int] = {}
             for item in processed_items:
@@ -1262,11 +1372,12 @@ def main() -> int:
                     "fetched_raw": fetched_raw,
                     "processed": len(processed_items),
                     "skip_reasons": reasons,
-                    "worker_model": ollama_worker_model,
+                    "worker_model": worker_model_raw,
+                    "fallback_model": fallback_model_raw,
                     "ollama_base_url": ollama_host,
                 },
             )
-            trace.step("process-items", "failed", detail=f"fetched={fetched_raw}, included=0, reasons={reasons}", tool=ollama_worker_model)
+            trace.step("process-items", "failed", detail=f"fetched={fetched_raw}, included=0, reasons={reasons}", tool=worker_model_raw)
             trace.finish("failed", "processor-unavailable", final_message=str(run_dir / "processor_failure.json"))
             print(
                 "PIPELINE_FAIL processor_unavailable "
@@ -1300,7 +1411,7 @@ def main() -> int:
 
     # 策略：merge 草稿已经包含完整格式，先直接校验；
     # 如果通过就直接用（省掉 finalize 模型调用）；
-    # 不通过才走 GPT-OSS → mechanical fallback。
+    # 不通过才走 Codex 主模型 → Qwen/Ollama 兜底 → mechanical fallback。
     if verify_text_fn:
         ok_draft, draft_errors = verify_text_fn(draft, cfg)
         if ok_draft:
@@ -1324,25 +1435,37 @@ def main() -> int:
     last_errors: list[str] = []
 
     for attempt in range(1, max_finalize_attempts + 1):
-        trace.step("finalize", "running", detail=f"attempt {attempt}", tool=ollama_finalize_model)
+        trace.step("finalize", "running", detail=f"attempt {attempt}", tool=finalize_model_raw)
         fin_sys = finalize_system_prompt(cfg, plan, last_errors if attempt > 1 else None)
         fin_user = "以下是已格式化的合并草稿，只需微调格式即可输出最终成稿（不要改写内容或链接）：\n\n" + draft
 
         try:
-            print(f"[pipeline] finalize attempt {attempt}: GPT-OSS ({ollama_finalize_model})...", file=sys.stderr)
-            final_text = ollama_chat(
-                ollama_host, ollama_finalize_model, fin_sys, fin_user, args.ollama_timeout
+            print(f"[pipeline] finalize attempt {attempt}: primary ({finalize_model_raw})...", file=sys.stderr)
+            final_text = chat_with_model(
+                finalize_model_raw,
+                ollama_host=ollama_host,
+                openai_base_url=base_url,
+                openai_api_key=api_key,
+                system=fin_sys,
+                user=fin_user,
+                timeout=args.openai_timeout * 2 if is_openai_model(finalize_model_raw) else args.ollama_timeout,
             )
         except Exception as e:
-            print(f"[pipeline] GPT-OSS finalize failed: {e}", file=sys.stderr)
-            if api_key:
-                print(f"[pipeline] fallback to Codex ({orch_model})...", file=sys.stderr)
+            print(f"[pipeline] primary finalize failed: {e}", file=sys.stderr)
+            if fallback_model_raw and fallback_model_raw != finalize_model_raw:
+                print(f"[pipeline] fallback finalize to {fallback_model_raw}...", file=sys.stderr)
                 try:
-                    final_text = openai_chat(
-                        base_url, api_key, orch_model, fin_sys, fin_user, args.openai_timeout * 2
+                    final_text = chat_with_model(
+                        fallback_model_raw,
+                        ollama_host=ollama_host,
+                        openai_base_url=base_url,
+                        openai_api_key=api_key,
+                        system=fin_sys,
+                        user=fin_user,
+                        timeout=args.openai_timeout * 2 if is_openai_model(fallback_model_raw) else args.ollama_timeout,
                     )
                 except Exception as e2:
-                    print(f"[pipeline] Codex finalize also failed: {e2}", file=sys.stderr)
+                    print(f"[pipeline] fallback finalize also failed: {e2}", file=sys.stderr)
                     final_text = _mechanical_fallback(cfg, plan, draft)
             else:
                 final_text = _mechanical_fallback(cfg, plan, draft)

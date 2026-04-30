@@ -13,10 +13,13 @@ REPO = Path(__file__).resolve().parents[1]
 BEHAVIOR_PREFIXES = (
     "config/",
     "docs/policies/",
+    "docs/ops/",
     "docs/runtime-notes/",
     "scripts/cron/",
+    "scripts/deploy/",
     "scripts/news/",
     "scripts/openclaw/",
+    "scripts/patch/",
 )
 
 BEHAVIOR_EXACT = {

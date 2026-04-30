@@ -1,41 +1,37 @@
-# Qwen Timeout Retry Policy
+# Qwen Fallback Policy
 
-Date: 2026-04-11 (Asia/Tokyo)
+Date: 2026-04-30 (Asia/Tokyo)
 
 ## Goal
 
-For qwen-first tasks, do not fall back to `openai-codex/gpt-5.4` after a single timeout.
+OpenClaw defaults are Codex-first. `ollama/qwen3:14b` is a fallback model only
+and must not be used as the default primary model for new chat, task-control,
+news, cron, routing, delivery, or self-repair behavior.
 
-## Runtime policy
+## Runtime Policy
 
-- Global primary model remains `ollama/qwen3:14b`
-- Global fallback remains `openai-codex/gpt-5.4`
-- For embedded runs on `ollama/qwen3:14b`:
-  - the same model is retried up to 3 total attempts on timeout
-  - only after those timeout retries are exhausted may normal model fallback proceed
+- Global primary model: `openai-codex/gpt-5.4`
+- Global fallback model: `ollama/qwen3:14b`
+- News orchestrator, worker, and finalize model default to `openai-codex/gpt-5.4`.
+- Qwen/Ollama may be attempted only after the Codex path is unavailable or explicitly rejected by a bounded gate.
 
-## Cron timeout baseline
+## Legacy Qwen-First Paths
 
-All cron jobs whose payload model is `ollama/qwen3:14b` should use at least:
+Older qwen-first timeout retry patches and cron payloads are migration targets.
+They are not the default policy anymore. If a legacy job still has:
 
-- `timeoutSeconds = 1800`
+- `model = ollama/qwen3:14b`
+- qwen timeout retry before Codex
+- comments saying Codex is disaster-only fallback
 
-This avoids false failures when qwen is healthy but slow.
+then update that path to Codex primary and Qwen fallback through Git, then let
+the host obtain it through the approved repo pull path.
 
-## Host application
+## Host Application
 
-Use:
+Do not hand-edit the host to change this policy. Use Git-delivered config,
+scripts, and installers, then verify with:
 
-- `scripts/remote_install_qwen_timeout_retry_policy.py`
-
-It performs:
-
-1. Patch current `pi-embedded-*.js` bundle with qwen timeout retry logic
-2. Raise existing qwen cron payload timeouts to `1800`
-3. Restart `openclaw.service`
-4. Verify host health and resulting qwen cron timeout values
-
-## Notes
-
-- This policy does not change the global model order.
-- It only changes timeout handling behavior before fallback.
+```bash
+python scripts/openclaw_behavior_rule_gate.py --verify-remote-pull
+```

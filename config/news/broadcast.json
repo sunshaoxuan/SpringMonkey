@@ -234,15 +234,15 @@
     }
   },
   "model": {
-    "chatPrimary": "ollama/qwen3:14b",
-    "chatFallback": "openai-codex/gpt-5.4",
+    "chatPrimary": "openai-codex/gpt-5.4",
+    "chatFallback": "ollama/qwen3:14b",
     "chatEscalateWhenHistoryCharsExceed": 15000,
     "ollamaBaseUrl": "http://ccnode.briconbric.com:22545",
     "ollamaNote": "Ollama 仅在 ccnode 节点运行；宿主机无本地 Ollama，localhost:11434 上的是云端代理不可用于本地推理",
-    "newsOrchestrator": "ollama/qwen3:14b",
-    "newsWorker": "ollama/qwen3:14b",
-    "newsFinalize": "gpt-oss:20b",
-    "newsFinalizeNote": "GPT-OSS 20b 在 ccnode Ollama 上，本地可靠无超量风险；Codex 仅做降级备选",
+    "newsOrchestrator": "openai-codex/gpt-5.4",
+    "newsWorker": "openai-codex/gpt-5.4",
+    "newsFinalize": "openai-codex/gpt-5.4",
+    "newsFinalizeNote": "Codex 作为新闻编排、逐条处理与终稿格式化主模型；Qwen/Ollama 仅作为兜底。",
     "workerCallMode": "per-article",
     "maxWorkerInputChars": 1500,
     "thinking": "low",
@@ -251,7 +251,7 @@
     "allowUnsafeExternalContent": true,
     "qwenUsagePolicy": {
       "role": "processor",
-      "summary": "Qwen handles most tasks; fallback to Codex only on persistent failure.",
+      "summary": "Codex handles all primary tasks; Qwen/Ollama is fallback only.",
       "allowedScenarios": [
         "逐条新闻摘要与结构化整理",
         "单条分类与格式校验",

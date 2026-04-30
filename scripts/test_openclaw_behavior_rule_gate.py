@@ -22,6 +22,9 @@ def main() -> int:
         "scripts/remote_install_direct_discord_cron.py",
         "scripts/remote_install_browser_guardrails.py",
         "scripts/remote_refresh_capability_awareness.py",
+        "scripts/deploy/deployment_master.py",
+        "scripts/patch/final_patch_deploy.py",
+        "docs/ops/TOOLS_REGISTRY.md",
         "scripts/INDEX.md",
     ]
     non_behavior_paths = [

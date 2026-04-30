@@ -23,7 +23,7 @@ def main() -> int:
                             "schedule": {"expr": "0 7 * * *", "tz": "Asia/Tokyo"},
                             "payload": {
                                 "message": "fetch weather, translate, report",
-                                "model": "ollama/qwen3:14b",
+                                "model": "openai-codex/gpt-5.4",
                                 "thinking": "low",
                                 "timeoutSeconds": 1800,
                                 "lightContext": True,

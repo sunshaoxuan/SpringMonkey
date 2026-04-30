@@ -95,7 +95,7 @@
   - 典型用法：`python SpringMonkey/scripts/remote_install_memory_lancedb_guard.py`
 
 - `remote_install_qwen_timeout_retry_policy.py`
-  - 用途：给宿主机当前 `pi-embedded` bundle 加上 `qwen3:14b` 超时三次内重试、三次后才允许切 `codex` 的策略，并把现有所有 qwen cron 的 `timeoutSeconds` 统一抬到 `1800`。
+  - 用途：历史 qwen-first 超时策略安装器；当前默认模型策略已改为 Codex 主、Qwen/Ollama 兜底，除非在迁移旧任务时需要，不应作为新默认策略入口。
   - 典型用法：`python SpringMonkey/scripts/remote_install_qwen_timeout_retry_policy.py`
 
 - `remote_install_three_phase_reply_guard.py`

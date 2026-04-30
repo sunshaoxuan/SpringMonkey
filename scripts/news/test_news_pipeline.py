@@ -174,7 +174,10 @@ class TestPlanAndTemplate(unittest.TestCase):
             result = self.m.process_raw_article_item(
                 item,
                 ollama_host="http://localhost:9999",
+                openai_base_url="https://api.openai.com/v1",
+                openai_api_key="",
                 model="test",
+                fallback_model="",
                 timeout=5,
                 max_input_chars=1500,
             )
@@ -184,7 +187,13 @@ class TestPlanAndTemplate(unittest.TestCase):
 
     def test_processor_healthcheck_reports_unavailable(self):
         with patch.object(self.m, "ollama_chat", side_effect=RuntimeError("down")):
-            ok, detail = self.m.check_ollama_processor_health("http://localhost:9", "test", 1)
+            ok, detail = self.m.check_processor_health(
+                "ollama/test",
+                ollama_host="http://localhost:9",
+                openai_base_url="https://api.openai.com/v1",
+                openai_api_key="",
+                timeout=1,
+            )
         self.assertFalse(ok)
         self.assertIn("down", detail)
 
@@ -232,7 +241,10 @@ class TestPlanAndTemplate(unittest.TestCase):
             result = self.m.process_raw_article_item(
                 item,
                 ollama_host="http://localhost:9999",
+                openai_base_url="https://api.openai.com/v1",
+                openai_api_key="",
                 model="test",
+                fallback_model="",
                 timeout=5,
                 max_input_chars=1500,
             )

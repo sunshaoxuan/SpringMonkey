@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--delivery-to", help="Delivery target, for example channel ID or LINE user ID.")
     p.add_argument("--delivery-mode", default="announce", help="Delivery mode. Default: announce.")
     p.add_argument("--delivery-account-id", default="default", help="Gateway accountId. Default: default.")
-    p.add_argument("--model", default="ollama/qwen3:14b", help="Task model. Default keeps qwen primary.")
+    p.add_argument("--model", default="openai-codex/gpt-5.4", help="Task model. Default keeps Codex primary; Qwen/Ollama is fallback only.")
     p.add_argument("--thinking", default="low", help="Thinking setting. Default: low.")
     p.add_argument("--timeout-seconds", type=int, default=1800, help="Task timeout seconds. Default: 1800.")
     p.add_argument("--light-context", choices=["true", "false"], default="true")

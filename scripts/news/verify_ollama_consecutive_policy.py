@@ -63,7 +63,7 @@ def main():
     print(f"Consecutive Failures: {consecutive_failures}")
     
     if consecutive_failures >= 3:
-        print("POLICY_ACTION: Switch to Codex fallback recommended.")
+        print("POLICY_ACTION: keep Codex primary; Qwen/Ollama fallback is currently unavailable.")
         return 2
     return 0
 

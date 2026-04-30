@@ -9,7 +9,7 @@
 
 ## Primary Runtime Assumptions
 
-- primary task model: `ollama/qwen3:14b`
+- primary task model: `openai-codex/gpt-5.4`
 - direct channels currently in active use:
   - LINE
   - Discord
@@ -54,7 +54,7 @@ Expected behavior:
 - proactive compaction route activates before overflow
 - threshold is based on current prompt budget
 
-### Embedded Run / Qwen Timeout Retry
+### Embedded Run / Qwen Fallback
 
 Artifact family:
 
@@ -62,7 +62,7 @@ Artifact family:
 
 Expected behavior:
 
-- `qwen3:14b` receives same-model timeout retries before fallback
+- `openai-codex/gpt-5.4` is primary; `qwen3:14b` is fallback only
 - retry markers exist in the active runner
 
 ### Agent Society Runtime
@@ -107,7 +107,7 @@ Expected jobs:
 
 Expected current properties:
 
-- `model = ollama/qwen3:14b`
+- default model = `openai-codex/gpt-5.4`; fallback model = `ollama/qwen3:14b`
 - `timeoutSeconds = 7200`
 - execution mode is pipeline
 - final delivery target is Discord

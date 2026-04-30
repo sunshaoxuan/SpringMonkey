@@ -29,10 +29,10 @@
 
 当前宿主机基线：
 
-- 主力聊天模型：`ollama/qwen3:14b`
-- 候补模型：`openai-codex/gpt-5.4`
-- 新闻总控：`ollama/qwen3:14b`
-- 新闻 worker：`ollama/qwen3:14b`
+- 主力聊天模型：`openai-codex/gpt-5.4`
+- 候补模型：`ollama/qwen3:14b`
+- 新闻总控：`openai-codex/gpt-5.4`
+- 新闻 worker：`openai-codex/gpt-5.4`
 - Ollama 基址：`http://ccnode.briconbric.com:22545`
 
 仓库真源：
@@ -41,8 +41,8 @@
 
 说明：
 
-- 新闻、聊天与任务总控基线已统一到 `qwen3:14b -> codex fallback`
-- `openai-codex/gpt-5.4` 只应在 qwen 持续超时、断连或宿主级灾难故障时作为最后兜底
+- 新闻、聊天与任务总控基线已统一到 `codex -> qwen fallback`
+- `ollama/qwen3:14b` 只应在 Codex 主链路不可用时作为最后兜底
 - 若宿主机 `openclaw.json` 漂回 `qwen2.5:14b-instruct`，应视为偏离当前基线
 
 ## 2.1 会话压缩基线
@@ -57,7 +57,7 @@
 
 说明：
 
-- 这条基线必须与当前主模型 `ollama/qwen3:14b` 的真实上下文窗匹配；当前宿主机日志显示 `contextWindow=32768`，因此不能再使用高于上下文窗的保留余量。
+- 这条基线必须与当前主模型 `openai-codex/gpt-5.4` 的真实上下文窗匹配；若降级到 Qwen/Ollama，再按 `qwen3:14b` 的较小上下文窗保守处理。
 - 当前值的目标是降低 Discord / LINE 长会话在高日志、高工具结果场景下突然触发 `Context limit exceeded` 的概率，同时避免把 qwen 路径的 prompt budget 直接压坏。
 - 该项是全局 `agents.defaults` 配置，Discord 与 LINE 共用，不是单独 channel 配置。
 - 当前宿主机还启用了“任务前预压缩守卫”：当估算 prompt 已达到预算约 `90%`，且会话已进入长任务区间时，会在运行前先 compact，并保留最近若干轮原文，而不是等到中途溢出。

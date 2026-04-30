@@ -39,8 +39,8 @@
 | Gateway 绑定 | `--bind loopback`、`gateway.mode=local` | 同上 |
 | HTTP 监听 | 默认 **127.0.0.1:18789**（本机 `/line/webhook` 诊断用） | `scripts/remote_diag_openclaw_webhook.py`、运维对话记录 |
 | 共享能力入口 | `openclaw.service` 通过 drop-in 加载 `/etc/openclaw/openclaw.env`；Discord / LINE 共用同一套 provider secret 与 `tools.elevated.allowFrom` | `scripts/remote_enable_shared_channel_capabilities.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
-| 聊天与任务总控主模型 | `ollama/qwen3:14b` 主力，`openai-codex/gpt-5.4` 仅灾难回退 | `config/news/broadcast.json`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
-| qwen 超时策略 | `qwen3:14b` 超时先在同模型内重试 3 次，现有 qwen cron 超时基线抬到 `1800s`，耗尽后才允许切 `codex` | `scripts/remote_install_qwen_timeout_retry_policy.py`、`docs/runtime-notes/qwen-timeout-retry-policy-2026-04.md` |
+| 聊天与任务总控主模型 | `openai-codex/gpt-5.4` 主力，`ollama/qwen3:14b` 仅兜底 | `config/news/broadcast.json`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
+| qwen 兜底策略 | `ollama/qwen3:14b` 只在 Codex 主链路不可用时作为兜底；不得再作为默认主模型 | `config/news/broadcast.json`、`docs/runtime-notes/qwen-timeout-retry-policy-2026-04.md` |
 | 当前环境运行基线 | 当前 SpringMonkey 宿主机的真实服务、compaction、patch family、LINE/Discord/news 约束 | `docs/runtime-notes/openclaw-current-environment-baseline-2026-04.md` |
 | 分层故障模型 | 将 LINE/Discord/news/runtime 失败拆成 Host/Channel/Artifact/Run/Reply/Orchestration 六层 | `docs/runtime-notes/openclaw-failure-layer-model-2026-04.md` |
 | 发布验收与抗漂移 | 运行时修复的发布顺序、artifact 选择、验收证据与禁用说法 | `docs/policies/OPENCLAW_RELEASE_ACCEPTANCE_AND_DRIFT_CONTROL.md` |

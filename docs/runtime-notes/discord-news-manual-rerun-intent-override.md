@@ -27,6 +27,7 @@
 修复（`scripts/openclaw/patch_news_router_v8.py`）：
 - `manualNewsRun=true` 时设 `params.disableTools = true`：阻止模型调用任何工具（web_fetch/exec 等）。
 - 重写 session JSONL 最后一条 user 消息的 content 为 override 指令："你已成功触发正式任务…只回复这一句确认"。
+- 模型策略保持 Codex-first：`openai-codex/gpt-5.4` 为主，`ollama/qwen3:14b` 仅作兜底。
 - 效果：主 session 秒回确认文本，不生成任何新闻内容；cron session 独立完成流水线并投递。
 
 ## v7（必打）：网关内 `spawnSync openclaw cron run` 自死锁

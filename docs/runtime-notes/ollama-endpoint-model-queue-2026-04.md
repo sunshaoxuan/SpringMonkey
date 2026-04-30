@@ -41,8 +41,8 @@
 ## 边界
 
 - 该补丁不改变全局主模型策略
-- 当前主模型仍是 `ollama/qwen3:14b`
-- `openai-codex/gpt-5.4` 仍只作为候补
+- 当前主模型是 `openai-codex/gpt-5.4`
+- `ollama/qwen3:14b` 只作为候补
 - 该补丁只影响 Ollama HTTP 调用排队，不改变 OpenClaw 的高层 channel / cron 路由
 
 ## 恢复

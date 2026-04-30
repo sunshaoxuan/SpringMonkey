@@ -64,8 +64,8 @@ def build_message(cfg: dict, job: dict) -> str:
             pools_text.append(f"- {label}优先信源池：{'、'.join(pools[region])}。")
 
     model_cfg = cfg.get("model", {})
-    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "ollama/qwen3:14b"))
-    news_worker = model_cfg.get("newsWorker", "ollama/qwen3:14b")
+    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.4"))
+    news_worker = model_cfg.get("newsWorker", "openai-codex/gpt-5.4")
 
     qwen_policy = model_cfg.get("qwenUsagePolicy", {})
     qwen_allowed = "、".join(qwen_policy.get("allowedScenarios", ["逐条摘要", "单条分类"]))
@@ -83,7 +83,7 @@ def build_message(cfg: dict, job: dict) -> str:
             f"  - {news_worker} 允许场景：{qwen_allowed}。",
             f"  - {news_worker} 禁止场景：{qwen_forbidden}。",
             f"  - 不要把整批候选新闻、全部规则一次性塞给 {news_worker}，应逐条或逐查询调用。",
-            "- 若 qwen 出现持续性灾难故障，再允许切换到 Codex 兜底；正常情况下不得主动升级到 Codex。",
+            "- Codex 是默认主模型；只有 Codex 不可用时才允许切换到 Qwen/Ollama 兜底。",
         ])
     else:
         intro.extend([
@@ -175,7 +175,7 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
     cmd_parts = ["python3", script_path]
     cmd_core = shlex.join(cmd_parts)
     model_cfg = cfg.get("model", {})
-    nw = model_cfg.get("newsWorker", "ollama/qwen3:14b")
+    nw = model_cfg.get("newsWorker", "openai-codex/gpt-5.4")
     return "\n".join(
         [
             "【新闻定时任务 · 流水线模式】",
@@ -256,7 +256,7 @@ def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
     existing["payload"] = {
         "kind": "agentTurn",
         "message": body,
-        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "ollama/qwen3:14b")),
+        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.4")),
         "thinking": cfg["model"]["thinking"],
         "timeoutSeconds": timeout_sec,
         "lightContext": cfg["model"]["lightContext"],
