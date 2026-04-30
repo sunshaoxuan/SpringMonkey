@@ -436,7 +436,7 @@ def check_processor_health(
     timeout: int,
 ) -> tuple[bool, str]:
     try:
-        health_timeout = min(max(timeout, 1), 90 if is_openclaw_codex_model(model) else 20)
+        health_timeout = min(max(timeout, 1), 240 if is_openclaw_codex_model(model) else 20)
         result = chat_with_model(
             model,
             ollama_host=ollama_host,
@@ -1121,7 +1121,7 @@ def main() -> int:
     parser.add_argument("--reset-published-window-start", type=int, help="重置已播报状态的窗口起点 Unix 秒")
     parser.add_argument("--reset-published-window-end", type=int, help="重置已播报状态的窗口终点 Unix 秒")
     parser.add_argument("--mark-published-run-dir", type=Path, help="Discord 成功发送后，将指定 run-dir 的 selected_items 标记为已正式播报")
-    parser.add_argument("--openai-timeout", type=int, default=120)
+    parser.add_argument("--openai-timeout", type=int, default=300)
     parser.add_argument("--ollama-timeout", type=int, default=300)
     args = parser.parse_args()
 
