@@ -60,6 +60,14 @@ Even if a document is changed here, it does not grant:
 configuration, verification, and anything that must survive a reboot) must exist
 on a **Git branch in this repository** before it is treated as “landed.”
 
+**Strong OpenClaw behavior-rule rule:** any rule that constrains or shapes
+OpenClaw behavior, prompts, routing, tool choice, task execution, delivery,
+scheduled jobs, guardrails, or self-repair must be transmitted through Git and
+must be obtainable by the gateway host through the approved remote pull path
+(`openclaw-repo-sync.timer`, `remote_springmonkey_git_pull.py`, or an equivalent
+repo-based pull). Hand-uploading such rules or patch sources to the host is not
+an accepted deployment method.
+
 **What this rejects as a system of record:**
 
 - one-off edits on the gateway host that are never committed (session-only state)
@@ -67,6 +75,8 @@ on a **Git branch in this repository** before it is treated as “landed.”
   in this repo and a reproducible apply path
 - “it works on the box” changes that disappear on the next `git pull`,
   package upgrade, or service restart
+- hand-uploaded prompt/routing/guardrail/task rules that cannot be recovered by
+  `git pull` on `/var/lib/openclaw/repos/SpringMonkey`
 
 **Permitted sequence (default):**
 
@@ -77,6 +87,10 @@ on a **Git branch in this repository** before it is treated as “landed.”
 
 SSH is for **execution and evidence** (pull, run, collect logs), not for
 silently becoming the primary source of truth.
+
+If emergency host edits are unavoidable, they are temporary hotfixes only. The
+same behavior constraint must be committed, pushed, pulled on the host, and
+verified from the pulled checkout before reporting it as durable.
 
 **Why this matters for `汤猴` / OpenClaw:** restarts, package updates, and
 recovery procedures re-hydrate from **what is in Git plus your apply steps**,

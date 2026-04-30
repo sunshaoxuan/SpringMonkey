@@ -19,6 +19,8 @@
 
 **规范真源**在 Git 仓库（本仓 `SpringMonkey`）：策略文档、任务域配置、`scripts/` 下的应用/校验脚本、以及 **可版本化的** OpenClaw 补丁脚本（如 `scripts/openclaw/patch_news_router_v3.py`）都应先落在仓库里，再进入运行环境。
 
+**强规则**：所有会约束或提示 OpenClaw 行为的规则，包括 prompt、路由、工具选择、任务执行、投递、定时任务、guardrail、自修复策略和补丁源，都必须通过 Git 传递，并且必须能由宿主机的自动 pull / 受控 pull 从远端取得。不允许把这类规则只手工上传到宿主机后当作已部署能力；手工上传最多是临时 hotfix，必须补齐 commit → push → host pull → 验证后才算 durable。
+
 **推荐闭环**（比 SSH 上手改 `/usr/lib/node_modules` 更可审计、易回滚）：
 
 1. 在开发侧或 `汤猴` 任务工作区镜像（如 `~/.openclaw/workspace/SpringMonkey/`）修改并提交。
