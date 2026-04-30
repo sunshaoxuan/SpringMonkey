@@ -160,18 +160,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertIn("韩国法院因妨碍司法加重前总统刑期", result)
         self.assertIn("链接：https://example.com/korea", result)
 
-    def test_english_headline_fallback_translates_current_news(self):
-        samples = {
-            "Food prices in Japan set to rise as war drives up cost of plastic packaging": "日本食品价格",
-            "China to ban drone sales in Beijing citing security concerns": "中国将以安全担忧",
-            "Oil jumps to highest price since 2022 after report Trump to be briefed on new Iran options": "油价升至2022年以来最高",
-        }
-        for title, expected in samples.items():
-            got = self.m.deterministic_chinese_fallback(title)
-            self.assertIn(expected, got)
-            self.assertTrue(self.m.looks_mostly_chinese(got), got)
-
-    def test_process_raw_article_item_includes_translated_title_when_model_fails(self):
+    def test_process_raw_article_item_does_not_invent_when_model_fails(self):
         item = {
             "item_id": "001",
             "original_batch": "japan",
@@ -189,8 +178,9 @@ class TestPlanAndTemplate(unittest.TestCase):
                 timeout=5,
                 max_input_chars=1500,
             )
-        self.assertTrue(result["included"])
-        self.assertEqual(result["summary_zh"], "日本食品价格因战争推高塑料包装成本而将上涨")
+        self.assertFalse(result["included"])
+        self.assertEqual(result["summary_zh"], "")
+        self.assertEqual(result["skip_reason"], "model_failed")
 
     def test_archive_raw_article_items_writes_per_article_files(self):
         with tempfile.TemporaryDirectory() as td:
@@ -641,6 +631,37 @@ class TestCliSmoke(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertTrue((run_dir / "plan.json").is_file())
             self.assertTrue((run_dir / "draft_merged.md").is_file())
+
+    def test_pipeline_refuses_empty_broadcast_when_processing_fails(self):
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td) / "r2"
+            r = subprocess.run(
+                [
+                    sys.executable,
+                    str(NEWS_DIR / "run_news_pipeline.py"),
+                    "--job",
+                    "news-digest-jst-1700",
+                    "--run-dir",
+                    str(run_dir),
+                    "--ignore-recent",
+                    "--no-record-recent",
+                    "--ollama-timeout",
+                    "1",
+                ],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env={
+                    **os.environ,
+                    "OLLAMA_HOST": "http://127.0.0.1:9",
+                },
+                timeout=90,
+            )
+            self.assertEqual(r.returncode, 4, r.stdout + r.stderr)
+            self.assertTrue((run_dir / "processor_failure.json").is_file())
+            self.assertFalse((run_dir / "final_broadcast.md").exists())
 
 
 class TestEnsureDailyMemory(unittest.TestCase):

@@ -424,21 +424,6 @@ ENGLISH_TERM_MAP = {
     "Two dead after small plane crashes into Australia airport hangar": "澳大利亚一架小型飞机撞入机场机库，造成两人死亡",
     "Afghanistan women can return to competition": "阿富汗女足运动员获准重返比赛",
     "Fed holds rates steady but with highest level of dissent since 1992": "美联储维持利率不变，但异议程度创1992年以来最高",
-    "Food prices in Japan set to rise as war drives up cost of plastic packaging": "日本食品价格因战争推高塑料包装成本而将上涨",
-    "Tokyo seeks Trump stopover in mid-May China trip": "日本政府寻求特朗普5月中旬访华途中顺访东京",
-    "PAG beefs up Japan investment with $13 billion in targeted deals": "PAG计划通过目标交易扩大在日投资至130亿美元",
-    "Foreign business owners in Japan feeling the strain of tighter visa criteria": "日本收紧签证标准使外国企业经营者承压",
-    "Japan puts 'too much burden' on U.S. for security, former defense minister Kono says": "日本前防卫大臣河野称日本在安全上过度依赖美国",
-    "China to ban drone sales in Beijing citing security concerns": "中国将以安全担忧为由禁止北京无人机销售",
-    "Jewish agency warned of 'high' threat level ahead of Bondi shooting, report finds": "报告称邦迪枪击案前犹太机构曾获高威胁级别警告",
-    "US charges Mexican governor and other leaders with aiding drug cartel": "美国指控墨西哥州长等官员协助贩毒集团",
-    "How rising jet fuel prices are driving up the cost of fighting wildfires": "航空燃油价格上涨正推高野火扑救成本",
-    "How a father and daughter duped NYC's art world with fake Warhols and Banksys": "一对父女被指用假沃霍尔和班克斯作品欺骗纽约艺术圈",
-    "Trump says he is weighing reducing American troop presence in Germany after Iran feud": "特朗普称正考虑在伊朗争端后减少驻德美军",
-    "Christchurch mass killer loses bid to overturn conviction": "基督城大屠杀凶手推翻定罪请求失败",
-    "US singer D4vd bought tools online to dispose of girl's body, prosecutors allege": "检方称美国歌手D4vd曾网购工具处理女孩遗体",
-    "Police say they believe abducted child was murdered as body found in Outback": "警方称内陆发现遗体后相信被绑架儿童已遭谋杀",
-    "Oil jumps to highest price since 2022 after report Trump to be briefed on new Iran options": "报道称特朗普将听取伊朗新方案后油价升至2022年以来最高",
 }
 
 TERM_TRANSLATIONS = {
@@ -476,139 +461,6 @@ TERM_TRANSLATIONS = {
     "CEO": "CEO",
 }
 
-ENGLISH_PHRASE_TRANSLATIONS = [
-    ("set to rise", "将上涨"),
-    ("drives up", "推高"),
-    ("cost of", "成本"),
-    ("plastic packaging", "塑料包装"),
-    ("food prices", "食品价格"),
-    ("in Japan", "在日本"),
-    ("Tokyo seeks", "东京寻求"),
-    ("stopover", "顺访"),
-    ("mid-May", "5月中旬"),
-    ("China trip", "访华行程"),
-    ("beefs up", "扩大"),
-    ("Japan investment", "在日投资"),
-    ("targeted deals", "目标交易"),
-    ("foreign business owners", "外国企业经营者"),
-    ("feeling the strain", "感到压力"),
-    ("tighter visa criteria", "更严格签证标准"),
-    ("security concerns", "安全担忧"),
-    ("ban drone sales", "禁止无人机销售"),
-    ("threat level", "威胁级别"),
-    ("shooting", "枪击案"),
-    ("report finds", "报告称"),
-    ("US charges", "美国指控"),
-    ("drug cartel", "贩毒集团"),
-    ("jet fuel prices", "航空燃油价格"),
-    ("wildfires", "野火"),
-    ("art world", "艺术圈"),
-    ("fake", "伪造"),
-    ("weighing reducing", "考虑减少"),
-    ("troop presence", "驻军规模"),
-    ("loses bid", "请求失败"),
-    ("overturn conviction", "推翻定罪"),
-    ("prosecutors allege", "检方指称"),
-    ("abducted child", "被绑架儿童"),
-    ("was murdered", "遭谋杀"),
-    ("body found", "发现遗体"),
-    ("oil jumps", "油价上涨"),
-    ("highest price since 2022", "2022年以来最高价"),
-    ("new Iran options", "伊朗新方案"),
-]
-
-ENGLISH_WORD_TRANSLATIONS = {
-    "after": "在之后",
-    "ahead": "之前",
-    "aiding": "协助",
-    "american": "美国",
-    "australia": "澳大利亚",
-    "banksys": "班克斯作品",
-    "beijing": "北京",
-    "bondi": "邦迪",
-    "briefed": "听取简报",
-    "business": "商业",
-    "cartel": "集团",
-    "citing": "以为由",
-    "concerns": "担忧",
-    "conviction": "定罪",
-    "cost": "成本",
-    "daughter": "女儿",
-    "defense": "防卫",
-    "dispose": "处理",
-    "drone": "无人机",
-    "feud": "争端",
-    "fighting": "扑救",
-    "foreign": "外国",
-    "former": "前任",
-    "fuel": "燃油",
-    "germany": "德国",
-    "governor": "州长",
-    "high": "高",
-    "iran": "伊朗",
-    "jewish": "犹太",
-    "killer": "凶手",
-    "leaders": "领导人",
-    "minister": "大臣",
-    "mexican": "墨西哥",
-    "murdered": "谋杀",
-    "online": "在线",
-    "options": "方案",
-    "outback": "内陆",
-    "packaging": "包装",
-    "police": "警方",
-    "presence": "存在",
-    "prices": "价格",
-    "report": "报告",
-    "sales": "销售",
-    "security": "安全",
-    "singer": "歌手",
-    "strain": "压力",
-    "tools": "工具",
-    "trump": "特朗普",
-    "visa": "签证",
-    "war": "战争",
-    "warned": "警告",
-    "warhols": "沃霍尔作品",
-}
-
-
-def deterministic_english_headline_translation(title: str) -> str:
-    """模型不可用时的机械兜底：只基于标题生成中文主题，宁可生硬也不空播。"""
-    raw = " ".join((title or "").split()).strip()
-    if not raw or re.search(r"[\u3040-\u30ff]", raw):
-        return ""
-    if raw in ENGLISH_TERM_MAP:
-        return ENGLISH_TERM_MAP[raw]
-    if re.search(r"[\u4e00-\u9fff]", raw):
-        return raw if looks_mostly_chinese(raw) else ""
-    if not re.search(r"[A-Za-z]", raw):
-        return ""
-
-    text = raw
-    for src, dst in sorted(ENGLISH_PHRASE_TRANSLATIONS, key=lambda x: len(x[0]), reverse=True):
-        text = re.sub(re.escape(src), dst, text, flags=re.IGNORECASE)
-
-    def repl(match: re.Match[str]) -> str:
-        word = match.group(0)
-        low = word.lower()
-        if low in ENGLISH_WORD_TRANSLATIONS:
-            return ENGLISH_WORD_TRANSLATIONS[low]
-        if word.isupper() or (word[:1].isupper() and len(word) > 2):
-            return word
-        return ""
-
-    text = re.sub(r"[A-Za-z][A-Za-z0-9'.-]*", repl, text)
-    text = re.sub(r"\s+", "", text)
-    text = re.sub(r"[,:;]+", "，", text)
-    text = re.sub(r"[\"“”]+", "", text).strip(" ，-")
-    if len(text) > 90:
-        text = text[:87] + "..."
-    if not text or not looks_mostly_chinese(text):
-        return ""
-    return text
-
-
 def looks_mostly_chinese(text: str) -> bool:
     chars = [ch for ch in text if ch.isalpha() or "\u4e00" <= ch <= "\u9fff"]
     if not chars:
@@ -630,9 +482,6 @@ def deterministic_chinese_fallback(title: str) -> str:
         return ""
     if looks_mostly_chinese(title_clean):
         return title_clean
-    english_fallback = deterministic_english_headline_translation(title_clean)
-    if english_fallback:
-        return english_fallback
     return ""
 
 
@@ -755,7 +604,7 @@ def process_raw_article_item(
         category = str(parsed.get("category") or "other").strip().lower()
     except Exception as e:
         print(f"[pipeline] process item {item.get('item_id')} failed: {e}", file=sys.stderr)
-        summary = deterministic_chinese_fallback(str(item.get("title") or ""))
+        summary = ""
         region = result["region"]
         category = "other"
         result["skip_reason"] = "model_failed"
@@ -1355,6 +1204,32 @@ def main() -> int:
         )
         included = len([x for x in processed_items if x.get("included")])
         trace.step("process-items", "ok", detail=f"included={included}/{len(processed_items)}", tool=ollama_worker_model)
+        fetched_raw = len([x for x in raw_items if x.get("fetch_ok")])
+        if fetched_raw > 0 and included == 0:
+            reasons: dict[str, int] = {}
+            for item in processed_items:
+                key = str(item.get("skip_reason") or "unknown")
+                reasons[key] = reasons.get(key, 0) + 1
+            save_json(
+                run_dir / "processor_failure.json",
+                {
+                    "error": "no_processed_news_items",
+                    "message": "Fetched real articles, but none passed Chinese processing; refusing to publish an empty official broadcast.",
+                    "fetched_raw": fetched_raw,
+                    "processed": len(processed_items),
+                    "skip_reasons": reasons,
+                    "worker_model": ollama_worker_model,
+                    "ollama_base_url": ollama_host,
+                },
+            )
+            trace.step("process-items", "failed", detail=f"fetched={fetched_raw}, included=0, reasons={reasons}", tool=ollama_worker_model)
+            trace.finish("failed", "processor-unavailable", final_message=str(run_dir / "processor_failure.json"))
+            print(
+                "PIPELINE_FAIL processor_unavailable "
+                f"fetched={fetched_raw} processed={len(processed_items)} reasons={reasons} run_dir={run_dir}",
+                file=sys.stderr,
+            )
+            return 4
 
     selected = write_selected_items_and_workers(run_dir, plan, processed_items, fallback_text_tpl)
     trace.step(
