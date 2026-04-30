@@ -475,6 +475,20 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertEqual(self.m.ollama_api_model_name("qwen3:14b"), "qwen3:14b")
         self.assertEqual(self.m.ollama_api_model_name("Ollama/foo:bar"), "foo:bar")
 
+    def test_codex_model_uses_openclaw_profile_not_api_key(self):
+        with patch.object(self.m, "openclaw_model_chat", return_value='{"ok":true}') as mocked:
+            out = self.m.chat_with_model(
+                "openai-codex/gpt-5.4",
+                ollama_host="http://127.0.0.1:9",
+                openai_base_url="https://api.openai.com/v1",
+                openai_api_key="",
+                system="sys",
+                user="user",
+                timeout=10,
+            )
+        self.assertEqual(out, '{"ok":true}')
+        mocked.assert_called_once()
+
     def test_strip_think_blocks(self):
         raw = "<think>internal plan</think>\n• 新闻摘要条目\n链接：https://example.com"
         cleaned = self.m.strip_think_blocks(raw)

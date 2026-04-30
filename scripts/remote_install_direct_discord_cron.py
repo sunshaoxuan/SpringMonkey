@@ -138,10 +138,12 @@ def send_discord(channel_id: str, content: str) -> int:
 def public_failure_message(name: str, returncode: int | str, stdout: str, stderr: str) -> str:
     detail = "\n".join(x for x in (stderr, stdout) if x).strip()
     if name.startswith("news-digest-"):
-        if "missing OPENAI_API_KEY" in detail and (
+        if "openclaw infer failed" in detail and "gateway" in detail:
+            reason = "新闻已抓取到原始条目，但 OpenClaw gateway 的 Codex 订阅模型通道不可用，无法完成中文整理。"
+        elif "missing OPENAI_API_KEY" in detail and (
             "fallback_failed" in detail or "RemoteDisconnected" in detail or "processor_unavailable" in detail
         ):
-            reason = "新闻已抓取到原始条目，但主模型 Codex 凭据未配置，Qwen/Ollama 兜底服务也不可用，无法完成中文整理。"
+            reason = "新闻已抓取到原始条目，但任务错误地请求了裸 OPENAI_API_KEY，且 Qwen/Ollama 兜底服务也不可用；需要修正为 OpenClaw 订阅模型通道。"
         elif "processor_unavailable" in detail:
             reason = "新闻已抓取到原始条目，但模型处理器不可用，无法完成中文整理。"
         elif "PIPELINE_FAIL no_eligible_items" in detail:
@@ -281,8 +283,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Direct Discord delivery for script-like jobs. These bypass OpenClaw model turns.
 0 7 * * * root ${HELPER} --name weather-report-jst-0700 --channel-id ${PUBLIC_CHANNEL} --timeout 120 --run-as-openclaw --command python3 ${REPO}/scripts/weather/discord_weather_report.py
 
-0 9 * * * root ${HELPER} --name news-digest-jst-0900 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --run-as-openclaw --command bash -lc "set -e; OUT=\$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_0900.py); DIR=\$(echo \"\\\$OUT\" | sed -n 's/^PIPELINE_OK //p' | tail -n1); test -n \"\\\$DIR\"; cat \"\\\$DIR/final_broadcast.md\""
-0 17 * * * root ${HELPER} --name news-digest-jst-1700 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --run-as-openclaw --command bash -lc "set -e; OUT=\$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_1700.py); DIR=\$(echo \"\\\$OUT\" | sed -n 's/^PIPELINE_OK //p' | tail -n1); test -n \"\\\$DIR\"; cat \"\\\$DIR/final_broadcast.md\""
+0 9 * * * root ${HELPER} --name news-digest-jst-0900 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --command bash -lc "set -e; OUT=\$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_0900.py); DIR=\$(echo \"\\\$OUT\" | sed -n 's/^PIPELINE_OK //p' | tail -n1); test -n \"\\\$DIR\"; cat \"\\\$DIR/final_broadcast.md\""
+0 17 * * * root ${HELPER} --name news-digest-jst-1700 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --command bash -lc "set -e; OUT=\$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_1700.py); DIR=\$(echo \"\\\$OUT\" | sed -n 's/^PIPELINE_OK //p' | tail -n1); test -n \"\\\$DIR\"; cat \"\\\$DIR/final_broadcast.md\""
 
 0 22 * * * root ${HELPER} --name timescar-daily-report-2200 --channel-id ${DM_CHANNEL} --timeout 900 --run-as-openclaw --command python3 ${REPO}/scripts/timescar/timescar_daily_report_render.py
 0 23 * * * root ${HELPER} --name timescar-ask-cancel-next24h-2300 --channel-id ${DM_CHANNEL} --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 ${REPO}/scripts/timescar/timescar_next24h_notice.py

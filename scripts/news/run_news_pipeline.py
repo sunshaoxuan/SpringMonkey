@@ -9,7 +9,7 @@
 3. fetch         HTTP 取回每篇文章正文内容。
 4. worker        每篇文章独立调用 Codex 主模型，输入真实正文 → 输出中文摘要+保留原链接；Qwen/Ollama 仅兜底。
 5. merge         拼接为 draft_merged.md。
-6. finalize      GPT-OSS（本地 Ollama 20b，可靠）合并润色 → Codex API 降级备选 → 机械兜底。
+6. finalize      Codex 主模型合并润色 → Qwen/Ollama 兜底 → 机械兜底。
 7. verify        调用 verify_broadcast_draft 规则做机械检查。
 
 模型分工
@@ -19,7 +19,7 @@
 
 环境变量（常用）
 --------------
-OPENAI_API_KEY           Codex 主模型调用凭据
+OpenClaw Codex profile   Codex 主模型通过 OpenClaw gateway/OAuth profile 调用
 OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
 model.ollamaBaseUrl      broadcast.json 中 Ollama 基址
 """
@@ -31,6 +31,7 @@ import importlib.util
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -106,6 +107,79 @@ def is_openai_model(model_id: str) -> bool:
     return s.startswith("openai-codex/") or s.startswith("openai/")
 
 
+def is_openclaw_codex_model(model_id: str) -> bool:
+    return (model_id or "").strip().lower().startswith("openai-codex/")
+
+
+def _extract_openclaw_model_text(raw: str) -> str:
+    text = raw.strip()
+    if not text:
+        return ""
+    json_start = text.find("{")
+    if json_start >= 0:
+        try:
+            data = json.loads(text[json_start:])
+        except json.JSONDecodeError:
+            data = None
+        if isinstance(data, dict):
+            for key in ("content", "text", "response", "output", "message"):
+                value = data.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+                if isinstance(value, dict):
+                    nested = value.get("content") or value.get("text")
+                    if isinstance(nested, str) and nested.strip():
+                        return nested.strip()
+            choices = data.get("choices")
+            if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+                message = choices[0].get("message")
+                if isinstance(message, dict) and isinstance(message.get("content"), str):
+                    return message["content"].strip()
+    lines = [
+        line
+        for line in text.splitlines()
+        if line.strip()
+        and not line.startswith("Config warnings:")
+        and not line.startswith("- plugins:")
+        and not line.startswith("🦞 OpenClaw")
+    ]
+    return "\n".join(lines).strip()
+
+
+def openclaw_model_chat(model: str, system: str, user: str, timeout: int) -> str:
+    prompt = "\n\n".join(["System instructions:", system, "User input:", user])
+    cmd = [
+        "openclaw",
+        "infer",
+        "model",
+        "run",
+        "--gateway",
+        "--model",
+        model,
+        "--json",
+        "--prompt",
+        prompt,
+    ]
+    env = os.environ.copy()
+    env.setdefault("HOME", "/var/lib/openclaw")
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        env=env,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(f"openclaw infer failed rc={proc.returncode}: {detail[-800:]}")
+    content = _extract_openclaw_model_text(proc.stdout)
+    if not content:
+        raise RuntimeError(f"openclaw infer returned empty response: {proc.stdout[-800:]}")
+    return content
+
+
 def chat_with_model(
     model_id: str,
     *,
@@ -116,6 +190,13 @@ def chat_with_model(
     user: str,
     timeout: int,
 ) -> str:
+    if is_openclaw_codex_model(model_id):
+        return openclaw_model_chat(
+            provider_api_model_name(model_id),
+            system,
+            user,
+            timeout,
+        )
     if is_openai_model(model_id):
         if not openai_api_key:
             raise RuntimeError(f"missing OPENAI_API_KEY for {model_id}")

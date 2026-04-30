@@ -193,7 +193,7 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
             "执行步骤（严格按顺序，不得跳步）：",
             "",
             f"1) 执行命令：{cmd_core}",
-            "   使用 process / exec 工具；OPENAI_API_KEY 由宿主环境提供。",
+            "   使用 process / exec 工具；openai-codex 模型必须通过 OpenClaw gateway/OAuth profile 调用，禁止要求裸 OPENAI_API_KEY。",
             "   必须按“长时任务”处理：禁止用 300 秒、600 秒之类短超时包住整个新闻脚本。",
             "   若使用 exec，优先后台启动；若工具要求 timeout，必须至少给到 7200 秒，不得因为工具层短超时主动杀进程。",
             "   若 exec 返回“Command still running”，后续只能用 process 的非杀伤式查询继续跟踪，不得 kill，不得因为轮询超时向子进程发送 SIGTERM。",
