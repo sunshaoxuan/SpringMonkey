@@ -315,6 +315,22 @@ def ollama_chat(host: str, model: str, system: str, user: str, timeout: int) -> 
         raise RuntimeError(f"unexpected Ollama response: {data!r}") from e
 
 
+def check_ollama_processor_health(host: str, model: str, timeout: int) -> tuple[bool, str]:
+    try:
+        result = ollama_chat(
+            host,
+            model,
+            "只输出 JSON，不要解释。",
+            '输出 {"ok":true}',
+            min(max(timeout, 1), 20),
+        )
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+    if not result:
+        return False, "empty response"
+    return True, "ok"
+
+
 def job_spec(cfg: dict, name: str) -> dict:
     for j in cfg.get("jobs", []):
         if j.get("name") == name:
@@ -1194,6 +1210,35 @@ def main() -> int:
         trace.step("process-items", "skipped", detail="dry-run placeholders", tool="ollama")
     else:
         trace.step("process-items", "running", detail=f"items={len(raw_items)}", tool=ollama_worker_model)
+        fetched_raw = len([x for x in raw_items if x.get("fetch_ok")])
+        if fetched_raw > 0:
+            healthy, health_detail = check_ollama_processor_health(
+                ollama_host,
+                ollama_worker_model,
+                min(args.ollama_timeout, 20),
+            )
+            if not healthy:
+                save_json(
+                    run_dir / "processor_failure.json",
+                    {
+                        "error": "processor_healthcheck_failed",
+                        "message": "Fetched real articles, but the Chinese processing model is unavailable; refusing to publish.",
+                        "fetched_raw": fetched_raw,
+                        "processed": 0,
+                        "skip_reasons": {"processor_healthcheck_failed": fetched_raw},
+                        "worker_model": ollama_worker_model,
+                        "ollama_base_url": ollama_host,
+                        "health_detail": health_detail,
+                    },
+                )
+                trace.step("process-items", "failed", detail=f"healthcheck failed: {health_detail}", tool=ollama_worker_model)
+                trace.finish("failed", "processor-unavailable", final_message=str(run_dir / "processor_failure.json"))
+                print(
+                    "PIPELINE_FAIL processor_unavailable "
+                    f"fetched={fetched_raw} processed=0 health={health_detail!r} run_dir={run_dir}",
+                    file=sys.stderr,
+                )
+                return 4
         processed_items = process_raw_article_items(
             run_dir,
             raw_items,
@@ -1204,7 +1249,6 @@ def main() -> int:
         )
         included = len([x for x in processed_items if x.get("included")])
         trace.step("process-items", "ok", detail=f"included={included}/{len(processed_items)}", tool=ollama_worker_model)
-        fetched_raw = len([x for x in raw_items if x.get("fetch_ok")])
         if fetched_raw > 0 and included == 0:
             reasons: dict[str, int] = {}
             for item in processed_items:

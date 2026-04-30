@@ -182,6 +182,12 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertEqual(result["summary_zh"], "")
         self.assertEqual(result["skip_reason"], "model_failed")
 
+    def test_processor_healthcheck_reports_unavailable(self):
+        with patch.object(self.m, "ollama_chat", side_effect=RuntimeError("down")):
+            ok, detail = self.m.check_ollama_processor_health("http://localhost:9", "test", 1)
+        self.assertFalse(ok)
+        self.assertIn("down", detail)
+
     def test_archive_raw_article_items_writes_per_article_files(self):
         with tempfile.TemporaryDirectory() as td:
             run_dir = Path(td)
