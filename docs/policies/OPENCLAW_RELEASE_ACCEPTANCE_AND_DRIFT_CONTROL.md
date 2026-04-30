@@ -185,3 +185,13 @@ Current environment assumptions that must be revalidated after upgrades:
 - direct channels in active use: LINE and Discord
 - current news delivery target: Discord channel `1483636573235843072`
 - host repo path: `/var/lib/openclaw/repos/SpringMonkey`
+
+## Delivery Visibility Rule
+
+All task execution reports, failure notices, diagnostics, retry summaries,
+internal paths, stderr/stdout excerpts, and blocker explanations must be
+delivered only to the owner's Discord private channel `1497009159940608020`.
+
+Public channels may receive only successful final publication results for tasks
+that are explicitly public-facing, such as finished news or weather broadcasts.
+A failed run must not publish any failure report to public channels.

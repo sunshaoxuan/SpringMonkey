@@ -162,6 +162,17 @@ def public_failure_message(name: str, returncode: int | str, stdout: str, stderr
     return f"{name} 未能完成。详细诊断已保留在后台日志。"
 
 
+def execution_report_message(name: str, status: str, detail: str = "") -> str:
+    lines = [
+        f"{name} 执行报告",
+        f"状态：{status}",
+    ]
+    if detail:
+        lines.append(f"说明：{detail}")
+    lines.append("详细诊断：后台日志保留，不投递到公共频道。")
+    return "\n".join(lines)
+
+
 def main() -> int:
     args = parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -196,23 +207,28 @@ def main() -> int:
         if proc.returncode == 0:
             if stdout in set(args.skip_output):
                 result_payload["delivery"] = "skipped"
+                send_discord(DEFAULT_DM_CHANNEL, execution_report_message(args.name, "成功（无公开输出）"))
                 return 0
             message = stdout or f"{args.name}: completed with no output."
             sent_chunks = send_discord(args.channel_id, message)
             result_payload["delivery"] = "delivered"
             result_payload["sentChunks"] = sent_chunks
             result_payload["publishedMark"] = mark_published_after_delivery(args.name, stdout, command)
+            send_discord(
+                DEFAULT_DM_CHANNEL,
+                execution_report_message(args.name, "成功", f"成功结果已发布到频道 {args.channel_id}。"),
+            )
             return 0
         sent_chunks = send_discord(
-            args.channel_id,
+            DEFAULT_DM_CHANNEL,
             public_failure_message(args.name, proc.returncode, stdout, stderr),
         )
-        result_payload["delivery"] = "failure-delivered"
+        result_payload["delivery"] = "failure-delivered-to-dm"
         result_payload["sentChunks"] = sent_chunks
         return proc.returncode or 1
     except subprocess.TimeoutExpired as exc:
         result_payload.update({"returncode": "timeout", "stderr": str(exc)})
-        send_discord(args.channel_id, public_failure_message(args.name, "timeout", "", str(exc)))
+        send_discord(DEFAULT_DM_CHANNEL, public_failure_message(args.name, "timeout", "", str(exc)))
         return 124
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
@@ -220,6 +236,13 @@ def main() -> int:
         return 2
     except Exception as exc:
         result_payload.update({"returncode": "exception", "stderr": f"{type(exc).__name__}: {exc}"})
+        try:
+            send_discord(
+                DEFAULT_DM_CHANNEL,
+                execution_report_message(args.name, "失败", f"{type(exc).__name__}: {exc}"),
+            )
+        except Exception:
+            pass
         return 1
     finally:
         result_payload["finished"] = datetime.now().isoformat(timespec="seconds")
