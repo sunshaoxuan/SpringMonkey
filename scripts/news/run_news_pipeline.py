@@ -191,12 +191,7 @@ def chat_with_model(
     timeout: int,
 ) -> str:
     if is_openclaw_codex_model(model_id):
-        return openclaw_model_chat(
-            provider_api_model_name(model_id),
-            system,
-            user,
-            timeout,
-        )
+        return openclaw_model_chat(model_id, system, user, timeout)
     if is_openai_model(model_id):
         if not openai_api_key:
             raise RuntimeError(f"missing OPENAI_API_KEY for {model_id}")
@@ -441,6 +436,7 @@ def check_processor_health(
     timeout: int,
 ) -> tuple[bool, str]:
     try:
+        health_timeout = min(max(timeout, 1), 90 if is_openclaw_codex_model(model) else 20)
         result = chat_with_model(
             model,
             ollama_host=ollama_host,
@@ -448,7 +444,7 @@ def check_processor_health(
             openai_api_key=openai_api_key,
             system="只输出 JSON，不要解释。",
             user='输出 {"ok":true}',
-            timeout=min(max(timeout, 1), 20),
+            timeout=health_timeout,
         )
     except Exception as e:
         return False, f"{type(e).__name__}: {e}"

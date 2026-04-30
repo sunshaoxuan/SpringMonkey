@@ -138,7 +138,7 @@ def send_discord(channel_id: str, content: str) -> int:
 def public_failure_message(name: str, returncode: int | str, stdout: str, stderr: str) -> str:
     detail = "\n".join(x for x in (stderr, stdout) if x).strip()
     if name.startswith("news-digest-"):
-        if "openclaw infer failed" in detail and "gateway" in detail:
+        if ("openclaw infer failed" in detail and "gateway" in detail) or "Command '['openclaw', 'infer'" in detail:
             reason = "新闻已抓取到原始条目，但 OpenClaw gateway 的 Codex 订阅模型通道不可用，无法完成中文整理。"
         elif "missing OPENAI_API_KEY" in detail and (
             "fallback_failed" in detail or "RemoteDisconnected" in detail or "processor_unavailable" in detail

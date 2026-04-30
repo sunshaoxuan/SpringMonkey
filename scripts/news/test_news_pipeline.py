@@ -488,6 +488,7 @@ class TestPlanAndTemplate(unittest.TestCase):
             )
         self.assertEqual(out, '{"ok":true}')
         mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[0], "openai-codex/gpt-5.4")
 
     def test_strip_think_blocks(self):
         raw = "<think>internal plan</think>\n• 新闻摘要条目\n链接：https://example.com"
