@@ -16,6 +16,11 @@
 
 强规则：所有会约束或提示 OpenClaw 行为的规则、prompt、路由、任务、投递、guardrail、自修复策略和补丁源，都必须先进入 Git，并能由宿主机通过自动 pull / 受控 pull 获取；不允许把手工上传到宿主机当作 durable 部署。
 
+- `openclaw_behavior_rule_gate.py`
+  - 用途：OpenClaw 行为规则机械门禁；若行为规则相关文件未提交、未推送到 `origin/main`，或远端未 pull 到同一 HEAD，则失败。
+  - 本地门禁：`python scripts/openclaw_behavior_rule_gate.py`
+  - 远端 pull 验证：`python scripts/openclaw_behavior_rule_gate.py --verify-remote-pull`
+
 - `remote_springmonkey_git_pull.py`
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。

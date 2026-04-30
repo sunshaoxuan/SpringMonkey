@@ -92,6 +92,24 @@ If emergency host edits are unavoidable, they are temporary hotfixes only. The
 same behavior constraint must be committed, pushed, pulled on the host, and
 verified from the pulled checkout before reporting it as durable.
 
+**Mechanical gate:** before reporting any OpenClaw behavior rule as deployed,
+run the repo gate:
+
+```bash
+python scripts/openclaw_behavior_rule_gate.py
+```
+
+When host deployment is part of the claim, also verify the host pulled the same
+commit:
+
+```bash
+python scripts/openclaw_behavior_rule_gate.py --verify-remote-pull
+```
+
+This gate fails if behavior-shaping files are still uncommitted, if local `HEAD`
+does not match `origin/main`, or if the host checkout has not pulled the same
+commit.
+
 **Why this matters for `汤猴` / OpenClaw:** restarts, package updates, and
 recovery procedures re-hydrate from **what is in Git plus your apply steps**,
 not from a chat thread. If work is not in Git, a later pull or redeploy can

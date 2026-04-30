@@ -18,6 +18,7 @@ def main() -> int:
             "Strong OpenClaw behavior-rule rule",
             "must be transmitted through Git",
             "Hand-uploading such rules or patch sources to the host is not",
+            "python scripts/openclaw_behavior_rule_gate.py --verify-remote-pull",
         ],
     )
     require_text(
@@ -34,6 +35,7 @@ def main() -> int:
             "强规则：所有会约束或提示 OpenClaw 行为的规则",
             "必须先进入 Git",
             "不允许把手工上传到宿主机当作 durable 部署",
+            "openclaw_behavior_rule_gate.py",
         ],
     )
     print("repository_guardrails_ok")
