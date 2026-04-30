@@ -162,22 +162,41 @@ def openclaw_model_chat(model: str, system: str, user: str, timeout: int) -> str
     ]
     env = os.environ.copy()
     env.setdefault("HOME", "/var/lib/openclaw")
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-        env=env,
-    )
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or "").strip()
-        raise RuntimeError(f"openclaw infer failed rc={proc.returncode}: {detail[-800:]}")
-    content = _extract_openclaw_model_text(proc.stdout)
-    if not content:
-        raise RuntimeError(f"openclaw infer returned empty response: {proc.stdout[-800:]}")
-    return content
+    attempts = max(1, int(os.environ.get("NEWS_OPENCLAW_INFER_RETRIES", "3")))
+    last_detail = ""
+    for attempt in range(1, attempts + 1):
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                env=env,
+            )
+        except subprocess.TimeoutExpired as e:
+            last_detail = f"timeout after {timeout}s: {e}"
+            if attempt < attempts:
+                time.sleep(min(2 * attempt, 8))
+                continue
+            raise
+        if proc.returncode == 0:
+            content = _extract_openclaw_model_text(proc.stdout)
+            if content:
+                return content
+            last_detail = f"empty response: {proc.stdout[-800:]}"
+        else:
+            last_detail = (proc.stderr or proc.stdout or "").strip()
+        if attempt < attempts and (
+            "gateway closed" in last_detail
+            or "handshake" in last_detail
+            or "Gateway target:" in last_detail
+        ):
+            time.sleep(min(2 * attempt, 8))
+            continue
+        break
+    raise RuntimeError(f"openclaw infer failed after {attempts} attempt(s): {last_detail[-800:]}")
 
 
 def chat_with_model(
