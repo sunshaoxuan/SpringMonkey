@@ -135,6 +135,31 @@ def send_discord(channel_id: str, content: str) -> int:
     return len(chunks)
 
 
+def public_failure_message(name: str, returncode: int | str, stdout: str, stderr: str) -> str:
+    detail = "\n".join(x for x in (stderr, stdout) if x).strip()
+    if name.startswith("news-digest-"):
+        if "missing OPENAI_API_KEY" in detail and (
+            "fallback_failed" in detail or "RemoteDisconnected" in detail or "processor_unavailable" in detail
+        ):
+            reason = "新闻已抓取到原始条目，但主模型 Codex 凭据未配置，Qwen/Ollama 兜底服务也不可用，无法完成中文整理。"
+        elif "processor_unavailable" in detail:
+            reason = "新闻已抓取到原始条目，但模型处理器不可用，无法完成中文整理。"
+        elif "PIPELINE_FAIL no_eligible_items" in detail:
+            reason = "本轮没有符合时间窗口和去重规则的新新闻条目。"
+        elif "PIPELINE_FAIL" in detail:
+            reason = "新闻流水线未完成，已保留内部日志供排查。"
+        else:
+            reason = "新闻任务执行失败，已保留内部日志供排查。"
+        return (
+            f"{name} 未能完成播报。\n"
+            f"原因：{reason}\n"
+            "处理：本次不会标记为已正式播报；详细诊断只保留在后台日志。"
+        )
+    if returncode == "timeout":
+        return f"{name} 未能完成：超过执行时间限制。详细诊断已保留在后台日志。"
+    return f"{name} 未能完成。详细诊断已保留在后台日志。"
+
+
 def main() -> int:
     args = parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -176,14 +201,16 @@ def main() -> int:
             result_payload["sentChunks"] = sent_chunks
             result_payload["publishedMark"] = mark_published_after_delivery(args.name, stdout, command)
             return 0
-        failure = stderr or stdout or f"exit code {proc.returncode}"
-        sent_chunks = send_discord(args.channel_id, f"{args.name} 失败：{failure[-1200:]}")
+        sent_chunks = send_discord(
+            args.channel_id,
+            public_failure_message(args.name, proc.returncode, stdout, stderr),
+        )
         result_payload["delivery"] = "failure-delivered"
         result_payload["sentChunks"] = sent_chunks
         return proc.returncode or 1
     except subprocess.TimeoutExpired as exc:
         result_payload.update({"returncode": "timeout", "stderr": str(exc)})
-        send_discord(args.channel_id, f"{args.name} 失败：超过 {args.timeout} 秒未完成。")
+        send_discord(args.channel_id, public_failure_message(args.name, "timeout", "", str(exc)))
         return 124
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
