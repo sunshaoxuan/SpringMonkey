@@ -637,6 +637,17 @@ def _load_apply_news_config():
 
 
 class TestCliSmoke(unittest.TestCase):
+    def test_codex_healthcheck_is_not_capped_at_ollama_timeout(self):
+        text = (NEWS_DIR / "run_news_pipeline.py").read_text(encoding="utf-8")
+        self.assertNotIn(
+            "timeout=min(args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout, 20)",
+            text,
+        )
+        self.assertNotIn(
+            "timeout=min(args.openai_timeout if is_openai_model(fallback_model_raw) else args.ollama_timeout, 20)",
+            text,
+        )
+
     def test_pipeline_no_llm(self):
         with tempfile.TemporaryDirectory() as td:
             run_dir = Path(td) / "r1"

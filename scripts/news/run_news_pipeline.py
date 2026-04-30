@@ -1404,7 +1404,7 @@ def main() -> int:
                 ollama_host=ollama_host,
                 openai_base_url=base_url,
                 openai_api_key=api_key,
-                timeout=min(args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout, 20),
+                timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
             )
             if not healthy and fallback_model_raw and fallback_model_raw != worker_model_raw:
                 fallback_healthy, fallback_detail = check_processor_health(
@@ -1412,7 +1412,7 @@ def main() -> int:
                     ollama_host=ollama_host,
                     openai_base_url=base_url,
                     openai_api_key=api_key,
-                    timeout=min(args.openai_timeout if is_openai_model(fallback_model_raw) else args.ollama_timeout, 20),
+                    timeout=args.openai_timeout if is_openai_model(fallback_model_raw) else args.ollama_timeout,
                 )
                 if fallback_healthy:
                     healthy = True
