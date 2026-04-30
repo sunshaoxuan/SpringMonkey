@@ -86,6 +86,13 @@ def mark_published_after_delivery(name: str, stdout: str, command: list[str]) ->
         if line.startswith("PIPELINE_OK ") and "skip_finalize" not in line:
             run_dir = line.split(None, 1)[1].strip()
     if not run_dir:
+        repo = Path("/var/lib/openclaw/repos/SpringMonkey")
+        candidates = sorted((repo / "var" / "news-runs").glob(f"*_{name}"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for candidate in candidates:
+            if (candidate / "selected_items.json").is_file() and (candidate / "final_broadcast.md").is_file():
+                run_dir = str(candidate)
+                break
+    if not run_dir:
         return "no-run-dir"
     script = "/var/lib/openclaw/repos/SpringMonkey/scripts/news/run_news_pipeline.py"
     proc = subprocess.run(

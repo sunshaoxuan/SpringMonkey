@@ -160,6 +160,38 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertIn("韩国法院因妨碍司法加重前总统刑期", result)
         self.assertIn("链接：https://example.com/korea", result)
 
+    def test_english_headline_fallback_translates_current_news(self):
+        samples = {
+            "Food prices in Japan set to rise as war drives up cost of plastic packaging": "日本食品价格",
+            "China to ban drone sales in Beijing citing security concerns": "中国将以安全担忧",
+            "Oil jumps to highest price since 2022 after report Trump to be briefed on new Iran options": "油价升至2022年以来最高",
+        }
+        for title, expected in samples.items():
+            got = self.m.deterministic_chinese_fallback(title)
+            self.assertIn(expected, got)
+            self.assertTrue(self.m.looks_mostly_chinese(got), got)
+
+    def test_process_raw_article_item_includes_translated_title_when_model_fails(self):
+        item = {
+            "item_id": "001",
+            "original_batch": "japan",
+            "title": "Food prices in Japan set to rise as war drives up cost of plastic packaging",
+            "source_url": "https://example.com/a",
+            "source_url_key": "https://example.com/a",
+            "raw_content": "English body",
+            "fetch_ok": True,
+        }
+        with patch.object(self.m, "ollama_chat", side_effect=RuntimeError("model down")):
+            result = self.m.process_raw_article_item(
+                item,
+                ollama_host="http://localhost:9999",
+                model="test",
+                timeout=5,
+                max_input_chars=1500,
+            )
+        self.assertTrue(result["included"])
+        self.assertEqual(result["summary_zh"], "日本食品价格因战争推高塑料包装成本而将上涨")
+
     def test_archive_raw_article_items_writes_per_article_files(self):
         with tempfile.TemporaryDirectory() as td:
             run_dir = Path(td)
