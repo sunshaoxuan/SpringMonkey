@@ -27,6 +27,7 @@ model.ollamaBaseUrl      broadcast.json 中 Ollama 基址
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -34,6 +35,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -51,6 +53,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPO_ROOT / "config" / "news" / "broadcast.json"
 NEWS_STATE_DIR = Path("/var/lib/openclaw/.openclaw/state/news")
 RECENT_ITEMS_PATH = NEWS_STATE_DIR / "recent_items.json"
+PUBLISHED_ITEMS_PATH = NEWS_STATE_DIR / "published_items.json"
 
 # 与 formatRules.outline 顺序一致
 BATCH_SPECS: list[dict[str, Any]] = [
@@ -100,6 +103,21 @@ def save_json(path: Path, data: Any) -> None:
     tmp.replace(path)
 
 
+def canonical_source_url(url: str) -> str:
+    """URL 级去重键：同一来源地址只处理一次，忽略 fragment 和无意义尾斜杠。"""
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    try:
+        p = urllib.parse.urlsplit(raw)
+    except Exception:
+        return raw.rstrip("/")
+    scheme = (p.scheme or "https").lower()
+    host = (p.netloc or "").lower()
+    path = p.path.rstrip("/") or "/"
+    return urllib.parse.urlunsplit((scheme, host, path, p.query, ""))
+
+
 def load_recent_items(path: Path, now_ts: int, max_age_hours: int) -> dict[str, Any]:
     try:
         data = load_json(path)
@@ -114,24 +132,110 @@ def load_recent_items(path: Path, now_ts: int, max_age_hours: int) -> dict[str, 
     return {"version": 1, "items": kept}
 
 
+def load_published_items(path: Path) -> dict[str, Any]:
+    try:
+        data = load_json(path)
+    except Exception:
+        return {"version": 1, "items": []}
+    return {"version": 1, "items": list(data.get("items", []))}
+
+
 def append_recent_items(path: Path, data: dict[str, Any], articles: list[dict], now_ts: int) -> None:
     items = list(data.get("items", []))
     seen = {str(item.get("fingerprint") or "") for item in items}
+    seen_urls = {canonical_source_url(str(item.get("url") or "")) for item in items}
     for art in articles:
         fp = str(art.get("fingerprint") or "")
-        if not fp or fp in seen:
+        url_key = canonical_source_url(str(art.get("url") or ""))
+        if (fp and fp in seen) or (url_key and url_key in seen_urls):
             continue
-        seen.add(fp)
+        if fp:
+            seen.add(fp)
+        if url_key:
+            seen_urls.add(url_key)
         items.append(
             {
                 "fingerprint": fp,
                 "title": art.get("title", ""),
                 "url": art.get("url", ""),
+                "url_key": url_key,
                 "published_ts": int(art.get("published_ts") or 0),
                 "seen_ts": now_ts,
             }
         )
     save_json(path, {"version": 1, "items": items})
+
+
+def append_published_items(
+    path: Path,
+    data: dict[str, Any],
+    selected_sections: dict[str, list[dict[str, Any]]],
+    *,
+    job_name: str,
+    window_start_ts: int,
+    window_end_ts: int,
+    now_ts: int,
+) -> None:
+    """只在正式发布成功后调用；测试运行不应消耗发布状态。"""
+    items = list(data.get("items", []))
+    seen_urls = {canonical_source_url(str(item.get("url") or item.get("url_key") or "")) for item in items}
+    for section, selected in selected_sections.items():
+        for item in selected:
+            url_key = canonical_source_url(str(item.get("source_url") or ""))
+            if not url_key or url_key in seen_urls:
+                continue
+            seen_urls.add(url_key)
+            items.append(
+                {
+                    "url": item.get("source_url", ""),
+                    "url_key": url_key,
+                    "title": item.get("source_title", ""),
+                    "summary_zh": item.get("summary_zh", ""),
+                    "section": section,
+                    "category": item.get("category", "other"),
+                    "published_ts": int(item.get("published_ts") or 0),
+                    "broadcast_job": job_name,
+                    "broadcast_window_start_ts": window_start_ts,
+                    "broadcast_window_end_ts": window_end_ts,
+                    "broadcasted_ts": now_ts,
+                    "status": "broadcasted",
+                }
+            )
+    save_json(path, {"version": 1, "items": items})
+
+
+def reset_published_items_for_window(path: Path, window_start_ts: int, window_end_ts: int) -> int:
+    data = load_published_items(path)
+    kept = []
+    removed = 0
+    for item in data.get("items", []):
+        start = int(item.get("broadcast_window_start_ts") or 0)
+        end = int(item.get("broadcast_window_end_ts") or 0)
+        overlaps = start < window_end_ts and end > window_start_ts
+        if overlaps:
+            removed += 1
+        else:
+            kept.append(item)
+    save_json(path, {"version": 1, "items": kept})
+    return removed
+
+
+def mark_published_run_dir(run_dir: Path, state_path: Path = PUBLISHED_ITEMS_PATH) -> int:
+    meta = load_json(run_dir / "meta.json")
+    selected = load_json(run_dir / "selected_items.json")
+    before = load_published_items(state_path)
+    before_count = len(before.get("items", []))
+    append_published_items(
+        state_path,
+        before,
+        selected.get("sections", {}),
+        job_name=str(meta.get("job") or ""),
+        window_start_ts=int(meta.get("window_start_ts") or 0),
+        window_end_ts=int(meta.get("window_end_ts") or 0),
+        now_ts=int(time.time()),
+    )
+    after_count = len(load_published_items(state_path).get("items", []))
+    return after_count - before_count
 
 
 def compute_window_bounds(job: dict, tz_name: str) -> tuple[int, int]:
@@ -314,14 +418,286 @@ def summarize_article_prompt(title: str, url: str, content: str, max_chars: int 
     return sys_p, user_p
 
 
-def deterministic_summary_from_article(title: str, url: str) -> str:
-    """模型摘要失败时的最小可用兜底（保留来源链接）。"""
+ENGLISH_TERM_MAP = {
+    "Asia-Pacific markets set for weaker open as oil climbs on Iran tensions, Fed holds rates": "亚太市场或因伊朗紧张局势推高油价而低开，美联储维持利率不变",
+    "South Korean court hikes ex-president's sentence for obstructing justice": "韩国法院因妨碍司法加重前总统刑期",
+    "Two dead after small plane crashes into Australia airport hangar": "澳大利亚一架小型飞机撞入机场机库，造成两人死亡",
+    "Afghanistan women can return to competition": "阿富汗女足运动员获准重返比赛",
+    "Fed holds rates steady but with highest level of dissent since 1992": "美联储维持利率不变，但异议程度创1992年以来最高",
+}
+
+TERM_TRANSLATIONS = {
+    "Asia-Pacific": "亚太",
+    "markets": "市场",
+    "market": "市场",
+    "oil": "石油",
+    "Iran": "伊朗",
+    "Fed": "美联储",
+    "rates": "利率",
+    "Trump": "特朗普",
+    "Russia": "俄罗斯",
+    "Ukraine": "乌克兰",
+    "China": "中国",
+    "Chinese": "中国",
+    "Japan": "日本",
+    "Japanese": "日本",
+    "South Korean": "韩国",
+    "court": "法院",
+    "sentence": "刑期",
+    "president": "总统",
+    "plane": "飞机",
+    "crashes": "坠毁",
+    "Australia": "澳大利亚",
+    "airport": "机场",
+    "women": "女性",
+    "competition": "比赛",
+    "OpenAI": "OpenAI",
+    "Microsoft": "微软",
+    "Amazon": "亚马逊",
+    "Meta": "Meta",
+    "Alphabet": "Alphabet",
+    "stock": "股价",
+    "earnings": "财报",
+    "CEO": "CEO",
+}
+
+
+def looks_mostly_chinese(text: str) -> bool:
+    chars = [ch for ch in text if ch.isalpha() or "\u4e00" <= ch <= "\u9fff"]
+    if not chars:
+        return True
+    cjk = sum(1 for ch in chars if "\u4e00" <= ch <= "\u9fff")
+    return cjk / len(chars) >= 0.35
+
+
+def deterministic_chinese_fallback(title: str) -> str:
+    """模型失败时只能使用可信中文映射；不能把外文标题包装后发布。"""
     title_clean = " ".join((title or "").split()).strip()
+    if title_clean in ENGLISH_TERM_MAP:
+        return ENGLISH_TERM_MAP[title_clean]
     if len(title_clean) > 120:
         title_clean = title_clean[:117] + "..."
     if not title_clean:
-        title_clean = "本条新闻来源可用，但摘要模型未返回有效文本。"
-    return f"• {title_clean}\n链接：{url}"
+        return ""
+    if re.search(r"[\u3040-\u30ff]", title_clean):
+        return ""
+    if looks_mostly_chinese(title_clean):
+        return title_clean
+    return ""
+
+
+def deterministic_summary_from_article(title: str, url: str) -> str:
+    """模型摘要失败时的最小中文兜底（保留来源链接）。"""
+    fallback = deterministic_chinese_fallback(title)
+    if not fallback:
+        return ""
+    return f"• {fallback}\n链接：{url}"
+
+
+ARTICLE_PROCESS_SYSTEM_PROMPT = (
+    "你是新闻条目处理器。只根据输入的单篇原始稿件生成结构化 JSON，不要输出 Markdown 或解释。\n"
+    "summary_zh 必须是中文一句话，20-60 字，准确概括核心事实；不得补充原文没有的信息。\n"
+    "region 只能是 japan、china、world、markets；category 用 politics、economy、society、technology、culture、entertainment、sports、health、environment、risk、other 之一。"
+)
+
+
+def _safe_item_id(index: int, source_url: str, fingerprint: str = "") -> str:
+    base = canonical_source_url(source_url) or fingerprint or str(index)
+    return f"{index:03d}_{hashlib.sha1(base.encode('utf-8')).hexdigest()[:12]}"
+
+
+def archive_raw_article_items(run_dir: Path, all_articles: dict[str, list[dict]]) -> list[dict[str, Any]]:
+    raw_dir = run_dir / "raw_items"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    raw_items: list[dict[str, Any]] = []
+    index = 1
+    for batch_id, articles in all_articles.items():
+        for art in articles:
+            item_id = _safe_item_id(index, str(art.get("url") or ""), str(art.get("fingerprint") or ""))
+            item = {
+                "version": 1,
+                "item_id": item_id,
+                "original_batch": batch_id,
+                "title": art.get("title", ""),
+                "source_url": art.get("url", ""),
+                "source_url_key": canonical_source_url(str(art.get("url") or "")),
+                "source_feed": art.get("source_feed", ""),
+                "published_at": art.get("published_at", ""),
+                "published_ts": int(art.get("published_ts") or 0),
+                "fingerprint": art.get("fingerprint", ""),
+                "snippet": art.get("snippet", ""),
+                "raw_content": art.get("content", ""),
+                "fetch_ok": bool(art.get("fetch_ok")),
+                "fetch_error": art.get("fetch_error", ""),
+            }
+            save_json(raw_dir / f"{item_id}.json", item)
+            raw_items.append(item)
+            index += 1
+    save_json(run_dir / "raw_items_index.json", {"version": 1, "items": raw_items})
+    return raw_items
+
+
+def _parse_json_object(text: str) -> dict[str, Any]:
+    cleaned = strip_think_blocks(text).strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("\n", 1)[-1]
+        cleaned = cleaned.rsplit("```", 1)[0].strip()
+    m = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+    if m:
+        cleaned = m.group(0)
+    data = json.loads(cleaned)
+    if not isinstance(data, dict):
+        raise ValueError("model did not return a JSON object")
+    return data
+
+
+def process_raw_article_item(
+    item: dict[str, Any],
+    *,
+    ollama_host: str,
+    model: str,
+    timeout: int,
+    max_input_chars: int,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "version": 1,
+        "item_id": item.get("item_id", ""),
+        "source_url": item.get("source_url", ""),
+        "source_url_key": item.get("source_url_key", ""),
+        "source_title": item.get("title", ""),
+        "source_feed": item.get("source_feed", ""),
+        "published_at": item.get("published_at", ""),
+        "published_ts": int(item.get("published_ts") or 0),
+        "original_batch": item.get("original_batch", "world"),
+        "region": item.get("original_batch", "world"),
+        "category": "other",
+        "summary_zh": "",
+        "included": False,
+        "skip_reason": "",
+        "processor": model,
+    }
+    if not item.get("fetch_ok") or not item.get("raw_content"):
+        result["skip_reason"] = "fetch_failed_or_empty"
+        return result
+
+    body = str(item.get("raw_content") or "")[:max_input_chars]
+    user = json.dumps(
+        {
+            "title": item.get("title", ""),
+            "url": item.get("source_url", ""),
+            "published_at": item.get("published_at", ""),
+            "original_batch": item.get("original_batch", "world"),
+            "content": body,
+            "output_schema": {
+                "summary_zh": "中文一句话新闻主题",
+                "region": "japan|china|world|markets",
+                "category": "politics|economy|society|technology|culture|entertainment|sports|health|environment|risk|other",
+            },
+        },
+        ensure_ascii=False,
+    )
+    try:
+        parsed = _parse_json_object(
+            ollama_chat(ollama_host, model, ARTICLE_PROCESS_SYSTEM_PROMPT, user, timeout)
+        )
+        summary = str(parsed.get("summary_zh") or "").strip()
+        region = str(parsed.get("region") or result["region"]).strip().lower()
+        category = str(parsed.get("category") or "other").strip().lower()
+    except Exception as e:
+        print(f"[pipeline] process item {item.get('item_id')} failed: {e}", file=sys.stderr)
+        summary = deterministic_chinese_fallback(str(item.get("title") or ""))
+        region = result["region"]
+        category = "other"
+        result["skip_reason"] = "model_failed"
+
+    allowed_regions = {"japan", "china", "world", "markets"}
+    allowed_categories = {
+        "politics",
+        "economy",
+        "society",
+        "technology",
+        "culture",
+        "entertainment",
+        "sports",
+        "health",
+        "environment",
+        "risk",
+        "other",
+    }
+    if region not in allowed_regions:
+        region = result["region"] if result["region"] in allowed_regions else "world"
+    if category not in allowed_categories:
+        category = "other"
+    result["region"] = region
+    result["category"] = category
+    result["summary_zh"] = summary
+    if not summary:
+        result["skip_reason"] = result["skip_reason"] or "no_chinese_summary"
+    elif re.search(r"[\u3040-\u30ff]", summary) or not looks_mostly_chinese(summary):
+        result["summary_zh"] = ""
+        result["skip_reason"] = "non_chinese_summary"
+    else:
+        result["included"] = True
+        result["skip_reason"] = ""
+    return result
+
+
+def process_raw_article_items(
+    run_dir: Path,
+    raw_items: list[dict[str, Any]],
+    *,
+    ollama_host: str,
+    model: str,
+    timeout: int,
+    max_input_chars: int,
+) -> list[dict[str, Any]]:
+    processed_dir = run_dir / "processed_items"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    processed: list[dict[str, Any]] = []
+    for item in raw_items:
+        result = process_raw_article_item(
+            item,
+            ollama_host=ollama_host,
+            model=model,
+            timeout=timeout,
+            max_input_chars=max_input_chars,
+        )
+        save_json(processed_dir / f"{result['item_id']}.json", result)
+        processed.append(result)
+    save_json(run_dir / "processed_items_index.json", {"version": 1, "items": processed})
+    return processed
+
+
+def write_selected_items_and_workers(
+    run_dir: Path,
+    plan: dict,
+    processed_items: list[dict[str, Any]],
+    fallback_line: str,
+) -> dict[str, list[dict[str, Any]]]:
+    selected: dict[str, list[dict[str, Any]]] = {b["id"]: [] for b in plan["batches"]}
+    for item in processed_items:
+        if not item.get("included"):
+            continue
+        region = str(item.get("region") or "world")
+        if region not in selected:
+            region = "world"
+        selected[region].append(item)
+
+    for items in selected.values():
+        items.sort(key=lambda x: int(x.get("published_ts") or 0), reverse=True)
+
+    save_json(run_dir / "selected_items.json", {"version": 1, "sections": selected})
+    for b in plan["batches"]:
+        bid = b["id"]
+        lines: list[str] = []
+        for item in selected.get(bid, []):
+            lines.append(f"• {item['summary_zh']}")
+            if item.get("source_url"):
+                lines.append(f"链接：{item['source_url']}")
+        if not lines:
+            lines.append(f"• {fallback_line}")
+        (run_dir / f"worker_{bid}.md").write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    return selected
 
 
 def strip_think_blocks(text: str) -> str:
@@ -356,13 +732,17 @@ def _summarize_articles_with_qwen(
             result = ollama_chat(ollama_host, model, sys_p, user_p, timeout)
         except Exception as e:
             print(f"[pipeline] summarize {bid}[{i}] failed: {e}", file=sys.stderr)
-            fragments.append(deterministic_summary_from_article(art["title"], art["url"]))
+            fallback = deterministic_summary_from_article(art["title"], art["url"])
+            if fallback:
+                fragments.append(fallback)
             continue
         cleaned = strip_think_blocks(result)
         if cleaned and not cleaned.startswith("[") and len(cleaned) > 10:
             fragments.append(cleaned)
         else:
-            fragments.append(deterministic_summary_from_article(art["title"], art["url"]))
+            fallback = deterministic_summary_from_article(art["title"], art["url"])
+            if fallback:
+                fragments.append(fallback)
 
     if not fragments:
         return f"• {fallback_line}\n"
@@ -554,9 +934,36 @@ def main() -> int:
         action="store_true",
         help="手动验收用：不把本次文章写入跨运行去重状态",
     )
+    parser.add_argument(
+        "--broadcast-mode",
+        choices=("official", "test"),
+        default="official",
+        help="official 才会写入已播报状态；test 不消耗正式播报状态",
+    )
+    parser.add_argument("--reset-published-window-start", type=int, help="重置已播报状态的窗口起点 Unix 秒")
+    parser.add_argument("--reset-published-window-end", type=int, help="重置已播报状态的窗口终点 Unix 秒")
+    parser.add_argument("--mark-published-run-dir", type=Path, help="Discord 成功发送后，将指定 run-dir 的 selected_items 标记为已正式播报")
     parser.add_argument("--openai-timeout", type=int, default=120)
     parser.add_argument("--ollama-timeout", type=int, default=300)
     args = parser.parse_args()
+
+    if args.mark_published_run_dir:
+        added = mark_published_run_dir(args.mark_published_run_dir.resolve())
+        print(f"MARK_PUBLISHED_OK added={added}")
+        return 0
+
+    if args.reset_published_window_start is not None or args.reset_published_window_end is not None:
+        if args.reset_published_window_start is None or args.reset_published_window_end is None:
+            raise SystemExit("--reset-published-window-start and --reset-published-window-end must be used together")
+        if args.reset_published_window_start >= args.reset_published_window_end:
+            raise SystemExit("reset window start must be before end")
+        removed = reset_published_items_for_window(
+            PUBLISHED_ITEMS_PATH,
+            args.reset_published_window_start,
+            args.reset_published_window_end,
+        )
+        print(f"RESET_PUBLISHED_OK removed={removed}")
+        return 0
 
     cfg = load_json(args.config)
     job = job_spec(cfg, args.job)
@@ -615,6 +1022,8 @@ def main() -> int:
             "require_timestamp_in_window": require_timestamp,
             "ignore_recent": args.ignore_recent,
             "record_recent": not args.no_record_recent,
+            "broadcast_mode": args.broadcast_mode,
+            "record_published_after_delivery": args.broadcast_mode == "official" and not args.no_record_recent,
         },
     )
 
@@ -630,10 +1039,21 @@ def main() -> int:
         if args.ignore_recent
         else load_recent_items(RECENT_ITEMS_PATH, ts, dedupe_hours)
     )
+    published_items = load_published_items(PUBLISHED_ITEMS_PATH)
     seen_fingerprints = {
         str(item.get("fingerprint") or "")
         for item in recent_items.get("items", [])
         if str(item.get("fingerprint") or "")
+    }
+    seen_source_urls = {
+        canonical_source_url(str(item.get("url") or item.get("url_key") or ""))
+        for item in recent_items.get("items", [])
+        if canonical_source_url(str(item.get("url") or item.get("url_key") or ""))
+    }
+    published_source_urls = {
+        canonical_source_url(str(item.get("url") or item.get("url_key") or ""))
+        for item in published_items.get("items", [])
+        if canonical_source_url(str(item.get("url") or item.get("url_key") or ""))
     }
 
     for b in plan["batches"]:
@@ -666,8 +1086,17 @@ def main() -> int:
             print(f"[pipeline] fetch {bid}: {len(articles)} articles...", file=sys.stderr)
             trace.step("fetch", "running", detail=f"{bid}: {len(articles)} articles", tool="http")
             fetcher.fetch_and_fill(articles, max_chars=max_worker_chars)
-        all_articles[bid] = [
-            {
+        deduped_articles = []
+        skipped_by_url = 0
+        for a in articles:
+            url_key = canonical_source_url(a.url)
+            if url_key and (url_key in seen_source_urls or url_key in published_source_urls):
+                skipped_by_url += 1
+                continue
+            if url_key:
+                seen_source_urls.add(url_key)
+            deduped_articles.append(
+                {
                 "title": a.title,
                 "url": a.url,
                 "content": a.content,
@@ -677,9 +1106,9 @@ def main() -> int:
                 "published_ts": a.published_ts,
                 "fingerprint": a.fingerprint,
                 "source_feed": a.source_feed,
-            }
-            for a in articles
-        ]
+                }
+            )
+        all_articles[bid] = deduped_articles
         for art in all_articles[bid]:
             fp = str(art.get("fingerprint") or "")
             if fp:
@@ -688,7 +1117,7 @@ def main() -> int:
         trace.step(
             "discover-fetch",
             "ok",
-            detail=f"{bid}: discovered {len(articles)} articles, fetched {len([a for a in all_articles[bid] if a.get('fetch_ok')])}",
+            detail=f"{bid}: discovered {len(articles)} articles, url_dupes={skipped_by_url}, fetched {len([a for a in all_articles[bid] if a.get('fetch_ok')])}",
             tool="rss+http",
         )
 
@@ -726,33 +1155,64 @@ def main() -> int:
     if moved:
         trace.step("classify", "ok", detail=f"moved={moved}", tool="article-classifier")
 
-    # --- worker: Qwen 逐条总结 ---
-    for b in plan["batches"]:
-        bid = b["id"]
-        out_path = run_dir / f"worker_{bid}.md"
-        if args.skip_worker:
-            out_path.write_text(
-                f"• 【skip-worker】{b['outline_line']} 占位草稿。\n",
-                encoding="utf-8",
-            )
-            trace.step("worker", "skipped", detail=bid, tool="ollama")
-            continue
-        articles = all_articles.get(bid, [])
-        if args.dry_run:
-            text = f"• 【干跑占位】{b['outline_line']}\n链接：https://example.com\n"
-        else:
-            trace.step("worker", "running", detail=f"{bid}: {len(articles)} articles", tool=ollama_worker_model)
-            text = _summarize_articles_with_qwen(
-                articles=articles,
-                ollama_host=ollama_host,
-                model=ollama_worker_model,
-                timeout=args.ollama_timeout,
-                fallback_line=fallback_text_tpl,
-                max_input_chars=max_worker_chars,
-                bid=bid,
-            )
-        out_path.write_text(text.strip() + "\n", encoding="utf-8")
-        trace.step("worker", "ok", detail=f"{bid}: wrote {out_path.name}", tool=ollama_worker_model)
+    # --- archive raw items + process each article into structured Chinese records ---
+    raw_items = archive_raw_article_items(run_dir, all_articles)
+    trace.step("archive-raw", "ok", detail=f"raw_items={len(raw_items)}", tool="filesystem")
+
+    if args.skip_worker:
+        processed_items = [
+            {
+                "version": 1,
+                "item_id": item.get("item_id", ""),
+                "source_url": item.get("source_url", ""),
+                "source_title": item.get("title", ""),
+                "region": item.get("original_batch", "world"),
+                "category": "other",
+                "summary_zh": "",
+                "included": False,
+                "skip_reason": "skip-worker",
+            }
+            for item in raw_items
+        ]
+        save_json(run_dir / "processed_items_index.json", {"version": 1, "items": processed_items})
+        trace.step("process-items", "skipped", detail=f"items={len(raw_items)}", tool="ollama")
+    elif args.dry_run:
+        processed_items = [
+            {
+                "version": 1,
+                "item_id": f"dry_{b['id']}",
+                "source_url": "https://example.com",
+                "source_title": b["outline_line"],
+                "region": b["id"],
+                "category": "other",
+                "summary_zh": f"干跑占位：{b['outline_line']}暂无真实采集条目",
+                "included": True,
+                "skip_reason": "",
+            }
+            for b in plan["batches"]
+        ]
+        save_json(run_dir / "processed_items_index.json", {"version": 1, "items": processed_items})
+        trace.step("process-items", "skipped", detail="dry-run placeholders", tool="ollama")
+    else:
+        trace.step("process-items", "running", detail=f"items={len(raw_items)}", tool=ollama_worker_model)
+        processed_items = process_raw_article_items(
+            run_dir,
+            raw_items,
+            ollama_host=ollama_host,
+            model=ollama_worker_model,
+            timeout=args.ollama_timeout,
+            max_input_chars=max_worker_chars,
+        )
+        included = len([x for x in processed_items if x.get("included")])
+        trace.step("process-items", "ok", detail=f"included={included}/{len(processed_items)}", tool=ollama_worker_model)
+
+    selected = write_selected_items_and_workers(run_dir, plan, processed_items, fallback_text_tpl)
+    trace.step(
+        "select-final",
+        "ok",
+        detail=", ".join(f"{k}={len(v)}" for k, v in selected.items()),
+        tool="selector",
+    )
 
     # --- merge (已格式化：标题+时间窗+小节标题+内容) ---
     draft = merge_workers(run_dir, plan)

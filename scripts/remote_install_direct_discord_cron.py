@@ -73,20 +73,59 @@ def discord_token() -> str:
     return str(token)
 
 
-def send_discord(channel_id: str, content: str) -> None:
-    token = discord_token()
-    req = urllib.request.Request(
-        f"https://discord.com/api/v10/channels/{channel_id}/messages",
-        data=json.dumps({"content": content[:1900]}).encode("utf-8"),
-        headers={
-            "Authorization": f"Bot {token}",
-            "Content-Type": "application/json",
-            "User-Agent": "DiscordBot (openclaw-direct-cron, 1.0)",
-        },
-        method="POST",
+def mark_published_after_delivery(name: str, stdout: str, command: list[str]) -> str:
+    # News items become broadcasted only after Discord delivery succeeds.
+    if not name.startswith("news-digest-"):
+        return "not-news"
+    command_text = " ".join(command)
+    if "--broadcast-mode test" in command_text or "--no-record-recent" in command_text:
+        return "test-or-no-record"
+    run_dir = ""
+    for line in stdout.splitlines():
+        line = line.strip()
+        if line.startswith("PIPELINE_OK ") and "skip_finalize" not in line:
+            run_dir = line.split(None, 1)[1].strip()
+    if not run_dir:
+        return "no-run-dir"
+    script = "/var/lib/openclaw/repos/SpringMonkey/scripts/news/run_news_pipeline.py"
+    proc = subprocess.run(
+        ["python3", script, "--job", name, "--mark-published-run-dir", run_dir],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=120,
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        resp.read()
+    if proc.returncode != 0:
+        return f"failed:{proc.returncode}:{(proc.stderr or proc.stdout)[-500:]}"
+    return proc.stdout.strip() or "marked"
+
+
+def send_discord(channel_id: str, content: str) -> int:
+    token = discord_token()
+    chunks = []
+    text = content or ""
+    while text:
+        chunks.append(text[:1900])
+        text = text[1900:]
+    if not chunks:
+        chunks = [""]
+    for index, chunk in enumerate(chunks, 1):
+        if len(chunks) > 1:
+            chunk = f"[{index}/{len(chunks)}]\n{chunk}"
+        req = urllib.request.Request(
+            f"https://discord.com/api/v10/channels/{channel_id}/messages",
+            data=json.dumps({"content": chunk}).encode("utf-8"),
+            headers={
+                "Authorization": f"Bot {token}",
+                "Content-Type": "application/json",
+                "User-Agent": "DiscordBot (openclaw-direct-cron, 1.0)",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp.read()
+    return len(chunks)
 
 
 def main() -> int:
@@ -125,12 +164,15 @@ def main() -> int:
                 result_payload["delivery"] = "skipped"
                 return 0
             message = stdout or f"{args.name}: completed with no output."
-            send_discord(args.channel_id, message)
+            sent_chunks = send_discord(args.channel_id, message)
             result_payload["delivery"] = "delivered"
+            result_payload["sentChunks"] = sent_chunks
+            result_payload["publishedMark"] = mark_published_after_delivery(args.name, stdout, command)
             return 0
         failure = stderr or stdout or f"exit code {proc.returncode}"
-        send_discord(args.channel_id, f"{args.name} 失败：{failure[-1200:]}")
+        sent_chunks = send_discord(args.channel_id, f"{args.name} 失败：{failure[-1200:]}")
         result_payload["delivery"] = "failure-delivered"
+        result_payload["sentChunks"] = sent_chunks
         return proc.returncode or 1
     except subprocess.TimeoutExpired as exc:
         result_payload.update({"returncode": "timeout", "stderr": str(exc)})

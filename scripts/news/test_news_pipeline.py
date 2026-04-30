@@ -114,7 +114,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         )
         self.assertIn("本节无合格新增新闻条目", result)
 
-    def test_summarize_articles_falls_back_to_title_link_when_model_empty(self):
+    def test_summarize_articles_skips_untranslated_when_model_empty(self):
         articles = [
             {
                 "title": "Sample market headline",
@@ -134,8 +134,237 @@ class TestPlanAndTemplate(unittest.TestCase):
                 max_input_chars=1500,
                 bid="markets",
             )
-        self.assertIn("• Sample market headline", result)
-        self.assertIn("链接：https://example.com/market", result)
+        self.assertIn("本节无合格新增新闻条目", result)
+        self.assertNotIn("Sample market headline", result)
+
+    def test_summarize_articles_uses_known_chinese_mapping_when_model_empty(self):
+        articles = [
+            {
+                "title": "South Korean court hikes ex-president's sentence for obstructing justice",
+                "url": "https://example.com/korea",
+                "content": "content",
+                "fetch_ok": True,
+                "snippet": "",
+            }
+        ]
+        with patch.object(self.m, "ollama_chat", return_value=""):
+            result = self.m._summarize_articles_with_qwen(
+                articles=articles,
+                ollama_host="http://localhost:9999",
+                model="test",
+                timeout=5,
+                fallback_line="本节无合格新增新闻条目。",
+                max_input_chars=1500,
+                bid="world",
+            )
+        self.assertIn("韩国法院因妨碍司法加重前总统刑期", result)
+        self.assertIn("链接：https://example.com/korea", result)
+
+    def test_archive_raw_article_items_writes_per_article_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td)
+            raw = self.m.archive_raw_article_items(
+                run_dir,
+                {
+                    "world": [
+                        {
+                            "title": "标题",
+                            "url": "https://example.com/a#frag",
+                            "content": "正文",
+                            "fetch_ok": True,
+                            "snippet": "摘要",
+                            "published_at": "today",
+                            "published_ts": 123,
+                            "fingerprint": "fp",
+                            "source_feed": "feed",
+                        }
+                    ]
+                },
+            )
+            self.assertEqual(len(raw), 1)
+            self.assertEqual(raw[0]["source_url_key"], "https://example.com/a")
+            self.assertTrue((run_dir / "raw_items" / f"{raw[0]['item_id']}.json").is_file())
+            self.assertTrue((run_dir / "raw_items_index.json").is_file())
+
+    def test_process_raw_article_item_rejects_untranslated_model_output(self):
+        item = {
+            "item_id": "001",
+            "original_batch": "world",
+            "title": "Sample market headline",
+            "source_url": "https://example.com/a",
+            "source_url_key": "https://example.com/a",
+            "raw_content": "English body",
+            "fetch_ok": True,
+        }
+        with patch.object(
+            self.m,
+            "ollama_chat",
+            return_value='{"summary_zh":"Sample market headline remains English","region":"world","category":"economy"}',
+        ):
+            result = self.m.process_raw_article_item(
+                item,
+                ollama_host="http://localhost:9999",
+                model="test",
+                timeout=5,
+                max_input_chars=1500,
+            )
+        self.assertFalse(result["included"])
+        self.assertEqual(result["skip_reason"], "non_chinese_summary")
+
+    def test_write_selected_items_and_workers_uses_structured_items_only(self):
+        job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(self.cfg, job)
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td)
+            self.m.write_selected_items_and_workers(
+                run_dir,
+                plan,
+                [
+                    {
+                        "item_id": "001",
+                        "region": "world",
+                        "summary_zh": "韩国法院因妨碍司法加重前总统刑期",
+                        "source_url": "https://example.com/korea",
+                        "included": True,
+                    },
+                    {
+                        "item_id": "002",
+                        "region": "japan",
+                        "summary_zh": "Sample English",
+                        "source_url": "https://example.com/en",
+                        "included": False,
+                    },
+                ],
+                "本节无合格新增新闻条目。",
+            )
+            world = (run_dir / "worker_world.md").read_text(encoding="utf-8")
+            japan = (run_dir / "worker_japan.md").read_text(encoding="utf-8")
+            self.assertIn("韩国法院因妨碍司法加重前总统刑期", world)
+            self.assertNotIn("Sample English", japan)
+            self.assertIn("本节无合格新增新闻条目", japan)
+
+    def test_append_published_items_records_selected_official_items(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "published_items.json"
+            self.m.append_published_items(
+                path,
+                {"version": 1, "items": []},
+                {
+                    "world": [
+                        {
+                            "source_url": "https://example.com/a#frag",
+                            "source_title": "原始标题",
+                            "summary_zh": "国际新闻中文摘要",
+                            "category": "politics",
+                            "published_ts": 100,
+                        }
+                    ]
+                },
+                job_name="news-digest-jst-0900",
+                window_start_ts=1000,
+                window_end_ts=2000,
+                now_ts=2100,
+            )
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(len(data["items"]), 1)
+            self.assertEqual(data["items"][0]["url_key"], "https://example.com/a")
+            self.assertEqual(data["items"][0]["status"], "broadcasted")
+
+    def test_reset_published_items_for_window_removes_overlapping_records(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "published_items.json"
+            self.m.save_json(
+                path,
+                {
+                    "version": 1,
+                    "items": [
+                        {
+                            "url": "https://example.com/a",
+                            "broadcast_window_start_ts": 1000,
+                            "broadcast_window_end_ts": 2000,
+                        },
+                        {
+                            "url": "https://example.com/b",
+                            "broadcast_window_start_ts": 3000,
+                            "broadcast_window_end_ts": 4000,
+                        },
+                    ],
+                },
+            )
+            removed = self.m.reset_published_items_for_window(path, 1500, 2500)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(removed, 1)
+            self.assertEqual([x["url"] for x in data["items"]], ["https://example.com/b"])
+
+    def test_mark_published_run_dir_records_selected_items(self):
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td) / "run"
+            state_path = Path(td) / "published_items.json"
+            self.m.save_json(
+                run_dir / "meta.json",
+                {
+                    "job": "news-digest-jst-0900",
+                    "window_start_ts": 1000,
+                    "window_end_ts": 2000,
+                },
+            )
+            self.m.save_json(
+                run_dir / "selected_items.json",
+                {
+                    "version": 1,
+                    "sections": {
+                        "world": [
+                            {
+                                "source_url": "https://example.com/a",
+                                "source_title": "原始标题",
+                                "summary_zh": "国际新闻中文摘要",
+                                "category": "politics",
+                                "published_ts": 100,
+                            }
+                        ]
+                    },
+                },
+            )
+            added = self.m.mark_published_run_dir(run_dir, state_path)
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(added, 1)
+            self.assertEqual(data["items"][0]["broadcast_job"], "news-digest-jst-0900")
+
+    def test_verify_rejects_untranslated_english_item(self):
+        v = _load_verify()
+        text = """新闻简报
+当日 09:00 到当日 17:00（亚洲/东京，JST）
+**1. 日本**
+• Asia-Pacific markets set for weaker open as oil climbs on Iran tensions, Fed holds rates
+链接：https://example.com
+**2. 中国**
+• 本节无合格新增新闻条目。
+**3. 国际**
+• 本节无合格新增新闻条目。
+**4. 市场或风险提示**
+• 本节无合格新增新闻条目。
+"""
+        ok, err = v.verify_text(text, self.cfg)
+        self.assertFalse(ok)
+        self.assertTrue(any("non_chinese_news_item" in e for e in err))
+
+    def test_verify_rejects_japanese_item(self):
+        v = _load_verify()
+        text = """新闻简报
+当日 09:00 到当日 17:00（亚洲/东京，JST）
+**1. 日本**
+• 日本関係船舶の海峡通過 イラン側に働きかけを継続 日本政府
+链接：https://example.com
+**2. 中国**
+• 本节无合格新增新闻条目。
+**3. 国际**
+• 本节无合格新增新闻条目。
+**4. 市场或风险提示**
+• 本节无合格新增新闻条目。
+"""
+        ok, err = v.verify_text(text, self.cfg)
+        self.assertFalse(ok)
+        self.assertTrue(any("non_chinese_news_item" in e for e in err))
 
     def test_resolve_ollama_base_url_from_config(self):
         cfg = {"model": {"ollamaBaseUrl": "http://remote.example:22545"}}
@@ -153,10 +382,10 @@ class TestPlanAndTemplate(unittest.TestCase):
         job = self.m.job_spec(cfg, "news-digest-jst-1700")
         plan = self.m.build_plan(cfg, job)
         merged = (
-            "<!-- batch:japan -->\n- JP news item\n"
-            "<!-- batch:china -->\n- CN news item\n"
-            "<!-- batch:world -->\n- Intl news item\n"
-            "<!-- batch:markets -->\n- Markets item\n"
+            "<!-- batch:japan -->\n- 日本新闻条目\n"
+            "<!-- batch:china -->\n- 中国新闻条目\n"
+            "<!-- batch:world -->\n- 国际新闻条目\n"
+            "<!-- batch:markets -->\n- 市场新闻条目\n"
         )
         text = self.m._mechanical_fallback(cfg, plan, merged)
         v = _load_verify()
@@ -172,10 +401,10 @@ class TestPlanAndTemplate(unittest.TestCase):
         job = self.m.job_spec(cfg, "news-digest-jst-1700")
         plan = self.m.build_plan(cfg, job)
         merged = (
-            "<!-- batch:japan -->\n- 1. Numbered item\n- **2.** Bold numbered\n- 3、Chinese num\n"
-            "<!-- batch:china -->\n1. Bare number\n(2) Paren number\n"
-            "<!-- batch:world -->\n- ① Circle number\n"
-            "<!-- batch:markets -->\n- Normal item\n"
+            "<!-- batch:japan -->\n- 1. 日本编号条目\n- **2.** 日本加粗编号条目\n- 3、中国编号条目\n"
+            "<!-- batch:china -->\n1. 中国裸编号条目\n(2) 中国括号编号条目\n"
+            "<!-- batch:world -->\n- ① 国际圆圈编号条目\n"
+            "<!-- batch:markets -->\n- 市场普通条目\n"
         )
         text = self.m._mechanical_fallback(cfg, plan, merged)
         v = _load_verify()

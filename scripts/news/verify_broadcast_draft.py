@@ -70,6 +70,27 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
             if re.match(r"^\s*[•\-]\s+\d+[、，]\s*", ln):
                 errors.append(f"numbered_inside_bullet_cn_line_{i}: {ln[:80]!r}")
 
+    def mostly_chinese_item(s: str) -> bool:
+        body = s.strip()
+        if not body.startswith(bullet_prefix):
+            return True
+        body = body[len(bullet_prefix):].strip()
+        if "外文新闻" in body:
+            return False
+        if re.search(r"[\u3040-\u30ff]", body):
+            return False
+        if body == fr.get("fallbackNoMajorUpdateLine", "本节无合格新增新闻条目。"):
+            return True
+        letters = [ch for ch in body if ch.isalpha() or "\u4e00" <= ch <= "\u9fff"]
+        if len(letters) < 12:
+            return True
+        cjk = sum(1 for ch in letters if "\u4e00" <= ch <= "\u9fff")
+        return cjk / len(letters) >= 0.35
+
+    for i, ln in enumerate(lines, 1):
+        if ln.strip().startswith(bullet_prefix) and not mostly_chinese_item(ln):
+            errors.append(f"non_chinese_news_item_line_{i}: {ln[:120]!r}")
+
     ok = len(errors) == 0
     return ok, errors
 
