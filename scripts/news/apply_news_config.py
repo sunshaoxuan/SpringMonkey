@@ -64,8 +64,8 @@ def build_message(cfg: dict, job: dict) -> str:
             pools_text.append(f"- {label}优先信源池：{'、'.join(pools[region])}。")
 
     model_cfg = cfg.get("model", {})
-    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.4"))
-    news_worker = model_cfg.get("newsWorker", "openai-codex/gpt-5.4")
+    news_orchestrator = model_cfg.get("newsOrchestrator", model_cfg.get("name", "openai-codex/gpt-5.5"))
+    news_worker = model_cfg.get("newsWorker", "openai-codex/gpt-5.5")
 
     qwen_policy = model_cfg.get("qwenUsagePolicy", {})
     qwen_allowed = "、".join(qwen_policy.get("allowedScenarios", ["逐条摘要", "单条分类"]))
@@ -175,7 +175,7 @@ def build_pipeline_cron_message(cfg: dict, spec: dict) -> str:
     cmd_parts = ["python3", script_path]
     cmd_core = shlex.join(cmd_parts)
     model_cfg = cfg.get("model", {})
-    nw = model_cfg.get("newsWorker", "openai-codex/gpt-5.4")
+    nw = model_cfg.get("newsWorker", "openai-codex/gpt-5.5")
     return "\n".join(
         [
             "【新闻定时任务 · 流水线模式】",
@@ -256,7 +256,7 @@ def apply_job(cfg: dict, jobs_doc: dict, spec: dict):
     existing["payload"] = {
         "kind": "agentTurn",
         "message": body,
-        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.4")),
+        "model": cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.5")),
         "thinking": cfg["model"]["thinking"],
         "timeoutSeconds": timeout_sec,
         "lightContext": cfg["model"]["lightContext"],

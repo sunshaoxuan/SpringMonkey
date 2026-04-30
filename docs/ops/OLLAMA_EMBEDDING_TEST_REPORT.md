@@ -123,7 +123,7 @@
 
 这意味着可以采用如下架构：
 
-- 主聊天模型：`GPT-5.4 Low`
+- 主聊天模型：`gpt-5.5 Low`
 - embedding 后端：`bge-m3:latest`
 - embedding 服务：`http://ccnode.briconbric.com:22545/v1`
 - 长期记忆存储：远程主机本地 `LanceDB`

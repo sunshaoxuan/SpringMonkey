@@ -234,14 +234,14 @@
     }
   },
   "model": {
-    "chatPrimary": "openai-codex/gpt-5.4",
+    "chatPrimary": "openai-codex/gpt-5.5",
     "chatFallback": "ollama/qwen3:14b",
     "chatEscalateWhenHistoryCharsExceed": 15000,
     "ollamaBaseUrl": "http://ccnode.briconbric.com:22545",
     "ollamaNote": "Ollama 仅在 ccnode 节点运行；宿主机无本地 Ollama，localhost:11434 上的是云端代理不可用于本地推理",
-    "newsOrchestrator": "openai-codex/gpt-5.4",
-    "newsWorker": "openai-codex/gpt-5.4",
-    "newsFinalize": "openai-codex/gpt-5.4",
+    "newsOrchestrator": "openai-codex/gpt-5.5",
+    "newsWorker": "openai-codex/gpt-5.5",
+    "newsFinalize": "openai-codex/gpt-5.5",
     "newsFinalizeNote": "Codex 作为新闻编排、逐条处理与终稿格式化主模型；Qwen/Ollama 仅作为兜底。",
     "workerCallMode": "per-article",
     "maxWorkerInputChars": 1500,

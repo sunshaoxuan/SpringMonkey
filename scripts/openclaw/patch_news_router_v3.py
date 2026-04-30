@@ -84,7 +84,7 @@ async function maybeRouteDiscordIntent(params) {
 \t\tconst intent = await classifyDiscordIntent(promptText);
 \t\tif (intent === \"chat\") return { intent, rerouted: false, promptText };
 \t\tconst provider = \"openai-codex\";
-\t\tconst modelId = \"gpt-5.4\";
+\t\tconst modelId = \"gpt-5.5\";
 \t\tconst model = resolveModelFromRegistry({ modelRegistry: params.modelRegistry, provider, modelId });
 \t\tconst route = { intent, rerouted: true, promptText, provider, modelId, model };
 \t\tif (intent === \"news_task\") {
@@ -176,7 +176,7 @@ async function maybeRouteDiscordIntent(params) {
 \t\t}
 \t\tif (intent === \"chat\") return { intent, rerouted: false, promptText };
 \t\tconst provider = \"openai-codex\";
-\t\tconst modelId = \"gpt-5.4\";
+\t\tconst modelId = \"gpt-5.5\";
 \t\tconst model = resolveModelFromRegistry({ modelRegistry: params.modelRegistry, provider, modelId });
 \t\tconst route = { intent, rerouted: true, promptText, provider, modelId, model };
 \t\tif (intent === \"news_task\") {

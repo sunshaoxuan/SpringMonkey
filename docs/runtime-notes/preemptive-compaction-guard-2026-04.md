@@ -34,7 +34,7 @@ the runtime chooses `compact_only` before the task continues.
 
 OpenClaw already had a pre-prompt compaction framework, but the stock threshold was too conservative.
 This guard makes compaction happen before hard overflow for long-lived Discord / LINE task sessions while still leaving room to preserve recent raw turns.
-The reserve baseline must still fit the active model context window; for the current `openai-codex/gpt-5.4` primary route use the Codex context baseline, and if the run falls back to `ollama/qwen3:14b`, use the smaller Qwen context baseline.
+The reserve baseline must still fit the active model context window; for the current `openai-codex/gpt-5.5` primary route use the Codex context baseline, and if the run falls back to `ollama/qwen3:14b`, use the smaller Qwen context baseline.
 
 ## Host application
 

@@ -39,7 +39,7 @@
 | Gateway 绑定 | `--bind loopback`、`gateway.mode=local` | 同上 |
 | HTTP 监听 | 默认 **127.0.0.1:18789**（本机 `/line/webhook` 诊断用） | `scripts/remote_diag_openclaw_webhook.py`、运维对话记录 |
 | 共享能力入口 | `openclaw.service` 通过 drop-in 加载 `/etc/openclaw/openclaw.env`；Discord / LINE 共用同一套 provider secret 与 `tools.elevated.allowFrom` | `scripts/remote_enable_shared_channel_capabilities.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
-| 聊天与任务总控主模型 | `openai-codex/gpt-5.4` 主力，`ollama/qwen3:14b` 仅兜底 | `config/news/broadcast.json`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
+| 聊天与任务总控主模型 | `openai-codex/gpt-5.5` 主力，`ollama/qwen3:14b` 仅兜底 | `config/news/broadcast.json`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
 | qwen 兜底策略 | `ollama/qwen3:14b` 只在 Codex 主链路不可用时作为兜底；不得再作为默认主模型 | `config/news/broadcast.json`、`docs/runtime-notes/qwen-timeout-retry-policy-2026-04.md` |
 | 当前环境运行基线 | 当前 SpringMonkey 宿主机的真实服务、compaction、patch family、LINE/Discord/news 约束 | `docs/runtime-notes/openclaw-current-environment-baseline-2026-04.md` |
 | 分层故障模型 | 将 LINE/Discord/news/runtime 失败拆成 Host/Channel/Artifact/Run/Reply/Orchestration 六层 | `docs/runtime-notes/openclaw-failure-layer-model-2026-04.md` |

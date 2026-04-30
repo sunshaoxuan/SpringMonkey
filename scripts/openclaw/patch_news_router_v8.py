@@ -46,16 +46,16 @@ def main():
     
     # 原始或 v7 逻辑通常是:
     # const provider = "openai-codex";
-    # const modelId = "gpt-5.4";
+    # const modelId = "gpt-5.5";
     
     # 我们替换为:
     # let provider = global.consecutiveCodexFailures < 3 ? "openai-codex" : "ollama";
-    # let modelId = global.consecutiveCodexFailures < 3 ? "gpt-5.4" : "qwen3:14b";
+    # let modelId = global.consecutiveCodexFailures < 3 ? "gpt-5.5" : "qwen3:14b";
 
     old_prov = 'const provider = "openai-codex";'
     new_prov = 'let provider = global.consecutiveCodexFailures < 3 ? "openai-codex" : "ollama";'
-    old_model = 'const modelId = "gpt-5.4";'
-    new_model = 'let modelId = global.consecutiveCodexFailures < 3 ? "gpt-5.4" : "qwen3:14b";'
+    old_model = 'const modelId = "gpt-5.5";'
+    new_model = 'let modelId = global.consecutiveCodexFailures < 3 ? "gpt-5.5" : "qwen3:14b";'
 
     if old_prov in content:
         content = content.replace(old_prov, new_prov)

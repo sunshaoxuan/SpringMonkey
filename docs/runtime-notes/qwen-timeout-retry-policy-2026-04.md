@@ -10,9 +10,9 @@ news, cron, routing, delivery, or self-repair behavior.
 
 ## Runtime Policy
 
-- Global primary model: `openai-codex/gpt-5.4`
+- Global primary model: `openai-codex/gpt-5.5`
 - Global fallback model: `ollama/qwen3:14b`
-- News orchestrator, worker, and finalize model default to `openai-codex/gpt-5.4`.
+- News orchestrator, worker, and finalize model default to `openai-codex/gpt-5.5`.
 - Qwen/Ollama may be attempted only after the Codex path is unavailable or explicitly rejected by a bounded gate.
 
 ## Legacy Qwen-First Paths

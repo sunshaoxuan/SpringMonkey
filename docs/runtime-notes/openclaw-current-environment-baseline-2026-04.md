@@ -9,7 +9,7 @@
 
 ## Primary Runtime Assumptions
 
-- primary task model: `openai-codex/gpt-5.4`
+- primary task model: `openai-codex/gpt-5.5`
 - direct channels currently in active use:
   - LINE
   - Discord
@@ -62,7 +62,7 @@ Artifact family:
 
 Expected behavior:
 
-- `openai-codex/gpt-5.4` is primary; `qwen3:14b` is fallback only
+- `openai-codex/gpt-5.5` is primary; `qwen3:14b` is fallback only
 - retry markers exist in the active runner
 
 ### Agent Society Runtime
@@ -107,7 +107,7 @@ Expected jobs:
 
 Expected current properties:
 
-- default model = `openai-codex/gpt-5.4`; fallback model = `ollama/qwen3:14b`
+- default model = `openai-codex/gpt-5.5`; fallback model = `ollama/qwen3:14b`
 - `timeoutSeconds = 7200`
 - execution mode is pipeline
 - final delivery target is Discord

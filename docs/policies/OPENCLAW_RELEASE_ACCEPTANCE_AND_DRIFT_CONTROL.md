@@ -181,7 +181,7 @@ Current environment assumptions that must be revalidated after upgrades:
 
 - service: `openclaw.service`
 - health endpoint: `http://127.0.0.1:18789/healthz`
-- primary model: `openai-codex/gpt-5.4`
+- primary model: `openai-codex/gpt-5.5`
 - direct channels in active use: LINE and Discord
 - current news delivery target: Discord channel `1483636573235843072`
 - host repo path: `/var/lib/openclaw/repos/SpringMonkey`

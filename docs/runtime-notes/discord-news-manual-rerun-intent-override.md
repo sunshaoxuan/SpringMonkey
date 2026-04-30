@@ -27,7 +27,7 @@
 修复（`scripts/openclaw/patch_news_router_v8.py`）：
 - `manualNewsRun=true` 时设 `params.disableTools = true`：阻止模型调用任何工具（web_fetch/exec 等）。
 - 重写 session JSONL 最后一条 user 消息的 content 为 override 指令："你已成功触发正式任务…只回复这一句确认"。
-- 模型策略保持 Codex-first：`openai-codex/gpt-5.4` 为主，`ollama/qwen3:14b` 仅作兜底。
+- 模型策略保持 Codex-first：`openai-codex/gpt-5.5` 为主，`ollama/qwen3:14b` 仅作兜底。
 - 效果：主 session 秒回确认文本，不生成任何新闻内容；cron session 独立完成流水线并投递。
 
 ## v7（必打）：网关内 `spawnSync openclaw cron run` 自死锁
@@ -41,7 +41,7 @@
 ## v6（必打）：Ollama 异常时自动切 Codex + 分类器超时
 
 - `classifyDiscordIntent` 对 22545 的 `fetch` 增加 **12s** 超时，避免无限挂死。
-- `maybeRouteDiscordIntent` 的 `catch`：**不再 `return null`**；优先按启发式恢复 `news_task`（含 `cron run`），否则 **强制 reroute 到 `openai-codex/gpt-5.4`**（`task_control`）。
+- `maybeRouteDiscordIntent` 的 `catch`：**不再 `return null`**；优先按启发式恢复 `news_task`（含 `cron run`），否则 **强制 reroute 到 `openai-codex/gpt-5.5`**（`task_control`）。
 - `runEmbeddedAttempt`：Discord 且本轮仍为 **ollama** 时，做一次 **极短 generate 探针**（`num_predict:1`，12s 超时）；失败则 **embedded 主调用切到 Codex**（日志 `[model-fallback]`）。
 
 脚本：`scripts/openclaw/patch_news_router_v6.py`（在 v5 已应用的前提下执行）。

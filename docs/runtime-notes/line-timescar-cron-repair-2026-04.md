@@ -37,7 +37,7 @@
 
 它们的共同约束是：
 
-- 主模型使用 `openai-codex/gpt-5.4`；`ollama/qwen3:14b` 仅作兜底
+- 主模型使用 `openai-codex/gpt-5.5`；`ollama/qwen3:14b` 仅作兜底
 - `thinking = off`
 - 不允许在 cron 中直接用 `browser` / `web_search` / `web_fetch`
 - 必须先走 `exec`

@@ -39,7 +39,7 @@ As of 2026-04-09, the intended baseline is:
 - `openclaw.service` runs through `/usr/local/bin/openclaw-gateway-supervise`
 - `HOME=/var/lib/openclaw`
 - shared env file: `/etc/openclaw/openclaw.env`
-- chat primary: `openai-codex/gpt-5.4`
+- chat primary: `openai-codex/gpt-5.5`
 - chat fallback only: `ollama/qwen3:14b`
 - Discord and LINE share one gateway and one provider-secret baseline
 - browser backend is a persistent Chrome CDP session on `127.0.0.1:18800`
@@ -55,7 +55,7 @@ Use this as the compact “what changed this year” map before rebuilding.
 | Area | 2026 landing change | Repo truth | Host/runtime landing point |
 |------|----------------------|------------|----------------------------|
 | Shared capabilities | Discord / LINE now share one provider-secret baseline and one elevated-tool baseline | `scripts/remote_enable_shared_channel_capabilities.py`, `docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` | `/etc/openclaw/openclaw.env`, `openclaw.service` drop-in, `openclaw.json` |
-| Chat model policy | Global primary fixed to `openai-codex/gpt-5.4`, Qwen/Ollama only fallback | `docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` | `/var/lib/openclaw/.openclaw/openclaw.json` |
+| Chat model policy | Global primary fixed to `openai-codex/gpt-5.5`, Qwen/Ollama only fallback | `docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` | `/var/lib/openclaw/.openclaw/openclaw.json` |
 | Browser baseline | Browser tool moved to persistent Chrome CDP backend instead of ad hoc launch | `scripts/remote_enable_persistent_browser_backend.py`, `scripts/remote_install_browser_guardrails.py` | `openclaw-browser-backend.service`, `127.0.0.1:18800` |
 | LINE runtime | LINE plugin, webhook, `dmPolicy`, frpc path, and shared-capability boundary were formalized | `docs/runtime-notes/line-runtime-baseline-2026-04.md` | `/var/lib/openclaw/.openclaw/openclaw.json`, `/line/webhook`, frpc mapping |
 | Long memory | `memory-lancedb` was repaired to use raw `/v1/embeddings` and guarded at startup | `scripts/openclaw/patch_memory_lancedb_raw_embeddings_current.py`, `scripts/remote_install_memory_lancedb_guard.py` | `memory-lancedb` dist patch, systemd `ExecStartPre/ExecStartPost` guard |
@@ -125,7 +125,7 @@ Primary tools:
 
 Hard rule:
 
-- global primary remains `openai-codex/gpt-5.4`
+- global primary remains `openai-codex/gpt-5.5`
 - `ollama/qwen3:14b` is fallback only unless the user explicitly changes policy
 
 Check both repo docs and host runtime before touching task payloads.
@@ -246,7 +246,7 @@ After redeployment, confirm these before declaring recovery complete:
 - Discord gateway metrics are healthy
 - browser backend reports `running: true`
 - `memory-lancedb` logs show recall injection without `256`-dimension errors
-- chat primary remains `openai-codex/gpt-5.4`
+- chat primary remains `openai-codex/gpt-5.5`
 - TimesCar scripts can complete without launching a fresh browser
 - `apply_news_config.py` and `verify_news_config.py` both succeed
 - a news pipeline dry run produces `PIPELINE_OK`

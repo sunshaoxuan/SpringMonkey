@@ -172,7 +172,7 @@
 - OpenClaw 正确读取 `/var/lib/openclaw/.openclaw/openclaw.json`
 - 正确读取 `/var/lib/openclaw/.openclaw/agents/main/agent/auth-profiles.json`
 - Discord 状态恢复为 `configured`
-- 默认模型恢复为 `gpt-5.4`
+- 默认模型恢复为 `gpt-5.5`
 - 服务保持 `active/running`
 
 ## 常驻稳定性补记

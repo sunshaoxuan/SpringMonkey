@@ -28,7 +28,7 @@ systemctl is-active openclaw.service
 
 - `ensure_daily_memory.py`：避免 `read …/memory/YYYY-MM-DD.md` ENOENT。
 - 新闻流水线工人阶段：`run_news_pipeline.py` 连 Ollama 的顺序为 **`OLLAMA_HOST` 环境变量** → **`broadcast.json` 的 `model.ollamaBaseUrl`** → 回退本机 `127.0.0.1:11434`。定时任务往往没有交互式 shell 里的 `export`，因此必须在配置里写明远端基址（与 OpenClaw 实际使用的节点一致）。
-- `model.newsWorker` 默认应为 `openai-codex/gpt-5.4`；若配置为 `ollama/qwen3:14b`，只能作为 Codex 不可用后的兜底。
+- `model.newsWorker` 默认应为 `openai-codex/gpt-5.5`；若配置为 `ollama/qwen3:14b`，只能作为 Codex 不可用后的兜底。
 - 定时任务 payload 里的 shell 命令使用 **`bash -lc 'cd … && python3 …'`**（由 `apply_news_config` 生成），避免以 `cd` 开头触发网关 **exec allowlist miss**。
 - `verify_runtime_readiness.py`：确认 `jobs.json` 中新闻任务 payload 含「流水线模式」且超时与配置一致；`runtimeReadiness.rssReachabilityHosts` 中**任一台**可解析即通过；**全部**不可解析时 WARN（`--strict-dns` 则失败）。
 - 若需 **Brave web_search**：在网关环境中配置 `BRAVE_API_KEY`（见 OpenClaw 文档）。
@@ -53,7 +53,7 @@ python scripts/openclaw/_run_integration_with_hostaccess.py --full-contract --e2
 
 ## 模型使用策略
 
-**定位**：Codex（`openai-codex/gpt-5.4`）是默认主模型，覆盖新闻编排、逐条处理和终稿格式化；Qwen（`ollama/qwen3:14b`）只做兜底处理器。
+**定位**：Codex（`openai-codex/gpt-5.5`）是默认主模型，覆盖新闻编排、逐条处理和终稿格式化；Qwen（`ollama/qwen3:14b`）只做兜底处理器。
 
 | 允许 | 禁止 |
 |------|------|
