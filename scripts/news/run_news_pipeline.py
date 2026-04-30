@@ -135,6 +135,11 @@ def _extract_openclaw_model_text(raw: str) -> str:
                 message = choices[0].get("message")
                 if isinstance(message, dict) and isinstance(message.get("content"), str):
                     return message["content"].strip()
+            outputs = data.get("outputs")
+            if isinstance(outputs, list) and outputs and isinstance(outputs[0], dict):
+                output_text = outputs[0].get("text")
+                if isinstance(output_text, str) and output_text.strip():
+                    return output_text.strip()
     lines = [
         line
         for line in text.splitlines()

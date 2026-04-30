@@ -490,6 +490,24 @@ class TestPlanAndTemplate(unittest.TestCase):
         mocked.assert_called_once()
         self.assertEqual(mocked.call_args.args[0], "openai-codex/gpt-5.5")
 
+    def test_extract_openclaw_model_text_from_outputs_envelope(self):
+        raw = json.dumps(
+            {
+                "ok": True,
+                "outputs": [
+                    {
+                        "text": '{"summary_zh":"中文摘要","region":"japan","category":"technology"}',
+                        "mediaUrl": None,
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+        self.assertEqual(
+            self.m._extract_openclaw_model_text(raw),
+            '{"summary_zh":"中文摘要","region":"japan","category":"technology"}',
+        )
+
     def test_strip_think_blocks(self):
         raw = "<think>internal plan</think>\n• 新闻摘要条目\n链接：https://example.com"
         cleaned = self.m.strip_think_blocks(raw)
