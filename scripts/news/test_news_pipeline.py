@@ -197,6 +197,72 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("down", detail)
 
+    def test_codex_model_uses_configured_http_endpoint(self):
+        with patch.object(self.m, "openai_chat", return_value='{"ok":true}') as mocked:
+            result = self.m.chat_with_model(
+                "openai-codex/gpt-5.5",
+                ollama_host="http://localhost:9",
+                openai_base_url="https://api.openai.com/v1",
+                openai_api_key="",
+                codex_base_url="http://ccnode.briconbric.com:49530/v1",
+                codex_api_key="secret",
+                system="s",
+                user="u",
+                timeout=5,
+            )
+        self.assertEqual(result, '{"ok":true}')
+        mocked.assert_called_once_with(
+            "http://ccnode.briconbric.com:49530/v1",
+            "secret",
+            "gpt-5.5",
+            "s",
+            "u",
+            5,
+        )
+
+    def test_codex_http_endpoint_requires_key_and_does_not_use_gateway(self):
+        with patch.object(self.m, "openclaw_model_chat") as gateway:
+            with self.assertRaises(RuntimeError) as ctx:
+                self.m.chat_with_model(
+                    "openai-codex/gpt-5.5",
+                    ollama_host="http://localhost:9",
+                    openai_base_url="https://api.openai.com/v1",
+                    openai_api_key="",
+                    codex_base_url="http://ccnode.briconbric.com:49530/v1",
+                    codex_api_key="",
+                    system="s",
+                    user="u",
+                    timeout=5,
+                )
+        self.assertIn("missing NEWS_CODEX_API_KEY", str(ctx.exception))
+        gateway.assert_not_called()
+
+    def test_load_runtime_env_files_does_not_override_existing_env(self):
+        with tempfile.TemporaryDirectory() as td:
+            env_file = Path(td) / "openclaw.env"
+            env_file.write_text(
+                "NEWS_CODEX_API_KEY=from_file\n"
+                "export NEWS_CODEX_BASE_URL='http://ccnode.briconbric.com:49530/v1'\n",
+                encoding="utf-8",
+            )
+            old_key = os.environ.get("NEWS_CODEX_API_KEY")
+            old_base = os.environ.get("NEWS_CODEX_BASE_URL")
+            try:
+                os.environ["NEWS_CODEX_API_KEY"] = "already_set"
+                os.environ.pop("NEWS_CODEX_BASE_URL", None)
+                self.m.load_runtime_env_files([env_file])
+                self.assertEqual(os.environ["NEWS_CODEX_API_KEY"], "already_set")
+                self.assertEqual(os.environ["NEWS_CODEX_BASE_URL"], "http://ccnode.briconbric.com:49530/v1")
+            finally:
+                if old_key is None:
+                    os.environ.pop("NEWS_CODEX_API_KEY", None)
+                else:
+                    os.environ["NEWS_CODEX_API_KEY"] = old_key
+                if old_base is None:
+                    os.environ.pop("NEWS_CODEX_BASE_URL", None)
+                else:
+                    os.environ["NEWS_CODEX_BASE_URL"] = old_base
+
     def test_archive_raw_article_items_writes_per_article_files(self):
         with tempfile.TemporaryDirectory() as td:
             run_dir = Path(td)

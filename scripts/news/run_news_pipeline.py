@@ -20,6 +20,8 @@
 环境变量（常用）
 --------------
 OpenClaw Codex profile   Codex 主模型通过 OpenClaw gateway/OAuth profile 调用
+NEWS_CODEX_BASE_URL      OpenAI-compatible Codex HTTP endpoint, e.g. http://ccnode.briconbric.com:49530/v1
+NEWS_CODEX_API_KEY       API key for NEWS_CODEX_BASE_URL. Required when codexBaseUrl is configured.
 OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
 model.ollamaBaseUrl      broadcast.json 中 Ollama 基址
 """
@@ -54,6 +56,10 @@ DEFAULT_CONFIG = REPO_ROOT / "config" / "news" / "broadcast.json"
 NEWS_STATE_DIR = Path("/var/lib/openclaw/.openclaw/state/news")
 RECENT_ITEMS_PATH = NEWS_STATE_DIR / "recent_items.json"
 PUBLISHED_ITEMS_PATH = NEWS_STATE_DIR / "published_items.json"
+RUNTIME_ENV_FILES = [
+    Path("/etc/openclaw/openclaw.env"),
+    Path("/var/lib/openclaw/.openclaw/openclaw.env"),
+]
 
 # 与 formatRules.outline 顺序一致
 BATCH_SPECS: list[dict[str, Any]] = [
@@ -69,6 +75,29 @@ def load_json(path: Path) -> dict:
         return json.load(f)
 
 
+def load_runtime_env_files(paths: list[Path] = RUNTIME_ENV_FILES) -> None:
+    """Load shared host env files for direct cron tasks without overriding process env."""
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.startswith("export "):
+                line = line[len("export ") :].strip()
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            value = value.strip().strip('"').strip("'")
+            os.environ[key] = value
+
+
 def resolve_ollama_base_url(cfg: dict) -> str:
     """工人阶段 Ollama HTTP 基址：环境变量优先，其次 model.ollamaBaseUrl / ollamaHost。"""
     env = os.environ.get("OLLAMA_HOST", "").strip()
@@ -80,6 +109,35 @@ def resolve_ollama_base_url(cfg: dict) -> str:
         if isinstance(v, str) and v.strip():
             return v.strip().rstrip("/")
     return "http://127.0.0.1:11434"
+
+
+def resolve_codex_base_url(cfg: dict) -> str:
+    env = os.environ.get("NEWS_CODEX_BASE_URL", "").strip()
+    if env:
+        return env.rstrip("/")
+    mc = cfg.get("model") or {}
+    value = mc.get("codexBaseUrl")
+    if isinstance(value, str) and value.strip():
+        return value.strip().rstrip("/")
+    return ""
+
+
+def resolve_codex_api_key(cfg: dict) -> str:
+    mc = cfg.get("model") or {}
+    env_name = str(mc.get("codexApiKeyEnv") or "NEWS_CODEX_API_KEY").strip() or "NEWS_CODEX_API_KEY"
+    for name in (
+        env_name,
+        "NEWS_CODEX_API_KEY",
+        "OPENCLAW_CODEX_API_KEY",
+        "CODEX_API_KEY",
+        "OPENAI_CODEX_API_KEY",
+        "OPENCLAW_PUBLIC_MODEL_API_KEY",
+    ):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    value = mc.get("codexApiKey")
+    return value.strip() if isinstance(value, str) else ""
 
 
 def ollama_api_model_name(model_id: str) -> str:
@@ -210,11 +268,27 @@ def chat_with_model(
     ollama_host: str,
     openai_base_url: str,
     openai_api_key: str,
+    codex_base_url: str = "",
+    codex_api_key: str = "",
     system: str,
     user: str,
     timeout: int,
 ) -> str:
     if is_openclaw_codex_model(model_id):
+        if codex_base_url:
+            if not codex_api_key:
+                raise RuntimeError(
+                    f"missing NEWS_CODEX_API_KEY for Codex HTTP endpoint {codex_base_url}; "
+                    "refusing to fall back to the busy local gateway"
+                )
+            return openai_chat(
+                codex_base_url,
+                codex_api_key,
+                provider_api_model_name(model_id),
+                system,
+                user,
+                timeout,
+            )
         return openclaw_model_chat(model_id, system, user, timeout)
     if is_openai_model(model_id):
         if not openai_api_key:
@@ -457,6 +531,8 @@ def check_processor_health(
     ollama_host: str,
     openai_base_url: str,
     openai_api_key: str,
+    codex_base_url: str = "",
+    codex_api_key: str = "",
     timeout: int,
 ) -> tuple[bool, str]:
     try:
@@ -466,6 +542,8 @@ def check_processor_health(
             ollama_host=ollama_host,
             openai_base_url=openai_base_url,
             openai_api_key=openai_api_key,
+            codex_base_url=codex_base_url,
+            codex_api_key=codex_api_key,
             system="只输出 JSON，不要解释。",
             user='输出 {"ok":true}',
             timeout=health_timeout,
@@ -718,6 +796,8 @@ def process_raw_article_item(
     ollama_host: str,
     openai_base_url: str,
     openai_api_key: str,
+    codex_base_url: str = "",
+    codex_api_key: str = "",
     model: str,
     fallback_model: str,
     timeout: int,
@@ -767,6 +847,8 @@ def process_raw_article_item(
             ollama_host=ollama_host,
             openai_base_url=openai_base_url,
             openai_api_key=openai_api_key,
+            codex_base_url=codex_base_url,
+            codex_api_key=codex_api_key,
             system=ARTICLE_PROCESS_SYSTEM_PROMPT,
             user=user,
             timeout=timeout,
@@ -785,6 +867,8 @@ def process_raw_article_item(
                     ollama_host=ollama_host,
                     openai_base_url=openai_base_url,
                     openai_api_key=openai_api_key,
+                    codex_base_url=codex_base_url,
+                    codex_api_key=codex_api_key,
                     system=ARTICLE_PROCESS_SYSTEM_PROMPT,
                     user=user,
                     timeout=timeout,
@@ -845,6 +929,8 @@ def process_raw_article_items(
     ollama_host: str,
     openai_base_url: str,
     openai_api_key: str,
+    codex_base_url: str = "",
+    codex_api_key: str = "",
     model: str,
     fallback_model: str,
     timeout: int,
@@ -859,6 +945,8 @@ def process_raw_article_items(
             ollama_host=ollama_host,
             openai_base_url=openai_base_url,
             openai_api_key=openai_api_key,
+            codex_base_url=codex_base_url,
+            codex_api_key=codex_api_key,
             model=model,
             fallback_model=fallback_model,
             timeout=timeout,
@@ -1167,6 +1255,7 @@ def main() -> int:
         print(f"RESET_PUBLISHED_OK removed={removed}")
         return 0
 
+    load_runtime_env_files()
     cfg = load_json(args.config)
     job = job_spec(cfg, args.job)
     model_cfg = cfg.get("model", {})
@@ -1189,6 +1278,8 @@ def main() -> int:
     ollama_finalize_model = ollama_api_model_name(finalize_model_raw)
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     base_url = os.environ.get("NEWS_OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
+    codex_base_url = resolve_codex_base_url(cfg)
+    codex_api_key = resolve_codex_api_key(cfg)
     ollama_host = resolve_ollama_base_url(cfg)
     max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
     dedupe_hours = int((cfg.get("newsExecution") or {}).get("crossRunDedupeHours", 36))
@@ -1223,6 +1314,9 @@ def main() -> int:
             "ollama_api_worker": ollama_worker_model,
             "ollama_api_finalize": ollama_finalize_model,
             "ollama_base_url": ollama_host,
+            "codex_base_url": codex_base_url,
+            "codex_http_enabled": bool(codex_base_url),
+            "codex_api_key_present": bool(codex_api_key),
             "window_start_ts": window_start_ts,
             "window_end_ts": window_end_ts,
             "cross_run_dedupe_hours": dedupe_hours,
@@ -1409,6 +1503,8 @@ def main() -> int:
                 ollama_host=ollama_host,
                 openai_base_url=base_url,
                 openai_api_key=api_key,
+                codex_base_url=codex_base_url,
+                codex_api_key=codex_api_key,
                 timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
             )
             if not healthy and fallback_model_raw and fallback_model_raw != worker_model_raw:
@@ -1417,6 +1513,8 @@ def main() -> int:
                     ollama_host=ollama_host,
                     openai_base_url=base_url,
                     openai_api_key=api_key,
+                    codex_base_url=codex_base_url,
+                    codex_api_key=codex_api_key,
                     timeout=args.openai_timeout if is_openai_model(fallback_model_raw) else args.ollama_timeout,
                 )
                 if fallback_healthy:
@@ -1436,6 +1534,9 @@ def main() -> int:
                         "worker_model": worker_model_raw,
                         "fallback_model": fallback_model_raw,
                         "ollama_base_url": ollama_host,
+                        "codex_base_url": codex_base_url,
+                        "codex_http_enabled": bool(codex_base_url),
+                        "codex_api_key_present": bool(codex_api_key),
                         "health_detail": health_detail,
                     },
                 )
@@ -1453,6 +1554,8 @@ def main() -> int:
             ollama_host=ollama_host,
             openai_base_url=base_url,
             openai_api_key=api_key,
+            codex_base_url=codex_base_url,
+            codex_api_key=codex_api_key,
             model=worker_model_raw,
             fallback_model=fallback_model_raw,
             timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
@@ -1547,6 +1650,8 @@ def main() -> int:
                 ollama_host=ollama_host,
                 openai_base_url=base_url,
                 openai_api_key=api_key,
+                codex_base_url=codex_base_url,
+                codex_api_key=codex_api_key,
                 system=fin_sys,
                 user=fin_user,
                 timeout=args.openai_timeout * 2 if is_openai_model(finalize_model_raw) else args.ollama_timeout,
@@ -1561,6 +1666,8 @@ def main() -> int:
                         ollama_host=ollama_host,
                         openai_base_url=base_url,
                         openai_api_key=api_key,
+                        codex_base_url=codex_base_url,
+                        codex_api_key=codex_api_key,
                         system=fin_sys,
                         user=fin_user,
                         timeout=args.openai_timeout * 2 if is_openai_model(fallback_model_raw) else args.ollama_timeout,

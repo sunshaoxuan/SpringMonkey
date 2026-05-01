@@ -237,6 +237,8 @@
     "chatPrimary": "openai-codex/gpt-5.5",
     "chatFallback": "ollama/qwen3:14b",
     "chatEscalateWhenHistoryCharsExceed": 15000,
+    "codexBaseUrl": "http://ccnode.briconbric.com:49530/v1",
+    "codexApiKeyEnv": "NEWS_CODEX_API_KEY",
     "ollamaBaseUrl": "http://ccnode.briconbric.com:22545",
     "ollamaNote": "Ollama 仅在 ccnode 节点运行；宿主机无本地 Ollama，localhost:11434 上的是云端代理不可用于本地推理",
     "newsOrchestrator": "openai-codex/gpt-5.5",
