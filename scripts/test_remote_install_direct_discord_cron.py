@@ -19,12 +19,14 @@ def test_news_cron_preserves_command_substitution_for_helper() -> None:
     remote = module.REMOTE
     news_lines = [line for line in remote.splitlines() if "--name news-digest-jst-" in line]
 
+    assert 'cat >"${CRON_FILE}" <<\'EOF\'' in remote
     assert len(news_lines) == 2
     for line in news_lines:
-        assert "--command bash -lc 'set -e; OUT=$(python3 " in line
+        assert "--command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/" in line
         assert 'DIR=$(printf "%s\\n" "$OUT"' in line
         assert 'cat "$DIR/final_broadcast.md"\'' in line
         assert r"OUT=\$(python3" not in line
+        assert "${REPO}" not in line
 
 
 if __name__ == "__main__":
