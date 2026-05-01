@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -69,7 +71,7 @@ WEATHER_TEXT = {
 }
 
 
-def fetch_json(url: str) -> dict:
+def fetch_json(url: str, attempts: int = 3) -> dict:
     req = urllib.request.Request(
         url,
         headers={
@@ -77,8 +79,23 @@ def fetch_json(url: str) -> dict:
             "Accept": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            last_error = e
+            if e.code < 500 or attempt >= attempts:
+                raise
+        except (urllib.error.URLError, TimeoutError) as e:
+            last_error = e
+            if attempt >= attempts:
+                raise
+        time.sleep(min(2 * attempt, 6))
+    if last_error:
+        raise last_error
+    raise RuntimeError("weather fetch failed without exception")
 
 
 def load_holidays() -> dict[str, str]:
@@ -158,8 +175,14 @@ def fetch_weather(location: Location) -> str:
         }
     )
 
-    forecast = fetch_json(forecast_url)
-    air = fetch_json(air_url)
+    try:
+        forecast = fetch_json(forecast_url)
+    except Exception as e:
+        return f"- {location.label}（{location.area}）: 天气服务暂时不可用，无法取得实时预报（{type(e).__name__}）。"
+    try:
+        air = fetch_json(air_url)
+    except Exception:
+        air = {"current": {"us_aqi": None}}
 
     current = forecast.get("current", {})
     daily = forecast.get("daily", {})

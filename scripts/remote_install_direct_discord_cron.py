@@ -306,8 +306,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Direct Discord delivery for script-like jobs. These bypass OpenClaw model turns.
 0 7 * * * root ${HELPER} --name weather-report-jst-0700 --channel-id ${PUBLIC_CHANNEL} --timeout 120 --run-as-openclaw --command python3 ${REPO}/scripts/weather/discord_weather_report.py
 
-0 9 * * * root ${HELPER} --name news-digest-jst-0900 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --command bash -lc "set -e; OUT=\$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_0900.py); DIR=\$(echo \"\\\$OUT\" | sed -n 's/^PIPELINE_OK //p' | tail -n1); test -n \"\\\$DIR\"; cat \"\\\$DIR/final_broadcast.md\""
-0 17 * * * root ${HELPER} --name news-digest-jst-1700 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --command bash -lc "set -e; OUT=\$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_1700.py); DIR=\$(echo \"\\\$OUT\" | sed -n 's/^PIPELINE_OK //p' | tail -n1); test -n \"\\\$DIR\"; cat \"\\\$DIR/final_broadcast.md\""
+0 9 * * * root ${HELPER} --name news-digest-jst-0900 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --command bash -lc 'set -e; OUT=$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_0900.py); DIR=$(printf "%s\n" "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
+0 17 * * * root ${HELPER} --name news-digest-jst-1700 --channel-id ${PUBLIC_CHANNEL} --timeout 5400 --command bash -lc 'set -e; OUT=$(python3 ${REPO}/scripts/news/jobs/news_digest_jst_1700.py); DIR=$(printf "%s\n" "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
 
 0 22 * * * root ${HELPER} --name timescar-daily-report-2200 --channel-id ${DM_CHANNEL} --timeout 900 --run-as-openclaw --command python3 ${REPO}/scripts/timescar/timescar_daily_report_render.py
 0 23 * * * root ${HELPER} --name timescar-ask-cancel-next24h-2300 --channel-id ${DM_CHANNEL} --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 ${REPO}/scripts/timescar/timescar_next24h_notice.py
