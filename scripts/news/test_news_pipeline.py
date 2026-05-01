@@ -362,7 +362,7 @@ class TestPlanAndTemplate(unittest.TestCase):
             japan = (run_dir / "worker_japan.md").read_text(encoding="utf-8")
             self.assertIn("韩国法院因妨碍司法加重前总统刑期", world)
             self.assertNotIn("Sample English", japan)
-            self.assertIn("本节无合格新增新闻条目", japan)
+            self.assertNotIn("本节无合格新增新闻条目", japan)
 
     def test_write_selected_items_keeps_country_batch_in_country_section(self):
         job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
@@ -589,7 +589,8 @@ class TestPlanAndTemplate(unittest.TestCase):
         v = _load_verify()
         ok, err = v.verify_text(text, cfg)
         self.assertTrue(ok, f"empty-batch fallback should still pass: {err}")
-        self.assertIn("本节无合格新增新闻条目", text)
+        self.assertNotIn("本节无合格新增新闻条目", text)
+        self.assertNotIn("**1. 日本**", text)
 
     def test_ollama_api_model_name_strips_provider_prefix(self):
         self.assertEqual(
@@ -668,6 +669,17 @@ class TestVerifyDraft(unittest.TestCase):
 • g
 **8. 市场或风险提示**
 • h
+"""
+        ok, err = self.v.verify_text(text, self.cfg)
+        self.assertTrue(ok, err)
+
+    def test_omitted_empty_sections_are_allowed(self):
+        text = """新闻简报
+窗口
+**3. 美国**
+• a
+**5. 科技**
+• b
 """
         ok, err = self.v.verify_text(text, self.cfg)
         self.assertTrue(ok, err)

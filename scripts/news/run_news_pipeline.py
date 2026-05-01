@@ -1004,7 +1004,7 @@ def write_selected_items_and_workers(
             lines.append(f"• {item['summary_zh']}")
             if plan.get("_format_rules", {}).get("includeLinksInBroadcast", False) and item.get("source_url"):
                 lines.append(f"链接：{item['source_url']}")
-        if not lines:
+        if not lines and not plan.get("_format_rules", {}).get("omitEmptySections", False):
             lines.append(f"• {fallback_line}")
         (run_dir / f"worker_{bid}.md").write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
     return selected
@@ -1067,7 +1067,8 @@ def _finalize_template_example(plan: dict) -> str:
     fallback = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
     for sec in fr_outline:
         lines.append(sec)
-        lines.append(f"{bullet}{fallback}")
+        if not plan.get("_format_rules", {}).get("omitEmptySections", False):
+            lines.append(f"{bullet}{fallback}")
     return "\n".join(lines)
 
 
@@ -1091,7 +1092,7 @@ def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None
         "一级标题必须加粗（用 ** 包裹），如 **1. 日本**。\n"
         "每个小节内条目一律用「• 」（Unicode 圆点 U+2022 + 空格）开头。\n"
         "不要使用短横线 - 作为条目符号（Discord 会错误渲染）。\n"
-        f"若某节工人未提供合格条目，写一条「• {plan['fallback_no_news']}」。\n"
+        "若某节工人未提供合格条目，直接隐藏该小节；不要输出无新闻占位句。\n"
         "公开播报稿禁止输出 URL、链接行、Markdown 链接或裸域名；来源 URL 只保留在后台 JSON 记录。\n\n"
         "【模板示例（内容替换为工人实际条目）】\n"
         f"{example}\n"
@@ -1135,6 +1136,7 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
     fr = cfg["formatRules"]
     outline: list[str] = fr.get("outline", [])
     fallback_line = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
+    omit_empty = bool(fr.get("omitEmptySections", False))
 
     bullet = fr.get("contentBulletPrefix", "• ")
 
@@ -1164,12 +1166,13 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
 
     result_lines = [plan["title_line"], plan["window_label"]]
     for i, sec_title in enumerate(outline):
-        result_lines.append(sec_title)
         bid = batch_ids[i] if i < len(batch_ids) else None
         items = batch_content.get(bid, []) if bid else []
         if items:
+            result_lines.append(sec_title)
             result_lines.extend(items)
-        else:
+        elif not omit_empty:
+            result_lines.append(sec_title)
             result_lines.append(f"{bullet}{fallback_line}")
 
     return "\n".join(result_lines) + "\n"
@@ -1191,16 +1194,18 @@ def merge_workers(run_dir: Path, plan: dict) -> str:
         content = p.read_text(encoding="utf-8").strip()
 
         header = outline[i] if i < len(outline) else b.get("outline_line", f"{i+1}. {bid}")
-        lines.append(header)
 
         if content and not content.startswith("•") and not content.startswith(bullet):
+            lines.append(header)
             for cline in content.splitlines():
                 cline = cline.strip()
                 if cline:
                     lines.append(cline)
         elif content:
+            lines.append(header)
             lines.append(content)
-        else:
+        elif not fr.get("omitEmptySections", False):
+            lines.append(header)
             lines.append(f"{bullet}{fallback}")
 
     return "\n".join(lines).strip() + "\n"

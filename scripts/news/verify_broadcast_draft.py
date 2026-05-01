@@ -45,7 +45,17 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
         s = ln.strip()
         if s in outline_set:
             found_outline.append(s)
-    if found_outline != outline:
+    if fr.get("omitEmptySections", False):
+        expected_index = 0
+        for found in found_outline:
+            try:
+                expected_index = outline.index(found, expected_index) + 1
+            except ValueError:
+                errors.append(
+                    f"bad_top_level_numbering: 期望按 {outline!r} 的顺序出现子集, 实际 {found_outline!r}"
+                )
+                break
+    elif found_outline != outline:
         errors.append(
             f"bad_top_level_numbering: 期望 {outline!r}, 实际 {found_outline!r}"
         )

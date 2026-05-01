@@ -48,6 +48,7 @@
     "includeLinksInBroadcast": false,
     "requirePerItemSourceLink": false,
     "fallbackNoMajorUpdateLine": "本节无合格新增新闻条目。",
+    "omitEmptySections": true,
     "requireLinkOnNewLine": false,
     "requireSourceLinkMatchesItem": true,
     "forbidAggregatorLinksAsSource": true,
