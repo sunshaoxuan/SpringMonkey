@@ -75,9 +75,7 @@
         "https://www.japantimes.co.jp/feed/",
         "https://www3.nhk.or.jp/rss/news/cat0.xml",
         "https://feeds.reuters.com/reuters/worldNews",
-        "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
-        "https://english.kyodonews.net/rss/all.xml",
-        "https://www.nippon.com/en/rss/index.xml"
+        "https://feeds.bbci.co.uk/news/world/asia/rss.xml"
       ],
       "china": [
         "https://feeds.bbci.co.uk/news/world/asia/china/rss.xml",
@@ -85,7 +83,8 @@
         "https://www.cnbc.com/id/100727362/device/rss/rss.html",
         "https://36kr.com/feed",
         "https://www.huxiu.com/rss/0.xml",
-        "https://www.ifanr.com/feed"
+        "https://www.ifanr.com/feed",
+        "https://www.scmp.com/rss/4/feed"
       ],
       "us": [
         "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
@@ -96,8 +95,7 @@
       "europe": [
         "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
         "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
-        "https://www.politico.eu/feed/",
-        "https://www.dw.com/en/top-stories/s-9097?maca=en-rss-en-all-1573-rdf"
+        "https://www.politico.eu/feed/"
       ],
       "technology": [
         "https://feeds.bbci.co.uk/news/technology/rss.xml",

@@ -364,6 +364,29 @@ class TestPlanAndTemplate(unittest.TestCase):
             self.assertNotIn("Sample English", japan)
             self.assertIn("本节无合格新增新闻条目", japan)
 
+    def test_write_selected_items_keeps_country_batch_in_country_section(self):
+        job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(self.cfg, job)
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td)
+            selected = self.m.write_selected_items_and_workers(
+                run_dir,
+                plan,
+                [
+                    {
+                        "item_id": "001",
+                        "original_batch": "japan",
+                        "region": "world",
+                        "summary_zh": "日本新闻自由排名相关报道。",
+                        "source_url": "https://example.com/jp",
+                        "included": True,
+                    }
+                ],
+                "本节无合格新增新闻条目。",
+            )
+            self.assertEqual(len(selected["japan"]), 1)
+            self.assertEqual(len(selected["world"]), 0)
+
     def test_append_published_items_records_selected_official_items(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "published_items.json"

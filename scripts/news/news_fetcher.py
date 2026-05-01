@@ -42,7 +42,6 @@ RSS_FEEDS: dict[str, list[str]] = {
         "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
         "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
         "https://www.politico.eu/feed/",
-        "https://www.dw.com/en/top-stories/s-9097?maca=en-rss-en-all-1573-rdf",
     ],
     "technology": [
         "https://feeds.bbci.co.uk/news/technology/rss.xml",
