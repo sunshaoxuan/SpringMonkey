@@ -37,10 +37,11 @@
       "**2. 中国**",
       "**3. 美国**",
       "**4. 欧洲**",
-      "**5. 科技**",
-      "**6. 娱乐与文化**",
-      "**7. 国际**",
-      "**8. 市场或风险提示**"
+      "**5. AI / 人工智能**",
+      "**6. 科技**",
+      "**7. 娱乐与文化**",
+      "**8. 国际**",
+      "**9. 市场或风险提示**"
     ],
     "contentBulletPrefix": "• ",
     "forbidNestedNumbering": true,
@@ -69,7 +70,8 @@
       "Reuters：主站 RSS 常用路径（不依赖 feeds 子域解析）如 https://www.reuters.com/rssfeed/worldNews 、 https://www.reuters.com/rssfeed/topNews",
       "AP： https://apnews.com/apf-topnews（聚合页；请打开单篇报道取可验证直链）",
       "BBC： https://feeds.bbci.co.uk/news/world/rss.xml",
-      "NPR： https://feeds.npr.org/1001/rss.xml"
+      "NPR： https://feeds.npr.org/1001/rss.xml",
+      "AI：MIT Technology Review、VentureBeat AI、OpenAI、Google DeepMind/Google AI、Hugging Face、NVIDIA、AWS Machine Learning，以及量子位、36Kr、ifanr 等中英文权威/专业信源。"
     ],
     "rssFeedsByBatch": {
       "japan": [
@@ -122,6 +124,20 @@
         "https://feeds.reuters.com/reuters/businessNews",
         "https://feeds.bbci.co.uk/news/business/rss.xml",
         "https://www.cnbc.com/id/10001147/device/rss/rss.html"
+      ],
+      "ai": [
+        "https://www.technologyreview.com/feed/",
+        "https://venturebeat.com/category/ai/feed/",
+        "https://openai.com/news/rss.xml",
+        "https://deepmind.google/blog/rss.xml",
+        "https://blog.google/technology/ai/rss/",
+        "https://research.google/blog/rss/",
+        "https://huggingface.co/blog/feed.xml",
+        "https://blogs.nvidia.com/feed/",
+        "https://aws.amazon.com/blogs/machine-learning/feed/",
+        "https://www.qbitai.com/feed",
+        "https://36kr.com/feed",
+        "https://www.ifanr.com/feed"
       ]
     },
     "priorityKeywords": [
@@ -249,6 +265,32 @@
         "影视",
         "动漫",
         "游戏"
+      ],
+      "ai": [
+        "ai",
+        "artificial intelligence",
+        "generative ai",
+        "large language model",
+        "llm",
+        "openai",
+        "anthropic",
+        "deepmind",
+        "chatgpt",
+        "claude",
+        "gemini",
+        "machine learning",
+        "neural",
+        "人工智能",
+        "生成式ai",
+        "生成式人工智能",
+        "大模型",
+        "语言模型",
+        "机器学习",
+        "深度学习",
+        "智能体",
+        "具身智能",
+        "多模态",
+        "算力"
       ]
     },
     "minRegionalItems": 1,
@@ -268,6 +310,7 @@
       "经济与产业",
       "社会与民生",
       "科技与AI",
+      "AI 与人工智能",
       "文化与娱乐",
       "体育与生活方式",
       "公共安全与健康",
@@ -337,6 +380,20 @@
         "BBC",
         "ESPN",
         "AP News"
+      ],
+      "ai": [
+        "MIT Technology Review",
+        "VentureBeat AI",
+        "OpenAI News",
+        "Google DeepMind Blog",
+        "Google AI",
+        "Google Research",
+        "Hugging Face Blog",
+        "NVIDIA Blog",
+        "AWS Machine Learning Blog",
+        "量子位",
+        "36Kr",
+        "ifanr"
       ]
     }
   },

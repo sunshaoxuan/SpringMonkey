@@ -67,6 +67,7 @@ BATCH_SPECS: list[dict[str, Any]] = [
     {"id": "china", "pool_key": "china"},
     {"id": "us", "pool_key": "us"},
     {"id": "europe", "pool_key": "europe"},
+    {"id": "ai", "pool_key": "ai"},
     {"id": "technology", "pool_key": "technology"},
     {"id": "entertainment", "pool_key": "entertainment"},
     {"id": "world", "pool_key": "world"},
@@ -750,7 +751,7 @@ def deterministic_summary_from_article(title: str, url: str) -> str:
 ARTICLE_PROCESS_SYSTEM_PROMPT = (
     "你是新闻条目处理器。只根据输入的单篇原始稿件生成结构化 JSON，不要输出 Markdown 或解释。\n"
     "summary_zh 必须是中文一句话，20-60 字，准确概括核心事实；不得补充原文没有的信息。\n"
-    "region 只能是 japan、china、us、europe、technology、entertainment、world、markets；"
+    "region 只能是 japan、china、us、europe、ai、technology、entertainment、world、markets；"
     "category 用 politics、economy、society、technology、culture、entertainment、sports、health、environment、risk、other 之一。"
 )
 
@@ -849,7 +850,7 @@ def process_raw_article_item(
             "content": body,
             "output_schema": {
                 "summary_zh": "中文一句话新闻主题",
-                "region": "japan|china|us|europe|technology|entertainment|world|markets",
+                "region": "japan|china|us|europe|ai|technology|entertainment|world|markets",
                 "category": "politics|economy|society|technology|culture|entertainment|sports|health|environment|risk|other",
             },
         },
@@ -982,6 +983,10 @@ def write_selected_items_and_workers(
     selected: dict[str, list[dict[str, Any]]] = {b["id"]: [] for b in plan["batches"]}
     sticky_batches = {"japan", "china", "us", "europe"}
     def normalize_content_section(region: str, category: str) -> str:
+        if region == "ai":
+            if category == "technology":
+                return "ai"
+            return "technology"
         if region == "technology" and category != "technology":
             if category in {"economy", "risk"}:
                 return "markets"

@@ -43,6 +43,19 @@ RSS_FEEDS: dict[str, list[str]] = {
         "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
         "https://www.politico.eu/feed/",
     ],
+    "ai": [
+        "https://www.technologyreview.com/feed/",
+        "https://venturebeat.com/category/ai/feed/",
+        "https://openai.com/news/rss.xml",
+        "https://deepmind.google/blog/rss.xml",
+        "https://blog.google/technology/ai/rss/",
+        "https://research.google/blog/rss/",
+        "https://huggingface.co/blog/feed.xml",
+        "https://blogs.nvidia.com/feed/",
+        "https://aws.amazon.com/blogs/machine-learning/feed/",
+        "https://www.qbitai.com/feed",
+        "https://www.ifanr.com/feed",
+    ],
     "technology": [
         "https://feeds.bbci.co.uk/news/technology/rss.xml",
         "https://www.theverge.com/rss/index.xml",
@@ -136,6 +149,33 @@ EUROPE_KEYWORDS = (
     "德国",
 )
 
+AI_KEYWORDS = (
+    "ai",
+    "artificial intelligence",
+    "generative ai",
+    "large language model",
+    "llm",
+    "openai",
+    "anthropic",
+    "deepmind",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "machine learning",
+    "neural",
+    "人工智能",
+    "生成式ai",
+    "生成式人工智能",
+    "大模型",
+    "语言模型",
+    "机器学习",
+    "深度学习",
+    "智能体",
+    "具身智能",
+    "多模态",
+    "算力",
+)
+
 TECHNOLOGY_KEYWORDS = (
     "technology",
     "tech",
@@ -177,6 +217,7 @@ DEFAULT_KEYWORDS_BY_BATCH = {
     "china": CHINA_KEYWORDS,
     "us": US_KEYWORDS,
     "europe": EUROPE_KEYWORDS,
+    "ai": AI_KEYWORDS,
     "technology": TECHNOLOGY_KEYWORDS,
     "entertainment": ENTERTAINMENT_KEYWORDS,
 }
@@ -294,6 +335,8 @@ def classify_article_batch(
         return "us"
     if batch_relevant("europe", title, url, snippet, keyword_map):
         return "europe"
+    if batch_relevant("ai", title, url, snippet, keyword_map):
+        return "ai"
     if batch_relevant("technology", title, url, snippet, keyword_map):
         return "technology"
     if batch_relevant("entertainment", title, url, snippet, keyword_map):
@@ -328,6 +371,8 @@ def _article_priority_score(
         score += 12
     if "npr" in source:
         score += 8
+    if batch_id == "ai" and batch_relevant("ai", title, url, snippet):
+        score += 18
     if batch_id in ("japan", "china") and batch_relevant(batch_id, title, url, snippet):
         score += 10
     if published_ts > 0:

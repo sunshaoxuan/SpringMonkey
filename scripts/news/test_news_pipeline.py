@@ -575,7 +575,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertTrue(ok, f"mechanical fallback should pass verify: {err}")
         self.assertIn("新闻简报", text)
         self.assertIn("**1. 日本**", text)
-        self.assertIn("**8. 市场或风险提示**", text)
+        self.assertIn("**9. 市场或风险提示**", text)
         self.assertIn("• ", text)
 
     def test_mechanical_fallback_strips_numbering(self):
@@ -683,14 +683,16 @@ class TestVerifyDraft(unittest.TestCase):
 • c
 **4. 欧洲**
 • d
-**5. 科技**
+**5. AI / 人工智能**
 • e
-**6. 娱乐与文化**
+**6. 科技**
 • f
-**7. 国际**
+**7. 娱乐与文化**
 • g
-**8. 市场或风险提示**
+**8. 国际**
 • h
+**9. 市场或风险提示**
+• i
 """
         ok, err = self.v.verify_text(text, self.cfg)
         self.assertTrue(ok, err)
@@ -700,7 +702,7 @@ class TestVerifyDraft(unittest.TestCase):
 窗口
 **3. 美国**
 • a
-**5. 科技**
+**5. AI / 人工智能**
 • b
 """
         ok, err = self.v.verify_text(text, self.cfg)
