@@ -290,14 +290,14 @@ def classify_article_batch(
         return "japan"
     if batch_relevant("china", title, url, snippet, keyword_map):
         return "china"
-    if batch_relevant("technology", title, url, snippet, keyword_map):
-        return "technology"
-    if batch_relevant("entertainment", title, url, snippet, keyword_map):
-        return "entertainment"
     if batch_relevant("us", title, url, snippet, keyword_map):
         return "us"
     if batch_relevant("europe", title, url, snippet, keyword_map):
         return "europe"
+    if batch_relevant("technology", title, url, snippet, keyword_map):
+        return "technology"
+    if batch_relevant("entertainment", title, url, snippet, keyword_map):
+        return "entertainment"
     if any(k in text for k in market_keys):
         return "markets"
     if current_batch == "markets":

@@ -980,14 +980,14 @@ def write_selected_items_and_workers(
     fallback_line: str,
 ) -> dict[str, list[dict[str, Any]]]:
     selected: dict[str, list[dict[str, Any]]] = {b["id"]: [] for b in plan["batches"]}
-    sticky_batches = {"japan", "china", "us", "europe", "technology", "entertainment"}
+    sticky_batches = {"japan", "china", "us", "europe"}
     for item in processed_items:
         if not item.get("included"):
             continue
         original_batch = str(item.get("original_batch") or "")
         region = str(item.get("region") or "world")
         if original_batch in sticky_batches and original_batch in selected:
-            # Country/topic-specific collection should not be emptied by a loose model label.
+            # Region classification has priority over content classification.
             region = original_batch
         if region not in selected:
             region = "world"

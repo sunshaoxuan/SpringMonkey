@@ -387,6 +387,18 @@ class TestPlanAndTemplate(unittest.TestCase):
             self.assertEqual(len(selected["japan"]), 1)
             self.assertEqual(len(selected["world"]), 0)
 
+    def test_classification_prefers_region_over_content(self):
+        f = _load_fetcher()
+        self.assertEqual(
+            f.classify_article_batch(
+                "technology",
+                "US AI startup raises funding in New York",
+                "https://example.com/us-ai",
+                "American artificial intelligence company",
+            ),
+            "us",
+        )
+
     def test_append_published_items_records_selected_official_items(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "published_items.json"
