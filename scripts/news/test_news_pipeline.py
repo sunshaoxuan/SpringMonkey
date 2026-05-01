@@ -399,6 +399,28 @@ class TestPlanAndTemplate(unittest.TestCase):
             "us",
         )
 
+    def test_technology_section_rejects_non_technology_category(self):
+        job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(self.cfg, job)
+        with tempfile.TemporaryDirectory() as td:
+            selected = self.m.write_selected_items_and_workers(
+                Path(td),
+                plan,
+                [
+                    {
+                        "item_id": "001",
+                        "original_batch": "technology",
+                        "region": "technology",
+                        "category": "politics",
+                        "summary_zh": "政治新闻不应进入科技栏。",
+                        "included": True,
+                    }
+                ],
+                "本节无合格新增新闻条目。",
+            )
+            self.assertEqual(len(selected["technology"]), 0)
+            self.assertEqual(len(selected["world"]), 1)
+
     def test_append_published_items_records_selected_official_items(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "published_items.json"

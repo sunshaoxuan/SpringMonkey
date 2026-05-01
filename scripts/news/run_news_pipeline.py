@@ -981,14 +981,32 @@ def write_selected_items_and_workers(
 ) -> dict[str, list[dict[str, Any]]]:
     selected: dict[str, list[dict[str, Any]]] = {b["id"]: [] for b in plan["batches"]}
     sticky_batches = {"japan", "china", "us", "europe"}
+    def normalize_content_section(region: str, category: str) -> str:
+        if region == "technology" and category != "technology":
+            if category in {"economy", "risk"}:
+                return "markets"
+            if category in {"entertainment", "culture", "sports"}:
+                return "entertainment"
+            return "world"
+        if region == "entertainment" and category not in {"entertainment", "culture", "sports"}:
+            if category == "technology":
+                return "technology"
+            if category in {"economy", "risk"}:
+                return "markets"
+            return "world"
+        return region
+
     for item in processed_items:
         if not item.get("included"):
             continue
         original_batch = str(item.get("original_batch") or "")
         region = str(item.get("region") or "world")
+        category = str(item.get("category") or "other")
         if original_batch in sticky_batches and original_batch in selected:
             # Region classification has priority over content classification.
             region = original_batch
+        else:
+            region = normalize_content_section(region, category)
         if region not in selected:
             region = "world"
         selected[region].append(item)
@@ -1066,6 +1084,8 @@ def _finalize_template_example(plan: dict) -> str:
     lines = [plan["title_line"], plan["window_label"]]
     fallback = plan.get("fallback_no_news", "本节无合格新增新闻条目。")
     for sec in fr_outline:
+        if lines and lines[-1] != "":
+            lines.append("")
         lines.append(sec)
         if not plan.get("_format_rules", {}).get("omitEmptySections", False):
             lines.append(f"{bullet}{fallback}")
@@ -1090,6 +1110,7 @@ def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None
         "【禁止的编号形式举例】1. xxx / 2. xxx / 1、xxx / (1) xxx / ① xxx\n"
         "以上在条目行内全部禁止。\n"
         "一级标题必须加粗（用 ** 包裹），如 **1. 日本**。\n"
+        "每个分区标题前必须保留一个空行，让标题和上一分区内容分开。\n"
         "每个小节内条目一律用「• 」（Unicode 圆点 U+2022 + 空格）开头。\n"
         "不要使用短横线 - 作为条目符号（Discord 会错误渲染）。\n"
         "若某节工人未提供合格条目，直接隐藏该小节；不要输出无新闻占位句。\n"
@@ -1169,9 +1190,13 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
         bid = batch_ids[i] if i < len(batch_ids) else None
         items = batch_content.get(bid, []) if bid else []
         if items:
+            if result_lines and result_lines[-1] != "":
+                result_lines.append("")
             result_lines.append(sec_title)
             result_lines.extend(items)
         elif not omit_empty:
+            if result_lines and result_lines[-1] != "":
+                result_lines.append("")
             result_lines.append(sec_title)
             result_lines.append(f"{bullet}{fallback_line}")
 
@@ -1196,15 +1221,21 @@ def merge_workers(run_dir: Path, plan: dict) -> str:
         header = outline[i] if i < len(outline) else b.get("outline_line", f"{i+1}. {bid}")
 
         if content and not content.startswith("•") and not content.startswith(bullet):
+            if lines and lines[-1] != "":
+                lines.append("")
             lines.append(header)
             for cline in content.splitlines():
                 cline = cline.strip()
                 if cline:
                     lines.append(cline)
         elif content:
+            if lines and lines[-1] != "":
+                lines.append("")
             lines.append(header)
             lines.append(content)
         elif not fr.get("omitEmptySections", False):
+            if lines and lines[-1] != "":
+                lines.append("")
             lines.append(header)
             lines.append(f"{bullet}{fallback}")
 
