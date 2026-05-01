@@ -263,6 +263,21 @@ class TestPlanAndTemplate(unittest.TestCase):
                 else:
                     os.environ["NEWS_CODEX_BASE_URL"] = old_base
 
+    def test_resolve_codex_api_key_reads_public_secret_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            secret_file = Path(td) / "codex.key"
+            secret_file.write_text("from_file_secret\n", encoding="utf-8")
+            old = os.environ.get("NEWS_CODEX_API_KEY_FILE")
+            try:
+                os.environ.pop("NEWS_CODEX_API_KEY", None)
+                os.environ["NEWS_CODEX_API_KEY_FILE"] = str(secret_file)
+                self.assertEqual(self.m.resolve_codex_api_key({"model": {}}), "from_file_secret")
+            finally:
+                if old is None:
+                    os.environ.pop("NEWS_CODEX_API_KEY_FILE", None)
+                else:
+                    os.environ["NEWS_CODEX_API_KEY_FILE"] = old
+
     def test_archive_raw_article_items_writes_per_article_files(self):
         with tempfile.TemporaryDirectory() as td:
             run_dir = Path(td)

@@ -27,9 +27,9 @@
   - 约定：涉及 cron、远程安装器、任务投递、新闻/天气等可执行路径改动时，必须先通过该预检，再提交、推送、远端 pull 和远端状态验证。
 
 - `remote_install_public_model_resources.py`
-  - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL` 与共享 API key 别名；任务脚本只能读取公共资源层，不应各自私藏模型密钥。
+  - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL` 与共享 API key 文件别名；任务脚本只能读取公共资源层，不应各自私藏模型密钥。
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
-  - 注意：Git 只保存 endpoint 和变量名，不保存密钥；若远端输出 `NEWS_CODEX_API_KEY=missing`，需要把共享 key 写入 `/etc/openclaw/openclaw.env` 或用环境变量运行安装器。
+  - 注意：Git 只保存 endpoint、变量名和 secret 文件路径，不保存密钥；共享 key 存放在宿主机 root-only secret 文件，例如 `/etc/openclaw/secrets/news_codex_api_key`。
 
 - `remote_springmonkey_git_pull.py`
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。

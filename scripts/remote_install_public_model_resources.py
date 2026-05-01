@@ -22,6 +22,7 @@ set -euo pipefail
 
 ENV_FILE="/etc/openclaw/openclaw.env"
 CODEX_BASE_URL="${OPENCLAW_PUBLIC_MODEL_BASE_URL:-${NEWS_CODEX_BASE_URL:-http://ccnode.briconbric.com:49530/v1}}"
+CODEX_KEY_FILE="${OPENCLAW_PUBLIC_MODEL_API_KEY_FILE:-${NEWS_CODEX_API_KEY_FILE:-/etc/openclaw/secrets/news_codex_api_key}}"
 
 install -d -m 755 /etc/openclaw
 if getent group openclaw >/dev/null 2>&1; then
@@ -41,6 +42,7 @@ from pathlib import Path
 
 path = Path("/etc/openclaw/openclaw.env")
 base_url = os.environ.get("CODEX_BASE_URL", "http://ccnode.briconbric.com:49530/v1").strip()
+key_file = os.environ.get("CODEX_KEY_FILE", "/etc/openclaw/secrets/news_codex_api_key").strip()
 key_aliases = [
     "NEWS_CODEX_API_KEY",
     "OPENCLAW_PUBLIC_MODEL_API_KEY",
@@ -50,6 +52,10 @@ key_aliases = [
 base_aliases = [
     "NEWS_CODEX_BASE_URL",
     "OPENCLAW_PUBLIC_MODEL_BASE_URL",
+]
+file_aliases = [
+    "NEWS_CODEX_API_KEY_FILE",
+    "OPENCLAW_PUBLIC_MODEL_API_KEY_FILE",
 ]
 
 lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
@@ -71,6 +77,10 @@ for raw in lines:
 
 for alias in base_aliases:
     values[alias] = base_url
+    if alias not in order:
+        order.append(alias)
+for alias in file_aliases:
+    values[alias] = key_file
     if alias not in order:
         order.append(alias)
 
@@ -102,6 +112,7 @@ path.write_text("\n".join(header + body).rstrip() + "\n", encoding="utf-8")
 print("PUBLIC_MODEL_ENV_UPDATED")
 print(f"NEWS_CODEX_BASE_URL={values.get('NEWS_CODEX_BASE_URL', '')}")
 print(f"OPENCLAW_PUBLIC_MODEL_BASE_URL={values.get('OPENCLAW_PUBLIC_MODEL_BASE_URL', '')}")
+print(f"NEWS_CODEX_API_KEY_FILE={values.get('NEWS_CODEX_API_KEY_FILE', '')}")
 print(f"NEWS_CODEX_API_KEY={'set' if values.get('NEWS_CODEX_API_KEY') else 'missing'}")
 print(f"OPENCLAW_PUBLIC_MODEL_API_KEY={'set' if values.get('OPENCLAW_PUBLIC_MODEL_API_KEY') else 'missing'}")
 PY

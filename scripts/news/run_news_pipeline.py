@@ -136,6 +136,14 @@ def resolve_codex_api_key(cfg: dict) -> str:
         value = os.environ.get(name, "").strip()
         if value:
             return value
+        file_value = os.environ.get(f"{name}_FILE", "").strip()
+        if file_value:
+            try:
+                secret = Path(file_value).read_text(encoding="utf-8").strip()
+            except OSError:
+                secret = ""
+            if secret:
+                return secret
     value = mc.get("codexApiKey")
     return value.strip() if isinstance(value, str) else ""
 
