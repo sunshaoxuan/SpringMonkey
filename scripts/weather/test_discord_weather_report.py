@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import tempfile
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import discord_weather_report as mod
 
@@ -38,7 +40,27 @@ def main() -> int:
         finally:
             mod.fetch_json = original_fetch_json
         assert "测试地点" in result
-        print(json.dumps({"line": result}, ensure_ascii=True))
+
+        original_load_holidays = mod.load_holidays
+        try:
+            mod.load_holidays = lambda target_year=None: {"2026-05-06": "憲法記念日 振替休日"}
+            holiday_locations, holiday_rest_day, holiday_kind = mod.locations_for_day(
+                datetime(2026, 5, 6, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+            )
+            assert holiday_rest_day is True
+            assert "祝日" in holiday_kind
+            assert [loc.label for loc in holiday_locations] == ["原人自宅", "熊自宅"]
+
+            weekday_locations, weekday_rest_day, weekday_kind = mod.locations_for_day(
+                datetime(2026, 5, 7, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+            )
+            assert weekday_rest_day is False
+            assert weekday_kind == "平日"
+            assert [loc.label for loc in weekday_locations] == ["原人自宅", "熊自宅", "会社"]
+        finally:
+            mod.load_holidays = original_load_holidays
+
+        print(json.dumps({"line": result, "holiday_locations": [loc.label for loc in holiday_locations]}, ensure_ascii=True))
     return 0
 
 
