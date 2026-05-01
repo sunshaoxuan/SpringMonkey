@@ -32,6 +32,31 @@ RSS_FEEDS: dict[str, list[str]] = {
         "https://www.cnbc.com/id/100727362/device/rss/rss.html",
         "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
     ],
+    "us": [
+        "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
+        "https://feeds.npr.org/1003/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/US.xml",
+        "https://www.cnbc.com/id/15837362/device/rss/rss.html",
+    ],
+    "europe": [
+        "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
+        "https://www.politico.eu/feed/",
+        "https://www.dw.com/en/top-stories/s-9097?maca=en-rss-en-all-1573-rdf",
+    ],
+    "technology": [
+        "https://feeds.bbci.co.uk/news/technology/rss.xml",
+        "https://www.theverge.com/rss/index.xml",
+        "https://techcrunch.com/feed/",
+        "https://www.engadget.com/rss.xml",
+        "https://36kr.com/feed",
+    ],
+    "entertainment": [
+        "https://variety.com/feed/",
+        "https://deadline.com/feed/",
+        "https://www.hollywoodreporter.com/feed/",
+        "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+    ],
     "world": [
         "https://feeds.bbci.co.uk/news/world/rss.xml",
         "https://feeds.npr.org/1001/rss.xml",
@@ -79,6 +104,83 @@ CHINA_KEYWORDS = (
     "yuan",
     "renminbi",
 )
+
+US_KEYWORDS = (
+    "united states",
+    "u.s.",
+    "us ",
+    "america",
+    "american",
+    "washington",
+    "new york",
+    "california",
+    "美国",
+    "华盛顿",
+    "纽约",
+)
+
+EUROPE_KEYWORDS = (
+    "europe",
+    "european",
+    "eu ",
+    "britain",
+    "uk ",
+    "france",
+    "germany",
+    "italy",
+    "spain",
+    "brussels",
+    "欧洲",
+    "欧盟",
+    "英国",
+    "法国",
+    "德国",
+)
+
+TECHNOLOGY_KEYWORDS = (
+    "technology",
+    "tech",
+    "ai",
+    "artificial intelligence",
+    "semiconductor",
+    "chip",
+    "software",
+    "startup",
+    "cyber",
+    "科技",
+    "人工智能",
+    "半导体",
+    "芯片",
+    "创业",
+)
+
+ENTERTAINMENT_KEYWORDS = (
+    "entertainment",
+    "movie",
+    "film",
+    "music",
+    "tv",
+    "streaming",
+    "celebrity",
+    "hollywood",
+    "anime",
+    "game",
+    "娱乐",
+    "电影",
+    "音乐",
+    "影视",
+    "动漫",
+    "游戏",
+)
+
+DEFAULT_KEYWORDS_BY_BATCH = {
+    "japan": JAPAN_KEYWORDS,
+    "china": CHINA_KEYWORDS,
+    "us": US_KEYWORDS,
+    "europe": EUROPE_KEYWORDS,
+    "technology": TECHNOLOGY_KEYWORDS,
+    "entertainment": ENTERTAINMENT_KEYWORDS,
+}
 
 
 @dataclass
@@ -149,12 +251,9 @@ def batch_relevant(
 ) -> bool:
     text = _classification_text(title, url, snippet)
     km = keyword_map or {}
-    japan_keys = tuple(k.lower() for k in (km.get("japan") or JAPAN_KEYWORDS))
-    china_keys = tuple(k.lower() for k in (km.get("china") or CHINA_KEYWORDS))
-    if batch_id == "japan":
-        return any(k in text for k in japan_keys)
-    if batch_id == "china":
-        return any(k in text for k in china_keys)
+    if batch_id in DEFAULT_KEYWORDS_BY_BATCH or batch_id in km:
+        keys = tuple(k.lower() for k in (km.get(batch_id) or DEFAULT_KEYWORDS_BY_BATCH.get(batch_id, ())))
+        return any(k in text for k in keys)
     return True
 
 
@@ -192,6 +291,14 @@ def classify_article_batch(
         return "japan"
     if batch_relevant("china", title, url, snippet, keyword_map):
         return "china"
+    if batch_relevant("technology", title, url, snippet, keyword_map):
+        return "technology"
+    if batch_relevant("entertainment", title, url, snippet, keyword_map):
+        return "entertainment"
+    if batch_relevant("us", title, url, snippet, keyword_map):
+        return "us"
+    if batch_relevant("europe", title, url, snippet, keyword_map):
+        return "europe"
     if any(k in text for k in market_keys):
         return "markets"
     if current_batch == "markets":

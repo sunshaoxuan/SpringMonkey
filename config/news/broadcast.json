@@ -35,15 +35,20 @@
     "outline": [
       "**1. 日本**",
       "**2. 中国**",
-      "**3. 国际**",
-      "**4. 市场或风险提示**"
+      "**3. 美国**",
+      "**4. 欧洲**",
+      "**5. 科技**",
+      "**6. 娱乐与文化**",
+      "**7. 国际**",
+      "**8. 市场或风险提示**"
     ],
     "contentBulletPrefix": "• ",
     "forbidNestedNumbering": true,
     "selfCheckNumberedLinesOnlyTopLevel": true,
-    "requirePerItemSourceLink": true,
+    "includeLinksInBroadcast": false,
+    "requirePerItemSourceLink": false,
     "fallbackNoMajorUpdateLine": "本节无合格新增新闻条目。",
-    "requireLinkOnNewLine": true,
+    "requireLinkOnNewLine": false,
     "requireSourceLinkMatchesItem": true,
     "forbidAggregatorLinksAsSource": true,
     "requireSourceVerifiedBeforeWriting": true,
@@ -70,12 +75,43 @@
         "https://www.japantimes.co.jp/feed/",
         "https://www3.nhk.or.jp/rss/news/cat0.xml",
         "https://feeds.reuters.com/reuters/worldNews",
-        "https://feeds.bbci.co.uk/news/world/asia/rss.xml"
+        "https://feeds.bbci.co.uk/news/world/asia/rss.xml",
+        "https://english.kyodonews.net/rss/all.xml",
+        "https://www.nippon.com/en/rss/index.xml"
       ],
       "china": [
         "https://feeds.bbci.co.uk/news/world/asia/china/rss.xml",
         "https://feeds.reuters.com/reuters/worldNews",
-        "https://www.cnbc.com/id/100727362/device/rss/rss.html"
+        "https://www.cnbc.com/id/100727362/device/rss/rss.html",
+        "https://36kr.com/feed",
+        "https://www.huxiu.com/rss/0.xml",
+        "https://www.ifanr.com/feed"
+      ],
+      "us": [
+        "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
+        "https://feeds.npr.org/1003/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/US.xml",
+        "https://www.cnbc.com/id/15837362/device/rss/rss.html"
+      ],
+      "europe": [
+        "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml",
+        "https://www.politico.eu/feed/",
+        "https://www.dw.com/en/top-stories/s-9097?maca=en-rss-en-all-1573-rdf"
+      ],
+      "technology": [
+        "https://feeds.bbci.co.uk/news/technology/rss.xml",
+        "https://www.theverge.com/rss/index.xml",
+        "https://techcrunch.com/feed/",
+        "https://www.engadget.com/rss.xml",
+        "https://36kr.com/feed",
+        "https://www.ifanr.com/feed"
+      ],
+      "entertainment": [
+        "https://variety.com/feed/",
+        "https://deadline.com/feed/",
+        "https://www.hollywoodreporter.com/feed/",
+        "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"
       ],
       "world": [
         "https://feeds.reuters.com/reuters/topNews",
@@ -151,10 +187,73 @@
         "taiwan",
         "yuan",
         "renminbi"
+      ],
+      "us": [
+        "united states",
+        "u.s.",
+        "america",
+        "american",
+        "washington",
+        "new york",
+        "california",
+        "美国",
+        "华盛顿",
+        "纽约"
+      ],
+      "europe": [
+        "europe",
+        "european",
+        "eu",
+        "britain",
+        "uk",
+        "france",
+        "germany",
+        "italy",
+        "spain",
+        "brussels",
+        "欧洲",
+        "欧盟",
+        "英国",
+        "法国",
+        "德国"
+      ],
+      "technology": [
+        "technology",
+        "tech",
+        "ai",
+        "artificial intelligence",
+        "semiconductor",
+        "chip",
+        "software",
+        "startup",
+        "cyber",
+        "科技",
+        "人工智能",
+        "半导体",
+        "芯片",
+        "创业"
+      ],
+      "entertainment": [
+        "entertainment",
+        "movie",
+        "film",
+        "music",
+        "tv",
+        "streaming",
+        "celebrity",
+        "hollywood",
+        "anime",
+        "game",
+        "娱乐",
+        "电影",
+        "音乐",
+        "影视",
+        "动漫",
+        "游戏"
       ]
     },
     "minRegionalItems": 1,
-    "maxArticlesPerBatch": 12,
+    "maxArticlesPerBatch": 18,
     "blockedDomains": [
       "theguardian.com",
       "www.theguardian.com"
@@ -196,8 +295,38 @@
         "NBC News",
         "SpaceNews",
         "InsideEVs",
+        "36Kr",
+        "Huxiu",
+        "ifanr",
+        "AP"
+      ],
+      "us": [
+        "NPR",
+        "BBC",
+        "AP",
+        "The New York Times",
+        "CNBC"
+      ],
+      "europe": [
+        "BBC",
+        "DW",
+        "Politico Europe",
         "The New York Times",
         "AP"
+      ],
+      "technology": [
+        "The Verge",
+        "TechCrunch",
+        "Engadget",
+        "BBC Technology",
+        "36Kr",
+        "ifanr"
+      ],
+      "entertainment": [
+        "Variety",
+        "Deadline",
+        "The Hollywood Reporter",
+        "BBC Entertainment & Arts"
       ],
       "world": [
         "Reuters",

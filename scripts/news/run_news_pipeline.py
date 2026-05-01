@@ -65,9 +65,15 @@ RUNTIME_ENV_FILES = [
 BATCH_SPECS: list[dict[str, Any]] = [
     {"id": "japan", "pool_key": "japan"},
     {"id": "china", "pool_key": "china"},
+    {"id": "us", "pool_key": "us"},
+    {"id": "europe", "pool_key": "europe"},
+    {"id": "technology", "pool_key": "technology"},
+    {"id": "entertainment", "pool_key": "entertainment"},
     {"id": "world", "pool_key": "world"},
-    {"id": "markets", "pool_key": None},
+    {"id": "markets", "pool_key": "markets"},
 ]
+
+DEFAULT_NEWS_REGIONS = tuple(spec["id"] for spec in BATCH_SPECS)
 
 
 def load_json(path: Path) -> dict:
@@ -744,7 +750,8 @@ def deterministic_summary_from_article(title: str, url: str) -> str:
 ARTICLE_PROCESS_SYSTEM_PROMPT = (
     "你是新闻条目处理器。只根据输入的单篇原始稿件生成结构化 JSON，不要输出 Markdown 或解释。\n"
     "summary_zh 必须是中文一句话，20-60 字，准确概括核心事实；不得补充原文没有的信息。\n"
-    "region 只能是 japan、china、world、markets；category 用 politics、economy、society、technology、culture、entertainment、sports、health、environment、risk、other 之一。"
+    "region 只能是 japan、china、us、europe、technology、entertainment、world、markets；"
+    "category 用 politics、economy、society、technology、culture、entertainment、sports、health、environment、risk、other 之一。"
 )
 
 
@@ -842,7 +849,7 @@ def process_raw_article_item(
             "content": body,
             "output_schema": {
                 "summary_zh": "中文一句话新闻主题",
-                "region": "japan|china|world|markets",
+                "region": "japan|china|us|europe|technology|entertainment|world|markets",
                 "category": "politics|economy|society|technology|culture|entertainment|sports|health|environment|risk|other",
             },
         },
@@ -897,7 +904,7 @@ def process_raw_article_item(
             category = "other"
             result["skip_reason"] = "model_failed"
 
-    allowed_regions = {"japan", "china", "world", "markets"}
+    allowed_regions = set(DEFAULT_NEWS_REGIONS)
     allowed_categories = {
         "politics",
         "economy",
@@ -990,7 +997,7 @@ def write_selected_items_and_workers(
         lines: list[str] = []
         for item in selected.get(bid, []):
             lines.append(f"• {item['summary_zh']}")
-            if item.get("source_url"):
+            if plan.get("_format_rules", {}).get("includeLinksInBroadcast", False) and item.get("source_url"):
                 lines.append(f"链接：{item['source_url']}")
         if not lines:
             lines.append(f"• {fallback_line}")
@@ -1071,16 +1078,16 @@ def finalize_system_prompt(cfg: dict, plan: dict, retry_errors: list[str] | None
         "【强制版式（违反任何一条即为失败）】\n"
         f"第 1 行必须是：{plan['title_line']}\n"
         f"第 2 行必须是：{plan['window_label']}\n"
-        "从第 3 行开始，必须按顺序且仅出现以下四个编号小节：\n"
+        f"从第 3 行开始，必须按顺序且仅出现以下 {len(fr['outline'])} 个编号小节：\n"
         f"{outline}\n"
-        "全文只允许上面这四行使用数字编号；其他任何地方不得出现数字编号。\n"
+        "全文只允许上面这些小节标题行使用数字编号；其他任何地方不得出现数字编号。\n"
         "【禁止的编号形式举例】1. xxx / 2. xxx / 1、xxx / (1) xxx / ① xxx\n"
         "以上在条目行内全部禁止。\n"
         "一级标题必须加粗（用 ** 包裹），如 **1. 日本**。\n"
         "每个小节内条目一律用「• 」（Unicode 圆点 U+2022 + 空格）开头。\n"
         "不要使用短横线 - 作为条目符号（Discord 会错误渲染）。\n"
         f"若某节工人未提供合格条目，写一条「• {plan['fallback_no_news']}」。\n"
-        "链接规则：每条新闻下另起一行「链接：https://...」；无链则不写该条。\n\n"
+        "公开播报稿禁止输出 URL、链接行、Markdown 链接或裸域名；来源 URL 只保留在后台 JSON 记录。\n\n"
         "【模板示例（内容替换为工人实际条目）】\n"
         f"{example}\n"
     )
@@ -1431,11 +1438,12 @@ def main() -> int:
         )
 
     # --- per-article classification ---
-    # 每条新闻单独归类到日本/中国/国际/市场，避免整批搬家或为凑数把国际新闻留在区域栏。
+    # 每条新闻单独归类到配置的地区/主题栏，避免整批搬家或为凑数把不相关新闻留在区域栏。
     source_policy = cfg.get("sourcePolicy", {}) or {}
     region_kw_map = source_policy.get("regionKeywordsByBatch", {}) or {}
     market_keywords = source_policy.get("marketKeywords", []) or []
-    classified: dict[str, list[dict]] = {bid: [] for bid in ("japan", "china", "world", "markets")}
+    batch_ids = [b["id"] for b in plan["batches"]]
+    classified: dict[str, list[dict]] = {bid: [] for bid in batch_ids}
     seen_classified: set[str] = set()
     moved = 0
     for original_batch, articles in list(all_articles.items()):

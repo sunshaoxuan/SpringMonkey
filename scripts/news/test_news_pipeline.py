@@ -58,7 +58,7 @@ class TestPlanAndTemplate(unittest.TestCase):
     def test_build_plan_batches(self):
         job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
         plan = self.m.build_plan(self.cfg, job)
-        self.assertEqual(len(plan["batches"]), 4)
+        self.assertEqual(len(plan["batches"]), len(self.cfg["formatRules"]["outline"]))
         self.assertEqual(plan["batches"][0]["id"], "japan")
         self.assertIn("Reuters", " ".join(plan["batches"][0]["source_pool"]))
 
@@ -66,7 +66,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
         plan = self.m.build_plan(self.cfg, job)
         orch = self.m.template_orchestration(plan)
-        self.assertEqual(len(orch["batches"]), 4)
+        self.assertEqual(len(orch["batches"]), len(self.cfg["formatRules"]["outline"]))
         self.assertIn("queries", orch["batches"][0])
 
     def test_summarize_article_prompt(self):
@@ -156,9 +156,9 @@ class TestPlanAndTemplate(unittest.TestCase):
                 fallback_line="本节无合格新增新闻条目。",
                 max_input_chars=1500,
                 bid="world",
-            )
+        )
         self.assertIn("韩国法院因妨碍司法加重前总统刑期", result)
-        self.assertIn("链接：https://example.com/korea", result)
+        self.assertIn("https://example.com/korea", result)
 
     def test_process_raw_article_item_does_not_invent_when_model_fails(self):
         item = {
@@ -505,6 +505,10 @@ class TestPlanAndTemplate(unittest.TestCase):
         merged = (
             "<!-- batch:japan -->\n- 日本新闻条目\n"
             "<!-- batch:china -->\n- 中国新闻条目\n"
+            "<!-- batch:us -->\n- 美国新闻条目\n"
+            "<!-- batch:europe -->\n- 欧洲新闻条目\n"
+            "<!-- batch:technology -->\n- 科技新闻条目\n"
+            "<!-- batch:entertainment -->\n- 娱乐新闻条目\n"
             "<!-- batch:world -->\n- 国际新闻条目\n"
             "<!-- batch:markets -->\n- 市场新闻条目\n"
         )
@@ -514,7 +518,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertTrue(ok, f"mechanical fallback should pass verify: {err}")
         self.assertIn("新闻简报", text)
         self.assertIn("**1. 日本**", text)
-        self.assertIn("**4. 市场或风险提示**", text)
+        self.assertIn("**8. 市场或风险提示**", text)
         self.assertIn("• ", text)
 
     def test_mechanical_fallback_strips_numbering(self):
@@ -524,6 +528,10 @@ class TestPlanAndTemplate(unittest.TestCase):
         merged = (
             "<!-- batch:japan -->\n- 1. 日本编号条目\n- **2.** 日本加粗编号条目\n- 3、中国编号条目\n"
             "<!-- batch:china -->\n1. 中国裸编号条目\n(2) 中国括号编号条目\n"
+            "<!-- batch:us -->\n- 美国普通条目\n"
+            "<!-- batch:europe -->\n- 欧洲普通条目\n"
+            "<!-- batch:technology -->\n- 科技普通条目\n"
+            "<!-- batch:entertainment -->\n- 娱乐普通条目\n"
             "<!-- batch:world -->\n- ① 国际圆圈编号条目\n"
             "<!-- batch:markets -->\n- 市场普通条目\n"
         )
@@ -541,7 +549,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         cfg = self.cfg
         job = self.m.job_spec(cfg, "news-digest-jst-1700")
         plan = self.m.build_plan(cfg, job)
-        merged = "<!-- batch:japan -->\n<!-- batch:china -->\n<!-- batch:world -->\n<!-- batch:markets -->\n"
+        merged = "".join(f"<!-- batch:{b['id']} -->\n" for b in plan["batches"])
         text = self.m._mechanical_fallback(cfg, plan, merged)
         v = _load_verify()
         ok, err = v.verify_text(text, cfg)
@@ -613,10 +621,18 @@ class TestVerifyDraft(unittest.TestCase):
 • a
 **2. 中国**
 • b
-**3. 国际**
+**3. 美国**
 • c
-**4. 市场或风险提示**
+**4. 欧洲**
 • d
+**5. 科技**
+• e
+**6. 娱乐与文化**
+• f
+**7. 国际**
+• g
+**8. 市场或风险提示**
+• h
 """
         ok, err = self.v.verify_text(text, self.cfg)
         self.assertTrue(ok, err)

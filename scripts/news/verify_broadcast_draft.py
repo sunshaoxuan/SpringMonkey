@@ -51,6 +51,13 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
         )
 
     bullet_prefix = fr.get("contentBulletPrefix", "• ")
+    if not fr.get("includeLinksInBroadcast", True):
+        url_pattern = re.compile(r"(https?://|www\.|[A-Za-z0-9-]+\.(?:com|net|org|jp|cn|co|io|ai)(?:/|\b))")
+        for i, ln in enumerate(lines, 1):
+            if url_pattern.search(ln):
+                errors.append(f"link_in_broadcast_line_{i}: {ln[:120]!r}")
+            if ln.strip().startswith("链接："):
+                errors.append(f"link_label_in_broadcast_line_{i}: {ln[:120]!r}")
 
     if forbid_nested:
         for i, ln in enumerate(lines, 1):
