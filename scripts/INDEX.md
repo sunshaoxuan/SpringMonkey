@@ -21,6 +21,11 @@
   - 本地门禁：`python scripts/openclaw_behavior_rule_gate.py`
   - 远端 pull 验证：`python scripts/openclaw_behavior_rule_gate.py --verify-remote-pull`
 
+- `openclaw_release_preflight.py`
+  - 用途：发布/回复“已部署”前的本地机械预检；检查 Python 语法与缩进、远程安装脚本内嵌 bash 语法、未加引号 heredoc 中的 `$()` 展开风险，并运行关键定向测试。
+  - 典型用法：`python scripts/openclaw_release_preflight.py`
+  - 约定：涉及 cron、远程安装器、任务投递、新闻/天气等可执行路径改动时，必须先通过该预检，再提交、推送、远端 pull 和远端状态验证。
+
 - `remote_springmonkey_git_pull.py`
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。
