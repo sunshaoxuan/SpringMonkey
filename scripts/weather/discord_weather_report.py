@@ -98,13 +98,20 @@ def fetch_json(url: str, attempts: int = 3) -> dict:
     raise RuntimeError("weather fetch failed without exception")
 
 
-def load_holidays() -> dict[str, str]:
+def load_holidays(target_year: int | None = None) -> dict[str, str]:
+    """Load Japan public-holiday calendar used for red-day handling.
+
+    The upstream JSON usually contains multiple years. Do not blindly trust an
+    old cache when the requested year is absent; refresh it so future years are
+    not accidentally treated as ordinary weekdays.
+    """
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     if HOLIDAY_CACHE.exists():
         try:
             data = json.loads(HOLIDAY_CACHE.read_text(encoding="utf-8"))
             if isinstance(data, dict) and data:
-                return data
+                if target_year is None or any(str(k).startswith(f"{target_year}-") for k in data):
+                    return data
         except Exception:
             pass
     data = fetch_json(HOLIDAY_URL)
@@ -112,17 +119,32 @@ def load_holidays() -> dict[str, str]:
     return data
 
 
+def holiday_name_for_date(day: datetime) -> str | None:
+    key = day.strftime("%Y-%m-%d")
+    try:
+        holidays = load_holidays(day.year)
+    except Exception:
+        return None
+    name = holidays.get(key)
+    return str(name) if name else None
+
+
 def is_rest_day(now: datetime) -> tuple[bool, str]:
     if now.weekday() >= 5:
         return True, "土日"
-    key = now.strftime("%Y-%m-%d")
-    try:
-        holidays = load_holidays()
-    except Exception:
-        return False, "平日"
-    if key in holidays:
-        return True, f"祝日（{holidays[key]}）"
+    holiday_name = holiday_name_for_date(now)
+    if holiday_name:
+        return True, f"祝日（{holiday_name}）"
     return False, "平日"
+
+
+def locations_for_day(now: datetime) -> tuple[list[Location], bool, str]:
+    rest_day, day_kind = is_rest_day(now)
+    locations = list(HOME_LOCATIONS)
+    # Japanese calendar red days are treated like weekends: no office forecast.
+    if not rest_day:
+        locations.append(OFFICE_LOCATION)
+    return locations, rest_day, day_kind
 
 
 def weather_label(code: int | None) -> str:
@@ -211,11 +233,8 @@ def main() -> int:
     trace = StagedTaskTrace("weather-report-jst-0700", "weather")
     trace.start("decide-day-kind")
     now = datetime.now(TZ)
-    rest_day, day_kind = is_rest_day(now)
+    locations, rest_day, day_kind = locations_for_day(now)
     trace.step("decide-day-kind", "ok", detail=f"{'rest-day' if rest_day else 'workday'} / {day_kind}", tool="calendar")
-    locations = list(HOME_LOCATIONS)
-    if not rest_day:
-        locations.append(OFFICE_LOCATION)
 
     lines = [f"天气预报 {now:%Y-%m-%d} {('休息日' if rest_day else '工作日')}（{day_kind}）"]
     for loc in locations:
