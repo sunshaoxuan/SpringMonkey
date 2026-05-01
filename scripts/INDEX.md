@@ -31,6 +31,11 @@
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
   - 注意：Git 只保存 endpoint、变量名和 secret 文件路径，不保存密钥；共享 key 存放在宿主机 root-only secret 文件，例如 `/etc/openclaw/secrets/news_codex_api_key`。
 
+- `local_start_codex_reverse_tunnel.py`
+  - 用途：在本机启动 SSH reverse tunnel，把本机 Codex Local Access（默认 `127.0.0.1:59451`）暴露到 `ccnode.briconbric.com:49530`，供汤猴宿主机和独立任务统一使用公共模型资源。
+  - 典型用法：`python scripts/local_start_codex_reverse_tunnel.py`
+  - 注意：这是本机常驻辅助进程；若 `ccnode:49530` 连接拒绝，先检查该隧道是否运行。
+
 - `remote_springmonkey_git_pull.py`
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。
