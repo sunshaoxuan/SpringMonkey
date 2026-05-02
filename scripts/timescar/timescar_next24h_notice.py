@@ -15,6 +15,55 @@ from task_runtime import TimesCarTaskRuntime
 TZ = ZoneInfo("Asia/Tokyo")
 FETCH_CMD = ["python3", "/var/lib/openclaw/.openclaw/workspace/scripts/timescar_fetch_reservations.py"]
 LOG_PATH = Path("/var/lib/openclaw/.openclaw/logs/timescar_next24h.stderr.log")
+DECISION_PATH = Path("/var/lib/openclaw/.openclaw/state/timescar_next24h_decisions.json")
+
+
+def reservation_key(reservation: dict) -> str:
+    booking = str(reservation.get("bookingNumber") or "").strip()
+    if booking:
+        return booking
+    return "|".join(
+        str(reservation.get(k) or "").strip()
+        for k in ("start", "return", "station", "vehicle", "carIdentifier")
+    )
+
+
+def load_decisions(now: datetime) -> dict:
+    if not DECISION_PATH.exists():
+        return {"kept": {}}
+    try:
+        data = json.loads(DECISION_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"kept": {}}
+    kept = data.get("kept") if isinstance(data, dict) else {}
+    if not isinstance(kept, dict):
+        kept = {}
+    pruned = {}
+    for key, item in kept.items():
+        if not isinstance(item, dict):
+            continue
+        return_iso = item.get("return")
+        try:
+            return_at = datetime.fromisoformat(return_iso).astimezone(TZ) if return_iso else None
+        except Exception:
+            return_at = None
+        # Keep decisions only matter until shortly after the reservation return time.
+        if return_at is None or now <= return_at + timedelta(hours=6):
+            pruned[key] = item
+    if pruned != kept:
+        save_decisions({"kept": pruned})
+    return {"kept": pruned}
+
+
+def save_decisions(data: dict) -> None:
+    DECISION_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = DECISION_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    tmp.replace(DECISION_PATH)
+
+
+def is_kept(reservation: dict, decisions: dict) -> bool:
+    return reservation_key(reservation) in decisions.get("kept", {})
 
 
 def log_error(msg: str) -> None:
@@ -68,23 +117,31 @@ def main() -> int:
         reservations = data.get("reservations", [])
         now = datetime.now(TZ)
         deadline = now + timedelta(hours=24)
+        decisions = load_decisions(now)
         candidates = []
+        skipped_kept = 0
         for reservation in reservations:
             try:
                 start = datetime.fromisoformat(reservation["start"]).astimezone(TZ)
             except Exception:
                 continue
             if now <= start <= deadline:
+                if is_kept(reservation, decisions):
+                    skipped_kept += 1
+                    continue
                 candidates.append((start, reservation))
         runtime.record_step(
             step="filter-next-24h",
             status="ok",
             tool="python",
-            detail=f"found {len(candidates)} reservations in next 24h",
+            detail=f"found {len(candidates)} reservations in next 24h; skipped {skipped_kept} already-kept reservations",
         )
         if not candidates:
             # Modified: "Talk like a human" as requested by user
-            msg = "🚗 已检查未来 24 小时的 TimesCar 预约列表：目前没有即将开始（24小时内）的订单，无需处理。"
+            if skipped_kept:
+                msg = f"🚗 已检查未来 24 小时的 TimesCar 预约列表：有 {skipped_kept} 单你已确认保留，本次不再重复询问。"
+            else:
+                msg = "🚗 已检查未来 24 小时的 TimesCar 预约列表：目前没有即将开始（24小时内）的订单，无需处理。"
             runtime.finish("skipped", "no-match", final_message=msg)
             print(msg)
             return 0
