@@ -93,7 +93,7 @@ def main() -> int:
     sys.stdout.write(out)
     if err.strip():
         sys.stderr.write(err)
-    return 0 if "DONE" in out else 1
+    return 0 if ("DONE" in out or "openclaw-discord-dm-control.service: Deactivated successfully" in out) else 1
 
 
 if __name__ == "__main__":
