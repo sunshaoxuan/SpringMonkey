@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -78,6 +79,59 @@ def interpret_adjust_request(text: str, message_time: datetime) -> tuple[datetim
     return current_start, new_start
 
 
+def is_query_request(text: str) -> bool:
+    raw = text.strip()
+    if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
+        return False
+    return any(token in raw for token in ("检查", "查询", "查看", "看看", "列表", "记录", "未来"))
+
+
+def parse_query_hours(text: str) -> int:
+    match = re.search(r"未来\s*(\d+)\s*(小时|小時|h|H)", text)
+    if match:
+        return max(1, min(int(match.group(1)), 24 * 30))
+    match = re.search(r"未来\s*(\d+)\s*(天|日)", text)
+    if match:
+        return max(1, min(int(match.group(1)) * 24, 24 * 30))
+    if "48" in text:
+        return 48
+    return 24
+
+
+def format_query_result(text: str, message_time: datetime) -> str:
+    hours = parse_query_hours(text)
+    end_time = message_time + timedelta(hours=hours)
+    reservations = []
+    for reservation in fetch_reservations():
+        try:
+            start = parse_iso_minute(str(reservation.get("start") or ""))
+            return_at = parse_iso_minute(str(reservation.get("return") or ""))
+        except Exception:
+            continue
+        if message_time <= start <= end_time:
+            reservations.append((start, return_at, reservation))
+    reservations.sort(key=lambda item: item[0])
+    header = [
+        f"TimesCar 预约查询结果",
+        f"范围：{format_iso_minute(message_time)} 至 {format_iso_minute(end_time)}（JST）",
+    ]
+    if not reservations:
+        return "\n".join(header + ["状态：未来范围内没有即将开始的预约"])
+    lines = header + [f"状态：找到 {len(reservations)} 单"]
+    for index, (start, return_at, reservation) in enumerate(reservations, start=1):
+        lines.extend(
+            [
+                "",
+                f"{index}. 预约编号：{reservation.get('bookingNumber') or '未知'}",
+                f"开始：{format_iso_minute(start)}",
+                f"结束：{format_iso_minute(return_at)}",
+                f"站点：{reservation.get('station') or reservation.get('place') or '未知'}",
+                f"车辆：{reservation.get('carName') or reservation.get('vehicle') or '未知'}",
+            ]
+        )
+    return "\n".join(lines)
+
+
 def run_adjuster(booking: str, current_start: datetime, new_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
     cmd = [
         "python3",
@@ -102,6 +156,10 @@ def main() -> int:
     args = parser.parse_args()
 
     message_time = parse_message_time(args.message_timestamp)
+    if is_query_request(args.text):
+        print(format_query_result(args.text, message_time))
+        return 0
+
     current_start, new_start = interpret_adjust_request(args.text, message_time)
     key = command_key(args.text)
     ledger = load_ledger()

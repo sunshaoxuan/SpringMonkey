@@ -20,7 +20,7 @@ function isSpringMonkeyTimesCarDmCommand(text) {
 	const raw = typeof text === "string" ? text.trim() : "";
 	if (!raw) return false;
 	if (!/(订车|预约|TimesCar|timescar|开始时间|结束时间|往后延|延[迟时]|改到|后天|明天)/u.test(raw)) return false;
-	return /(取消|改|开始时间|结束时间|往后延|延[迟时]|后天|明天)/u.test(raw);
+	return /(取消|改|开始时间|结束时间|往后延|延[迟时]|后天|明天|检查|查询|查看|看看|列表|记录|未来)/u.test(raw);
 }
 async function runSpringMonkeyTimesCarDmCommand(text, messageTimestamp) {
 	const { execFile } = await import("node:child_process");
