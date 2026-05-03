@@ -127,6 +127,8 @@ Discord owner DM 控制台必须走 Discord Gateway 事件触发，不得把 20 
 
 TimesCar owner DM 指令必须先经事件层确定性路由；不得让“改时/取消/保留”这类订单控制语句直接进入通用主模型长流程后无反馈。当前 `scripts/openclaw/patch_discord_timescar_dm_preroute.py` 负责在 Discord Gateway 消息处理阶段识别 TimesCar 改单意图并立即回 DM；真实写单执行器完成前，只能明确回报“已识别但未执行”，不得假装已改。
 
+TimesCar 改单的正式写执行器是 `scripts/timescar/timescar_adjust_reservation_window.py`。真实执行必须遵循：先按预约编号或当前开始时间选中目标预约；先跑确认页校验；只有显式 `--force` 才提交；提交后必须重新抓取预约列表并校验新开始/结束时间。禁止再由主聊天模型临时生成一次性改单脚本。
+
 ## When To Stop Elevating Model Freedom
 
 若某类任务已注册工具，却仍以「换更强模型」为主要手段，视为策略违背：应回到 **工具失败分类 → 下一合法路径 → 证据**，而不是加长推理链。

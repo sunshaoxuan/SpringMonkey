@@ -216,6 +216,7 @@
 - `timescar/timescar_book_sat_3weeks.py`：周六订车任务；把“检查现有预约、登录、打开表单、校验确认、提交、回查验证”拆成显式阶段
 - `timescar/timescar_extend_sun_3weeks.py`：周日续订任务；把“选择目标预约、定位修改入口、校验确认、提交、回查验证”拆成显式阶段
 - `timescar/timescar_daily_report_render.py`：日报渲染仍保持单步输出，但内部改为复用带 trace 的预约查询路径
+- `timescar/timescar_adjust_reservation_window.py`：按预约编号/当前开始时间修改 TimesCar 预约起止窗口；先确认页校验，再提交，再回查验证
 - `timescar/test_timescar_task_runtime.py`：验证 TimesCar 任务运行时会落 trace 文件并记录阶段状态
 - `timescar/test_timescar_next24h_notice.py`：验证 next24h 提醒的解析路径保持兼容
 - `staged_jobs/task_trace.py`：轻量 staged task trace 运行时；把多步任务的阶段、步骤、产物和最终结果写进 `workspace/state/task_traces/`
