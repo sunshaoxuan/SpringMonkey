@@ -25,6 +25,7 @@ git pull --ff-only
 
 install -d -m 755 "$WORKSPACE/scripts"
 install -d -m 700 "$WORKSPACE/.secure"
+chown openclaw:openclaw "$WORKSPACE/.secure"
 install -m 755 "$REPO/scripts/discord/discord_dm_control_poll.py" "$WORKSPACE/scripts/discord_dm_control_poll.py"
 
 cat >"$SERVICE" <<'EOF'
