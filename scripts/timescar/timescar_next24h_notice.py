@@ -15,6 +15,7 @@ from task_runtime import TimesCarTaskRuntime
 TZ = ZoneInfo("Asia/Tokyo")
 FETCH_CMD = ["python3", "/var/lib/openclaw/.openclaw/workspace/scripts/timescar_fetch_reservations.py"]
 LOG_PATH = Path("/var/lib/openclaw/.openclaw/logs/timescar_next24h.stderr.log")
+DECISIONS_PATH = Path("/var/lib/openclaw/.openclaw/workspace/.secure/timescar_user_decisions.json")
 
 
 def log_error(msg: str) -> None:
@@ -45,6 +46,31 @@ def extract_json(raw: str) -> dict:
     return json.loads(m.group(1))
 
 
+def kept_booking_numbers(now: datetime) -> set[str]:
+    if not DECISIONS_PATH.exists():
+        return set()
+    try:
+        data = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return set()
+    kept = set()
+    for booking, decision in (data.get("keepBookingNumbers") or {}).items():
+        if decision.get("status") != "keep":
+            continue
+        expires_raw = decision.get("expiresAt")
+        if expires_raw:
+            try:
+                expires = datetime.fromisoformat(expires_raw)
+                if expires.tzinfo is None:
+                    expires = expires.replace(tzinfo=TZ)
+                if expires < now:
+                    continue
+            except Exception:
+                pass
+        kept.add(str(booking))
+    return kept
+
+
 def main() -> int:
     runtime = TimesCarTaskRuntime("timescar-ask-cancel-next24h", "read", ttl_seconds=1800)
     runtime.start("fetch-reservations")
@@ -68,11 +94,14 @@ def main() -> int:
         reservations = data.get("reservations", [])
         now = datetime.now(TZ)
         deadline = now + timedelta(hours=24)
+        kept = kept_booking_numbers(now)
         candidates = []
         for reservation in reservations:
             try:
                 start = datetime.fromisoformat(reservation["start"]).astimezone(TZ)
             except Exception:
+                continue
+            if str(reservation.get("bookingNumber") or "") in kept:
                 continue
             if now <= start <= deadline:
                 candidates.append((start, reservation))
