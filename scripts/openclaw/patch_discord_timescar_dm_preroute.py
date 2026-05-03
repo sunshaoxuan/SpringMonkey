@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import re
 import shutil
+import subprocess
 
 
 DIST_ROOTS = [
@@ -100,7 +101,7 @@ def patch_file(path: Path) -> bool:
     changed = False
     helper_replacement = "\n" + HELPER + "\nasync function processDiscordMessage(ctx, observer) {"
     if "maybeHandleSpringMonkeyTimesCarDmPreroute" in text:
-        text, count = HELPER_PATTERN.subn(helper_replacement, text, count=1)
+        text, count = HELPER_PATTERN.subn(lambda _match: helper_replacement, text, count=1)
         if count:
             changed = True
     else:
@@ -122,6 +123,7 @@ def patch_file(path: Path) -> bool:
     backup = path.with_name(f"{path.name}.bak-timescar-dm-preroute-{datetime.now().strftime('%Y%m%d%H%M%S')}")
     shutil.copy2(path, backup)
     path.write_text(text, encoding="utf-8")
+    subprocess.run(["node", "--check", str(path)], check=True, text=True)
     print(f"patched {path} backup={backup}")
     return True
 
