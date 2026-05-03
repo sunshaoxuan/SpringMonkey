@@ -100,6 +100,27 @@ def select_target_reservation(reservations: list[dict], booking_number: str | No
     return matches[-1]
 
 
+def find_already_applied_reservation(
+    reservations: list[dict],
+    booking_number: str | None,
+    new_start: datetime,
+    new_return: datetime | None,
+) -> dict | None:
+    if not booking_number:
+        return None
+    for reservation in reservations:
+        if str(reservation.get("bookingNumber") or "") != booking_number:
+            continue
+        try:
+            start = parse_iso_minute(str(reservation.get("start") or ""))
+            return_at = parse_iso_minute(str(reservation.get("return") or ""))
+        except Exception:
+            continue
+        if start == new_start and (new_return is None or return_at == new_return):
+            return reservation
+    return None
+
+
 def is_login(page) -> bool:
     return bool(page.locator("#cardNo1").count() and page.locator("#tpPassword").count())
 
@@ -159,6 +180,18 @@ def format_report(booking: str, old_start: datetime, old_return: datetime, new_s
     )
 
 
+def format_already_applied_report(booking: str, new_start: datetime, new_return: datetime) -> str:
+    return "\n".join(
+        [
+            "TimesCar 预约变更结果",
+            "状态：目标预约已处于期望时间，无需重复提交",
+            f"预约编号：{booking}",
+            f"当前开始：{format_iso_minute(new_start)}",
+            f"当前结束：{format_iso_minute(new_return)}",
+        ]
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--booking-number")
@@ -167,6 +200,7 @@ def main() -> int:
     parser.add_argument("--new-return", help="YYYY-MM-DDTHH:MM in JST; defaults to current reservation return time")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--allow-already-applied", action="store_true")
     args = parser.parse_args()
     if args.dry_run and args.force:
         raise SystemExit("--dry-run and --force are mutually exclusive")
@@ -178,10 +212,31 @@ def main() -> int:
         reservations = fetch_reservations()
         current_start = parse_iso_minute(args.current_start)
         new_start = parse_iso_minute(args.new_start)
+        requested_new_return = parse_iso_minute(args.new_return) if args.new_return else None
+        already_applied = find_already_applied_reservation(
+            reservations,
+            args.booking_number,
+            new_start,
+            requested_new_return,
+        )
+        if already_applied and args.allow_already_applied:
+            booking = str(already_applied.get("bookingNumber") or "")
+            current_return = parse_iso_minute(str(already_applied.get("return") or ""))
+            message = format_already_applied_report(booking, new_start, current_return)
+            runtime.record_step(
+                step="select-target",
+                status="ok",
+                tool="timescar_fetch_reservations.py",
+                detail=f"booking={booking} already_applied=true",
+            )
+            runtime.finish("ok", "already-applied", final_message=message)
+            print(message)
+            return 0
+
         target = select_target_reservation(reservations, args.booking_number, current_start)
         booking = str(target.get("bookingNumber") or "")
         old_return = parse_iso_minute(str(target.get("return") or ""))
-        new_return = parse_iso_minute(args.new_return) if args.new_return else old_return
+        new_return = requested_new_return if requested_new_return else old_return
         runtime.record_step(step="select-target", status="ok", tool="timescar_fetch_reservations.py", detail=f"booking={booking}")
 
         if new_start >= new_return:

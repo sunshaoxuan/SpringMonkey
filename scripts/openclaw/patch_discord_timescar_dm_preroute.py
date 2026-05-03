@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+import re
 import shutil
 
 
@@ -20,14 +21,29 @@ function isSpringMonkeyTimesCarDmCommand(text) {
 	if (!/(订车|预约|TimesCar|timescar|开始时间|结束时间|往后延|延[迟时]|改到|后天|明天)/u.test(raw)) return false;
 	return /(取消|改|开始时间|结束时间|往后延|延[迟时]|后天|明天)/u.test(raw);
 }
+async function runSpringMonkeyTimesCarDmCommand(text, messageTimestamp) {
+	const { execFile } = await import("node:child_process");
+	const script = "/var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_handle_dm_adjust_request.py";
+	return await new Promise((resolve) => {
+		execFile("python3", [script, "--text", text, "--message-timestamp", messageTimestamp || new Date().toISOString(), "--force"], {
+			timeout: 1800000,
+			maxBuffer: 1024 * 1024
+		}, (error, stdout, stderr) => {
+			const output = [stdout, stderr].filter(Boolean).join("\n").trim();
+			resolve({
+				ok: !error,
+				code: error && typeof error.code !== "undefined" ? error.code : 0,
+				output: output || (error ? String(error.message || error) : "TimesCar 指令执行完成")
+			});
+		});
+	});
+}
 async function maybeHandleSpringMonkeyTimesCarDmPreroute(params) {
 	if (!params.isDirectMessage) return false;
 	if (!isSpringMonkeyTimesCarDmCommand(params.text)) return false;
-	const content = [
-		"已收到 TimesCar 预约变更指令，并已由 Discord Gateway 事件入口识别。",
-		"当前处理状态：不会再进入通用长流程静默等待。",
-		"安全边界：这是会修改真实订单的写操作；在专用改单执行器和确认页校验完成前，本次不自动提交预约变更。"
-	].join("\n");
+	const result = await runSpringMonkeyTimesCarDmCommand(params.text, params.messageTimestamp);
+	const prefix = result.ok ? "TimesCar 私信任务已由汤猴事件入口完成。" : `TimesCar 私信任务执行失败，退出码：${result.code}`;
+	const content = `${prefix}\n${result.output}`.slice(0, 1900);
 	await createChannelMessage(params.rest, params.channelId, {
 		body: {
 			content,
@@ -54,19 +70,48 @@ INSERT_BLOCK = r'''const text = messageText;
 			accountId
 		}).rest,
 		channelId: messageChannelId,
+		messageId: message.id,
+		messageTimestamp: message.timestamp
+	})) return;
+	if (!text) {'''
+
+OLD_INSERT_BLOCK = r'''const text = messageText;
+	if (await maybeHandleSpringMonkeyTimesCarDmPreroute({
+		isDirectMessage,
+		text,
+		rest: createDiscordRestClient({
+			cfg,
+			token,
+			accountId
+		}).rest,
+		channelId: messageChannelId,
 		messageId: message.id
 	})) return;
 	if (!text) {'''
+
+HELPER_PATTERN = re.compile(
+    r"\nfunction isSpringMonkeyTimesCarDmCommand\(text\) \{.*?\nasync function processDiscordMessage\(ctx, observer\) \{",
+    re.S,
+)
 
 
 def patch_file(path: Path) -> bool:
     text = path.read_text(encoding="utf-8")
     changed = False
-    if "maybeHandleSpringMonkeyTimesCarDmPreroute" not in text:
+    helper_replacement = "\n" + HELPER + "\nasync function processDiscordMessage(ctx, observer) {"
+    if "maybeHandleSpringMonkeyTimesCarDmPreroute" in text:
+        text, count = HELPER_PATTERN.subn(helper_replacement, text, count=1)
+        if count:
+            changed = True
+    else:
         if ANCHOR not in text:
             raise RuntimeError(f"anchor not found in {path}")
-        text = text.replace(ANCHOR, HELPER + "\n" + ANCHOR, 1)
+        text = text.replace(ANCHOR, helper_replacement.lstrip("\n"), 1)
         changed = True
+    if "messageTimestamp: message.timestamp" not in text:
+        if OLD_INSERT_BLOCK in text:
+            text = text.replace(OLD_INSERT_BLOCK, INSERT_BLOCK, 1)
+            changed = True
     if INSERT_BLOCK not in text:
         if INSERT_AFTER not in text:
             raise RuntimeError(f"insert anchor not found in {path}")
