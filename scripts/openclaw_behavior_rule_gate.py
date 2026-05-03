@@ -23,15 +23,21 @@ BEHAVIOR_PREFIXES = (
 )
 
 BEHAVIOR_EXACT = {
+    "config/openclaw/intent_tools.json",
     "scripts/INDEX.md",
     "docs/CAPABILITY_INDEX.md",
     "docs/registry/GATEWAY.md",
+    "docs/registry/tools_and_skills_manifest.json",
     "scripts/remote_install_direct_discord_cron.py",
     "scripts/remote_refresh_capability_awareness.py",
     "scripts/remote_install_repo_sync_timer.py",
     "scripts/openclaw_behavior_rule_gate.py",
     "scripts/test_openclaw_behavior_rule_gate.py",
     "scripts/test_repository_guardrails.py",
+    "scripts/openclaw/intent_tool_router.py",
+    "scripts/openclaw/verify_intent_tool_registry.py",
+    "scripts/openclaw/test_intent_tool_router.py",
+    "scripts/openclaw/test_intent_tool_registry.py",
 }
 
 BEHAVIOR_REMOTE_INSTALL_PREFIX = "scripts/remote_install_"
@@ -115,6 +121,36 @@ def verify_remote_head(expected_head: str, remote_head: str) -> None:
         )
 
 
+def verify_intent_registry() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/openclaw/verify_intent_tool_registry.py"],
+        cwd=REPO,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if proc.returncode != 0:
+        raise SystemExit(proc.stdout.strip())
+
+
+def verify_js_patch_syntax_gates() -> None:
+    offenders: list[str] = []
+    patch_paths = {REPO / "scripts" / "openclaw" / "patch_discord_timescar_dm_preroute.py"}
+    patch_paths.update(REPO / path for path in changed_files() if path.startswith("scripts/openclaw/patch_") and path.endswith(".py"))
+    for path in sorted(patch_paths):
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "dist" in text and "node\", \"--check\"" not in text and "node --check" not in text:
+            offenders.append(normalize_path(str(path.relative_to(REPO))))
+    if offenders:
+        joined = "\n".join(f"  - {path}" for path in offenders)
+        raise SystemExit(
+            "OPENCLAW_BEHAVIOR_RULE_GATE_FAIL: dist patch scripts must run node --check or equivalent syntax gate.\n"
+            f"{joined}"
+        )
+
+
 def remote_rev_parse(host: str, port: int, user: str, repo_path: str) -> str:
     try:
         import paramiko
@@ -170,6 +206,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     verify_no_uncommitted_behavior_changes()
+    verify_intent_registry()
+    verify_js_patch_syntax_gates()
     if not args.skip_pushed_check:
         verify_head_pushed(args.remote_ref)
     head = run_git(["rev-parse", "HEAD"], check=True)

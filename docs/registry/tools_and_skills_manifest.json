@@ -55,6 +55,24 @@
       "type": "script",
       "path": "scripts/remote_fix_discord_dm_event_inbound.py",
       "summary": "修复 Discord Gateway 事件驱动 DM 入站授权；禁止把 owner 私信控制台正式入口降级为轮询"
+    },
+    {
+      "id": "registry.intent_tools",
+      "type": "config",
+      "path": "config/openclaw/intent_tools.json",
+      "summary": "Discord owner DM 机器可读意图工具注册表"
+    },
+    {
+      "id": "script.intent_tool_router",
+      "type": "script",
+      "path": "scripts/openclaw/intent_tool_router.py",
+      "summary": "通用事件入口路由器：命中注册工具、执行工具、未命中记录 capability gap"
+    },
+    {
+      "id": "script.verify_intent_tool_registry",
+      "type": "script",
+      "path": "scripts/openclaw/verify_intent_tool_registry.py",
+      "summary": "校验 intent_tools 注册表、entrypoint、写操作权限与幂等/确认策略"
     }
   ]
 }

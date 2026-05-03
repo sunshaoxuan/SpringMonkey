@@ -28,6 +28,7 @@
 | 手动重跑正式新闻 job | 宿主 `openclaw cron run <jobId>`；权威 `cron/jobs.json` |
 | 定时任务查看 | `openclaw cron list --json` + 宿主机 `cron/jobs.json` |
 | Discord 私信控制台入口 | `scripts/remote_fix_discord_dm_event_inbound.py`；必须走 Discord Gateway 事件触发，私信不得靠轮询作为正式入口 |
+| Discord 私信通用工具路由 | `config/openclaw/intent_tools.json` + `scripts/openclaw/intent_tool_router.py`；未命中必须 ack 并记录 capability gap |
 | 仓库同步 | `REPOSITORY_GUARDRAILS.md` 与既定 git/自动化；少手改 dist |
 | 远程 OpenClaw 运维（本机统一入口） | `docs/ops/TOOLS_REGISTRY.md` + `scripts/openclaw_remote_cli.py` |
 | OpenClaw 运行时护栏 / 补丁 | `scripts/openclaw/ensure_agent_society_runtime_guard.sh`；相关 `patch_*.py` 与 `docs/runtime-notes/preemptive-compaction-guard-2026-04.md` |
@@ -37,6 +38,7 @@
 ## 3. 工具登记（机器 + 人）
 
 - **机器**：`docs/registry/tools_and_skills_manifest.json`（JSON，经 `scripts/registry/verify_tools_manifest.py` 校验）
+- **DM 工具路由机器注册表**：`config/openclaw/intent_tools.json`（经 `scripts/openclaw/verify_intent_tool_registry.py` 校验）
 - **人**：`docs/ops/TOOLS_REGISTRY.md`（场景→脚本矩阵）、`docs/CAPABILITY_INDEX.md`、`scripts/INDEX.md`（若存在）
 
 ---

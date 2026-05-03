@@ -18,6 +18,7 @@
 | **本机→宿主机 SSH 工具链**（Python、`paramiko`、一次性安装） | 固定 `OPENCLAW_PYTHON`、不重复 `pip install` | `docs/ops/SSH_TOOLCHAIN.md`、`scripts/requirements-ssh.txt` |
 | **工具注册表与场景映射** | 何时用哪个脚本、参数约定、分裂 vs 组合 | `docs/ops/TOOLS_REGISTRY.md` |
 | **Registry Gateway + 机器 manifest** | 意图/工具导航与可校验清单；与自增强流水线同维 | `docs/registry/GATEWAY.md`、`docs/registry/tools_and_skills_manifest.json`、`docs/policies/SELF_ENHANCING_PIPELINE_AND_GATES.md` |
+| **Discord DM 通用工具路由** | owner 私信先走机器注册表；命中则执行确定性工具，未命中则 ack 并记录 capability gap | `config/openclaw/intent_tools.json`、`scripts/openclaw/intent_tool_router.py`、`scripts/openclaw/verify_intent_tool_registry.py` |
 | **远程统一 CLI** | `openclaw_remote_cli.py`（git-pull / diag / doctor / line-install / line-push / recover） | `scripts/openclaw_remote_cli.py` |
 | **宿主机拉取 SpringMonkey** | `git pull` + 可选重启；见 §7 | `scripts/remote_springmonkey_git_pull.py`、`docs/ops/TOOLS_REGISTRY.md` §7 |
 | **宿主机仓库自动同步** | 通过 `openclaw-repo-sync.timer` 定期 `fetch + merge` SpringMonkey，不重启服务；适合 repo 脚本/文档自动落地 | `scripts/remote_install_repo_sync_timer.py` |
@@ -66,6 +67,7 @@
 | 监控与审计 | 日志路径、`openclaw-snapshot.timer` 等 | `docs/ops/OPENCLAW_MONITORING_PLAN.md` |
 | 自动更新（root 侧） | `openclaw-update.timer`、脚本路径 | `docs/ops/OPENCLAW_AUTO_UPDATE_2026-03-26.md` |
 | Discord 入口 | 服务器 `PKROCOHR001`、频道 `public`、策略要点 | `HOST_ACCESS_REDACTED.md` |
+| Discord owner DM 控制台 | 每条 owner DM 必须由 Gateway 事件入口进入通用工具路由；不得静默无响应；运行时补丁源必须来自 Git 并通过 JS 语法检查 | `config/openclaw/intent_tools.json`、`scripts/openclaw/patch_discord_timescar_dm_preroute.py` |
 | 新闻播报 | 定时任务、流水线、`broadcast.json` 域；成功分支最终回答必须直接等于 `final_broadcast.md` 正文 | `docs/runtime-notes/news-task-domain.md`、`news-deploy-checklist.md`、`docs/runtime-notes/news-cron-final-broadcast-delivery-fix.md` |
 | 年度再部署 / 灾备 | 汇总 2026 已落地运行时改动、宿主机真值与恢复顺序 | `docs/runtime-notes/openclaw-redeployment-runbook-2026.md` |
 | 灾难恢复蓝图 | 定义 repo、host bundle、secrets 三类恢复源，以及 recovery bundle 内容与恢复顺序 | `docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |

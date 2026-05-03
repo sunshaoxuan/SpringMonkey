@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "timeout_seconds": 1800
+  },
+  "tools": [
+    {
+      "intent_id": "timescar.reservation_query",
+      "tool_id": "timescar.dm.query",
+      "description": "Query TimesCar reservations from Discord owner DM.",
+      "patterns": [
+        "订车",
+        "预约",
+        "TimesCar",
+        "timescar"
+      ],
+      "required_any": [
+        "检查",
+        "查询",
+        "查看",
+        "看看",
+        "列表",
+        "记录",
+        "未来"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "write_operation": false,
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
+    },
+    {
+      "intent_id": "timescar.reservation_adjust_start",
+      "tool_id": "timescar.dm.adjust_start",
+      "description": "Adjust a TimesCar reservation start time from explicit Discord owner DM.",
+      "patterns": [
+        "订车",
+        "预约",
+        "TimesCar",
+        "timescar"
+      ],
+      "required_any": [
+        "改",
+        "取消",
+        "开始时间",
+        "后天",
+        "明天",
+        "延迟",
+        "延期"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": true
+      },
+      "permission": "owner_dm_write",
+      "write_operation": true,
+      "confirm_policy": "deterministic_tool_with_idempotency",
+      "idempotency": "ledger_by_normalized_dm_text",
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_adjust_reservation_window.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
+    },
+    {
+      "intent_id": "news.cron_run",
+      "tool_id": "openclaw.cron.run.news",
+      "description": "Run formal news cron jobs by name; never generate ad hoc news text.",
+      "patterns": [
+        "新闻",
+        "播报",
+        "news"
+      ],
+      "required_any": [
+        "触发",
+        "重跑",
+        "跑一轮",
+        "补跑",
+        "执行"
+      ],
+      "entrypoint": "scripts/openclaw/run_job_by_name.py",
+      "args_schema": {
+        "mode": "cron_job_from_text",
+        "job_map": {
+          "09": "news-digest-jst-0900",
+          "9": "news-digest-jst-0900",
+          "17": "news-digest-jst-1700",
+          "5": "news-digest-jst-1700",
+          "1700": "news-digest-jst-1700",
+          "0900": "news-digest-jst-0900"
+        }
+      },
+      "permission": "owner_dm",
+      "write_operation": false,
+      "verify_command": "python -m compileall -q scripts/openclaw/run_job_by_name.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "cron_ack"
+    },
+    {
+      "intent_id": "weather.cron_run",
+      "tool_id": "openclaw.cron.run.weather",
+      "description": "Run formal weather cron job by name.",
+      "patterns": [
+        "天气",
+        "weather"
+      ],
+      "required_any": [
+        "触发",
+        "重跑",
+        "跑一轮",
+        "补跑",
+        "执行"
+      ],
+      "entrypoint": "scripts/openclaw/run_job_by_name.py",
+      "args_schema": {
+        "mode": "fixed_cron_job",
+        "job_name": "weather-report-jst-0700"
+      },
+      "permission": "owner_dm",
+      "write_operation": false,
+      "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "cron_ack"
+    }
+  ]
+}
