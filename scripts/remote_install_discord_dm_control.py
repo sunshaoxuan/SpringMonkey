@@ -20,6 +20,7 @@ SERVICE="/etc/systemd/system/openclaw-discord-dm-control.service"
 TIMER="/etc/systemd/system/openclaw-discord-dm-control.timer"
 
 cd "$REPO"
+git remote set-url origin https://github.com/sunshaoxuan/SpringMonkey.git
 git pull --ff-only
 
 install -d -m 755 "$WORKSPACE/scripts"
