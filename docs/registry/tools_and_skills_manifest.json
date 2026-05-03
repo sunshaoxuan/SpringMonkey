@@ -51,16 +51,10 @@
       "summary": "preemptive-compaction 包 dist 补丁（锚点随上游包名变化）"
     },
     {
-      "id": "script.discord_dm_control_poll",
+      "id": "script.remote_fix_discord_dm_event_inbound",
       "type": "script",
-      "path": "scripts/discord/discord_dm_control_poll.py",
-      "summary": "Discord owner DM 控制台入站 poller；确保私信控制指令有入站记录、意图路由和 ack"
-    },
-    {
-      "id": "script.remote_install_discord_dm_control",
-      "type": "script",
-      "path": "scripts/remote_install_discord_dm_control.py",
-      "summary": "通过宿主 git pull 安装 Discord owner DM 控制台 timer，不通过 SSH 上传文件"
+      "path": "scripts/remote_fix_discord_dm_event_inbound.py",
+      "summary": "修复 Discord Gateway 事件驱动 DM 入站授权；禁止把 owner 私信控制台正式入口降级为轮询"
     }
   ]
 }

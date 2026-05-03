@@ -27,7 +27,7 @@
 | 新闻多阶段 pipeline | `scripts/news/run_news_pipeline.py`；校验 `scripts/news/verify_broadcast_draft.py` |
 | 手动重跑正式新闻 job | 宿主 `openclaw cron run <jobId>`；权威 `cron/jobs.json` |
 | 定时任务查看 | `openclaw cron list --json` + 宿主机 `cron/jobs.json` |
-| Discord 私信控制台入口 | `scripts/discord/discord_dm_control_poll.py` + `scripts/remote_install_discord_dm_control.py`；私信必须有入站记录和 ack，不得静默丢弃 |
+| Discord 私信控制台入口 | `scripts/remote_fix_discord_dm_event_inbound.py`；必须走 Discord Gateway 事件触发，私信不得靠轮询作为正式入口 |
 | 仓库同步 | `REPOSITORY_GUARDRAILS.md` 与既定 git/自动化；少手改 dist |
 | 远程 OpenClaw 运维（本机统一入口） | `docs/ops/TOOLS_REGISTRY.md` + `scripts/openclaw_remote_cli.py` |
 | OpenClaw 运行时护栏 / 补丁 | `scripts/openclaw/ensure_agent_society_runtime_guard.sh`；相关 `patch_*.py` 与 `docs/runtime-notes/preemptive-compaction-guard-2026-04.md` |
