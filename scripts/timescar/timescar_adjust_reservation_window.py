@@ -58,6 +58,28 @@ def format_iso_minute(value: datetime) -> str:
     return value.strftime("%Y-%m-%dT%H:%M")
 
 
+def select_first_available(page, selector: str, values: list[str]) -> None:
+    last_error: Exception | None = None
+    for value in values:
+        for kwargs in ({"value": value}, {"label": value}):
+            try:
+                page.select_option(selector, **kwargs, timeout=5000)
+                return
+            except Exception as exc:
+                last_error = exc
+    options = page.locator(f"{selector} option").evaluate_all(
+        "els => els.map(el => ({value: el.value, text: (el.textContent || '').trim()}))"
+    )
+    raise AdjustError(f"选项不可用：{selector} wanted={values} options={options}") from last_error
+
+
+def select_datetime(page, prefix: str, value: datetime) -> None:
+    page.select_option(f"#date{prefix}", format_site_date(value))
+    page.wait_for_timeout(500)
+    select_first_available(page, f"#hour{prefix}", [f"{value.hour:02d}", str(value.hour)])
+    select_first_available(page, f"#minute{prefix}", [f"{value.minute:02d}", str(value.minute)])
+
+
 def select_target_reservation(reservations: list[dict], booking_number: str | None, current_start: datetime) -> dict:
     matches = []
     for reservation in reservations:
@@ -185,12 +207,8 @@ def main() -> int:
 
             phase = "prepare-change"
             page.goto(f"https://share.timescar.jp/view/reserve/change.jsp?rid={rid}", wait_until="domcontentloaded", timeout=60000)
-            page.select_option("#dateStart", format_site_date(new_start))
-            page.select_option("#hourStart", f"{new_start.hour:02d}")
-            page.select_option("#minuteStart", f"{new_start.minute:02d}")
-            page.select_option("#dateEnd", format_site_date(new_return))
-            page.select_option("#hourEnd", f"{new_return.hour:02d}")
-            page.select_option("#minuteEnd", f"{new_return.minute:02d}")
+            select_datetime(page, "Start", new_start)
+            select_datetime(page, "End", new_return)
             page.locator("#doCheck").click()
             page.wait_for_load_state("domcontentloaded")
             body = page.locator("body").inner_text()
