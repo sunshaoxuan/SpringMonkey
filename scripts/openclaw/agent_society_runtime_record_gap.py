@@ -14,6 +14,18 @@ if str(_HERE) not in sys.path:
 from agent_society_helper_toolsmith import create_helper_tool
 from agent_society_kernel import AgentSocietyKernel, utc_now
 
+try:
+    from dm_capability_gap_runner import classify_safety, promoted_tool_for_text
+except Exception:
+    def classify_safety(text: str, intent_reason: str = "") -> tuple[str, str]:
+        combined = f"{text} {intent_reason}".lower()
+        if any(token in combined for token in ("天气", "weather", "能见度", "風", "风")):
+            return "auto_safe_readonly", "public read-only query wording"
+        return "unsupported_or_ambiguous", "dm capability runner unavailable"
+
+    def promoted_tool_for_text(text: str) -> dict | None:
+        return None
+
 
 REUSABLE_HELPER_CATEGORIES = {
     "execution_blocked",
@@ -40,6 +52,7 @@ def main() -> int:
     parser.add_argument("--observation", required=True)
     parser.add_argument("--failure-status", default="blocked", choices=["blocked", "failed"])
     parser.add_argument("--next-decision", default="classify blocker and prepare a bounded repair path")
+    parser.add_argument("--safety-class", choices=["auto_safe_readonly", "requires_confirmation_or_credentials", "unsupported_or_ambiguous"])
     args = parser.parse_args()
 
     kernel = AgentSocietyKernel(Path(args.root))
@@ -73,8 +86,15 @@ def main() -> int:
     )
 
     helper_payload = None
+    safety_class, safety_reason = classify_safety(args.prompt, args.observation)
+    if args.safety_class:
+        safety_class = args.safety_class
+        safety_reason = "explicit runtime safety class"
+    registry_candidate = None
+    if safety_class == "auto_safe_readonly":
+        registry_candidate = promoted_tool_for_text(args.prompt) or promoted_tool_for_text(args.observation)
     repo_root = Path(args.repo_root)
-    if gap.category in REUSABLE_HELPER_CATEGORIES:
+    if registry_candidate is None and gap.category in REUSABLE_HELPER_CATEGORIES:
         helper_name = gap.proposed_tool_name
         if not helper_name:
             session = kernel.load_session(session.session_id)
@@ -170,6 +190,9 @@ def main() -> int:
             "occurrence_count": pattern.occurrence_count,
         },
         "helper": helper_payload,
+        "safety_class": safety_class,
+        "safety_reason": safety_reason,
+        "registry_candidate": registry_candidate,
     }, ensure_ascii=False))
     return 0
 

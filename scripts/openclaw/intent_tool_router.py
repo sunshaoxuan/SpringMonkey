@@ -23,6 +23,12 @@ RUNTIME_ENV_FILES = (
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
 
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+
+from dm_capability_gap_runner import run_gap
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -64,6 +70,16 @@ CHAT_ONLY_PATTERN = re.compile(
 
 TASK_VERB_PATTERN = re.compile(
     r"(请|帮|麻烦|需要|处理|执行|完成|安排|调查|排查|修复|检查|查询|查看|触发|重跑|补跑|取消|修改|调整|设置|部署|重启|创建|生成|发明|新增|接入|汇报|报告|发到|转发)",
+    re.IGNORECASE,
+)
+
+AUTO_SAFE_READONLY_PATTERN = re.compile(
+    r"(天气|天気|weather|预报|予報|风况|風|能见度|視程|可視性|节假日|祝日|红日子|holiday)",
+    re.IGNORECASE,
+)
+
+UNSAFE_TASK_PATTERN = re.compile(
+    r"(取消|修改|改|调整|设置|配置|部署|重启|删除|提交|支付|付款|订车|预约|timescar|密码|token|secret|key|密钥|登录|登入)",
     re.IGNORECASE,
 )
 
@@ -137,11 +153,15 @@ def local_classify_unregistered_intent(text: str) -> str:
         return "chat"
     if CHAT_ONLY_PATTERN.fullmatch(normalized_prompt):
         return "chat"
+    if UNSAFE_TASK_PATTERN.search(normalized_prompt):
+        return "unsafe_gap"
+    if AUTO_SAFE_READONLY_PATTERN.search(normalized_prompt):
+        return "auto_safe_readonly_gap"
     # Short messages without an action verb are still chat, not capability gaps.
     if len(normalize_text(normalized_prompt)) <= 12 and not TASK_VERB_PATTERN.search(normalized_prompt):
         return "chat"
     if TASK_VERB_PATTERN.search(normalized_prompt):
-        return "unsupported_task"
+        return "ambiguous_gap"
     return "chat"
 
 
@@ -187,11 +207,13 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
     system = (
         "You are an intent classifier for a Discord DM control console. "
         "Return strict JSON only. Schema: "
-        '{"route_kind":"chat|unsupported_task","confidence":0.0,"reason":"short reason"}. '
+        '{"route_kind":"chat|registered_candidate|auto_safe_readonly_gap|unsafe_gap|ambiguous_gap","confidence":0.0,"reason":"short reason"}. '
         "Use chat for greetings, small talk, opinions, explanations, or normal conversation. "
-        "Use unsupported_task only when the user is asking the bot to perform an action, operate a system, "
-        "change state, investigate, schedule, fetch, send, configure, repair, or add a capability. "
-        "Do not choose unsupported_task for casual conversation."
+        "Use registered_candidate when the wording appears to match an existing deterministic OpenClaw capability but was not matched by the registry. "
+        "Use auto_safe_readonly_gap for public read-only information queries such as weather, holidays, public facts, or external data lookups. "
+        "Use unsafe_gap for write operations, booking changes, credentials, configuration, deployment, payment, login, or state-changing work. "
+        "Use ambiguous_gap for tasks that are not clearly safe read-only and not clearly unsafe. "
+        "Do not choose a gap kind for casual conversation."
     )
     content = call_intent_model(
         [
@@ -203,7 +225,7 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
     )
     parsed = extract_json_object(str(content))
     route_kind = str(parsed.get("route_kind", "")).strip()
-    if route_kind not in {"chat", "unsupported_task"}:
+    if route_kind not in {"chat", "registered_candidate", "auto_safe_readonly_gap", "unsafe_gap", "ambiguous_gap"}:
         raise ValueError(f"invalid route_kind from model: {route_kind}")
     reason = str(parsed.get("reason") or "model intent classification").strip()
     return route_kind, reason
@@ -437,8 +459,10 @@ def handle(
     *,
     registry_path: Path = DEFAULT_REGISTRY,
     kernel_root: Path = DEFAULT_KERNEL_ROOT,
+    replay_depth: int = 0,
+    registry_override: dict[str, Any] | None = None,
 ) -> RouterResult:
-    registry = load_registry(registry_path)
+    registry = registry_override or load_registry(registry_path)
     classification = classify(text, channel, user_id, registry)
     if classification.tool is None:
         route_kind, route_reason = classify_unregistered_intent(text)
@@ -450,16 +474,44 @@ def handle(
                 reply = f"我收到消息，但聊天模型暂时不可用：{type(exc).__name__}: {exc}"
             return RouterResult("chat", reply, classification, {}, 0, route_kind="chat")
         gap_reason = f"{classification.reason}; intent_classifier={route_reason}"
-        gap_ref = record_capability_gap(text, channel, user_id, gap_reason, kernel_root)
+        gap_result = run_gap(
+            text=text,
+            channel=channel,
+            user_id=user_id,
+            intent_reason=gap_reason,
+            kernel_root=kernel_root,
+            repo_root=REPO,
+        )
+        if gap_result.status == "promoted" and gap_result.registry_tool and replay_depth < 1:
+            replay_registry = dict(registry)
+            replay_tools = list(replay_registry.get("tools", []))
+            if not any(str(tool.get("tool_id")) == str(gap_result.registry_tool.get("tool_id")) for tool in replay_tools):
+                replay_tools.append(gap_result.registry_tool)
+            replay_registry["tools"] = replay_tools
+            replay = handle(
+                text,
+                channel,
+                user_id,
+                message_timestamp,
+                registry_path=registry_path,
+                kernel_root=kernel_root,
+                replay_depth=replay_depth + 1,
+                registry_override=replay_registry,
+            )
+            replay.args = {
+                **replay.args,
+                "_capability_gap_plan": asdict(gap_result.plan),
+                "_capability_gap_ref": gap_result.gap_ref,
+            }
+            replay.route_kind = "auto_promoted_replay"
+            return replay
         reply = "\n".join(
             [
-                "汤猴已收到私信，但没有找到已注册的确定性工具。",
-                "状态：未执行，已记录能力缺口。",
-                f"原因：{gap_reason}",
-                f"记录：{gap_ref}",
+                gap_result.reply,
+                f"原始原因：{gap_reason}",
             ]
         )
-        return RouterResult("unsupported", reply, classification, {}, 0, route_kind="unsupported_task")
+        return RouterResult("unsupported", reply, classification, {}, 0, route_kind=route_kind)
 
     try:
         args = extract_args(classification.tool, text, message_timestamp)

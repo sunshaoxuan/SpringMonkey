@@ -201,14 +201,16 @@
 ## 5. OpenClaw 补丁与验证
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
-- `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，普通聊天直接用公共模型回 DM，未支持任务则 ack 并记录 capability gap
+- `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，普通聊天直接用公共模型回 DM，未命中任务进入 DM capability gap runner，安全只读能力可补强后重放
+- `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
-- `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由与未命中 gap 记录
+- `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由、DM gap promotion 与未命中 gap 记录
+- `openclaw/test_dm_capability_gap_runner.py`：验证 DM 安全只读 gap 会产出注册表工具候选，写操作 gap 不会自动执行
 - `openclaw/repair_legacy_gateway_config.py`：修复会阻断 Gateway 启动或通道加载的旧配置字段/不可用插件引用；用于服务进不了 `ready`、Discord 私信完全无响应、日志出现 `Unsupported channel: discord` 的故障
 - `openclaw/test_repair_legacy_gateway_config.py`：验证 Gateway 配置修复器会写备份且幂等
 - `openclaw/patch_news_manual_rerun_current.py`：面向当前 `pi-embedded` bundle 的手动新闻重跑修复；自动定位当前活跃 `runEmbeddedAttempt` 文件，强制 Discord 手动重跑走正式 `cron run`，并禁止主会话自由发挥
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
-- `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；当前已接通 LINE direct `no-response`、`auto-reply failed` 与 watchdog `timeout`，并已对齐 `execution_blocked`、`runtime_timeout`、`tool_missing` 这三类失败的 helper 产出、即时验证与自动 promotion 路径
+- `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；对 DM 只读能力 gap 可返回注册表工具候选，避免业务查询继续生成 generic repair helper
 - `openclaw/cron_failure_self_heal.py`：扫描宿主机 journal 里的 cron failure，去重后写入 durable kernel；同样走 `gap -> helper -> pattern -> promotion` 闭环，而不是只给用户发一条失败通知
 - `openclaw/job_orchestrator.py`：cron/pipeline job 的通用执行包装器；把脚本命令作为 kernel step 的 action/tool 执行，成功保持 stdout 契约，失败写 gap、触发 helper、自修复后 bounded retry
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核；记录 order/dependency/parallel/shared-context 元数据，并可通过 `tree-report` 输出长流程树状报告

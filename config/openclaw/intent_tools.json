@@ -161,7 +161,12 @@
       "write_operation": false,
       "verify_command": "python -m compileall -q scripts/weather/handle_dm_weather_query.py && python scripts/weather/test_handle_dm_weather_query.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "promotion": {
+        "source": "agent_society_dm_gap_runner",
+        "safety_class": "auto_safe_readonly",
+        "status": "promoted_sample"
+      }
     }
   ]
 }
