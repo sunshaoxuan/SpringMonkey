@@ -35,11 +35,15 @@ async function runSpringMonkeyIntentToolRouter(params) {
 			timeout: 1800000,
 			maxBuffer: 1024 * 1024
 		}, (error, stdout, stderr) => {
-			const output = [stdout, stderr].filter(Boolean).join("\n").trim();
+			const output = String(stdout || "").trim();
+			const diagnostic = String(stderr || "").trim();
+			if (diagnostic) {
+				console.warn("[springmonkey-intent-tool-router][stderr]", diagnostic.slice(0, 4000));
+			}
 			resolve({
 				ok: !error,
 				code: error && typeof error.code !== "undefined" ? error.code : 0,
-				output: output || (error ? String(error.message || error) : "OpenClaw intent tool router completed")
+				output: output || (error ? "OpenClaw intent tool router failed; diagnostics kept in service journal" : "OpenClaw intent tool router completed")
 			});
 		});
 	});

@@ -22,6 +22,7 @@ RUNTIME_ENV_FILES = (
     Path("/etc/openclaw/openclaw.env"),
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
+DEFAULT_DIAGNOSTIC_LOG = Path("/var/lib/openclaw/.openclaw/workspace/var/intent_tool_router_diagnostics.jsonl")
 
 _HERE = Path(__file__).resolve().parent
 if str(_HERE) not in sys.path:
@@ -406,6 +407,32 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
     raise ValueError(f"unsupported args_schema mode: {mode}")
 
 
+def diagnostic_log_path() -> Path:
+    configured = os.environ.get("OPENCLAW_INTENT_TOOL_DIAG_LOG", "").strip()
+    return Path(configured) if configured else DEFAULT_DIAGNOSTIC_LOG
+
+
+def append_tool_diagnostic(tool: dict[str, Any], args: dict[str, Any], returncode: int, stderr: str) -> None:
+    if not stderr.strip():
+        return
+    path = diagnostic_log_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "recorded_at": utc_now(),
+            "tool_id": tool.get("tool_id"),
+            "intent_id": tool.get("intent_id"),
+            "returncode": returncode,
+            "stderr": stderr[-4000:],
+            "args": {key: value for key, value in args.items() if key not in {"text"}},
+        }
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception:
+        # Diagnostics must never pollute the user-facing reply path.
+        return
+
+
 def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -> tuple[int, str]:
     entrypoint = REPO / str(tool["entrypoint"])
     mode = (tool.get("args_schema") or {}).get("mode")
@@ -431,9 +458,10 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
         encoding="utf-8",
         errors="replace",
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         timeout=timeout_seconds,
     )
+    append_tool_diagnostic(tool, args, proc.returncode, proc.stderr or "")
     return proc.returncode, (proc.stdout or "").strip()
 
 

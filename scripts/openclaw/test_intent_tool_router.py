@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import intent_tool_router as router
@@ -251,6 +252,40 @@ def test_unregistered_intent_falls_back_when_model_unavailable() -> None:
         route_kind, reason = router.classify_unregistered_intent("请帮我接入一个新的控制台能力。")
     assert route_kind == "ambiguous_gap"
     assert "model_unavailable_fallback=RuntimeError" in reason
+
+
+def test_run_tool_keeps_stderr_out_of_user_output() -> None:
+    tool = {
+        "intent_id": "test.intent",
+        "tool_id": "test.tool",
+        "entrypoint": "scripts/openclaw/intent_tool_router.py",
+        "args_schema": {"mode": "dm_text_timestamp"},
+    }
+    args = {"text": "hello", "message_timestamp": "2026-05-04T00:00:00+09:00", "force": False}
+    completed = SimpleNamespace(
+        returncode=0,
+        stdout="业务结果\n",
+        stderr="(node:1) [DEP0169] warning\n",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        diag = Path(tmp) / "diag.jsonl"
+        with patch.dict(router.os.environ, {"OPENCLAW_INTENT_TOOL_DIAG_LOG": str(diag)}), patch.object(
+            router.subprocess, "run", return_value=completed
+        ):
+            code, output = router.run_tool(tool, args, 10)
+        assert code == 0
+        assert output == "业务结果"
+        assert "DEP0169" not in output
+        record = json.loads(diag.read_text(encoding="utf-8").splitlines()[0])
+        assert record["tool_id"] == "test.tool"
+        assert "DEP0169" in record["stderr"]
+
+
+def test_discord_patch_uses_stdout_only_for_user_reply() -> None:
+    source = (router.REPO / "scripts" / "openclaw" / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
+    assert "[stdout, stderr].filter" not in source
+    assert "const output = String(stdout || \"\").trim();" in source
+    assert "console.warn(\"[springmonkey-intent-tool-router][stderr]\"" in source
 
 
 def test_create_capability_falls_back_to_unsupported_task() -> None:
