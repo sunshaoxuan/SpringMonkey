@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+os.environ.setdefault("NODE_NO_WARNINGS", "1")
 
 from playwright.sync_api import sync_playwright
 
