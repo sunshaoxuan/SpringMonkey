@@ -66,6 +66,11 @@
   - 用途：针对 `Config invalid / legacy key` 类配置问题执行 `openclaw doctor --fix`，并重启服务。
   - 典型用法：`python SpringMonkey/scripts/remote_openclaw_doctor_fix.py`
 
+- `remote_repair_openclaw_gateway_config.py`
+  - 用途：当 Gateway 因启动前配置校验失败而无法接收 Discord/LINE 事件时，从宿主机 Git checkout 拉取最新仓库，运行 `scripts/openclaw/repair_legacy_gateway_config.py`，移除已知阻断项并重启验证。
+  - 覆盖问题：旧字段 `agents.defaults.llm`、不可用 `brave` web_search provider、不可用 `memory-lancedb` plugin slot。
+  - 典型用法：`python SpringMonkey/scripts/remote_repair_openclaw_gateway_config.py`
+
 - `remote_enable_shared_channel_capabilities.py`
   - 用途：为 Discord / LINE 建立同一套共享能力入口；给 `openclaw.service` 加载统一环境文件 `/etc/openclaw/openclaw.env`，并把 `tools.elevated.allowFrom` 同时放行给 `discord` 与 `line`。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_shared_channel_capabilities.py`
@@ -195,6 +200,8 @@
 - `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，未命中则 ack 并记录 capability gap
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由与未命中 gap 记录
+- `openclaw/repair_legacy_gateway_config.py`：修复会阻断 Gateway 启动的旧配置字段/不可用插件引用；用于服务进不了 `ready`、私信完全无响应的启动前故障
+- `openclaw/test_repair_legacy_gateway_config.py`：验证 Gateway 配置修复器会写备份且幂等
 - `openclaw/patch_news_manual_rerun_current.py`：面向当前 `pi-embedded` bundle 的手动新闻重跑修复；自动定位当前活跃 `runEmbeddedAttempt` 文件，强制 Discord 手动重跑走正式 `cron run`，并禁止主会话自由发挥
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
 - `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；当前已接通 LINE direct `no-response`、`auto-reply failed` 与 watchdog `timeout`，并已对齐 `execution_blocked`、`runtime_timeout`、`tool_missing` 这三类失败的 helper 产出、即时验证与自动 promotion 路径
