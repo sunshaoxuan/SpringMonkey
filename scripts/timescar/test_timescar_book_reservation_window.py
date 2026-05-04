@@ -23,6 +23,7 @@ def main() -> int:
         ]
     )
     mod.assert_confirm_page(body, start, end, "久我山４丁目２", "ヤリスクロス（ハイブリッド）")
+    mod.assert_confirm_page(body, start, end, "久我山４丁目２", "ベーシック／ヤリスクロス（ハイブリッド）")
     reservation = {
         "bookingNumber": "B999",
         "start": "2026-05-06T09:00",

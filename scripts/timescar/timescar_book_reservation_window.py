@@ -194,7 +194,12 @@ def assert_confirm_page(body: str, start: datetime, end: datetime, station_name:
         raise BookingWindowError("failed: confirm page return time mismatch")
     if station_name not in body:
         raise BookingWindowError("failed: confirm page station mismatch")
-    if model_preference not in body and DEFAULT_MODEL_FALLBACK not in body:
+    model_candidates = [
+        model_preference,
+        model_preference.split("／")[-1] if "／" in model_preference else "",
+        DEFAULT_MODEL_FALLBACK,
+    ]
+    if not any(candidate and candidate in body for candidate in model_candidates):
         raise BookingWindowError("failed: confirm page model mismatch")
 
 
