@@ -69,6 +69,7 @@
 | 自动更新（root 侧） | `openclaw-update.timer`、脚本路径 | `docs/ops/OPENCLAW_AUTO_UPDATE_2026-03-26.md` |
 | Discord 入口 | 服务器 `PKROCOHR001`、频道 `public`、策略要点 | `HOST_ACCESS_REDACTED.md` |
 | Discord owner DM 控制台 | 每条 owner DM 必须由 Gateway 事件入口进入通用工具路由；不得静默无响应；运行时补丁源必须来自 Git 并通过 JS 语法检查 | `config/openclaw/intent_tools.json`、`scripts/openclaw/patch_discord_timescar_dm_preroute.py` |
+| Discord Gateway 心跳自愈 | 当 Discord WebSocket 出现 `Gateway heartbeat ACK timeout`，可能出现 `/healthz` 正常但 DM 事件不再进入 handler；watchdog 会重启 OpenClaw 恢复事件连接 | `scripts/remote_install_discord_gateway_watchdog.py` |
 | 新闻播报 | 定时任务、流水线、`broadcast.json` 域；成功分支最终回答必须直接等于 `final_broadcast.md` 正文 | `docs/runtime-notes/news-task-domain.md`、`news-deploy-checklist.md`、`docs/runtime-notes/news-cron-final-broadcast-delivery-fix.md` |
 | 年度再部署 / 灾备 | 汇总 2026 已落地运行时改动、宿主机真值与恢复顺序 | `docs/runtime-notes/openclaw-redeployment-runbook-2026.md` |
 | 灾难恢复蓝图 | 定义 repo、host bundle、secrets 三类恢复源，以及 recovery bundle 内容与恢复顺序 | `docs/runtime-notes/openclaw-disaster-recovery-blueprint-2026-04.md` |

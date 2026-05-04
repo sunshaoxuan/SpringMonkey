@@ -71,6 +71,10 @@
   - 覆盖问题：旧字段 `agents.defaults.llm`、不可用 `brave` web_search provider、不可用 `memory-lancedb` plugin slot、升级后 bundled Discord 插件缺失导致 `Unsupported channel: discord`。
   - 典型用法：`python SpringMonkey/scripts/remote_repair_openclaw_gateway_config.py`
 
+- `remote_install_discord_gateway_watchdog.py`
+  - 用途：安装 `openclaw-discord-gateway-watchdog.timer`；当 journal 出现新的 `Gateway heartbeat ACK timeout` 时，按冷却时间自动重启 OpenClaw，修复“healthz 正常但 Discord DM 事件不再进入 handler”的挂死状态。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_discord_gateway_watchdog.py`
+
 - `remote_enable_shared_channel_capabilities.py`
   - 用途：为 Discord / LINE 建立同一套共享能力入口；给 `openclaw.service` 加载统一环境文件 `/etc/openclaw/openclaw.env`，并把 `tools.elevated.allowFrom` 同时放行给 `discord` 与 `line`。
   - 典型用法：`python SpringMonkey/scripts/remote_enable_shared_channel_capabilities.py`
