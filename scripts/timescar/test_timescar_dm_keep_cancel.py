@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -31,18 +32,31 @@ def main() -> int:
         message_time = datetime(2026, 5, 4, 18, 0, tzinfo=TZ)
         reservations = [fake_reservation(message_time + timedelta(hours=12))]
         original_fetch = mod.fetch_reservations
+        original_run_canceller = mod.run_canceller
         try:
             mod.fetch_reservations = lambda: reservations
+            mod.run_canceller = lambda booking, current_start, force: subprocess.CompletedProcess(
+                args=["timescar_cancel_reservation.py"],
+                returncode=0,
+                stdout=(
+                    "TimesCar 取消预约结果\n"
+                    "状态：预约取消已提交并回查确认\n"
+                    f"预约编号：{booking}\n"
+                    f"开始：{current_start.strftime('%Y-%m-%dT%H:%M')}"
+                ),
+                stderr="",
+            )
             keep = mod.format_keep_result("请保留明天的订车", message_time)
-            cancel = mod.format_cancel_result("请取消这单订车", message_time)
+            cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
         finally:
             mod.fetch_reservations = original_fetch
+            mod.run_canceller = original_run_canceller
         assert "已记录保留决定" in keep
         assert mod.DECISIONS_PATH.exists()
         data = json.loads(mod.DECISIONS_PATH.read_text(encoding="utf-8"))
         assert data["keepBookingNumbers"]["B123456"]["status"] == "keep"
-        assert "未执行取消" in cancel
-        assert "没有已验证的 TimesCar 取消提交执行器" in cancel
+        assert "预约取消已提交并回查确认" in cancel
+        assert "预约编号：B123456" in cancel
         assert mod.is_keep_request("请保留明天的订车")
         assert mod.is_cancel_request("请取消这单订车")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")

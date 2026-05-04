@@ -83,6 +83,34 @@ WEATHER_DM_QUERY_TOOL = {
 }
 
 
+TIMESCAR_CANCEL_PROMOTION_TOOL = {
+    "intent_id": "timescar.reservation_cancel",
+    "tool_id": "timescar.dm.cancel_next",
+    "description": "Cancel the next TimesCar reservation from owner DM through a verified deterministic browser submitter.",
+    "patterns": ["订车", "预约", "这单", "订单", "TimesCar", "timescar"],
+    "required_any": ["取消这单", "取消订单", "取消预约", "取消订车", "cancel"],
+    "entrypoint": "scripts/timescar/timescar_cancel_reservation.py",
+    "args_schema": {"mode": "dm_text_timestamp", "force": True},
+    "permission": "owner_dm_write",
+    "write_operation": True,
+    "confirm_policy": "deterministic_tool_with_confirm_page_and_postcheck",
+    "idempotency": "target_booking_absent_after_success",
+    "verify_command": (
+        "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py "
+        "scripts/timescar/timescar_cancel_reservation.py && "
+        "python scripts/timescar/test_timescar_dm_keep_cancel.py && "
+        "python scripts/timescar/test_timescar_cancel_reservation.py"
+    ),
+    "failure_policy": "reply_failure_and_record_gap",
+    "reply_policy": "tool_stdout",
+    "promotion": {
+        "source": "agent_society_dm_gap_runner",
+        "safety_class": "requires_confirmation_or_credentials",
+        "status": "requires_verified_git_delivery_before_replay",
+    },
+}
+
+
 def normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value or "").strip()
 
@@ -99,6 +127,15 @@ def classify_safety(text: str, intent_reason: str = "") -> tuple[str, str]:
 def promoted_tool_for_text(text: str) -> dict[str, Any] | None:
     if re.search(r"(天气|天気|weather|风况|風|能见度|視程|可視性)", text, re.IGNORECASE):
         return dict(WEATHER_DM_QUERY_TOOL)
+    return None
+
+
+def planned_tool_for_unsafe_text(text: str, intent_reason: str = "") -> dict[str, Any] | None:
+    combined = f"{text} {intent_reason}"
+    if re.search(r"(TimesCar|timescar|订车|预约|订单|这单)", combined, re.IGNORECASE) and re.search(
+        r"(取消这单|取消订单|取消预约|取消订车|cancel)", combined, re.IGNORECASE
+    ):
+        return dict(TIMESCAR_CANCEL_PROMOTION_TOOL)
     return None
 
 
@@ -192,7 +229,11 @@ def run_gap(
         observation=observation,
         kernel_root=kernel_root,
     )
-    registry_tool = promoted_tool_for_text(text) if safety_class == "auto_safe_readonly" else None
+    registry_tool = (
+        promoted_tool_for_text(text)
+        if safety_class == "auto_safe_readonly"
+        else planned_tool_for_unsafe_text(text, intent_reason)
+    )
     plan = build_plan(
         text=text,
         safety_class=safety_class,
@@ -212,10 +253,12 @@ def run_gap(
                 f"状态：未执行，已记录能力缺口和补强计划。",
                 f"安全分类：{safety_class}",
                 f"原因：{safety_reason}",
+                f"候选工具：{registry_tool.get('tool_id') if registry_tool else '未生成'}",
+                f"候选入口：{registry_tool.get('entrypoint') if registry_tool else '未生成'}",
                 f"记录：{gap_ref}",
             ]
         )
-        return GapRunnerResult("blocked", safety_class, plan, gap_ref, reply, None)
+        return GapRunnerResult("blocked", safety_class, plan, gap_ref, reply, registry_tool)
 
     if registry_tool is None:
         plan.status = "planned_no_known_promoter"

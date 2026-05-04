@@ -39,3 +39,21 @@ def test_write_gap_records_plan_without_promoting_tool() -> None:
     assert result.safety_class == "requires_confirmation_or_credentials"
     assert result.registry_tool is None
     assert "不能自动执行" in result.reply
+
+
+def test_timescar_cancel_gap_generates_verified_tool_plan_without_replay() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_gap(
+            text="请取消这单订车",
+            channel="discord_dm",
+            user_id="999",
+            intent_reason="registered tool reported missing verified cancel submitter",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+        )
+    assert result.status == "blocked"
+    assert result.safety_class == "requires_confirmation_or_credentials"
+    assert result.registry_tool
+    assert result.registry_tool["tool_id"] == "timescar.dm.cancel_next"
+    assert result.plan.entrypoint == "scripts/timescar/timescar_cancel_reservation.py"
+    assert "候选工具：timescar.dm.cancel_next" in result.reply

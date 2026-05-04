@@ -529,6 +529,17 @@ def record_capability_gap(text: str, channel: str, user_id: str, reason: str, ke
     return f"fallback_gap_log={fallback}"
 
 
+def is_executor_capability_gap(output: str) -> bool:
+    lowered = output.lower()
+    return (
+        "capability_gap" in lowered
+        or "没有已验证" in output
+        or "缺少已验证" in output
+        or "missing verified" in lowered
+        or "missing executor" in lowered
+    )
+
+
 def handle(
     text: str,
     channel: str,
@@ -600,6 +611,23 @@ def handle(
         args = extract_args(classification.tool, text, message_timestamp)
         timeout_seconds = int(registry.get("defaults", {}).get("timeout_seconds") or 1800)
         returncode, output = run_tool(classification.tool, args, timeout_seconds)
+        if is_executor_capability_gap(output):
+            gap_result = run_gap(
+                text=text,
+                channel=channel,
+                user_id=user_id,
+                intent_reason=f"registered tool executor capability gap: {output}",
+                kernel_root=kernel_root,
+                repo_root=REPO,
+            )
+            return RouterResult(
+                "unsupported",
+                "\n".join([gap_result.reply, f"工具：{classification.tool_id}"]),
+                classification,
+                args,
+                returncode,
+                route_kind="registered_tool_capability_gap",
+            )
         reply = format_reply(classification.tool, args, returncode, output)
         if returncode != 0 and classification.tool.get("failure_policy") == "reply_failure_and_record_gap":
             record_capability_gap(text, channel, user_id, output or f"tool failed: {classification.tool_id}", kernel_root)

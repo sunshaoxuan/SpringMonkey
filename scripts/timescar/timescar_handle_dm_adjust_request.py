@@ -222,7 +222,21 @@ def format_keep_result(text: str, message_time: datetime) -> str:
     )
 
 
-def format_cancel_result(text: str, message_time: datetime) -> str:
+def run_canceller(booking: str, current_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
+    cmd = [
+        "python3",
+        str(Path(__file__).with_name("timescar_cancel_reservation.py")),
+        "--booking-number",
+        booking,
+        "--current-start",
+        format_iso_minute(current_start),
+        "--allow-already-cancelled",
+    ]
+    cmd.append("--force" if force else "--dry-run")
+    return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=1800)
+
+
+def format_cancel_result(text: str, message_time: datetime, force: bool) -> str:
     reservation = find_next_reservation(fetch_reservations(), message_time)
     if reservation is None:
         return "\n".join(
@@ -232,17 +246,14 @@ def format_cancel_result(text: str, message_time: datetime) -> str:
             ]
         )
     booking = str(reservation.get("bookingNumber") or "")
-    start = str(reservation.get("start") or "")
-    return "\n".join(
-        [
-            "TimesCar 取消预约结果",
-            "状态：未执行取消",
-            "原因：当前仓库没有已验证的 TimesCar 取消提交执行器；为避免误取消，只记录到了确定性路由，不做浏览器提交。",
-            f"预约编号：{booking or '未知'}",
-            f"开始：{start or '未知'}",
-            "下一步：需要补充并验证专用取消执行器后，才能允许该写操作自动执行。",
-        ]
-    )
+    if not booking:
+        raise IntentError("找到预约但缺少预约编号，无法执行取消")
+    start = parse_iso_minute(str(reservation.get("start") or ""))
+    result = run_canceller(booking, start, force)
+    output = result.stdout.strip()
+    if result.returncode != 0:
+        raise IntentError(output or f"TimesCar 取消执行器失败，退出码：{result.returncode}")
+    return output
 
 
 def run_adjuster(booking: str, current_start: datetime, new_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
@@ -276,7 +287,7 @@ def main() -> int:
         print(format_keep_result(args.text, message_time))
         return 0
     if is_cancel_request(args.text):
-        print(format_cancel_result(args.text, message_time))
+        print(format_cancel_result(args.text, message_time, args.force))
         return 0
 
     current_start, new_start = interpret_adjust_request(args.text, message_time)
