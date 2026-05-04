@@ -261,7 +261,10 @@ def test_create_capability_falls_back_to_unsupported_task() -> None:
 
 
 def test_classify_only_does_not_execute_tool() -> None:
-    result = router.classify("触发一轮17点的新闻任务", "discord_dm", "999", load_registry())
+    registry = load_registry()
+    with patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")):
+        result, route_kind = router.classify_intent_model_first("触发一轮17点的新闻任务", "discord_dm", "999", registry)
     args = router.extract_args(result.tool or {}, "触发一轮17点的新闻任务", "2026-05-04T00:00:00+09:00")
+    assert route_kind == "registered_task"
     assert result.tool_id == "openclaw.cron.run.news"
     assert args == {"job_name": "news-digest-jst-1700"}

@@ -632,7 +632,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.classify_only:
         registry = load_registry(args.registry)
-        classification = classify(args.text, args.channel, args.user_id, registry)
+        classification, route_kind = classify_intent_model_first(args.text, args.channel, args.user_id, registry, context=args.context)
         extracted = {}
         if classification.tool:
             extracted = extract_args(classification.tool, args.text, args.message_timestamp)
@@ -640,6 +640,7 @@ def main() -> int:
             "classification": asdict(classification),
             "args": extracted,
             "would_execute": bool(classification.tool),
+            "route_kind": route_kind,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
