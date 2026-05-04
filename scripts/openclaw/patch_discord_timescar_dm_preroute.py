@@ -178,6 +178,22 @@ OLD_TIMESCAR_INSERT = r'''const text = messageText;
 	})) return;
 	if (!text) {'''
 
+OLD_INTENT_INSERT_NO_CONTEXT = r'''const text = messageText;
+	if (await maybeHandleSpringMonkeyIntentToolRouter({
+		isDirectMessage,
+		text,
+		rest: createDiscordRestClient({
+			cfg,
+			token,
+			accountId
+		}).rest,
+		channelId: messageChannelId,
+		messageId: message.id,
+		messageTimestamp: message.timestamp,
+		authorId: message.author?.id
+	})) return;
+	if (!text) {'''
+
 HELPER_PATTERN = re.compile(
     r"\n(?:function isSpringMonkeyTimesCarDmCommand\(text\) \{.*?|async function runSpringMonkeyIntentToolRouter\(params\) \{.*?)\nasync function processDiscordMessage\(ctx, observer\) \{",
     re.S,
@@ -200,6 +216,9 @@ def patch_file(path: Path) -> bool:
 
     if OLD_TIMESCAR_INSERT in text:
         text = text.replace(OLD_TIMESCAR_INSERT, INSERT_BLOCK, 1)
+        changed = True
+    if OLD_INTENT_INSERT_NO_CONTEXT in text:
+        text = text.replace(OLD_INTENT_INSERT_NO_CONTEXT, INSERT_BLOCK, 1)
         changed = True
     if INSERT_BLOCK not in text:
         if INSERT_AFTER not in text:
