@@ -48,10 +48,79 @@ async function runSpringMonkeyIntentToolRouter(params) {
 		});
 	});
 }
+function buildSpringMonkeyRouterMessageBody(params, content, withReference = true) {
+	const body = {
+		content: String(content || "").slice(0, 1900),
+		allowed_mentions: { parse: [] }
+	};
+	if (withReference && params.messageId) {
+		body.message_reference = {
+			message_id: params.messageId,
+			fail_if_not_exists: false
+		};
+	}
+	return body;
+}
+async function sendSpringMonkeyRouterMessage(params, content) {
+	try {
+		await createChannelMessage(params.rest, params.channelId, {
+			body: buildSpringMonkeyRouterMessageBody(params, content, true)
+		});
+		return true;
+	} catch (err) {
+		console.warn("[springmonkey-intent-tool-router][reply-reference-failed]", String(err).slice(0, 1000));
+	}
+	try {
+		await createChannelMessage(params.rest, params.channelId, {
+			body: buildSpringMonkeyRouterMessageBody(params, content, false)
+		});
+		return true;
+	} catch (err) {
+		console.warn("[springmonkey-intent-tool-router][reply-failed]", String(err).slice(0, 1000));
+		return false;
+	}
+}
+function startSpringMonkeyDmLifecycle(params) {
+	let stopped = false;
+	let ackSent = false;
+	const sendTypingSignal = async () => {
+		if (stopped) return;
+		try {
+			await sendTyping({
+				rest: params.rest,
+				channelId: params.channelId
+			});
+		} catch (err) {
+			console.warn("[springmonkey-intent-tool-router][typing-failed]", String(err).slice(0, 1000));
+		}
+	};
+	void sendTypingSignal();
+	const typingTimer = setInterval(() => {
+		void sendTypingSignal();
+	}, 8000);
+	typingTimer.unref?.();
+	const ackTimer = setTimeout(() => {
+		if (stopped || ackSent) return;
+		ackSent = true;
+		void sendSpringMonkeyRouterMessage(params, "汤猴已收到私信，正在通过事件入口处理。完成后会继续回复执行结果。");
+	}, 4000);
+	ackTimer.unref?.();
+	return () => {
+		stopped = true;
+		clearInterval(typingTimer);
+		clearTimeout(ackTimer);
+	};
+}
 async function maybeHandleSpringMonkeyIntentToolRouter(params) {
 	if (!params.isDirectMessage) return false;
 	if (!(typeof params.text === "string") || !params.text.trim()) return false;
-	const result = await runSpringMonkeyIntentToolRouter(params);
+	const stopLifecycle = startSpringMonkeyDmLifecycle(params);
+	let result = null;
+	try {
+		result = await runSpringMonkeyIntentToolRouter(params);
+	} finally {
+		stopLifecycle();
+	}
 	let payload = null;
 	try {
 		payload = JSON.parse(result.output || "{}");
@@ -59,31 +128,13 @@ async function maybeHandleSpringMonkeyIntentToolRouter(params) {
 	if (payload && payload.status === "chat") {
 		const chatReply = typeof payload.reply === "string" ? payload.reply.trim() : "";
 		if (!chatReply) return false;
-		await createChannelMessage(params.rest, params.channelId, {
-			body: {
-				content: chatReply.slice(0, 1900),
-				allowed_mentions: { parse: [] },
-				message_reference: {
-					message_id: params.messageId,
-					fail_if_not_exists: false
-				}
-			}
-		});
+		await sendSpringMonkeyRouterMessage(params, chatReply);
 		return true;
 	}
 	const routerReply = payload && typeof payload.reply === "string" ? payload.reply : result.output;
 	const prefix = result.ok ? "汤猴私信任务已由通用事件路由处理。" : `汤猴私信任务路由失败，退出码：${result.code}`;
 	const content = `${prefix}\n${routerReply}`.slice(0, 1900);
-	await createChannelMessage(params.rest, params.channelId, {
-		body: {
-			content,
-			allowed_mentions: { parse: [] },
-			message_reference: {
-				message_id: params.messageId,
-				fail_if_not_exists: false
-			}
-		}
-	});
+	await sendSpringMonkeyRouterMessage(params, content);
 	return true;
 }
 '''
