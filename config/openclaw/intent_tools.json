@@ -5,6 +5,44 @@
   },
   "tools": [
     {
+      "intent_id": "timescar.reservation_book_window",
+      "tool_id": "timescar.dm.book_window",
+      "description": "Book a TimesCar reservation from owner DM for an explicit window using the habitual station and model.",
+      "patterns": [
+        "预订",
+        "預訂",
+        "预约一单",
+        "订一单",
+        "再预订",
+        "一单",
+        "车辆",
+        "车型",
+        "TimesCar",
+        "timescar"
+      ],
+      "required_any": [
+        "预订",
+        "預訂",
+        "再预订",
+        "订一单",
+        "惯用",
+        "早9点",
+        "21点"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": true
+      },
+      "permission": "owner_dm_write",
+      "write_operation": true,
+      "confirm_policy": "deterministic_tool_with_confirm_page_and_postcheck",
+      "idempotency": "station_start_end_model_window",
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_book_reservation_window.py && python scripts/timescar/test_timescar_dm_keep_cancel.py && python scripts/timescar/test_timescar_book_reservation_window.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
+    },
+    {
       "intent_id": "timescar.reservation_keep",
       "tool_id": "timescar.dm.keep_next",
       "description": "Record owner decision to keep the next TimesCar reservation so cancel reminder skips it.",

@@ -126,6 +126,17 @@ def is_query_request(text: str) -> bool:
     return any(token in raw for token in ("检查", "查询", "查看", "看看", "列表", "记录", "未来"))
 
 
+def is_book_request(text: str) -> bool:
+    raw = text.strip()
+    if any(token in raw for token in ("取消", "保留", "查询", "查看", "检查", "状态")):
+        return False
+    if not any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "一单", "一臺", "一台", "车辆", "车型", "TimesCar", "timescar")):
+        return False
+    return any(token in raw for token in ("预订", "預訂", "预约一单", "订一单", "再预订", "明天")) and any(
+        token in raw for token in ("9点", "九点", "09", "早9", "早上9", "21点", "到21", "惯用", "车型")
+    )
+
+
 def is_cancel_status_request(text: str) -> bool:
     raw = text.strip()
     if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar", "取消")):
@@ -159,6 +170,20 @@ def parse_query_hours(text: str) -> int:
     if "48" in text:
         return 48
     return 24
+
+
+def interpret_book_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
+    raw = text.strip()
+    if "明天" not in raw:
+        raise IntentError("当前 TimesCar 预订执行器只接受明确包含“明天”的预订指令")
+    if not any(token in raw for token in ("9点", "九点", "09", "早9", "早上9")):
+        raise IntentError("当前 TimesCar 预订执行器需要明确开始时间为 09:00")
+    if not any(token in raw for token in ("21点", "二十一点", "到21", "至21")):
+        raise IntentError("当前 TimesCar 预订执行器需要明确结束时间为 21:00")
+    base_day = message_time.astimezone(TZ).date()
+    start = datetime.combine(base_day + timedelta(days=1), datetime.min.time(), tzinfo=TZ).replace(hour=9)
+    end = start.replace(hour=21)
+    return start, end
 
 
 def format_query_result(text: str, message_time: datetime) -> str:
@@ -265,6 +290,32 @@ def run_canceller(booking: str, current_start: datetime, force: bool) -> subproc
     ]
     cmd.append("--force" if force else "--dry-run")
     return run_child_tool(cmd)
+
+
+def run_booker(start: datetime, end: datetime, force: bool) -> subprocess.CompletedProcess[str]:
+    cmd = [
+        "python3",
+        str(Path(__file__).with_name("timescar_book_reservation_window.py")),
+        "--start",
+        format_iso_minute(start),
+        "--end",
+        format_iso_minute(end),
+        "--station-code",
+        "JV56",
+        "--model-preference",
+        "ヤリスクロス（ハイブリッド）",
+    ]
+    cmd.append("--force" if force else "--dry-run")
+    return run_child_tool(cmd)
+
+
+def format_book_result(text: str, message_time: datetime, force: bool) -> str:
+    start, end = interpret_book_request(text, message_time)
+    result = run_booker(start, end, force)
+    output = result.stdout.strip()
+    if result.returncode != 0:
+        raise IntentError(output or f"TimesCar 预订执行器失败，退出码：{result.returncode}")
+    return output
 
 
 def format_cancel_result(text: str, message_time: datetime, force: bool) -> str:
@@ -402,6 +453,9 @@ def main() -> int:
     args = parser.parse_args()
 
     message_time = parse_message_time(args.message_timestamp)
+    if is_book_request(args.text):
+        print(format_book_result(args.text, message_time, args.force))
+        return 0
     if is_cancel_status_request(args.text):
         print(format_cancel_status_result(args.text, message_time))
         return 0

@@ -20,6 +20,13 @@ def test_timescar_query_classifies_to_registered_tool() -> None:
     assert result.tool_id == "timescar.dm.query"
 
 
+def test_timescar_book_window_classifies_to_write_tool() -> None:
+    result = router.classify("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。", "discord_dm", "999", load_registry())
+    assert result.intent_id == "timescar.reservation_book_window"
+    assert result.tool_id == "timescar.dm.book_window"
+    assert result.tool and result.tool["write_operation"] is True
+
+
 def test_timescar_adjust_classifies_to_write_tool() -> None:
     result = router.classify(
         "请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始，结束时间不变。",
@@ -104,6 +111,20 @@ def test_model_first_falls_back_to_local_registered_tool_when_unavailable() -> N
     assert route_kind == "registered_task"
     assert classification.tool_id == "timescar.dm.keep_next"
     assert "model_first_unavailable=RuntimeError" in classification.reason
+
+
+def test_model_first_timeout_falls_back_to_timescar_book_window() -> None:
+    registry = load_registry()
+    with patch.object(router, "model_classify_intent", side_effect=TimeoutError("timed out")):
+        classification, route_kind = router.classify_intent_model_first(
+            "请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。",
+            "discord_dm",
+            "999",
+            registry,
+        )
+    assert route_kind == "registered_task"
+    assert classification.tool_id == "timescar.dm.book_window"
+    assert "model_first_unavailable=TimeoutError" in classification.reason
 
 
 def test_model_first_can_select_timescar_cancel_status() -> None:

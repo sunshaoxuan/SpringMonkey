@@ -34,8 +34,21 @@ def main() -> int:
         reservations = [fake_reservation(message_time + timedelta(hours=12))]
         original_fetch = mod.fetch_reservations
         original_run_canceller = mod.run_canceller
+        original_run_booker = mod.run_booker
         try:
             mod.fetch_reservations = lambda: reservations
+            mod.run_booker = lambda start, end, force: subprocess.CompletedProcess(
+                args=["timescar_book_reservation_window.py"],
+                returncode=0,
+                stdout=(
+                    "TimesCar 预订结果\n"
+                    "状态：预约已提交并回查确认\n"
+                    "预约编号：B654321\n"
+                    f"预约开始：{start.strftime('%Y-%m-%dT%H:%M')}\n"
+                    f"返却予定：{end.strftime('%Y-%m-%dT%H:%M')}"
+                ),
+                stderr="",
+            )
             mod.run_canceller = lambda booking, current_start, force: subprocess.CompletedProcess(
                 args=["timescar_cancel_reservation.py"],
                 returncode=0,
@@ -47,6 +60,7 @@ def main() -> int:
                 ),
                 stderr="",
             )
+            book = mod.format_book_result("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
             reservations.clear()
@@ -54,6 +68,9 @@ def main() -> int:
         finally:
             mod.fetch_reservations = original_fetch
             mod.run_canceller = original_run_canceller
+            mod.run_booker = original_run_booker
+        assert "预约已提交并回查确认" in book
+        assert "预约开始：2026-05-05T09:00" in book
         assert "已记录保留决定" in keep
         assert mod.DECISIONS_PATH.exists()
         data = json.loads(mod.DECISIONS_PATH.read_text(encoding="utf-8"))
@@ -63,6 +80,7 @@ def main() -> int:
         assert "已取消" in status
         assert "当前预约列表中已不存在该预约" in status
         assert mod.is_keep_request("请保留明天的订车")
+        assert mod.is_book_request("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。")
         assert mod.is_cancel_request("请取消这单订车")
         assert mod.is_cancel_status_request("这单取消了吗？")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
