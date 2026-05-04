@@ -40,6 +40,7 @@ class RouterResult:
     classification: Classification
     args: dict[str, Any]
     returncode: int = 0
+    route_kind: str = "unknown"
 
 
 def utc_now() -> str:
@@ -61,16 +62,18 @@ TASK_VERB_PATTERN = re.compile(
 )
 
 
-def is_chat_only(text: str) -> bool:
+def classify_unregistered_intent(text: str) -> str:
     normalized_prompt = re.sub(r"\s+", " ", text or "").strip()
     if not normalized_prompt:
-        return True
+        return "chat"
     if CHAT_ONLY_PATTERN.fullmatch(normalized_prompt):
-        return True
-    # Short messages without an action verb should stay on the normal chat path.
+        return "chat"
+    # Short messages without an action verb are still chat, not capability gaps.
     if len(normalize_text(normalized_prompt)) <= 12 and not TASK_VERB_PATTERN.search(normalized_prompt):
-        return True
-    return False
+        return "chat"
+    if TASK_VERB_PATTERN.search(normalized_prompt):
+        return "unsupported_task"
+    return "chat"
 
 
 def load_registry(path: Path = DEFAULT_REGISTRY) -> dict[str, Any]:
@@ -278,8 +281,9 @@ def handle(
     registry = load_registry(registry_path)
     classification = classify(text, channel, user_id, registry)
     if classification.tool is None:
-        if is_chat_only(text):
-            return RouterResult("pass_through", "", classification, {}, 0)
+        route_kind = classify_unregistered_intent(text)
+        if route_kind == "chat":
+            return RouterResult("chat", "", classification, {}, 0, route_kind="chat")
         gap_ref = record_capability_gap(text, channel, user_id, classification.reason, kernel_root)
         reply = "\n".join(
             [
@@ -289,7 +293,7 @@ def handle(
                 f"记录：{gap_ref}",
             ]
         )
-        return RouterResult("unsupported", reply, classification, {}, 0)
+        return RouterResult("unsupported", reply, classification, {}, 0, route_kind="unsupported_task")
 
     try:
         args = extract_args(classification.tool, text, message_timestamp)
@@ -298,7 +302,7 @@ def handle(
         reply = format_reply(classification.tool, args, returncode, output)
         if returncode != 0 and classification.tool.get("failure_policy") == "reply_failure_and_record_gap":
             record_capability_gap(text, channel, user_id, output or f"tool failed: {classification.tool_id}", kernel_root)
-        return RouterResult("ok" if returncode == 0 else "failed", reply, classification, args, returncode)
+        return RouterResult("ok" if returncode == 0 else "failed", reply, classification, args, returncode, route_kind="registered_task")
     except Exception as exc:
         reason = str(exc)
         gap_ref = record_capability_gap(text, channel, user_id, reason, kernel_root)
@@ -310,7 +314,7 @@ def handle(
                 f"记录：{gap_ref}",
             ]
         )
-        return RouterResult("failed", reply, classification, {}, 1)
+        return RouterResult("failed", reply, classification, {}, 1, route_kind="registered_task")
 
 
 def main() -> int:

@@ -52,7 +52,7 @@ async function maybeHandleSpringMonkeyIntentToolRouter(params) {
 	try {
 		payload = JSON.parse(result.output || "{}");
 	} catch (_error) {}
-	if (payload && payload.status === "pass_through") return false;
+	if (payload && payload.status === "chat") return false;
 	const routerReply = payload && typeof payload.reply === "string" ? payload.reply : result.output;
 	const prefix = result.ok ? "汤猴私信任务已由通用事件路由处理。" : `汤猴私信任务路由失败，退出码：${result.code}`;
 	const content = `${prefix}\n${routerReply}`.slice(0, 1900);
