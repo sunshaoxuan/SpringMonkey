@@ -248,13 +248,41 @@ def registry_prompt(registry: dict[str, Any]) -> str:
     return json.dumps(tools, ensure_ascii=False)
 
 
+def latest_timescar_context() -> str:
+    trace_dir = Path("/var/lib/openclaw/.openclaw/workspace/state/timescar_traces")
+    if not trace_dir.is_dir():
+        return ""
+    candidates = sorted(trace_dir.glob("timescar-*.latest.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+    snippets: list[str] = []
+    for path in candidates[:3]:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        final_message = str(data.get("finalMessage") or "").strip()
+        if not final_message:
+            continue
+        snippets.append(f"{path.name}: {final_message[:900]}")
+    return "\n".join(snippets)
+
+
+def effective_context(text: str, context: str) -> str:
+    raw = (context or "").strip()
+    normalized = normalize_text(text)
+    if any(token in normalized for token in ("刚刚", "刚才", "这单", "订单", "预约", "订车", "TimesCar", "timescar")):
+        recent = latest_timescar_context()
+        if recent:
+            raw = "\n".join(item for item in [raw, "Recent TimesCar task summaries:", recent] if item)
+    return raw
+
+
 def model_classify_intent(text: str, registry: dict[str, Any], *, context: str = "", timeout: int = 10) -> tuple[Classification, str]:
     system = (
-        "You are the first-stage intent router for the owner's Discord DM control console. "
+        "You are a deterministic tool selector for the owner's Discord DM control console. "
         "Return strict JSON only. Schema: "
         '{"route_kind":"chat|registered_task|registered_candidate|auto_safe_readonly_gap|unsafe_gap|ambiguous_gap",'
-        '"tool_id":null,"confidence":0.0,"reason":"short reason"}. '
-        "You must decide by semantic intent, not keyword matching. "
+        '"tool_id":null,"action":"book|cancel|keep|query|status|adjust|chat|gap","confidence":0.0,"reason":"short reason"}. '
+        "First infer action, then choose exactly one registered tool when action is covered. "
         "Use registered_task only when one registry tool clearly matches the user's requested action. "
         "Use chat for normal conversation or explanation. "
         "Use auto_safe_readonly_gap for safe public read-only lookups not covered by a tool. "
@@ -263,15 +291,23 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "For TimesCar: booking a car/reservation for tomorrow 09:00-21:00 with the habitual model is the book_window route. "
         "For TimesCar: after a booking attempt says the preferred car/window is unavailable, asking to switch to an available car is also the book_window route. "
         "For TimesCar: asking whether an order was cancelled, whether cancel succeeded, or whether the order still exists is a read-only cancel_status route. "
-        "For TimesCar: keep/保留 means record a keep decision, cancel this order/取消这单 means cancel route, "
-        "and changing a start time means adjust_start only when a new start time is explicitly requested."
+        "For TimesCar: keep/保留 means record a keep decision. "
+        "For TimesCar: cancel this order/取消这单/把刚刚这单取消掉/取消掉 means cancel_next, especially when context has a recent successful booking. "
+        "For TimesCar: adjust_start is only for explicit start-time changes, such as moving tomorrow 09:00 to the day after tomorrow 09:00. "
+        "Do not select adjust_start merely because the word 取消 appears; '取消明天的时间，让开始时间从后天...' is adjust_start, but '把这单取消掉' is cancel_next. "
+        "Examples: "
+        "'好的，把刚刚这单取消掉吧' => action cancel, tool_id timescar.dm.cancel_next. "
+        "'把这单取消掉' => action cancel, tool_id timescar.dm.cancel_next. "
+        "'这单取消了吗' => action status, tool_id timescar.dm.cancel_status. "
+        "'请把明天开始的订车改到后天早9点' => action adjust, tool_id timescar.dm.adjust_start. "
+        "'取消明天的时间，让开始时间从后天早上9点开始' => action adjust, tool_id timescar.dm.adjust_start."
     )
     user = "\n".join(
         [
             "Registry tools:",
             registry_prompt(registry),
             "Conversation context:",
-            context or "(not provided)",
+            effective_context(text, context) or "(not provided)",
             "Current message:",
             text,
         ]
@@ -301,14 +337,69 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
     return Classification(None, None, confidence, reason), route_kind
 
 
+def _tool_by_id(registry: dict[str, Any], tool_id: str) -> dict[str, Any] | None:
+    return next((item for item in registry.get("tools", []) if str(item.get("tool_id")) == tool_id), None)
+
+
+def looks_like_timescar_cancel(text: str) -> bool:
+    normalized = normalize_text(text)
+    if "取消明天的时间" in normalized and ("后天" in normalized or "開始" in normalized or "开始" in normalized):
+        return False
+    if any(token in normalized for token in ("取消了吗", "取消了么", "取消成功", "是否取消", "有没有取消", "还在吗", "还在不在", "状态")):
+        return False
+    has_target = any(token in normalized for token in ("这单", "刚刚这单", "刚才这单", "订单", "预约", "订车", "TimesCar", "timescar"))
+    has_cancel = any(token in normalized for token in ("取消这单", "这单取消", "把这单取消", "刚刚这单取消", "刚才这单取消", "取消掉", "取消订单", "取消预约", "取消订车", "cancel"))
+    return has_target and has_cancel
+
+
+def looks_like_timescar_adjust(text: str) -> bool:
+    normalized = normalize_text(text)
+    has_timescar = any(token in normalized for token in ("订车", "预约", "TimesCar", "timescar"))
+    if not has_timescar:
+        return False
+    if looks_like_timescar_cancel(normalized):
+        return False
+    return any(token in normalized for token in ("开始时间", "后天", "延迟", "延期", "变更", "改到", "改成", "结束时间不变")) and any(
+        token in normalized for token in ("后天", "开始时间", "早上9点", "早9点", "09", "结束时间不变")
+    )
+
+
+def guard_timescar_classification(text: str, registry: dict[str, Any], classification: Classification) -> Classification:
+    if looks_like_timescar_cancel(text) and classification.tool_id != "timescar.dm.cancel_next":
+        tool = _tool_by_id(registry, "timescar.dm.cancel_next")
+        if tool:
+            return Classification(
+                str(tool["intent_id"]),
+                str(tool["tool_id"]),
+                max(classification.confidence, 0.96),
+                f"guarded TimesCar cancel intent; model_tool_id={classification.tool_id}; router_reason={classification.reason}",
+                tool,
+            )
+    if classification.tool_id == "timescar.dm.adjust_start" and not looks_like_timescar_adjust(text):
+        tool = _tool_by_id(registry, "timescar.dm.cancel_next") if looks_like_timescar_cancel(text) else None
+        if tool:
+            return Classification(
+                str(tool["intent_id"]),
+                str(tool["tool_id"]),
+                max(classification.confidence, 0.96),
+                f"guarded away from adjust_start; model_tool_id={classification.tool_id}; router_reason={classification.reason}",
+                tool,
+            )
+    return classification
+
+
 def classify_intent_model_first(text: str, channel: str, user_id: str, registry: dict[str, Any], context: str = "") -> tuple[Classification, str | None]:
     try:
-        return model_classify_intent(text, registry, context=context)
+        classification, route_kind = model_classify_intent(text, registry, context=context)
+        if classification.tool is not None:
+            guarded = guard_timescar_classification(text, registry, classification)
+            return guarded, route_kind
+        return classification, route_kind
     except Exception as exc:
         fallback = classify(text, channel, user_id, registry)
         if fallback.tool is not None:
             fallback.reason = f"{fallback.reason}; model_first_unavailable={type(exc).__name__}: {exc}"
-            return fallback, "registered_task"
+            return guard_timescar_classification(text, registry, fallback), "registered_task"
         fallback.reason = f"{fallback.reason}; model_first_unavailable={type(exc).__name__}: {exc}"
         return fallback, None
 

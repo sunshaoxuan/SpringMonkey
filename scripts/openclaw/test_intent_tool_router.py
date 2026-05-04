@@ -56,6 +56,18 @@ def test_timescar_cancel_classifies_before_adjust_tool() -> None:
     assert result.tool_id == "timescar.dm.cancel_next"
 
 
+def test_timescar_cancel_recent_order_classifies_to_cancel_tool() -> None:
+    result = router.classify("好的，把刚刚这单取消掉吧", "discord_dm", "999", load_registry())
+    assert result.intent_id == "timescar.reservation_cancel"
+    assert result.tool_id == "timescar.dm.cancel_next"
+
+
+def test_timescar_cancel_this_order_classifies_to_cancel_tool() -> None:
+    result = router.classify("把这单取消掉", "discord_dm", "999", load_registry())
+    assert result.intent_id == "timescar.reservation_cancel"
+    assert result.tool_id == "timescar.dm.cancel_next"
+
+
 def test_timescar_cancel_status_is_readonly_registered_tool() -> None:
     result = router.classify("这单取消了吗？", "discord_dm", "999", load_registry())
     assert result.intent_id == "timescar.reservation_cancel_status"
@@ -166,6 +178,42 @@ def test_model_first_can_select_timescar_cancel_status() -> None:
         classification, route_kind = router.classify_intent_model_first("这单取消了吗？", "discord_dm", "999", registry)
     assert route_kind == "registered_task"
     assert classification.tool_id == "timescar.dm.cancel_status"
+
+
+def test_timescar_guard_overrides_model_adjust_for_cancel_followup() -> None:
+    registry = load_registry()
+    adjust_tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.adjust_start")
+    with patch.object(
+        router,
+        "model_classify_intent",
+        return_value=(
+            router.Classification(
+                "timescar.reservation_adjust_start",
+                "timescar.dm.adjust_start",
+                0.91,
+                "model confused cancellation wording with adjust",
+                adjust_tool,
+            ),
+            "registered_task",
+        ),
+    ):
+        classification, route_kind = router.classify_intent_model_first("好的，把刚刚这单取消掉吧", "discord_dm", "999", registry)
+    assert route_kind == "registered_task"
+    assert classification.tool_id == "timescar.dm.cancel_next"
+    assert "guarded" in classification.reason
+
+
+def test_timescar_adjust_with_cancel_time_phrase_stays_adjust() -> None:
+    registry = load_registry()
+    with patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")):
+        classification, route_kind = router.classify_intent_model_first(
+            "请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始，结束时间不变。",
+            "discord_dm",
+            "999",
+            registry,
+        )
+    assert route_kind == "registered_task"
+    assert classification.tool_id == "timescar.dm.adjust_start"
 
 
 def test_unknown_records_gap_and_returns_ack() -> None:
@@ -355,6 +403,7 @@ def test_discord_patch_uses_stdout_only_for_user_reply() -> None:
     assert "[stdout, stderr].filter" not in source
     assert "const output = String(stdout || \"\").trim();" in source
     assert "console.warn(\"[springmonkey-intent-tool-router][stderr]\"" in source
+    assert '"--context"' in source
 
 
 def test_create_capability_falls_back_to_unsupported_task() -> None:

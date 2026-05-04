@@ -64,6 +64,7 @@ def main() -> int:
             book_any = mod.format_book_result("那就把车换成可以预订的车", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
+            cancel_followup = mod.format_cancel_result("好的，把刚刚这单取消掉吧", message_time, force=True)
             reservations.clear()
             status = mod.format_cancel_status_result("这单取消了吗？", message_time)
         finally:
@@ -79,6 +80,7 @@ def main() -> int:
         assert data["keepBookingNumbers"]["B123456"]["status"] == "keep"
         assert "预约取消已提交并回查确认" in cancel
         assert "预约编号：B123456" in cancel
+        assert "预约取消已提交并回查确认" in cancel_followup
         assert "已取消" in status
         assert "当前预约列表中已不存在该预约" in status
         assert mod.is_keep_request("请保留明天的订车")
@@ -86,8 +88,18 @@ def main() -> int:
         assert mod.is_book_request("那就把车换成可以预订的车")
         assert mod.book_model_preference("那就把车换成可以预订的车") == "any"
         assert mod.is_cancel_request("请取消这单订车")
+        assert mod.is_cancel_request("好的，把刚刚这单取消掉吧")
+        assert mod.is_cancel_request("把这单取消掉")
         assert mod.is_cancel_status_request("这单取消了吗？")
+        assert mod.is_adjust_request("请把明天开始的订车改到后天早9点")
+        assert mod.is_adjust_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
+        assert not mod.is_adjust_request("好的，把刚刚这单取消掉吧")
+        try:
+            mod.interpret_adjust_request("随便处理一下这单", message_time)
+            raise AssertionError("ambiguous TimesCar text must not be accepted as adjust request")
+        except mod.IntentError:
+            pass
     print("timescar_dm_keep_cancel_ok")
     return 0
 

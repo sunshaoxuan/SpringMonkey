@@ -128,7 +128,7 @@ def is_query_request(text: str) -> bool:
 
 def is_book_request(text: str) -> bool:
     raw = text.strip()
-    if any(token in raw for token in ("取消", "保留", "查询", "查看", "检查", "状态")):
+    if any(token in raw for token in ("取消", "保留", "查询", "查看", "检查", "状态", "改到", "改成", "变更", "开始时间", "后天", "延期", "延迟")):
         return False
     if any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成")) and any(
         token in raw for token in ("车", "车辆", "车型", "预订", "预约")
@@ -157,11 +157,22 @@ def is_keep_request(text: str) -> bool:
 
 def is_cancel_request(text: str) -> bool:
     raw = text.strip()
-    if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar")):
+    if not any(token in raw for token in ("订车", "预约", "这单", "刚刚这单", "刚才这单", "订单", "TimesCar", "timescar")):
         return False
     if "取消明天的时间" in raw and "后天" in raw:
         return False
-    return any(token in raw for token in ("取消这单", "取消订单", "取消预约", "取消订车", "cancel"))
+    return any(token in raw for token in ("取消这单", "这单取消", "把这单取消", "刚刚这单取消", "刚才这单取消", "取消掉", "取消订单", "取消预约", "取消订车", "cancel"))
+
+
+def is_adjust_request(text: str) -> bool:
+    raw = text.strip()
+    if is_cancel_request(raw) or is_keep_request(raw) or is_book_request(raw) or is_cancel_status_request(raw) or is_query_request(raw):
+        return False
+    if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
+        return False
+    if not any(token in raw for token in ("开始时间", "后天", "延迟", "延期", "变更", "改到", "改成", "结束时间不变")):
+        return False
+    return any(token in raw for token in ("后天", "开始时间", "早上9点", "早9点", "09", "结束时间不变"))
 
 
 def parse_query_hours(text: str) -> int:
@@ -480,6 +491,9 @@ def main() -> int:
     if is_cancel_request(args.text):
         print(format_cancel_result(args.text, message_time, args.force))
         return 0
+
+    if not is_adjust_request(args.text):
+        raise IntentError("未能识别 TimesCar 子意图，未执行任何预约变更")
 
     current_start, new_start = interpret_adjust_request(args.text, message_time)
     key = command_key(args.text)

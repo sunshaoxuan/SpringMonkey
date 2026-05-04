@@ -30,6 +30,8 @@ async function runSpringMonkeyIntentToolRouter(params) {
 			params.authorId || "unknown",
 			"--message-timestamp",
 			params.messageTimestamp || new Date().toISOString(),
+			"--context",
+			params.context || "",
 			"--json"
 		], {
 			timeout: 1800000,
@@ -153,7 +155,11 @@ INSERT_BLOCK = r'''const text = messageText;
 		channelId: messageChannelId,
 		messageId: message.id,
 		messageTimestamp: message.timestamp,
-		authorId: message.author?.id
+		authorId: message.author?.id,
+		context: [
+			message.referenced_message?.content ? `Referenced message: ${message.referenced_message.content}` : "",
+			message.message_reference?.message_id ? `Referenced message id: ${message.message_reference.message_id}` : ""
+		].filter(Boolean).join("\n")
 	})) return;
 	if (!text) {'''
 
