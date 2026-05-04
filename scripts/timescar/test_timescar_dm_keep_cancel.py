@@ -37,7 +37,7 @@ def main() -> int:
         original_run_booker = mod.run_booker
         try:
             mod.fetch_reservations = lambda: reservations
-            mod.run_booker = lambda start, end, force: subprocess.CompletedProcess(
+            mod.run_booker = lambda start, end, force, model_preference: subprocess.CompletedProcess(
                 args=["timescar_book_reservation_window.py"],
                 returncode=0,
                 stdout=(
@@ -61,6 +61,7 @@ def main() -> int:
                 stderr="",
             )
             book = mod.format_book_result("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。", message_time, force=True)
+            book_any = mod.format_book_result("那就把车换成可以预订的车", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
             reservations.clear()
@@ -71,6 +72,7 @@ def main() -> int:
             mod.run_booker = original_run_booker
         assert "预约已提交并回查确认" in book
         assert "预约开始：2026-05-05T09:00" in book
+        assert "预约已提交并回查确认" in book_any
         assert "已记录保留决定" in keep
         assert mod.DECISIONS_PATH.exists()
         data = json.loads(mod.DECISIONS_PATH.read_text(encoding="utf-8"))
@@ -81,6 +83,8 @@ def main() -> int:
         assert "当前预约列表中已不存在该预约" in status
         assert mod.is_keep_request("请保留明天的订车")
         assert mod.is_book_request("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。")
+        assert mod.is_book_request("那就把车换成可以预订的车")
+        assert mod.book_model_preference("那就把车换成可以预订的车") == "any"
         assert mod.is_cancel_request("请取消这单订车")
         assert mod.is_cancel_status_request("这单取消了吗？")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")

@@ -130,6 +130,10 @@ def is_book_request(text: str) -> bool:
     raw = text.strip()
     if any(token in raw for token in ("取消", "保留", "查询", "查看", "检查", "状态")):
         return False
+    if any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成")) and any(
+        token in raw for token in ("车", "车辆", "车型", "预订", "预约")
+    ):
+        return True
     if not any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "一单", "一臺", "一台", "车辆", "车型", "TimesCar", "timescar")):
         return False
     return any(token in raw for token in ("预订", "預訂", "预约一单", "订一单", "再预订", "明天")) and any(
@@ -174,11 +178,12 @@ def parse_query_hours(text: str) -> int:
 
 def interpret_book_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
     raw = text.strip()
-    if "明天" not in raw:
+    any_available_followup = any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成"))
+    if "明天" not in raw and not any_available_followup:
         raise IntentError("当前 TimesCar 预订执行器只接受明确包含“明天”的预订指令")
-    if not any(token in raw for token in ("9点", "九点", "09", "早9", "早上9")):
+    if not any_available_followup and not any(token in raw for token in ("9点", "九点", "09", "早9", "早上9")):
         raise IntentError("当前 TimesCar 预订执行器需要明确开始时间为 09:00")
-    if not any(token in raw for token in ("21点", "二十一点", "到21", "至21")):
+    if not any_available_followup and not any(token in raw for token in ("21点", "二十一点", "到21", "至21")):
         raise IntentError("当前 TimesCar 预订执行器需要明确结束时间为 21:00")
     base_day = message_time.astimezone(TZ).date()
     start = datetime.combine(base_day + timedelta(days=1), datetime.min.time(), tzinfo=TZ).replace(hour=9)
@@ -292,7 +297,14 @@ def run_canceller(booking: str, current_start: datetime, force: bool) -> subproc
     return run_child_tool(cmd)
 
 
-def run_booker(start: datetime, end: datetime, force: bool) -> subprocess.CompletedProcess[str]:
+def book_model_preference(text: str) -> str:
+    raw = text.strip()
+    if any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成")):
+        return "any"
+    return "ヤリスクロス（ハイブリッド）"
+
+
+def run_booker(start: datetime, end: datetime, force: bool, model_preference: str) -> subprocess.CompletedProcess[str]:
     cmd = [
         "python3",
         str(Path(__file__).with_name("timescar_book_reservation_window.py")),
@@ -303,7 +315,7 @@ def run_booker(start: datetime, end: datetime, force: bool) -> subprocess.Comple
         "--station-code",
         "JV56",
         "--model-preference",
-        "ヤリスクロス（ハイブリッド）",
+        model_preference,
     ]
     cmd.append("--force" if force else "--dry-run")
     return run_child_tool(cmd)
@@ -311,7 +323,7 @@ def run_booker(start: datetime, end: datetime, force: bool) -> subprocess.Comple
 
 def format_book_result(text: str, message_time: datetime, force: bool) -> str:
     start, end = interpret_book_request(text, message_time)
-    result = run_booker(start, end, force)
+    result = run_booker(start, end, force, book_model_preference(text))
     output = result.stdout.strip()
     if result.returncode != 0:
         raise IntentError(output or f"TimesCar 预订执行器失败，退出码：{result.returncode}")

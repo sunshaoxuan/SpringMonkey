@@ -33,6 +33,7 @@ def main() -> int:
         "carColor": "グレイッシュブルー",
     }
     assert mod.same_window(reservation, start, end, "久我山４丁目２", "ヤリスクロス（ハイブリッド）")
+    assert mod.same_window(reservation, start, end, "久我山４丁目２", "any")
     report = mod.format_report(reservation)
     assert "预约已提交并回查确认" in report
     assert "是否保留同车：是" in report

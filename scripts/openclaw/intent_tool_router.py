@@ -261,6 +261,7 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "Use unsafe_gap for write operations, bookings, credentials, configuration, deployment, payment, login, or state changes not covered by a tool. "
         "Use ambiguous_gap when the user appears to request a task but intent/tool is unclear. "
         "For TimesCar: booking a car/reservation for tomorrow 09:00-21:00 with the habitual model is the book_window route. "
+        "For TimesCar: after a booking attempt says the preferred car/window is unavailable, asking to switch to an available car is also the book_window route. "
         "For TimesCar: asking whether an order was cancelled, whether cancel succeeded, or whether the order still exists is a read-only cancel_status route. "
         "For TimesCar: keep/保留 means record a keep decision, cancel this order/取消这单 means cancel route, "
         "and changing a start time means adjust_start only when a new start time is explicitly requested."

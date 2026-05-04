@@ -17,6 +17,11 @@
         "一单",
         "车辆",
         "车型",
+        "可以预订的车",
+        "可预订的车",
+        "能预订的车",
+        "换车",
+        "换成",
         "TimesCar",
         "timescar"
       ],
@@ -27,7 +32,12 @@
         "订一单",
         "惯用",
         "早9点",
-        "21点"
+        "21点",
+        "可以预订的车",
+        "可预订的车",
+        "能预订的车",
+        "换车",
+        "换成"
       ],
       "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
       "args_schema": {

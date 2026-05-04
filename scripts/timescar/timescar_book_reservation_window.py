@@ -27,6 +27,7 @@ DEFAULT_STATION_CODE = "JV56"
 DEFAULT_STATION_NAME = "久我山４丁目２"
 DEFAULT_MODEL_PREFERENCE = "ヤリスクロス（ハイブリッド）"
 DEFAULT_MODEL_FALLBACK = "ヤリスクロス"
+ANY_AVAILABLE_MODEL = "any"
 PREFERRED_IDENT = "1286"
 PREFERRED_COLOR = "グレイッシュブルー"
 JOB_NAME = "timescar-book-reservation-window"
@@ -100,12 +101,14 @@ def option_texts(page, selector: str) -> list[dict[str, str]]:
     )
 
 
-def find_model_value(page, model_preference: str) -> str:
+def model_options(page, model_preference: str) -> list[dict[str, str]]:
     options = option_texts(page, "#carId")
+    if model_preference.strip().lower() in {ANY_AVAILABLE_MODEL, "any_available", "available"}:
+        return [item for item in options if item["value"]]
     for wanted in (model_preference, DEFAULT_MODEL_FALLBACK):
         for item in options:
             if wanted and wanted in item["text"]:
-                return item["value"]
+                return [item]
     raise BookingWindowError(f"failed: station has no preferred model: {model_preference}")
 
 
@@ -116,12 +119,10 @@ def same_window(reservation: dict, start: datetime, end: datetime, station_name:
     except Exception:
         return False
     vehicle = str(reservation.get("vehicle") or reservation.get("carName") or "")
-    return (
-        reservation_start == start
-        and reservation_end == end
-        and str(reservation.get("station") or "") == station_name
-        and (DEFAULT_MODEL_FALLBACK in vehicle or model_preference in vehicle)
+    model_ok = True if model_preference.strip().lower() in {ANY_AVAILABLE_MODEL, "any_available", "available"} else (
+        DEFAULT_MODEL_FALLBACK in vehicle or model_preference in vehicle
     )
+    return reservation_start == start and reservation_end == end and str(reservation.get("station") or "") == station_name and model_ok
 
 
 def existing_reservation_for_window(start: datetime, end: datetime, station_name: str, model_preference: str) -> dict | None:
@@ -166,6 +167,18 @@ def format_unavailable_report(start: datetime, end: datetime, station_name: str,
             f"原因：{reason}",
         ]
     )
+
+
+def unavailable_reason(body: str) -> str | None:
+    if "予約できない期間が含まれています" in body:
+        return "TimesCar 返回：予約できない期間が含まれていますので、空き状況をご確認ください。"
+    if "入力内容に誤りがあります" in body:
+        lines = [line.strip() for line in body.splitlines() if line.strip()]
+        for line in lines:
+            if "予約" in line or "空き" in line or "確認" in line:
+                return f"TimesCar 返回：{line}"
+        return "TimesCar 返回：入力内容に誤りがあります"
+    return None
 
 
 def assert_confirm_page(body: str, start: datetime, end: datetime, station_name: str, model_preference: str) -> None:
@@ -229,33 +242,42 @@ def main() -> int:
                 page.goto(url, wait_until="domcontentloaded", timeout=60000)
             runtime.record_step(step=phase, status="ok", tool="browser", detail="opened reservation input page")
 
-            model_value = find_model_value(page, args.model_preference)
-            page.select_option("#carId", model_value)
-            page.select_option("#dateStart", start.strftime("%Y-%m-%d 00:00:00.0"))
-            page.select_option("#hourStart", str(start.hour))
-            page.select_option("#minuteStart", f"{start.minute:02d}")
-            page.select_option("#dateEnd", end.strftime("%Y-%m-%d 00:00:00.0"))
-            page.select_option("#hourEnd", str(end.hour))
-            page.select_option("#minuteEnd", f"{end.minute:02d}")
-            if page.locator("#exemptNocFlgYes").count():
-                page.check("#exemptNocFlgYes")
-
             phase = "validate-booking-form"
-            page.locator("#doCheck").click()
-            page.wait_for_load_state("domcontentloaded")
-            body = page.locator("body").inner_text()
-            if "予約できない期間が含まれています" in body:
+            tried: list[str] = []
+            selected_model_text = ""
+            for model in model_options(page, args.model_preference):
+                selected_model_text = model["text"]
+                tried.append(selected_model_text)
+                page.select_option("#carId", model["value"])
+                page.select_option("#dateStart", start.strftime("%Y-%m-%d 00:00:00.0"))
+                page.select_option("#hourStart", str(start.hour))
+                page.select_option("#minuteStart", f"{start.minute:02d}")
+                page.select_option("#dateEnd", end.strftime("%Y-%m-%d 00:00:00.0"))
+                page.select_option("#hourEnd", str(end.hour))
+                page.select_option("#minuteEnd", f"{end.minute:02d}")
+                if page.locator("#exemptNocFlgYes").count():
+                    page.check("#exemptNocFlgYes")
+                page.locator("#doCheck").click()
+                page.wait_for_load_state("domcontentloaded")
+                body = page.locator("body").inner_text()
+                reason = unavailable_reason(body)
+                if reason:
+                    if page.url != url:
+                        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                    continue
+                assert_confirm_page(body, start, end, args.station_name, selected_model_text)
+                break
+            else:
                 message = format_unavailable_report(
                     start,
                     end,
                     args.station_name,
                     args.model_preference,
-                    "TimesCar 返回：预约できない期間が含まれていますので、空き状況をご確認ください。",
+                    "已尝试车辆：" + " / ".join(tried),
                 )
                 runtime.finish("skipped", "unavailable", final_message=message)
                 print(message)
                 return 0
-            assert_confirm_page(body, start, end, args.station_name, args.model_preference)
             runtime.record_step(step=phase, status="ok", tool="browser", detail="reached and verified booking confirm page")
 
             if args.dry_run or not args.force:
@@ -264,7 +286,7 @@ def main() -> int:
                     "start": format_iso_minute(start),
                     "return": format_iso_minute(end),
                     "station": args.station_name,
-                    "vehicle": args.model_preference,
+                    "vehicle": selected_model_text or args.model_preference,
                     "carIdentifier": "",
                     "carColor": "",
                 }
