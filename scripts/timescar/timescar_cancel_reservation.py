@@ -160,16 +160,21 @@ def main() -> int:
             raise
         booking = str(target.get("bookingNumber") or "")
         return_at = parse_iso_minute(str(target.get("return") or ""))
-        runtime.record_step("select-target", "ok", "timescar_fetch_reservations.py", f"booking={booking}")
+        runtime.record_step(step="select-target", status="ok", tool="timescar_fetch_reservations.py", detail=f"booking={booking}")
 
         phase = "browser-cancel"
         message = run_browser_cancel(booking, current_start, return_at, args.dry_run, args.force)
-        runtime.record_step(phase, "ok", "browser", "cancel flow verified" if args.dry_run or not args.force else "cancel submitted")
+        runtime.record_step(
+            step=phase,
+            status="ok",
+            tool="browser",
+            detail="cancel flow verified" if args.dry_run or not args.force else "cancel submitted",
+        )
         runtime.finish("ok", "dry-run" if args.dry_run or not args.force else "done", final_message=message)
         print(message)
         return 0
     except Exception as exc:
-        runtime.record_step(phase, "failed", "browser", str(exc))
+        runtime.record_step(step=phase, status="failed", tool="browser", detail=str(exc))
         runtime.finish("failed", phase, final_message=str(exc))
         print(f"TimesCar 取消预约失败：{exc}")
         return 1

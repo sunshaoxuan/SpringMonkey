@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import timescar_cancel_reservation as mod
@@ -28,6 +29,9 @@ def main() -> int:
     assert "dry-run 校验成功，未提交取消" in report
     assert "预约编号：213063887" in report
     assert "2026-05-05T09:00" in report
+    source = Path(mod.__file__).read_text(encoding="utf-8")
+    assert 'record_step("select-target"' not in source
+    assert "record_step(step=" in source
 
     bad_body = body.replace("213063887", "000000000")
     try:
