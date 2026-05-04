@@ -237,6 +237,8 @@
 - `timescar/test_timescar_next24h_notice.py`：验证 next24h 提醒的解析路径保持兼容
 - `staged_jobs/task_trace.py`：轻量 staged task trace 运行时；把多步任务的阶段、步骤、产物和最终结果写进 `workspace/state/task_traces/`
 - `staged_jobs/test_task_trace.py`：验证 staged task trace 会落 latest trace 并记录步骤与产物
+- `weather/handle_dm_weather_query.py`：Discord owner DM 只读天气查询工具；从私信抽取日期/地点，返回天气、风况和能见度
+- `weather/test_handle_dm_weather_query.py`：验证 DM 天气查询工具的日期、地点、风况和能见度输出契约
 - `weather/test_discord_weather_report.py`：验证天气任务在假数据下保持输出契约，同时可接受 staged trace 接入
 - `news/test_run_news_pipeline_trace.py`：验证新闻流水线在 dry-run / skip-finalize 下仍会写出 staged trace，而不是继续做黑盒 exec
 - `openclaw/agent_society_entry_policy.py`：direct task 自动接入策略；把“未来你直接给汤猴布置的真实任务”自动识别成 agent-society / self-improvement 入口，而不是只靠登录类关键词

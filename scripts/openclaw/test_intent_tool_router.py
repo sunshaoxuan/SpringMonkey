@@ -36,6 +36,13 @@ def test_news_1700_maps_to_formal_cron_job() -> None:
     assert args["job_name"] == "news-digest-jst-1700"
 
 
+def test_weather_query_maps_to_registered_tool() -> None:
+    result = router.classify("请查询明天东京和长野天气、风况和能见度", "discord_dm", "999", load_registry())
+    assert result.intent_id == "weather.dm.query"
+    assert result.tool_id == "weather.dm.query"
+    assert result.tool and result.tool["write_operation"] is False
+
+
 def test_unknown_records_gap_and_returns_ack() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         kernel_root = Path(tmp) / "kernel"

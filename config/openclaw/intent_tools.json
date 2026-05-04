@@ -125,6 +125,43 @@
       "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "cron_ack"
+    },
+    {
+      "intent_id": "weather.dm.query",
+      "tool_id": "weather.dm.query",
+      "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",
+      "patterns": [
+        "天气",
+        "天気",
+        "weather",
+        "风",
+        "風",
+        "能见度",
+        "視程",
+        "可視性"
+      ],
+      "required_any": [
+        "明天",
+        "后天",
+        "今天",
+        "预报",
+        "查询",
+        "看看",
+        "东京",
+        "東京",
+        "长野",
+        "長野"
+      ],
+      "entrypoint": "scripts/weather/handle_dm_weather_query.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "write_operation": false,
+      "verify_command": "python -m compileall -q scripts/weather/handle_dm_weather_query.py && python scripts/weather/test_handle_dm_weather_query.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
     }
   ]
 }
