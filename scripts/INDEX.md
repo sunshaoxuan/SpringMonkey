@@ -201,7 +201,7 @@
 ## 5. OpenClaw 补丁与验证
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
-- `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，未命中则 ack 并记录 capability gap
+- `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，普通聊天直接用公共模型回 DM，未支持任务则 ack 并记录 capability gap
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由与未命中 gap 记录
 - `openclaw/repair_legacy_gateway_config.py`：修复会阻断 Gateway 启动或通道加载的旧配置字段/不可用插件引用；用于服务进不了 `ready`、Discord 私信完全无响应、日志出现 `Unsupported channel: discord` 的故障

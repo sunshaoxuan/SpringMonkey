@@ -63,7 +63,7 @@ CHAT_ONLY_PATTERN = re.compile(
 )
 
 TASK_VERB_PATTERN = re.compile(
-    r"(请|帮|麻烦|需要|处理|执行|完成|安排|调查|排查|修复|检查|查询|查看|触发|重跑|补跑|取消|修改|调整|设置|部署|重启|创建|生成|汇报|报告|发到|转发)",
+    r"(请|帮|麻烦|需要|处理|执行|完成|安排|调查|排查|修复|检查|查询|查看|触发|重跑|补跑|取消|修改|调整|设置|部署|重启|创建|生成|发明|新增|接入|汇报|报告|发到|转发)",
     re.IGNORECASE,
 )
 
@@ -145,7 +145,7 @@ def local_classify_unregistered_intent(text: str) -> str:
     return "chat"
 
 
-def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[str, str]:
+def intent_model_config() -> tuple[str, str, str]:
     load_runtime_env_files()
     base_url = (
         os.environ.get("OPENCLAW_INTENT_MODEL_BASE_URL", "").strip()
@@ -166,6 +166,24 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
     )
     if not base_url:
         raise RuntimeError("missing OPENCLAW_INTENT_MODEL_BASE_URL/OPENCLAW_PUBLIC_MODEL_BASE_URL")
+    return base_url, api_key, model
+
+
+def call_intent_model(messages: list[dict[str, str]], *, timeout: int, temperature: float = 0) -> str:
+    base_url, api_key, model = intent_model_config()
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+    }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
+    return str(data["choices"][0]["message"]["content"]).strip()
+
+
+def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[str, str]:
     system = (
         "You are an intent classifier for a Discord DM control console. "
         "Return strict JSON only. Schema: "
@@ -175,25 +193,39 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
         "change state, investigate, schedule, fetch, send, configure, repair, or add a capability. "
         "Do not choose unsupported_task for casual conversation."
     )
-    payload = {
-        "model": model,
-        "messages": [
+    content = call_intent_model(
+        [
             {"role": "system", "content": system},
             {"role": "user", "content": text},
         ],
-        "temperature": 0,
-    }
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-    data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
-    content = data["choices"][0]["message"]["content"]
+        timeout=timeout,
+        temperature=0,
+    )
     parsed = extract_json_object(str(content))
     route_kind = str(parsed.get("route_kind", "")).strip()
     if route_kind not in {"chat", "unsupported_task"}:
         raise ValueError(f"invalid route_kind from model: {route_kind}")
     reason = str(parsed.get("reason") or "model intent classification").strip()
     return route_kind, reason
+
+
+def model_chat_reply(text: str, *, timeout: int = 25) -> str:
+    system = (
+        "You are Tanghou replying in the owner's Discord DM super-console. "
+        "Reply in Chinese unless the user clearly asks for another language. "
+        "Be concise and direct. Current date is 2026-05-04, timezone Asia/Tokyo. "
+        "If the user is asking you to execute or change system state, do not pretend it was done; "
+        "say that it should be routed as a task instead."
+    )
+    reply = call_intent_model(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": text},
+        ],
+        timeout=timeout,
+        temperature=0.2,
+    )
+    return reply or "我收到消息，但聊天模型没有返回内容。"
 
 
 def classify_unregistered_intent(text: str) -> tuple[str, str]:
@@ -412,7 +444,11 @@ def handle(
         route_kind, route_reason = classify_unregistered_intent(text)
         if route_kind == "chat":
             classification.reason = route_reason
-            return RouterResult("chat", "", classification, {}, 0, route_kind="chat")
+            try:
+                reply = model_chat_reply(text)
+            except Exception as exc:
+                reply = f"我收到消息，但聊天模型暂时不可用：{type(exc).__name__}: {exc}"
+            return RouterResult("chat", reply, classification, {}, 0, route_kind="chat")
         gap_reason = f"{classification.reason}; intent_classifier={route_reason}"
         gap_ref = record_capability_gap(text, channel, user_id, gap_reason, kernel_root)
         reply = "\n".join(
