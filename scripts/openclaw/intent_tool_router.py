@@ -50,6 +50,29 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", "", text or "").strip()
 
 
+CHAT_ONLY_PATTERN = re.compile(
+    r"^\s*(你好|您好|hi|hello|早上好|晚上好|谢谢|thanks|ok|好的|收到|嗯|在吗|还活着吗|你还活着吗|拜拜|bye)[!！,.，。 ]*\s*$",
+    re.IGNORECASE,
+)
+
+TASK_VERB_PATTERN = re.compile(
+    r"(请|帮|麻烦|需要|处理|执行|完成|安排|调查|排查|修复|检查|查询|查看|触发|重跑|补跑|取消|修改|调整|设置|部署|重启|创建|生成|汇报|报告|发到|转发)",
+    re.IGNORECASE,
+)
+
+
+def is_chat_only(text: str) -> bool:
+    normalized_prompt = re.sub(r"\s+", " ", text or "").strip()
+    if not normalized_prompt:
+        return True
+    if CHAT_ONLY_PATTERN.fullmatch(normalized_prompt):
+        return True
+    # Short messages without an action verb should stay on the normal chat path.
+    if len(normalize_text(normalized_prompt)) <= 12 and not TASK_VERB_PATTERN.search(normalized_prompt):
+        return True
+    return False
+
+
 def load_registry(path: Path = DEFAULT_REGISTRY) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -255,6 +278,8 @@ def handle(
     registry = load_registry(registry_path)
     classification = classify(text, channel, user_id, registry)
     if classification.tool is None:
+        if is_chat_only(text):
+            return RouterResult("pass_through", "", classification, {}, 0)
         gap_ref = record_capability_gap(text, channel, user_id, classification.reason, kernel_root)
         reply = "\n".join(
             [

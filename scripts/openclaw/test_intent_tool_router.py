@@ -56,6 +56,23 @@ def test_unknown_records_gap_and_returns_ack() -> None:
         assert first["status"] == "open"
 
 
+def test_chat_only_passes_through_without_gap() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        kernel_root = Path(tmp) / "kernel"
+        with patch.object(router, "run_tool") as run_tool:
+            result = router.handle(
+                "还活着吗",
+                "discord_dm",
+                "999",
+                "2026-05-04T00:00:00+09:00",
+                kernel_root=kernel_root,
+            )
+            run_tool.assert_not_called()
+        assert result.status == "pass_through"
+        assert result.reply == ""
+        assert not (kernel_root / "intent_tool_router_gaps.jsonl").exists()
+
+
 def test_classify_only_does_not_execute_tool() -> None:
     result = router.classify("触发一轮17点的新闻任务", "discord_dm", "999", load_registry())
     args = router.extract_args(result.tool or {}, "触发一轮17点的新闻任务", "2026-05-04T00:00:00+09:00")

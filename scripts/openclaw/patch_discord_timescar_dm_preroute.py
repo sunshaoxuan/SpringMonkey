@@ -29,7 +29,8 @@ async function runSpringMonkeyIntentToolRouter(params) {
 			"--user-id",
 			params.authorId || "unknown",
 			"--message-timestamp",
-			params.messageTimestamp || new Date().toISOString()
+			params.messageTimestamp || new Date().toISOString(),
+			"--json"
 		], {
 			timeout: 1800000,
 			maxBuffer: 1024 * 1024
@@ -47,8 +48,14 @@ async function maybeHandleSpringMonkeyIntentToolRouter(params) {
 	if (!params.isDirectMessage) return false;
 	if (!(typeof params.text === "string") || !params.text.trim()) return false;
 	const result = await runSpringMonkeyIntentToolRouter(params);
+	let payload = null;
+	try {
+		payload = JSON.parse(result.output || "{}");
+	} catch (_error) {}
+	if (payload && payload.status === "pass_through") return false;
+	const routerReply = payload && typeof payload.reply === "string" ? payload.reply : result.output;
 	const prefix = result.ok ? "汤猴私信任务已由通用事件路由处理。" : `汤猴私信任务路由失败，退出码：${result.code}`;
-	const content = `${prefix}\n${result.output}`.slice(0, 1900);
+	const content = `${prefix}\n${routerReply}`.slice(0, 1900);
 	await createChannelMessage(params.rest, params.channelId, {
 		body: {
 			content,
