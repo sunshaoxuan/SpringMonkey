@@ -15,6 +15,12 @@ DEFAULT_CONFIGS = (
     Path("/var/lib/openclaw/.openclaw/openclaw.json.last-good"),
 )
 
+LEGACY_DISCORD_PLUGIN_CANDIDATES = (
+    Path("/var/lib/openclaw/.openclaw/plugin-runtime-deps/openclaw-2026.4.29-4eca5026e977/dist/extensions/discord"),
+    Path("/var/lib/openclaw/.openclaw/plugin-runtime-deps/openclaw-2026.4.25-4eca5026e977/dist/extensions/discord"),
+)
+BUNDLED_DISCORD_PLUGIN = Path("/usr/lib/node_modules/openclaw/dist/extensions/discord")
+
 
 @dataclass(frozen=True)
 class RepairResult:
@@ -32,7 +38,14 @@ def dump_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def repair_config_data(data: dict[str, Any]) -> list[str]:
+def first_existing_plugin_path(paths: tuple[Path, ...]) -> str | None:
+    for path in paths:
+        if (path / "index.js").is_file():
+            return str(path)
+    return None
+
+
+def repair_config_data(data: dict[str, Any], *, discord_plugin_path: str | None = None) -> list[str]:
     actions: list[str] = []
 
     agents = data.get("agents")
@@ -62,6 +75,19 @@ def repair_config_data(data: dict[str, Any]) -> list[str]:
                 plugins.pop("slots", None)
             actions.append("cleared unavailable memory-lancedb plugin slot")
 
+    channels = data.get("channels")
+    discord = channels.get("discord") if isinstance(channels, dict) else None
+    discord_enabled = isinstance(discord, dict) and discord.get("enabled") is not False
+    if discord_enabled and discord_plugin_path and not BUNDLED_DISCORD_PLUGIN.exists():
+        plugins = data.setdefault("plugins", {})
+        if isinstance(plugins, dict):
+            load = plugins.setdefault("load", {})
+            if isinstance(load, dict):
+                paths = load.setdefault("paths", [])
+                if isinstance(paths, list) and discord_plugin_path not in paths:
+                    paths.append(discord_plugin_path)
+                    actions.append("added legacy discord plugin load path")
+
     return actions
 
 
@@ -70,7 +96,7 @@ def repair_config(path: Path, *, dry_run: bool = False, backup_suffix: str | Non
         return RepairResult(path=path, changed=False, backup=None, actions=("missing",))
 
     data = load_json(path)
-    actions = repair_config_data(data)
+    actions = repair_config_data(data, discord_plugin_path=first_existing_plugin_path(LEGACY_DISCORD_PLUGIN_CANDIDATES))
     if not actions:
         return RepairResult(path=path, changed=False, backup=None, actions=())
 

@@ -68,7 +68,7 @@
 
 - `remote_repair_openclaw_gateway_config.py`
   - 用途：当 Gateway 因启动前配置校验失败而无法接收 Discord/LINE 事件时，从宿主机 Git checkout 拉取最新仓库，运行 `scripts/openclaw/repair_legacy_gateway_config.py`，移除已知阻断项并重启验证。
-  - 覆盖问题：旧字段 `agents.defaults.llm`、不可用 `brave` web_search provider、不可用 `memory-lancedb` plugin slot。
+  - 覆盖问题：旧字段 `agents.defaults.llm`、不可用 `brave` web_search provider、不可用 `memory-lancedb` plugin slot、升级后 bundled Discord 插件缺失导致 `Unsupported channel: discord`。
   - 典型用法：`python SpringMonkey/scripts/remote_repair_openclaw_gateway_config.py`
 
 - `remote_enable_shared_channel_capabilities.py`
@@ -200,7 +200,7 @@
 - `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，未命中则 ack 并记录 capability gap
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由与未命中 gap 记录
-- `openclaw/repair_legacy_gateway_config.py`：修复会阻断 Gateway 启动的旧配置字段/不可用插件引用；用于服务进不了 `ready`、私信完全无响应的启动前故障
+- `openclaw/repair_legacy_gateway_config.py`：修复会阻断 Gateway 启动或通道加载的旧配置字段/不可用插件引用；用于服务进不了 `ready`、Discord 私信完全无响应、日志出现 `Unsupported channel: discord` 的故障
 - `openclaw/test_repair_legacy_gateway_config.py`：验证 Gateway 配置修复器会写备份且幂等
 - `openclaw/patch_news_manual_rerun_current.py`：面向当前 `pi-embedded` bundle 的手动新闻重跑修复；自动定位当前活跃 `runEmbeddedAttempt` 文件，强制 Discord 手动重跑走正式 `cron run`，并禁止主会话自由发挥
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移

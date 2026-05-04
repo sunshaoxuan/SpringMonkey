@@ -47,7 +47,20 @@ def test_repair_config_writes_backup_and_is_idempotent() -> None:
         assert load_json(path)["tools"]["web"]["search"] == {"enabled": False}
 
 
+def test_repair_config_data_adds_legacy_discord_plugin_path() -> None:
+    data = {
+        "channels": {"discord": {"enabled": True}},
+        "plugins": {"load": {"paths": []}},
+    }
+
+    actions = repair_config_data(data, discord_plugin_path="/legacy/discord")
+
+    assert "added legacy discord plugin load path" in actions
+    assert data["plugins"]["load"]["paths"] == ["/legacy/discord"]
+
+
 if __name__ == "__main__":
     test_repair_config_data_removes_startup_blockers()
     test_repair_config_writes_backup_and_is_idempotent()
+    test_repair_config_data_adds_legacy_discord_plugin_path()
     print("test_repair_legacy_gateway_config_ok")
