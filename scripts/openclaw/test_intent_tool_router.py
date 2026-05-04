@@ -30,6 +30,18 @@ def test_timescar_adjust_classifies_to_write_tool() -> None:
     assert result.tool and result.tool["write_operation"] is True
 
 
+def test_timescar_keep_classifies_before_adjust_tool() -> None:
+    result = router.classify("请保留明天的订车", "discord_dm", "999", load_registry())
+    assert result.intent_id == "timescar.reservation_keep"
+    assert result.tool_id == "timescar.dm.keep_next"
+
+
+def test_timescar_cancel_classifies_before_adjust_tool() -> None:
+    result = router.classify("请取消这单订车", "discord_dm", "999", load_registry())
+    assert result.intent_id == "timescar.reservation_cancel"
+    assert result.tool_id == "timescar.dm.cancel_next"
+
+
 def test_news_1700_maps_to_formal_cron_job() -> None:
     result = router.classify("触发一轮17点的新闻任务", "discord_dm", "999", load_registry())
     assert result.intent_id == "news.cron_run"

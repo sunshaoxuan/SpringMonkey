@@ -5,6 +5,67 @@
   },
   "tools": [
     {
+      "intent_id": "timescar.reservation_keep",
+      "tool_id": "timescar.dm.keep_next",
+      "description": "Record owner decision to keep the next TimesCar reservation so cancel reminder skips it.",
+      "patterns": [
+        "订车",
+        "预约",
+        "这单",
+        "订单",
+        "TimesCar",
+        "timescar"
+      ],
+      "required_any": [
+        "保留",
+        "不要取消",
+        "不取消",
+        "keep"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "write_operation": false,
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
+    },
+    {
+      "intent_id": "timescar.reservation_cancel",
+      "tool_id": "timescar.dm.cancel_next",
+      "description": "Route TimesCar cancel requests to a deterministic safe response until a verified cancel submitter exists.",
+      "patterns": [
+        "订车",
+        "预约",
+        "这单",
+        "订单",
+        "TimesCar",
+        "timescar"
+      ],
+      "required_any": [
+        "取消这单",
+        "取消订单",
+        "取消预约",
+        "取消订车",
+        "cancel"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm_write",
+      "write_operation": true,
+      "confirm_policy": "deterministic_tool_requires_verified_cancel_submitter",
+      "idempotency": "no_submit_until_cancel_executor_exists",
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
+    },
+    {
       "intent_id": "timescar.reservation_query",
       "tool_id": "timescar.dm.query",
       "description": "Query TimesCar reservations from Discord owner DM.",
@@ -46,10 +107,9 @@
       ],
       "required_any": [
         "改",
-        "取消",
+        "变更",
         "开始时间",
         "后天",
-        "明天",
         "延迟",
         "延期"
       ],

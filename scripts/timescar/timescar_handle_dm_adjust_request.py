@@ -6,16 +6,23 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from timescar_adjust_reservation_window import fetch_reservations, format_iso_minute, parse_iso_minute
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 TZ = ZoneInfo("Asia/Tokyo")
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 LEDGER_PATH = WORKSPACE / "var" / "timescar_dm_completed_requests.json"
+DECISIONS_PATH = WORKSPACE / ".secure" / "timescar_user_decisions.json"
 
 
 class IntentError(RuntimeError):
@@ -48,6 +55,22 @@ def save_ledger(data: dict) -> None:
     tmp = LEDGER_PATH.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(LEDGER_PATH)
+
+
+def load_decisions() -> dict:
+    if not DECISIONS_PATH.exists():
+        return {}
+    try:
+        return json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_decisions(data: dict) -> None:
+    DECISIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = DECISIONS_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    tmp.replace(DECISIONS_PATH)
 
 
 def find_booking_for_start(reservations: list[dict], target_start: datetime) -> str | None:
@@ -84,6 +107,22 @@ def is_query_request(text: str) -> bool:
     if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
         return False
     return any(token in raw for token in ("检查", "查询", "查看", "看看", "列表", "记录", "未来"))
+
+
+def is_keep_request(text: str) -> bool:
+    raw = text.strip()
+    if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar")):
+        return False
+    return any(token in raw for token in ("保留", "不要取消", "不取消", "keep"))
+
+
+def is_cancel_request(text: str) -> bool:
+    raw = text.strip()
+    if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar")):
+        return False
+    if "取消明天的时间" in raw and "后天" in raw:
+        return False
+    return any(token in raw for token in ("取消这单", "取消订单", "取消预约", "取消订车", "cancel"))
 
 
 def parse_query_hours(text: str) -> int:
@@ -132,6 +171,80 @@ def format_query_result(text: str, message_time: datetime) -> str:
     return "\n".join(lines)
 
 
+def find_next_reservation(reservations: list[dict], message_time: datetime, hours: int = 48) -> dict | None:
+    deadline = message_time + timedelta(hours=hours)
+    candidates = []
+    for reservation in reservations:
+        try:
+            start = parse_iso_minute(str(reservation.get("start") or ""))
+        except Exception:
+            continue
+        if message_time <= start <= deadline:
+            candidates.append((start, reservation))
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda item: item[0])[0][1]
+
+
+def format_keep_result(text: str, message_time: datetime) -> str:
+    reservation = find_next_reservation(fetch_reservations(), message_time)
+    if reservation is None:
+        return "\n".join(
+            [
+                "TimesCar 预约保留结果",
+                "状态：未来 48 小时内没有找到可保留的预约，未写入保留决定",
+            ]
+        )
+    booking = str(reservation.get("bookingNumber") or "")
+    if not booking:
+        raise IntentError("找到预约但缺少预约编号，无法写入保留决定")
+    start = parse_iso_minute(str(reservation.get("start") or ""))
+    expires_at = start + timedelta(hours=6)
+    data = load_decisions()
+    keep_map = data.setdefault("keepBookingNumbers", {})
+    keep_map[booking] = {
+        "status": "keep",
+        "decidedAt": datetime.now(TZ).isoformat(timespec="seconds"),
+        "expiresAt": expires_at.isoformat(timespec="seconds"),
+        "source": "discord_dm",
+        "textHash": command_key(text),
+        "start": format_iso_minute(start),
+    }
+    save_decisions(data)
+    return "\n".join(
+        [
+            "TimesCar 预约保留结果",
+            "状态：已记录保留决定，后续 24 小时取消提醒会跳过该预约",
+            f"预约编号：{booking}",
+            f"开始：{format_iso_minute(start)}",
+            f"保留记录有效至：{expires_at.isoformat(timespec='minutes')}",
+        ]
+    )
+
+
+def format_cancel_result(text: str, message_time: datetime) -> str:
+    reservation = find_next_reservation(fetch_reservations(), message_time)
+    if reservation is None:
+        return "\n".join(
+            [
+                "TimesCar 取消预约结果",
+                "状态：未来 48 小时内没有找到可取消的预约，未执行取消",
+            ]
+        )
+    booking = str(reservation.get("bookingNumber") or "")
+    start = str(reservation.get("start") or "")
+    return "\n".join(
+        [
+            "TimesCar 取消预约结果",
+            "状态：未执行取消",
+            "原因：当前仓库没有已验证的 TimesCar 取消提交执行器；为避免误取消，只记录到了确定性路由，不做浏览器提交。",
+            f"预约编号：{booking or '未知'}",
+            f"开始：{start or '未知'}",
+            "下一步：需要补充并验证专用取消执行器后，才能允许该写操作自动执行。",
+        ]
+    )
+
+
 def run_adjuster(booking: str, current_start: datetime, new_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
     cmd = [
         "python3",
@@ -158,6 +271,12 @@ def main() -> int:
     message_time = parse_message_time(args.message_timestamp)
     if is_query_request(args.text):
         print(format_query_result(args.text, message_time))
+        return 0
+    if is_keep_request(args.text):
+        print(format_keep_result(args.text, message_time))
+        return 0
+    if is_cancel_request(args.text):
+        print(format_cancel_result(args.text, message_time))
         return 0
 
     current_start, new_start = interpret_adjust_request(args.text, message_time)
