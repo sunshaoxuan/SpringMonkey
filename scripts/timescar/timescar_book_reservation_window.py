@@ -154,6 +154,20 @@ def format_report(reservation: dict, dry_run: bool = False) -> str:
     )
 
 
+def format_unavailable_report(start: datetime, end: datetime, station_name: str, model_preference: str, reason: str) -> str:
+    return "\n".join(
+        [
+            "TimesCar 预订结果",
+            "状态：未执行预订，目标窗口不可预订",
+            f"开始：{format_iso_minute(start)}",
+            f"结束：{format_iso_minute(end)}",
+            f"ステーション：{station_name}",
+            f"车型：{model_preference}",
+            f"原因：{reason}",
+        ]
+    )
+
+
 def assert_confirm_page(body: str, start: datetime, end: datetime, station_name: str, model_preference: str) -> None:
     if "入力内容に誤りがあります" in body:
         raise BookingWindowError("failed: booking form validation error")
@@ -230,6 +244,17 @@ def main() -> int:
             page.locator("#doCheck").click()
             page.wait_for_load_state("domcontentloaded")
             body = page.locator("body").inner_text()
+            if "予約できない期間が含まれています" in body:
+                message = format_unavailable_report(
+                    start,
+                    end,
+                    args.station_name,
+                    args.model_preference,
+                    "TimesCar 返回：预约できない期間が含まれていますので、空き状況をご確認ください。",
+                )
+                runtime.finish("skipped", "unavailable", final_message=message)
+                print(message)
+                return 0
             assert_confirm_page(body, start, end, args.station_name, args.model_preference)
             runtime.record_step(step=phase, status="ok", tool="browser", detail="reached and verified booking confirm page")
 
