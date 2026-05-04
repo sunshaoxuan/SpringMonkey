@@ -34,6 +34,40 @@
       "reply_policy": "tool_stdout"
     },
     {
+      "intent_id": "timescar.reservation_cancel_status",
+      "tool_id": "timescar.dm.cancel_status",
+      "description": "Confirm whether the recent TimesCar reservation cancellation succeeded; read-only status check.",
+      "patterns": [
+        "订车",
+        "预约",
+        "这单",
+        "订单",
+        "TimesCar",
+        "timescar",
+        "取消"
+      ],
+      "required_any": [
+        "取消了吗",
+        "取消了么",
+        "取消成功",
+        "是否取消",
+        "有没有取消",
+        "还在吗",
+        "还在不在",
+        "状态"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "write_operation": false,
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout"
+    },
+    {
       "intent_id": "timescar.reservation_cancel",
       "tool_id": "timescar.dm.cancel_next",
       "description": "Cancel the next TimesCar reservation from owner DM through a verified deterministic browser submitter.",

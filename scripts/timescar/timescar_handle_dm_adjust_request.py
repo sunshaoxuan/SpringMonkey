@@ -23,6 +23,7 @@ TZ = ZoneInfo("Asia/Tokyo")
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 LEDGER_PATH = WORKSPACE / "var" / "timescar_dm_completed_requests.json"
 DECISIONS_PATH = WORKSPACE / ".secure" / "timescar_user_decisions.json"
+CANCEL_LEDGER_PATH = WORKSPACE / "var" / "timescar_dm_cancelled_requests.json"
 
 
 class IntentError(RuntimeError):
@@ -73,6 +74,22 @@ def save_decisions(data: dict) -> None:
     tmp.replace(DECISIONS_PATH)
 
 
+def load_cancel_ledger() -> dict:
+    if not CANCEL_LEDGER_PATH.exists():
+        return {}
+    try:
+        return json.loads(CANCEL_LEDGER_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_cancel_ledger(data: dict) -> None:
+    CANCEL_LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CANCEL_LEDGER_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    tmp.replace(CANCEL_LEDGER_PATH)
+
+
 def find_booking_for_start(reservations: list[dict], target_start: datetime) -> str | None:
     matches: list[dict] = []
     for reservation in reservations:
@@ -107,6 +124,13 @@ def is_query_request(text: str) -> bool:
     if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
         return False
     return any(token in raw for token in ("检查", "查询", "查看", "看看", "列表", "记录", "未来"))
+
+
+def is_cancel_status_request(text: str) -> bool:
+    raw = text.strip()
+    if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar", "取消")):
+        return False
+    return any(token in raw for token in ("取消了吗", "取消了么", "取消成功", "是否取消", "有没有取消", "还在吗", "还在不在", "状态"))
 
 
 def is_keep_request(text: str) -> bool:
@@ -222,6 +246,13 @@ def format_keep_result(text: str, message_time: datetime) -> str:
     )
 
 
+def run_child_tool(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1800)
+    if result.stderr.strip():
+        print(result.stderr.strip(), file=sys.stderr)
+    return result
+
+
 def run_canceller(booking: str, current_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
     cmd = [
         "python3",
@@ -233,7 +264,7 @@ def run_canceller(booking: str, current_start: datetime, force: bool) -> subproc
         "--allow-already-cancelled",
     ]
     cmd.append("--force" if force else "--dry-run")
-    return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=1800)
+    return run_child_tool(cmd)
 
 
 def format_cancel_result(text: str, message_time: datetime, force: bool) -> str:
@@ -253,7 +284,98 @@ def format_cancel_result(text: str, message_time: datetime, force: bool) -> str:
     output = result.stdout.strip()
     if result.returncode != 0:
         raise IntentError(output or f"TimesCar 取消执行器失败，退出码：{result.returncode}")
+    if force:
+        data = load_cancel_ledger()
+        cancels = data.setdefault("cancelledBookingNumbers", {})
+        cancels[booking] = {
+            "status": "cancelled",
+            "completedAt": datetime.now(TZ).isoformat(timespec="seconds"),
+            "source": "discord_dm",
+            "textHash": command_key(text),
+            "start": format_iso_minute(start),
+            "rawOutput": output[-2000:],
+        }
+        save_cancel_ledger(data)
     return output
+
+
+def extract_booking_number(text: str) -> str | None:
+    match = re.search(r"\b(\d{6,12})\b", text)
+    return match.group(1) if match else None
+
+
+def latest_cancel_record(data: dict) -> tuple[str, dict] | None:
+    records = data.get("cancelledBookingNumbers") or {}
+    if not isinstance(records, dict) or not records:
+        return None
+    items = [(str(booking), record) for booking, record in records.items() if isinstance(record, dict)]
+    if not items:
+        return None
+    return sorted(items, key=lambda item: str(item[1].get("completedAt") or ""), reverse=True)[0]
+
+
+def format_cancel_status_result(text: str, message_time: datetime) -> str:
+    reservations = fetch_reservations()
+    booking = extract_booking_number(text)
+    data = load_cancel_ledger()
+    record: dict | None = None
+    if booking:
+        record = (data.get("cancelledBookingNumbers") or {}).get(booking)
+    else:
+        latest = latest_cancel_record(data)
+        if latest:
+            booking, record = latest
+
+    if booking:
+        active = [item for item in reservations if str(item.get("bookingNumber") or "") == booking]
+        if active:
+            reservation = active[0]
+            return "\n".join(
+                [
+                    "TimesCar 取消状态确认",
+                    "状态：该预约仍在当前预约列表中，未确认取消成功",
+                    f"预约编号：{booking}",
+                    f"开始：{reservation.get('start') or '未知'}",
+                    f"结束：{reservation.get('return') or '未知'}",
+                ]
+            )
+        if record:
+            return "\n".join(
+                [
+                    "TimesCar 取消状态确认",
+                    "状态：已取消，当前预约列表中已不存在该预约",
+                    f"预约编号：{booking}",
+                    f"取消完成：{record.get('completedAt') or '未知'}",
+                    f"原开始：{record.get('start') or '未知'}",
+                ]
+            )
+        return "\n".join(
+            [
+                "TimesCar 取消状态确认",
+                "状态：当前预约列表中不存在该预约，但本地没有找到汤猴取消成功记录",
+                f"预约编号：{booking}",
+                "说明：可能已取消，或不是由汤猴最近一次取消流程完成。",
+            ]
+        )
+
+    next_reservation = find_next_reservation(reservations, message_time)
+    if next_reservation is None:
+        return "\n".join(
+            [
+                "TimesCar 取消状态确认",
+                "状态：未来 48 小时内没有即将开始的 TimesCar 预约",
+                "说明：如果你问的是刚才那单，它当前已不在预约列表中。",
+            ]
+        )
+    return "\n".join(
+        [
+            "TimesCar 取消状态确认",
+            "状态：仍存在即将开始的 TimesCar 预约",
+            f"预约编号：{next_reservation.get('bookingNumber') or '未知'}",
+            f"开始：{next_reservation.get('start') or '未知'}",
+            f"结束：{next_reservation.get('return') or '未知'}",
+        ]
+    )
 
 
 def run_adjuster(booking: str, current_start: datetime, new_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
@@ -269,7 +391,7 @@ def run_adjuster(booking: str, current_start: datetime, new_start: datetime, for
         "--allow-already-applied",
     ]
     cmd.append("--force" if force else "--dry-run")
-    return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=1800)
+    return run_child_tool(cmd)
 
 
 def main() -> int:
@@ -280,6 +402,9 @@ def main() -> int:
     args = parser.parse_args()
 
     message_time = parse_message_time(args.message_timestamp)
+    if is_cancel_status_request(args.text):
+        print(format_cancel_status_result(args.text, message_time))
+        return 0
     if is_query_request(args.text):
         print(format_query_result(args.text, message_time))
         return 0

@@ -43,6 +43,13 @@ def test_timescar_cancel_classifies_before_adjust_tool() -> None:
     assert result.tool_id == "timescar.dm.cancel_next"
 
 
+def test_timescar_cancel_status_is_readonly_registered_tool() -> None:
+    result = router.classify("这单取消了吗？", "discord_dm", "999", load_registry())
+    assert result.intent_id == "timescar.reservation_cancel_status"
+    assert result.tool_id == "timescar.dm.cancel_status"
+    assert result.tool and result.tool["write_operation"] is False
+
+
 def test_news_1700_maps_to_formal_cron_job() -> None:
     result = router.classify("触发一轮17点的新闻任务", "discord_dm", "999", load_registry())
     assert result.intent_id == "news.cron_run"
@@ -97,6 +104,28 @@ def test_model_first_falls_back_to_local_registered_tool_when_unavailable() -> N
     assert route_kind == "registered_task"
     assert classification.tool_id == "timescar.dm.keep_next"
     assert "model_first_unavailable=RuntimeError" in classification.reason
+
+
+def test_model_first_can_select_timescar_cancel_status() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.cancel_status")
+    with patch.object(
+        router,
+        "model_classify_intent",
+        return_value=(
+            router.Classification(
+                "timescar.reservation_cancel_status",
+                "timescar.dm.cancel_status",
+                0.95,
+                "asks whether the previous cancellation succeeded",
+                tool,
+            ),
+            "registered_task",
+        ),
+    ):
+        classification, route_kind = router.classify_intent_model_first("这单取消了吗？", "discord_dm", "999", registry)
+    assert route_kind == "registered_task"
+    assert classification.tool_id == "timescar.dm.cancel_status"
 
 
 def test_unknown_records_gap_and_returns_ack() -> None:

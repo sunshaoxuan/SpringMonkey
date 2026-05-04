@@ -29,6 +29,7 @@ def main() -> int:
         mod.WORKSPACE = Path(tmp)
         mod.LEDGER_PATH = Path(tmp) / "var" / "timescar_dm_completed_requests.json"
         mod.DECISIONS_PATH = Path(tmp) / ".secure" / "timescar_user_decisions.json"
+        mod.CANCEL_LEDGER_PATH = Path(tmp) / "var" / "timescar_dm_cancelled_requests.json"
         message_time = datetime(2026, 5, 4, 18, 0, tzinfo=TZ)
         reservations = [fake_reservation(message_time + timedelta(hours=12))]
         original_fetch = mod.fetch_reservations
@@ -48,6 +49,8 @@ def main() -> int:
             )
             keep = mod.format_keep_result("请保留明天的订车", message_time)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
+            reservations.clear()
+            status = mod.format_cancel_status_result("这单取消了吗？", message_time)
         finally:
             mod.fetch_reservations = original_fetch
             mod.run_canceller = original_run_canceller
@@ -57,8 +60,11 @@ def main() -> int:
         assert data["keepBookingNumbers"]["B123456"]["status"] == "keep"
         assert "预约取消已提交并回查确认" in cancel
         assert "预约编号：B123456" in cancel
+        assert "已取消" in status
+        assert "当前预约列表中已不存在该预约" in status
         assert mod.is_keep_request("请保留明天的订车")
         assert mod.is_cancel_request("请取消这单订车")
+        assert mod.is_cancel_status_request("这单取消了吗？")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
     print("timescar_dm_keep_cancel_ok")
     return 0
