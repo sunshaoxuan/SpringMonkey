@@ -132,7 +132,7 @@ Discord owner DM 控制台必须走 Discord Gateway 事件触发，不得把 20 
 
 TimesCar owner DM 指令必须先经事件层确定性路由；不得让“改时/取消/保留”这类订单控制语句直接进入通用主模型长流程后无反馈。当前 `scripts/openclaw/patch_discord_timescar_dm_preroute.py` 负责在 Discord Gateway 消息处理阶段识别 TimesCar 改单意图并立即回 DM；真实写单执行器完成前，只能明确回报“已识别但未执行”，不得假装已改。
 
-当前 Discord owner DM 补丁已升级为通用 intent tool router：JS 入口只负责调用 `scripts/openclaw/intent_tool_router.py` 并按意图结果分流；具体业务命中来自 `config/openclaw/intent_tools.json`。路由必须是多态：`chat` 由路由器调用公共聊天模型生成回复并直接回 DM，避免普通聊天进入长流程后卡在最终投递层；`registered_task` 调用确定性工具；未命中任务必须进入 `scripts/openclaw/dm_capability_gap_runner.py`，先写入 Agent Society kernel，再按安全分类处理。`auto_safe_readonly_gap` 可生成/复用注册表工具候选、验证并重放原始请求；`unsafe_gap` 与 `ambiguous_gap` 只能记录能力缺口和补强计划，不得自动执行写操作或不明确任务。意图判断必须是“注册表确定性命中优先；未命中时由轻量大模型 JSON 分类判断 chat / registered_candidate / auto_safe_readonly_gap / unsafe_gap / ambiguous_gap；模型不可用时才用本地规则兜底”。不得把所有私信都强行当任务，也不得让真实任务静默退回闲聊。
+当前 Discord owner DM 补丁已升级为通用 intent tool router：JS 入口只负责调用 `scripts/openclaw/intent_tool_router.py` 并按意图结果分流；具体业务边界来自 `config/openclaw/intent_tools.json`。路由必须是多态：`chat` 由路由器调用公共聊天模型生成回复并直接回 DM，避免普通聊天进入长流程后卡在最终投递层；`registered_task` 调用确定性工具；未命中任务必须进入 `scripts/openclaw/dm_capability_gap_runner.py`，先写入 Agent Society kernel，再按安全分类处理。`auto_safe_readonly_gap` 可生成/复用注册表工具候选、验证并重放原始请求；`unsafe_gap` 与 `ambiguous_gap` 只能记录能力缺口和补强计划，不得自动执行写操作或不明确任务。意图判断必须是“轻量大模型基于本次消息、可用上下文与注册表工具清单优先选择 chat / registered_task / registered_candidate / auto_safe_readonly_gap / unsafe_gap / ambiguous_gap；本地注册表关键词路由只在模型不可用、返回无效或选中未知工具时兜底”。不得把所有私信都强行当任务，也不得让真实任务静默退回闲聊。
 
 `weather.dm.query` 是 DM gap runner 的第一批 `auto_safe_readonly` promoted sample：保留确定性脚本入口，但其注册表条目必须带 `promotion.source=agent_society_dm_gap_runner`，用于证明该能力已被纳入自增益沉淀流程，而不是一次性专用补丁。
 

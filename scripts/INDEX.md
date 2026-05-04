@@ -201,7 +201,7 @@
 ## 5. OpenClaw 补丁与验证
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
-- `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；按 `config/openclaw/intent_tools.json` 命中工具，普通聊天直接用公共模型回 DM，未命中任务进入 DM capability gap runner，安全只读能力可补强后重放
+- `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；优先用大模型基于本次消息/上下文/注册表工具清单选择路由，本地硬匹配只作兜底；普通聊天直接回 DM，未命中任务进入 DM capability gap runner
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由、DM gap promotion 与未命中 gap 记录

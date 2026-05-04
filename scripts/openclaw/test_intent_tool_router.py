@@ -56,6 +56,48 @@ def test_weather_query_maps_to_registered_tool() -> None:
     assert result.tool and result.tool["write_operation"] is False
 
 
+def test_model_first_selects_registered_tool_before_local_fallback() -> None:
+    registry = load_registry()
+    with patch.object(
+        router,
+        "model_classify_intent",
+        return_value=(
+            router.Classification(
+                "timescar.reservation_keep",
+                "timescar.dm.keep_next",
+                0.93,
+                "semantic keep decision",
+                next(tool for tool in registry["tools"] if tool["tool_id"] == "timescar.dm.keep_next"),
+            ),
+            "registered_task",
+        ),
+    ) as model_route:
+        classification, route_kind = router.classify_intent_model_first(
+            "请保留明天的订车",
+            "discord_dm",
+            "999",
+            registry,
+            context="previous bot asked whether to cancel the next TimesCar booking",
+        )
+    model_route.assert_called_once()
+    assert route_kind == "registered_task"
+    assert classification.tool_id == "timescar.dm.keep_next"
+
+
+def test_model_first_falls_back_to_local_registered_tool_when_unavailable() -> None:
+    registry = load_registry()
+    with patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")):
+        classification, route_kind = router.classify_intent_model_first(
+            "请保留明天的订车",
+            "discord_dm",
+            "999",
+            registry,
+        )
+    assert route_kind == "registered_task"
+    assert classification.tool_id == "timescar.dm.keep_next"
+    assert "model_first_unavailable=RuntimeError" in classification.reason
+
+
 def test_unknown_records_gap_and_returns_ack() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         kernel_root = Path(tmp) / "kernel"

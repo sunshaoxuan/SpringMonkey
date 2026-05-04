@@ -231,6 +231,84 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
     return route_kind, reason
 
 
+def registry_prompt(registry: dict[str, Any]) -> str:
+    tools = []
+    for tool in registry.get("tools", []):
+        tools.append(
+            {
+                "intent_id": tool.get("intent_id"),
+                "tool_id": tool.get("tool_id"),
+                "description": tool.get("description"),
+                "patterns": tool.get("patterns", []),
+                "required_any": tool.get("required_any", []),
+                "write_operation": bool(tool.get("write_operation")),
+            }
+        )
+    return json.dumps(tools, ensure_ascii=False)
+
+
+def model_classify_intent(text: str, registry: dict[str, Any], *, context: str = "", timeout: int = 10) -> tuple[Classification, str]:
+    system = (
+        "You are the first-stage intent router for the owner's Discord DM control console. "
+        "Return strict JSON only. Schema: "
+        '{"route_kind":"chat|registered_task|registered_candidate|auto_safe_readonly_gap|unsafe_gap|ambiguous_gap",'
+        '"tool_id":null,"confidence":0.0,"reason":"short reason"}. '
+        "You must decide by semantic intent, not keyword matching. "
+        "Use registered_task only when one registry tool clearly matches the user's requested action. "
+        "Use chat for normal conversation or explanation. "
+        "Use auto_safe_readonly_gap for safe public read-only lookups not covered by a tool. "
+        "Use unsafe_gap for write operations, bookings, credentials, configuration, deployment, payment, login, or state changes not covered by a tool. "
+        "Use ambiguous_gap when the user appears to request a task but intent/tool is unclear. "
+        "For TimesCar: keep/保留 means record a keep decision, cancel this order/取消这单 means cancel route, "
+        "and changing a start time means adjust_start only when a new start time is explicitly requested."
+    )
+    user = "\n".join(
+        [
+            "Registry tools:",
+            registry_prompt(registry),
+            "Conversation context:",
+            context or "(not provided)",
+            "Current message:",
+            text,
+        ]
+    )
+    content = call_intent_model(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        timeout=timeout,
+        temperature=0,
+    )
+    parsed = extract_json_object(content)
+    route_kind = str(parsed.get("route_kind", "")).strip()
+    if route_kind not in {"chat", "registered_task", "registered_candidate", "auto_safe_readonly_gap", "unsafe_gap", "ambiguous_gap"}:
+        raise ValueError(f"invalid route_kind from model: {route_kind}")
+    reason = str(parsed.get("reason") or "model first-stage intent routing").strip()
+    confidence = float(parsed.get("confidence") or 0.0)
+    tool_id = parsed.get("tool_id")
+    if route_kind == "registered_task":
+        if not tool_id:
+            raise ValueError("registered_task without tool_id")
+        tool = next((item for item in registry.get("tools", []) if str(item.get("tool_id")) == str(tool_id)), None)
+        if tool is None:
+            raise ValueError(f"model selected unknown tool_id: {tool_id}")
+        return Classification(str(tool["intent_id"]), str(tool["tool_id"]), confidence, reason, tool), "registered_task"
+    return Classification(None, None, confidence, reason), route_kind
+
+
+def classify_intent_model_first(text: str, channel: str, user_id: str, registry: dict[str, Any], context: str = "") -> tuple[Classification, str | None]:
+    try:
+        return model_classify_intent(text, registry, context=context)
+    except Exception as exc:
+        fallback = classify(text, channel, user_id, registry)
+        if fallback.tool is not None:
+            fallback.reason = f"{fallback.reason}; model_first_unavailable={type(exc).__name__}: {exc}"
+            return fallback, "registered_task"
+        fallback.reason = f"{fallback.reason}; model_first_unavailable={type(exc).__name__}: {exc}"
+        return fallback, None
+
+
 def model_chat_reply(text: str, *, timeout: int = 25) -> str:
     system = (
         "You are Tanghou replying in the owner's Discord DM super-console. "
@@ -461,11 +539,15 @@ def handle(
     kernel_root: Path = DEFAULT_KERNEL_ROOT,
     replay_depth: int = 0,
     registry_override: dict[str, Any] | None = None,
+    context: str = "",
 ) -> RouterResult:
     registry = registry_override or load_registry(registry_path)
-    classification = classify(text, channel, user_id, registry)
+    classification, model_route_kind = classify_intent_model_first(text, channel, user_id, registry, context=context)
     if classification.tool is None:
-        route_kind, route_reason = classify_unregistered_intent(text)
+        if model_route_kind in {"chat", "auto_safe_readonly_gap", "unsafe_gap", "ambiguous_gap", "registered_candidate"}:
+            route_kind, route_reason = model_route_kind, classification.reason
+        else:
+            route_kind, route_reason = classify_unregistered_intent(text)
         if route_kind == "chat":
             classification.reason = route_reason
             try:
@@ -497,6 +579,7 @@ def handle(
                 kernel_root=kernel_root,
                 replay_depth=replay_depth + 1,
                 registry_override=replay_registry,
+                context=context,
             )
             replay.args = {
                 **replay.args,
@@ -541,6 +624,7 @@ def main() -> int:
     parser.add_argument("--channel", default="discord_dm")
     parser.add_argument("--user-id", default="unknown")
     parser.add_argument("--message-timestamp", default=utc_now())
+    parser.add_argument("--context", default="")
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--kernel-root", type=Path, default=Path(os.environ.get("OPENCLAW_AGENT_KERNEL_ROOT", DEFAULT_KERNEL_ROOT)))
     parser.add_argument("--json", action="store_true")
@@ -566,6 +650,7 @@ def main() -> int:
         args.message_timestamp,
         registry_path=args.registry,
         kernel_root=args.kernel_root,
+        context=args.context,
     )
     if args.json:
         payload = asdict(result)
