@@ -7,6 +7,8 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +18,10 @@ from typing import Any
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_REGISTRY = REPO / "config" / "openclaw" / "intent_tools.json"
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
+RUNTIME_ENV_FILES = (
+    Path("/etc/openclaw/openclaw.env"),
+    Path("/var/lib/openclaw/.openclaw/openclaw.env"),
+)
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -62,7 +68,70 @@ TASK_VERB_PATTERN = re.compile(
 )
 
 
-def classify_unregistered_intent(text: str) -> str:
+def load_runtime_env_files(paths: tuple[Path, ...] = RUNTIME_ENV_FILES) -> None:
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.startswith("export "):
+                line = line[len("export ") :].strip()
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            os.environ[key] = value.strip().strip('"').strip("'")
+
+
+def read_secret_env(*names: str) -> str:
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+        file_value = os.environ.get(f"{name}_FILE", "").strip()
+        if file_value:
+            try:
+                secret = Path(file_value).read_text(encoding="utf-8").strip()
+            except OSError:
+                secret = ""
+            if secret:
+                return secret
+    return ""
+
+
+def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int) -> dict[str, Any]:
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    for key, value in headers.items():
+        req.add_header(key, value)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} {url}: {detail}") from exc
+    return json.loads(raw)
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    raw = (text or "").strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError(f"model did not return JSON: {raw[:200]}")
+    data = json.loads(raw[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("model returned non-object JSON")
+    return data
+
+
+def local_classify_unregistered_intent(text: str) -> str:
     normalized_prompt = re.sub(r"\s+", " ", text or "").strip()
     if not normalized_prompt:
         return "chat"
@@ -74,6 +143,65 @@ def classify_unregistered_intent(text: str) -> str:
     if TASK_VERB_PATTERN.search(normalized_prompt):
         return "unsupported_task"
     return "chat"
+
+
+def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[str, str]:
+    load_runtime_env_files()
+    base_url = (
+        os.environ.get("OPENCLAW_INTENT_MODEL_BASE_URL", "").strip()
+        or os.environ.get("OPENCLAW_PUBLIC_MODEL_BASE_URL", "").strip()
+        or os.environ.get("NEWS_CODEX_BASE_URL", "").strip()
+    ).rstrip("/")
+    api_key = read_secret_env(
+        "OPENCLAW_INTENT_MODEL_API_KEY",
+        "OPENCLAW_PUBLIC_MODEL_API_KEY",
+        "NEWS_CODEX_API_KEY",
+        "OPENCLAW_CODEX_API_KEY",
+        "CODEX_API_KEY",
+    )
+    model = (
+        os.environ.get("OPENCLAW_INTENT_MODEL", "").strip()
+        or os.environ.get("OPENCLAW_PUBLIC_MODEL", "").strip()
+        or "gpt-5.5"
+    )
+    if not base_url:
+        raise RuntimeError("missing OPENCLAW_INTENT_MODEL_BASE_URL/OPENCLAW_PUBLIC_MODEL_BASE_URL")
+    system = (
+        "You are an intent classifier for a Discord DM control console. "
+        "Return strict JSON only. Schema: "
+        '{"route_kind":"chat|unsupported_task","confidence":0.0,"reason":"short reason"}. '
+        "Use chat for greetings, small talk, opinions, explanations, or normal conversation. "
+        "Use unsupported_task only when the user is asking the bot to perform an action, operate a system, "
+        "change state, investigate, schedule, fetch, send, configure, repair, or add a capability. "
+        "Do not choose unsupported_task for casual conversation."
+    )
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": text},
+        ],
+        "temperature": 0,
+    }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
+    content = data["choices"][0]["message"]["content"]
+    parsed = extract_json_object(str(content))
+    route_kind = str(parsed.get("route_kind", "")).strip()
+    if route_kind not in {"chat", "unsupported_task"}:
+        raise ValueError(f"invalid route_kind from model: {route_kind}")
+    reason = str(parsed.get("reason") or "model intent classification").strip()
+    return route_kind, reason
+
+
+def classify_unregistered_intent(text: str) -> tuple[str, str]:
+    try:
+        return model_classify_unregistered_intent(text)
+    except Exception as exc:
+        route_kind = local_classify_unregistered_intent(text)
+        return route_kind, f"model_unavailable_fallback={type(exc).__name__}: {exc}"
 
 
 def load_registry(path: Path = DEFAULT_REGISTRY) -> dict[str, Any]:
@@ -281,15 +409,17 @@ def handle(
     registry = load_registry(registry_path)
     classification = classify(text, channel, user_id, registry)
     if classification.tool is None:
-        route_kind = classify_unregistered_intent(text)
+        route_kind, route_reason = classify_unregistered_intent(text)
         if route_kind == "chat":
+            classification.reason = route_reason
             return RouterResult("chat", "", classification, {}, 0, route_kind="chat")
-        gap_ref = record_capability_gap(text, channel, user_id, classification.reason, kernel_root)
+        gap_reason = f"{classification.reason}; intent_classifier={route_reason}"
+        gap_ref = record_capability_gap(text, channel, user_id, gap_reason, kernel_root)
         reply = "\n".join(
             [
                 "汤猴已收到私信，但没有找到已注册的确定性工具。",
                 "状态：未执行，已记录能力缺口。",
-                f"原因：{classification.reason}",
+                f"原因：{gap_reason}",
                 f"记录：{gap_ref}",
             ]
         )
