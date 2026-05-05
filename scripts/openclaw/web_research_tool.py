@@ -232,7 +232,8 @@ def format_reply(query: str, evidence: ResearchEvidence, fetched: list[FetchResu
         summary = model_summary or deterministic_summary(query, [], fetched)
         lines = ["联网检索结果", "状态：成功", summary, "来源："]
         for idx, source in enumerate(sources[:5], 1):
-            lines.append(f"{idx}. {source.get('title') or source.get('url')} - {source.get('url')}")
+            lines.append(f"{idx}. {source.get('title') or '公开网页'}")
+        lines.append("来源链接已记录在后台日志；需要时可单独要求展开。")
     else:
         lines = ["联网检索未完成", "状态：失败", f"原因：{reason or evidence.search_error or evidence.browser_error or 'unknown'}"]
     lines.append(

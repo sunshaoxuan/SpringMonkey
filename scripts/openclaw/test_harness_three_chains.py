@@ -94,6 +94,33 @@ def test_reporter_formats_trace_stage_tool_and_postcheck() -> None:
     assert "回查：target_booking_absent_after_success" in reply
 
 
+def test_reporter_suppresses_links_by_default() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_link",
+        trace_id="trace_link",
+        status="ok",
+        visibility="owner_dm",
+        summary="结论：已查到。来源：https://example.com/path",
+        diagnostics_ref="trace_id=trace_link route=registered_task",
+    )
+    reply = format_owner_reply(envelope)
+    assert "https://example.com" not in reply
+    assert "链接已记录后台" in reply
+
+
+def test_reporter_can_allow_links_explicitly() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_link",
+        trace_id="trace_link",
+        status="ok",
+        visibility="owner_dm",
+        summary="结论：已查到。来源：https://example.com/path",
+        diagnostics_ref="trace_id=trace_link route=registered_task",
+        allow_links=True,
+    )
+    assert "https://example.com/path" in format_owner_reply(envelope)
+
+
 def test_discord_patch_does_not_add_business_router_success_prefix() -> None:
     source = (Path(__file__).resolve().parent / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "汤猴私信任务已由通用事件路由处理。" not in source

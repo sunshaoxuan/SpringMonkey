@@ -39,7 +39,8 @@ def test_successful_search_fetch_outputs_sources_and_evidence() -> None:
         saved = json.loads((Path(tmp) / "research.jsonl").read_text(encoding="utf-8").splitlines()[0])
     assert code == 0
     assert "状态：成功" in reply
-    assert "https://example.com" in reply
+    assert "https://example.com" not in reply
+    assert "来源链接已记录在后台日志" in reply
     assert "search_attempted=true" in reply
     assert "fetch_attempted=true" in reply
     assert evidence.sources[0]["url"] == "https://example.com"

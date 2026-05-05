@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any
 
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
+URL_RE = re.compile(r"https?://[^\s<>()\]\"']+", re.IGNORECASE)
 
 
 def utc_now() -> str:
@@ -31,6 +33,7 @@ class ReportEnvelope:
     write_operation: bool = False
     postcheck: str = "not_applicable"
     failure_type: str = ""
+    allow_links: bool = False
     log_refs: dict[str, str] = field(default_factory=dict)
     created_at: str = field(default_factory=utc_now)
 
@@ -75,6 +78,7 @@ def build_report(
     visibility: str = "owner_dm",
     public_payload: str = "",
     failure_type: str = "",
+    allow_links: bool = False,
     log_refs: dict[str, str] | None = None,
 ) -> ReportEnvelope:
     return ReportEnvelope(
@@ -91,14 +95,22 @@ def build_report(
         write_operation=bool((tool or {}).get("write_operation")),
         postcheck=postcheck_label(tool),
         failure_type=failure_type,
+        allow_links=allow_links,
         log_refs=log_refs or {},
     )
 
 
+def suppress_links(text: str) -> str:
+    cleaned = URL_RE.sub("[链接已记录后台]", text or "")
+    cleaned = re.sub(r"(?:\s*-\s*)?\[链接已记录后台\]", " [链接已记录后台]", cleaned)
+    return cleaned.strip()
+
+
 def format_owner_reply(envelope: ReportEnvelope) -> str:
+    summary = envelope.summary if envelope.allow_links else suppress_links(envelope.summary)
     if envelope.status == "chat":
-        return envelope.summary
-    lines = [envelope.summary]
+        return summary
+    lines = [summary]
     meta = [
         f"任务：{envelope.task_id}",
         f"阶段：{envelope.stage or 'unknown'}",
