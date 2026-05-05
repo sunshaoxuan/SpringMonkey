@@ -19,7 +19,7 @@
 | **工具注册表与场景映射** | 何时用哪个脚本、参数约定、分裂 vs 组合 | `docs/ops/TOOLS_REGISTRY.md` |
 | **Registry Gateway + 机器 manifest** | 意图/工具导航与可校验清单；与自增强流水线同维 | `docs/registry/GATEWAY.md`、`docs/registry/tools_and_skills_manifest.json`、`docs/policies/SELF_ENHANCING_PIPELINE_AND_GATES.md` |
 | **Discord DM 通用工具路由** | owner 私信先走机器注册表；命中则执行确定性工具，未命中则 ack 并记录 capability gap | `config/openclaw/intent_tools.json`、`scripts/openclaw/intent_tool_router.py`、`scripts/openclaw/verify_intent_tool_registry.py` |
-| **OpenClaw Harness 分层运行契约** | 将 Gateway 降级为 dispatcher；长任务由 SubAgent/Worker 执行，并通过 Skill/Tool/Context/Governance/Observability 注册表可验证 | `config/openclaw/harness.json`、`config/openclaw/skills.json`、`scripts/openclaw/verify_harness_registry.py`、`docs/policies/OPENCLAW_HARNESS_ARCHITECTURE.md` |
+| **OpenClaw Harness 三链路运行契约** | 分析链由模型生成 IntentFrame，执行链由 governance/worker/evaluator 控制，报告链由 `ReportEnvelope` 隔离 owner DM 与公共频道 | `config/openclaw/harness.json`、`config/openclaw/skills.json`、`scripts/openclaw/harness_dispatcher.py`、`scripts/openclaw/harness_reporter.py`、`scripts/openclaw/verify_harness_registry.py`、`docs/policies/OPENCLAW_HARNESS_ARCHITECTURE.md` |
 | **远程统一 CLI** | `openclaw_remote_cli.py`（git-pull / diag / doctor / line-install / line-push / recover） | `scripts/openclaw_remote_cli.py` |
 | **宿主机拉取 SpringMonkey** | `git pull` + 可选重启；见 §7 | `scripts/remote_springmonkey_git_pull.py`、`docs/ops/TOOLS_REGISTRY.md` §7 |
 | **宿主机仓库自动同步** | 通过 `openclaw-repo-sync.timer` 定期 `fetch + merge` SpringMonkey，不重启服务；适合 repo 脚本/文档自动落地 | `scripts/remote_install_repo_sync_timer.py` |

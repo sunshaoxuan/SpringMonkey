@@ -460,6 +460,12 @@ def _matches_any(text: str, needles: list[str]) -> list[str]:
 
 
 def classify(text: str, channel: str, user_id: str, registry: dict[str, Any] | None = None) -> Classification:
+    """Diagnostic-only legacy pattern matcher.
+
+    The default DM execution path is Harness Dispatcher -> intentAgent ->
+    Tool Binder. This helper remains for registry smoke tests and historical
+    diagnostics, not for semantic routing.
+    """
     registry = registry or load_registry()
     normalized = normalize_text(text)
     best: tuple[float, str, dict[str, Any], list[str]] | None = None
@@ -603,7 +609,7 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             trace_id=trace_id,
             task_id=task_id,
             tool_id=str(tool.get("tool_id") or ""),
-            owner_agent=str(tool.get("owner_agent") or "toolWorker"),
+            owner_agent=str(tool.get("worker_agent") or tool.get("owner_agent") or "toolWorker"),
             status="ok" if proc.returncode == 0 else "failed",
             latency_ms=latency_ms,
             result_summary=(proc.stdout or proc.stderr or "")[:700],
@@ -625,8 +631,9 @@ def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, ou
                 output or "cron run command completed",
             ]
         )
-    prefix = "汤猴事件入口执行成功。" if returncode == 0 else f"汤猴事件入口执行失败，退出码：{returncode}"
-    return f"{prefix}\n{output or 'no output'}"
+    if returncode == 0:
+        return output or "工具执行完成，但没有返回业务输出。"
+    return f"工具执行失败，退出码：{returncode}\n{output or 'no output'}"
 
 
 def fallback_gap_path(kernel_root: Path) -> Path:
@@ -776,10 +783,30 @@ def main() -> int:
     args = parser.parse_args()
     if args.classify_only or args.intent_frame_only:
         registry = load_registry(args.registry)
-        frame = infer_intent_frame(args.text, context=args.context, registry=registry)
+        from harness_context import build_context_bundle, context_to_prompt
+        from harness_runtime import make_id as _make_id
+
+        trace_id = _make_id("trace")
+        bundle = build_context_bundle(
+            trace_id=trace_id,
+            intent="dm.event",
+            channel=args.channel,
+            user_id=args.user_id,
+            dm_context=args.context,
+            include_business_context=True,
+            include_registry=True,
+        )
+        prompt_context = context_to_prompt(bundle)
+        frame = infer_intent_frame(args.text, context=prompt_context, registry=registry)
         binding = bind_tool(frame, registry)
         review = review_intent_frame(frame, binding.tool, args.text) if binding.tool else None
         payload = {
+            "context": {
+                "trace_id": trace_id,
+                "dm_context": bool(bundle.dm_context),
+                "business_context": bool(bundle.business_context),
+                "registry_summary": bool(bundle.registry_summary),
+            },
             "intent_frame": asdict(frame),
             "binding": asdict(binding),
             "semantic_review": asdict(review) if review else None,

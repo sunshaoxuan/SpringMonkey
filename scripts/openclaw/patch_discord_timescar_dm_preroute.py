@@ -134,8 +134,7 @@ async function maybeHandleSpringMonkeyIntentToolRouter(params) {
 		return true;
 	}
 	const routerReply = payload && typeof payload.reply === "string" ? payload.reply : result.output;
-	const prefix = result.ok ? "汤猴私信任务已由通用事件路由处理。" : `汤猴私信任务路由失败，退出码：${result.code}`;
-	const content = `${prefix}\n${routerReply}`.slice(0, 1900);
+	const content = (result.ok ? routerReply : `汤猴私信任务路由失败，退出码：${result.code}\n${routerReply}`).slice(0, 1900);
 	await sendSpringMonkeyRouterMessage(params, content);
 	return true;
 }

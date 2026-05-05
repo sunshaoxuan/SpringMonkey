@@ -44,6 +44,13 @@ from datetime import datetime
 from pathlib import Path
 
 OPENCLAW_HOME = Path("/var/lib/openclaw/.openclaw")
+REPO = Path("/var/lib/openclaw/repos/SpringMonkey")
+OPENCLAW_SCRIPTS = REPO / "scripts" / "openclaw"
+if str(OPENCLAW_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(OPENCLAW_SCRIPTS))
+
+from harness_reporter import append_report, build_report, format_owner_reply
+
 CONFIG = OPENCLAW_HOME / "openclaw.json"
 LOG_DIR = OPENCLAW_HOME / "logs" / "direct_discord_cron"
 DEFAULT_DM_CHANNEL = "1497009159940608020"
@@ -163,14 +170,19 @@ def public_failure_message(name: str, returncode: int | str, stdout: str, stderr
 
 
 def execution_report_message(name: str, status: str, detail: str = "") -> str:
-    lines = [
-        f"{name} 执行报告",
-        f"状态：{status}",
-    ]
-    if detail:
-        lines.append(f"说明：{detail}")
-    lines.append("详细诊断：后台日志保留，不投递到公共频道。")
-    return "\n".join(lines)
+    trace_id = f"cron_{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    envelope = build_report(
+        task_id=name,
+        trace_id=trace_id,
+        status="ok" if status.startswith("成功") else "failed",
+        stage="cron_delivery",
+        summary="\n".join(item for item in [f"{name} 执行报告", f"状态：{status}", f"说明：{detail}" if detail else ""] if item),
+        route_kind="cron_direct",
+        visibility="owner_dm",
+        failure_type="" if status.startswith("成功") else "cron_failed",
+    )
+    append_report(envelope)
+    return format_owner_reply(envelope) + "\n详细诊断：后台日志保留，不投递到公共频道。"
 
 
 def main() -> int:
