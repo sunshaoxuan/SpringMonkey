@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from nl_time_range import requested_range_hours
+
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 
@@ -36,12 +38,6 @@ class ResultEvaluation:
     gap_type: str | None = None
 
 
-WEEK_PATTERN = re.compile(
-    r"(未来|今后|今後|接下来|接下來|向后|向後)?\s*(一|1|１|七|7|７)\s*(周|週|星期|礼拜|禮拜|週間|天|日)",
-    re.IGNORECASE,
-)
-NUMERIC_DAY_PATTERN = re.compile(r"未来\s*(\d+)\s*(天|日)")
-NUMERIC_HOUR_PATTERN = re.compile(r"未来\s*(\d+)\s*(小时|小時|h|H)")
 QUERY_RANGE_PATTERN = re.compile(r"范围：\s*([0-9T:+-]+)\s+至\s+([0-9T:+-]+)")
 CORRECTION_PATTERN = re.compile(r"(我说的是|我說的是|不是这个范围|不是這個範圍|时间段不对|時間段不對|查错|查錯|不对吧|不對吧)")
 
@@ -60,18 +56,7 @@ def append_audit(record: IntentAuditResult, path: Path | None = None) -> Path:
 
 
 def requested_timescar_query_hours(text: str) -> int | None:
-    raw = text or ""
-    match = NUMERIC_HOUR_PATTERN.search(raw)
-    if match:
-        return max(1, min(int(match.group(1)), 24 * 30))
-    match = NUMERIC_DAY_PATTERN.search(raw)
-    if match:
-        return max(1, min(int(match.group(1)) * 24, 24 * 30))
-    if WEEK_PATTERN.search(raw):
-        return 24 * 7
-    if "48" in raw:
-        return 48
-    return None
+    return requested_range_hours(text)
 
 
 def build_result_contract(tool: dict[str, Any], text: str, args: dict[str, Any]) -> dict[str, Any]:

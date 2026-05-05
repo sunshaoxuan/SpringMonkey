@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import intent_tool_router as router
 import harness_intent_audit
+import nl_time_range
 from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult, WEATHER_DM_QUERY_TOOL
 
 
@@ -32,6 +33,15 @@ def test_timescar_query_week_audit_contract() -> None:
         audit = router.audit_intent(text=args["text"], context="", selected_tool=tool, extracted_args=args)
     assert audit.result_contract["requested_hours"] == 24 * 7
     assert audit.corrected_args["_requested_range_hours"] == 24 * 7
+
+
+def test_natural_language_time_range_parameter_parser() -> None:
+    assert nl_time_range.requested_range_hours("查一下未来2周的订车记录") == 24 * 14
+    assert nl_time_range.requested_range_hours("查一下未来两周的订车记录") == 24 * 14
+    assert nl_time_range.requested_range_hours("未来三週間の予約") == 24 * 21
+    assert nl_time_range.requested_range_hours("未来10天的预约") == 24 * 10
+    assert nl_time_range.requested_range_hours("未来十二小时的预约") == 12
+    assert nl_time_range.requested_range_hours("未来４８小時の予約") == 48
 
 
 def test_timescar_query_week_evaluator_rejects_24h_result() -> None:
