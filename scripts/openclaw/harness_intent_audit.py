@@ -40,6 +40,7 @@ class ResultEvaluation:
 
 QUERY_RANGE_PATTERN = re.compile(r"范围：\s*([0-9T:+-]+)\s+至\s+([0-9T:+-]+)")
 CORRECTION_PATTERN = re.compile(r"(我说的是|我說的是|不是这个范围|不是這個範圍|时间段不对|時間段不對|查错|查錯|不对吧|不對吧)")
+TIMESCAR_QUERY_CONTEXT_PATTERN = re.compile(r"(TimesCar|timescar|订车|訂車|预约|預約|予約|查询|查詢|检查|檢查|查看|列表|记录|記錄)")
 
 
 def audit_log_path() -> Path:
@@ -89,6 +90,9 @@ def audit_intent(
         requested_hours = int(contract["requested_hours"])
         corrected_args["_requested_range_hours"] = requested_hours
         corrected_args["_intent_audit_context_used"] = bool(context)
+        if not TIMESCAR_QUERY_CONTEXT_PATTERN.search(str(corrected_args.get("text") or "")):
+            corrected_args["text"] = f"查询 TimesCar 预约 {corrected_args.get('text') or text}"
+            corrected_args["_intent_audit_implied_query"] = True
         reason = f"timescar query range contract requested_hours={requested_hours}"
         confidence = 0.98
     result = IntentAuditResult("passed", corrected_args, contract, reason, confidence)
@@ -146,7 +150,7 @@ def evaluate_result(tool: dict[str, Any], output: str, result_contract: dict[str
 
 
 def is_range_correction(text: str) -> bool:
-    return bool(CORRECTION_PATTERN.search(text or "") and requested_timescar_query_hours(text) is not None)
+    return bool(requested_timescar_query_hours(text) is not None)
 
 
 def recent_tool_from_invocation_log(path: Path | None = None) -> str | None:
@@ -172,7 +176,7 @@ def resolve_correction_tool_id(text: str, context: str = "") -> str | None:
     if not is_range_correction(text):
         return None
     combined = f"{context}\n{text}"
-    if "timescar.dm.query" in combined or "TimesCar" in combined or "订车" in combined or "预约" in combined:
+    if "timescar.dm.query" in combined or TIMESCAR_QUERY_CONTEXT_PATTERN.search(combined):
         return "timescar.dm.query"
     recent_tool = recent_tool_from_invocation_log()
     if recent_tool == "timescar.dm.query":

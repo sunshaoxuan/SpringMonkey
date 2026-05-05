@@ -42,6 +42,24 @@ def test_natural_language_time_range_parameter_parser() -> None:
     assert nl_time_range.requested_range_hours("未来10天的预约") == 24 * 10
     assert nl_time_range.requested_range_hours("未来十二小时的预约") == 12
     assert nl_time_range.requested_range_hours("未来４８小時の予約") == 48
+    assert nl_time_range.requested_range_hours("一个月的") == 24 * 30
+    assert nl_time_range.requested_range_hours("未来1ヶ月の予約") == 24 * 30
+
+
+def test_implicit_range_followup_inherits_recent_timescar_query_and_enriches_text() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.query")
+    with tempfile.TemporaryDirectory() as tmp:
+        log = Path(tmp) / "invocations.jsonl"
+        log.write_text(json.dumps({"tool_id": "timescar.dm.query", "trace_id": "trace_old"}, ensure_ascii=False) + "\n", encoding="utf-8")
+        with patch.dict(harness_intent_audit.os.environ, {"OPENCLAW_HARNESS_TOOL_INVOCATION_LOG": str(log)}):
+            assert harness_intent_audit.resolve_correction_tool_id("一个月的") == "timescar.dm.query"
+        args = router.extract_args(tool, "一个月的", "2026-05-04T00:00:00+09:00")
+        with patch.dict(router.os.environ, {"OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl")}):
+            audit = router.audit_intent(text=args["text"], context="", selected_tool=tool, extracted_args=args)
+    assert audit.result_contract["requested_hours"] == 24 * 30
+    assert audit.corrected_args["_intent_audit_implied_query"] is True
+    assert "TimesCar" in audit.corrected_args["text"]
 
 
 def test_timescar_query_week_evaluator_rejects_24h_result() -> None:
