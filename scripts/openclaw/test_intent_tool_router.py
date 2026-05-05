@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import intent_tool_router as router
 import harness_intent_audit
+import harness_intent_completion
 import nl_time_range
 from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult, WEATHER_DM_QUERY_TOOL
 
@@ -60,6 +61,77 @@ def test_implicit_range_followup_inherits_recent_timescar_query_and_enriches_tex
     assert audit.result_contract["requested_hours"] == 24 * 30
     assert audit.corrected_args["_intent_audit_implied_query"] is True
     assert "TimesCar" in audit.corrected_args["text"]
+
+
+def test_intent_completion_records_inherited_query_and_parameter_override() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        invocation_log = Path(tmp) / "invocations.jsonl"
+        completion_log = Path(tmp) / "completions.jsonl"
+        invocation_log.write_text(
+            json.dumps(
+                {
+                    "tool_id": "timescar.dm.query",
+                    "trace_id": "trace_old",
+                    "task_id": "task_old",
+                    "input_summary": "查一下未来一周的订车记录",
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        with patch.dict(
+            harness_intent_completion.os.environ,
+            {
+                "OPENCLAW_HARNESS_TOOL_INVOCATION_LOG": str(invocation_log),
+                "OPENCLAW_HARNESS_INTENT_COMPLETION_LOG": str(completion_log),
+            },
+        ):
+            completion = harness_intent_completion.complete_implicit_intent("一个月的")
+        assert completion.completed
+        assert completion.tool_id == "timescar.dm.query"
+        assert completion.canonical_text == "查询 TimesCar 预约 一个月的"
+        assert completion.parameter_overrides["requested_hours"] == 24 * 30
+        assert completion.inherited_from["trace_id"] == "trace_old"
+        saved = json.loads(completion_log.read_text(encoding="utf-8").splitlines()[0])
+        assert saved["completed"] is True
+
+
+def test_implicit_completion_handle_routes_without_business_words() -> None:
+    registry = load_registry()
+    with tempfile.TemporaryDirectory() as tmp:
+        invocation_log = Path(tmp) / "invocations.jsonl"
+        completion_log = Path(tmp) / "completions.jsonl"
+        invocation_log.write_text(json.dumps({"tool_id": "timescar.dm.query", "trace_id": "trace_old"}, ensure_ascii=False) + "\n", encoding="utf-8")
+        with patch.dict(
+            router.os.environ,
+            {
+                "OPENCLAW_HARNESS_TOOL_INVOCATION_LOG": str(invocation_log),
+                "OPENCLAW_HARNESS_INTENT_COMPLETION_LOG": str(completion_log),
+                "OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl"),
+                "OPENCLAW_HARNESS_EVALUATION_LOG": str(Path(tmp) / "eval.jsonl"),
+            },
+        ), patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")), patch.object(
+            router,
+            "run_tool",
+            return_value=(
+                0,
+                "TimesCar 预约查询结果\n范围：2026-05-05T00:00+09:00 至 2026-06-04T00:00+09:00（JST）\n状态：未来范围内没有即将开始的预约",
+            ),
+        ) as run_tool:
+            result = router.handle(
+                "一个月的",
+                "discord_dm",
+                "999",
+                "2026-05-05T00:00:00+09:00",
+                registry_override=registry,
+                kernel_root=Path(tmp) / "kernel",
+            )
+    assert result.status == "ok"
+    assert result.classification.tool_id == "timescar.dm.query"
+    assert result.args["_intent_completion"]["completed"] is True
+    assert result.args["text"] == "查询 TimesCar 预约 一个月的"
+    assert run_tool.call_args.args[1]["text"] == "查询 TimesCar 预约 一个月的"
 
 
 def test_timescar_query_week_evaluator_rejects_24h_result() -> None:

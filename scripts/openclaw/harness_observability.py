@@ -26,6 +26,8 @@ class ToolInvocationRecord:
     latency_ms: int
     result_summary: str
     permission_scope: str
+    input_summary: str = ""
+    result_contract: str = ""
     created_at: str = field(default_factory=utc_now)
 
 

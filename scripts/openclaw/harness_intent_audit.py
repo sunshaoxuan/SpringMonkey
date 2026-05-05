@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from harness_intent_completion import complete_implicit_intent
 from nl_time_range import requested_range_hours
 
 
@@ -83,6 +84,10 @@ def audit_intent(
     extracted_args: dict[str, Any],
 ) -> IntentAuditResult:
     corrected_args = dict(extracted_args)
+    completion = complete_implicit_intent(str(corrected_args.get("text") or text), context)
+    if completion.completed and completion.tool_id == selected_tool.get("tool_id"):
+        corrected_args["text"] = completion.canonical_text
+        corrected_args["_intent_completion"] = asdict(completion)
     contract = build_result_contract(selected_tool, text, corrected_args)
     reason = "tool and extracted args are mechanically consistent"
     confidence = 0.9

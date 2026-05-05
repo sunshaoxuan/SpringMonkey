@@ -32,6 +32,7 @@ if str(_HERE) not in sys.path:
 from dm_capability_gap_runner import run_gap
 from harness_governance import evaluate_tool_invocation
 from harness_intent_audit import audit_intent, evaluate_result, resolve_correction_tool_id
+from harness_intent_completion import complete_implicit_intent
 from harness_observability import EvaluationRecord, ToolInvocationRecord, record_evaluation, record_tool_invocation
 from harness_runtime import make_id
 
@@ -582,6 +583,8 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             latency_ms=latency_ms,
             result_summary=(proc.stdout or proc.stderr or "")[:700],
             permission_scope=str(tool.get("permission_scope") or tool.get("permission") or ""),
+            input_summary=str(args.get("text") or args.get("job_name") or "")[:700],
+            result_contract=json.dumps(args.get("_result_contract") or {}, ensure_ascii=False, sort_keys=True),
         )
     )
     return proc.returncode, (proc.stdout or "").strip()
@@ -705,12 +708,13 @@ def handle(
     registry = registry_override or load_registry(registry_path)
     classification, model_route_kind = classify_intent_model_first(text, channel, user_id, registry, context=context)
     if classification.tool is None:
-        correction_tool_id = resolve_correction_tool_id(text, context)
+        completion = complete_implicit_intent(text, context)
+        correction_tool_id = completion.tool_id if completion.completed else resolve_correction_tool_id(text, context)
         if correction_tool_id:
             corrected = classification_for_tool_id(
                 registry,
                 correction_tool_id,
-                f"bound correction message to recent registered tool; original_reason={classification.reason}",
+                f"completed implicit intent; completion_reason={completion.reason if completion.completed else 'correction binding'}; original_reason={classification.reason}",
             )
             if corrected:
                 classification = corrected
