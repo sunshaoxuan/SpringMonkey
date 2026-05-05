@@ -68,12 +68,20 @@ def build_result_contract(tool: dict[str, Any], text: str, args: dict[str, Any])
         spec = requested_range_spec(text)
         requested_hours = spec.duration_hours if spec else None
         offset_hours = spec.offset_hours if spec else 0
+        model_frame = args.get("_model_intent_frame") if isinstance(args.get("_model_intent_frame"), dict) else {}
+        model_params = model_frame.get("parameters") if isinstance(model_frame.get("parameters"), dict) else {}
+        if model_params:
+            try:
+                requested_hours = int(model_params.get("duration_hours", requested_hours or 24))
+                offset_hours = int(model_params.get("offset_hours", offset_hours))
+            except (TypeError, ValueError):
+                pass
         contract.update(
             {
                 "type": "timescar_query_range",
                 "requested_hours": requested_hours or 24,
                 "offset_hours": offset_hours,
-                "relation": spec.relation if spec else "within",
+                "relation": str(model_params.get("relation") or (spec.relation if spec else "within")),
                 "explicit_range_requested": requested_hours is not None,
             }
         )
@@ -108,6 +116,8 @@ def audit_intent(
         corrected_args["_requested_range_hours"] = requested_hours
         corrected_args["_requested_offset_hours"] = int(contract.get("offset_hours") or 0)
         corrected_args["_intent_audit_context_used"] = bool(context)
+        if isinstance(corrected_args.get("_model_intent_frame"), dict):
+            corrected_args["_intent_audit_model_frame_used"] = True
         if not TIMESCAR_QUERY_CONTEXT_PATTERN.search(str(corrected_args.get("text") or "")):
             corrected_args["text"] = f"查询 TimesCar 预约 {corrected_args.get('text') or text}"
             corrected_args["_intent_audit_implied_query"] = True

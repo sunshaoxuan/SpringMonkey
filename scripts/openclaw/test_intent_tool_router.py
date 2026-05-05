@@ -84,6 +84,35 @@ def test_after_suffix_creates_offset_range_contract() -> None:
     assert audit.result_contract["expected_range_start"].startswith("2026-06-04T20:50")
 
 
+def test_model_intent_frame_overrides_parameter_semantics() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.query")
+    classification = router.Classification(
+        "timescar.reservation_query",
+        "timescar.dm.query",
+        0.98,
+        "model semantic frame",
+        tool,
+        {
+            "source": "model",
+            "tool_id": "timescar.dm.query",
+            "canonical_text": "查询 TimesCar 预约 未来一个月以后",
+            "parameters": {"duration_hours": 720, "offset_hours": 720, "relation": "after"},
+        },
+    )
+    args = router.extract_args(tool, "未来一个月以后", "2026-05-05T20:50:00+09:00")
+    args = router.apply_model_intent_frame(args, classification)
+    with tempfile.TemporaryDirectory() as tmp, patch.dict(
+        router.os.environ,
+        {"OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl")},
+    ):
+        audit = router.audit_intent(text=args["text"], context="", selected_tool=tool, extracted_args=args)
+    assert audit.corrected_args["text"] == "查询 TimesCar 预约 未来一个月以后"
+    assert audit.corrected_args["_intent_audit_model_frame_used"] is True
+    assert audit.result_contract["offset_hours"] == 720
+    assert audit.result_contract["relation"] == "after"
+
+
 def test_intent_completion_records_inherited_query_and_parameter_override() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         invocation_log = Path(tmp) / "invocations.jsonl"
@@ -247,6 +276,7 @@ def test_model_first_selects_registered_tool_before_local_fallback() -> None:
                 0.93,
                 "semantic keep decision",
                 next(tool for tool in registry["tools"] if tool["tool_id"] == "timescar.dm.keep_next"),
+                {"canonical_text": "请保留明天的订车", "parameters": {}},
             ),
             "registered_task",
         ),
@@ -366,6 +396,7 @@ def test_model_first_can_select_timescar_cancel_status() -> None:
                 0.95,
                 "asks whether the previous cancellation succeeded",
                 tool,
+                {"canonical_text": "这单取消了吗？", "parameters": {}},
             ),
             "registered_task",
         ),
@@ -388,6 +419,7 @@ def test_timescar_guard_overrides_model_adjust_for_cancel_followup() -> None:
                 0.91,
                 "model confused cancellation wording with adjust",
                 adjust_tool,
+                {"canonical_text": "好的，把刚刚这单取消掉吧", "parameters": {}},
             ),
             "registered_task",
         ),

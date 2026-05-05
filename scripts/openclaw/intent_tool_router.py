@@ -50,6 +50,7 @@ class Classification:
     confidence: float
     reason: str
     tool: dict[str, Any] | None = None
+    intent_frame: dict[str, Any] | None = None
 
 
 @dataclass
@@ -287,8 +288,11 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "You are a deterministic tool selector for the owner's Discord DM control console. "
         "Return strict JSON only. Schema: "
         '{"route_kind":"chat|registered_task|registered_candidate|auto_safe_readonly_gap|unsafe_gap|ambiguous_gap",'
-        '"tool_id":null,"action":"book|cancel|keep|query|status|adjust|chat|gap","confidence":0.0,"reason":"short reason"}. '
+        '"tool_id":null,"action":"book|cancel|keep|query|status|adjust|chat|gap","confidence":0.0,'
+        '"canonical_text":"completed user intent","parameters":{"duration_hours":null,"offset_hours":0,"relation":"within|after|before|exact|unknown"},'
+        '"reason":"short reason"}. '
         "First infer action, then choose exactly one registered tool when action is covered. "
+        "Always produce canonical_text and semantic parameters for registered_task. "
         "Use registered_task only when one registry tool clearly matches the user's requested action. "
         "Use chat for normal conversation or explanation. "
         "Use auto_safe_readonly_gap for safe public read-only lookups not covered by a tool. "
@@ -300,6 +304,9 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "For TimesCar: keep/保留 means record a keep decision. "
         "For TimesCar: cancel this order/取消这单/把刚刚这单取消掉/取消掉 means cancel_next, especially when context has a recent successful booking. "
         "For TimesCar: adjust_start is only for explicit start-time changes, such as moving tomorrow 09:00 to the day after tomorrow 09:00. "
+        "For TimesCar query ranges: '未来一个月' means duration_hours 720, offset_hours 0, relation within. "
+        "For TimesCar query ranges: '未来一个月以后' or '一个月以后' means duration_hours 720, offset_hours 720, relation after. "
+        "For short follow-ups such as '一个月的' or '未来2周的呢', inherit the recent query intent from context and output a complete canonical_text. "
         "Do not select adjust_start merely because the word 取消 appears; '取消明天的时间，让开始时间从后天...' is adjust_start, but '把这单取消掉' is cancel_next. "
         "Examples: "
         "'好的，把刚刚这单取消掉吧' => action cancel, tool_id timescar.dm.cancel_next. "
@@ -333,14 +340,24 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
     reason = str(parsed.get("reason") or "model first-stage intent routing").strip()
     confidence = float(parsed.get("confidence") or 0.0)
     tool_id = parsed.get("tool_id")
+    frame = {
+        "source": "model",
+        "route_kind": route_kind,
+        "tool_id": tool_id,
+        "action": parsed.get("action"),
+        "canonical_text": parsed.get("canonical_text"),
+        "parameters": parsed.get("parameters") if isinstance(parsed.get("parameters"), dict) else {},
+        "reason": reason,
+        "confidence": confidence,
+    }
     if route_kind == "registered_task":
         if not tool_id:
             raise ValueError("registered_task without tool_id")
         tool = next((item for item in registry.get("tools", []) if str(item.get("tool_id")) == str(tool_id)), None)
         if tool is None:
             raise ValueError(f"model selected unknown tool_id: {tool_id}")
-        return Classification(str(tool["intent_id"]), str(tool["tool_id"]), confidence, reason, tool), "registered_task"
-    return Classification(None, None, confidence, reason), route_kind
+        return Classification(str(tool["intent_id"]), str(tool["tool_id"]), confidence, reason, tool, frame), "registered_task"
+    return Classification(None, None, confidence, reason, None, frame), route_kind
 
 
 def _tool_by_id(registry: dict[str, Any], tool_id: str) -> dict[str, Any] | None:
@@ -467,11 +484,11 @@ def classify(text: str, channel: str, user_id: str, registry: dict[str, Any] | N
     return Classification(str(tool["intent_id"]), str(tool["tool_id"]), score, reason, tool)
 
 
-def classification_for_tool_id(registry: dict[str, Any], tool_id: str, reason: str) -> Classification | None:
+def classification_for_tool_id(registry: dict[str, Any], tool_id: str, reason: str, intent_frame: dict[str, Any] | None = None) -> Classification | None:
     tool = _tool_by_id(registry, tool_id)
     if not tool:
         return None
-    return Classification(str(tool["intent_id"]), str(tool["tool_id"]), 0.97, reason, tool)
+    return Classification(str(tool["intent_id"]), str(tool["tool_id"]), 0.97, reason, tool, intent_frame)
 
 
 def parse_message_time(raw: str) -> datetime:
@@ -512,6 +529,18 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
     if mode == "fixed_cron_job":
         return {"job_name": str(schema["job_name"])}
     raise ValueError(f"unsupported args_schema mode: {mode}")
+
+
+def apply_model_intent_frame(args: dict[str, Any], classification: Classification) -> dict[str, Any]:
+    frame = classification.intent_frame or {}
+    if not frame:
+        return args
+    updated = dict(args)
+    canonical_text = str(frame.get("canonical_text") or "").strip()
+    if canonical_text and (classification.tool or {}).get("args_schema", {}).get("mode") == "dm_text_timestamp":
+        updated["text"] = canonical_text
+    updated["_model_intent_frame"] = frame
+    return updated
 
 
 def diagnostic_log_path() -> Path:
@@ -715,6 +744,14 @@ def handle(
                 registry,
                 correction_tool_id,
                 f"completed implicit intent; completion_reason={completion.reason if completion.completed else 'correction binding'}; original_reason={classification.reason}",
+                {
+                    "source": "implicit_completion",
+                    "tool_id": correction_tool_id,
+                    "canonical_text": completion.canonical_text if completion.completed else text,
+                    "parameters": completion.parameter_overrides if completion.completed else {},
+                    "reason": completion.reason if completion.completed else "correction binding",
+                    "confidence": completion.confidence if completion.completed else 0.8,
+                },
             )
             if corrected:
                 classification = corrected
@@ -776,7 +813,8 @@ def handle(
 
     try:
         args = extract_args(classification.tool, text, message_timestamp)
-        audit = audit_intent(text=text, context=context, selected_tool=classification.tool, extracted_args=args)
+        args = apply_model_intent_frame(args, classification)
+        audit = audit_intent(text=args.get("text", text), context=context, selected_tool=classification.tool, extracted_args=args)
         args = audit.corrected_args
         args["_result_contract"] = audit.result_contract
         decision = evaluate_tool_invocation(classification.tool, channel=channel, user_id=user_id)
