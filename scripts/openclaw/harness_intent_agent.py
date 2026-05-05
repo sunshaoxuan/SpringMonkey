@@ -194,6 +194,9 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Example: 这个链接说了什么 means domain=web action=research and include the URL in parameters. "
         "Example: 现在某服务是否宕机 means domain=web action=research and require current public sources. "
         "If the user asks normal conversation, set conversation_mode=chat and no tool candidates. "
+        "For chat mode, canonical_text must be the exact natural user-facing reply, not an analysis of the user's intent. "
+        "For liveness greetings such as '还活着吗', reply briefly, e.g. '在。'. "
+        "For short follow-ups such as '未来一个月以后的呢？', inspect Recent tool invocations in context; if the last task was a TimesCar query, inherit domain=timescar action=query and produce a complete canonical_text. "
         "If model cannot safely bind a task, set conversation_mode=clarification or gap."
     )
     user = "\n".join(

@@ -12,6 +12,7 @@ from typing import Any
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 URL_RE = re.compile(r"https?://[^\s<>()\]\"']+", re.IGNORECASE)
+WEB_EVIDENCE_RE = re.compile(r"^检索证据：.*$", re.MULTILINE)
 
 
 def utc_now() -> str:
@@ -106,8 +107,35 @@ def suppress_links(text: str) -> str:
     return cleaned.strip()
 
 
+def concise_web_research_summary(text: str) -> str:
+    raw = WEB_EVIDENCE_RE.sub("", text or "")
+    source_index = raw.find("\n来源：")
+    if source_index >= 0:
+        raw = raw[:source_index]
+    raw = raw.replace("联网检索结果\n状态：成功\n", "").replace("联网检索结果\r\n状态：成功\r\n", "")
+    lines = [line.rstrip() for line in raw.splitlines()]
+    kept: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        kept.append(stripped)
+        if len(kept) >= 3:
+            break
+    return "\n".join(kept).strip() or "检索完成，但没有可展示的结论。"
+
+
+def display_summary(envelope: ReportEnvelope) -> str:
+    summary = envelope.summary
+    if envelope.tool_id == "openclaw.web.research" and envelope.status == "ok":
+        summary = concise_web_research_summary(summary)
+    if not envelope.allow_links:
+        summary = suppress_links(summary)
+    return summary
+
+
 def format_owner_reply(envelope: ReportEnvelope) -> str:
-    summary = envelope.summary if envelope.allow_links else suppress_links(envelope.summary)
+    summary = display_summary(envelope)
     if envelope.status == "chat":
         return summary
     lines = [summary]

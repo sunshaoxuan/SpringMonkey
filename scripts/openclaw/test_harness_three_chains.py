@@ -121,6 +121,31 @@ def test_reporter_can_allow_links_explicitly() -> None:
     assert "https://example.com/path" in format_owner_reply(envelope)
 
 
+def test_reporter_summarizes_web_research_without_sources_or_evidence() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_web",
+        trace_id="trace_web",
+        status="ok",
+        visibility="owner_dm",
+        tool_id="openclaw.web.research",
+        summary=(
+            "联网检索结果\n"
+            "状态：成功\n"
+            "- 结论一。\n"
+            "- 结论二。\n"
+            "来源：\n"
+            "1. Example - https://example.com\n"
+            "检索证据：search_attempted=true fetch_attempted=true browser_attempted=false sources=1"
+        ),
+        diagnostics_ref="trace_id=trace_web route=registered_task",
+    )
+    reply = format_owner_reply(envelope)
+    assert "来源：" not in reply
+    assert "检索证据" not in reply
+    assert "https://example.com" not in reply
+    assert "结论一" in reply
+
+
 def test_discord_patch_does_not_add_business_router_success_prefix() -> None:
     source = (Path(__file__).resolve().parent / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "汤猴私信任务已由通用事件路由处理。" not in source
