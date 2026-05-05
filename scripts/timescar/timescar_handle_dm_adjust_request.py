@@ -182,6 +182,8 @@ def parse_query_hours(text: str) -> int:
     match = re.search(r"未来\s*(\d+)\s*(天|日)", text)
     if match:
         return max(1, min(int(match.group(1)) * 24, 24 * 30))
+    if re.search(r"(未来|今后|今後|接下来|接下來|向后|向後)?\s*(一|1|１|七|7|７)\s*(周|週|星期|礼拜|禮拜|週間|天|日)", text):
+        return 24 * 7
     if "48" in text:
         return 48
     return 24

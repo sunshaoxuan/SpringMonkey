@@ -219,8 +219,15 @@ def run_gap(
     intent_reason: str,
     kernel_root: Path = DEFAULT_KERNEL_ROOT,
     repo_root: Path = REPO,
+    forced_safety_class: str | None = None,
+    forced_safety_reason: str | None = None,
+    registry_tool: dict[str, Any] | None = None,
 ) -> GapRunnerResult:
-    safety_class, safety_reason = classify_safety(text, intent_reason)
+    if forced_safety_class:
+        safety_class = forced_safety_class
+        safety_reason = forced_safety_reason or "forced by harness evaluator"
+    else:
+        safety_class, safety_reason = classify_safety(text, intent_reason)
     observation = f"dm intent tool router miss: {intent_reason}; safety={safety_class}; reason={safety_reason}"
     session_id, gap_id = record_kernel_gap(
         text=text,
@@ -229,7 +236,7 @@ def run_gap(
         observation=observation,
         kernel_root=kernel_root,
     )
-    registry_tool = (
+    registry_tool = registry_tool or (
         promoted_tool_for_text(text)
         if safety_class == "auto_safe_readonly"
         else planned_tool_for_unsafe_text(text, intent_reason)
@@ -243,6 +250,18 @@ def run_gap(
     )
     plan_path = append_plan(kernel_root, plan)
     gap_ref = f"kernel_session={session_id} gap_id={gap_id} plan_log={plan_path}"
+
+    if safety_class == "registered_tool_parameter_gap" and registry_tool and not bool(registry_tool.get("write_operation")):
+        plan.status = "promoted_replay_ready"
+        append_plan(kernel_root, plan)
+        return GapRunnerResult(
+            "promoted",
+            safety_class,
+            plan,
+            gap_ref,
+            f"已记录已注册只读工具的参数补强缺口，准备重放原始任务。记录：{gap_ref}",
+            registry_tool,
+        )
 
     if safety_class != "auto_safe_readonly":
         plan.status = "blocked_requires_human_or_registered_tool"

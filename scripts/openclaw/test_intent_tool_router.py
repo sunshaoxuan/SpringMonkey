@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import intent_tool_router as router
+import harness_intent_audit
 from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult, WEATHER_DM_QUERY_TOOL
 
 
@@ -18,6 +19,30 @@ def test_timescar_query_classifies_to_registered_tool() -> None:
     result = router.classify("汤猴，检查一下未来48小时的订车记录。", "discord_dm", "999", load_registry())
     assert result.intent_id == "timescar.reservation_query"
     assert result.tool_id == "timescar.dm.query"
+
+
+def test_timescar_query_week_audit_contract() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.query")
+    args = router.extract_args(tool, "查一下未来一周的订车记录", "2026-05-04T00:00:00+09:00")
+    with tempfile.TemporaryDirectory() as tmp, patch.dict(
+        router.os.environ,
+        {"OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl")},
+    ):
+        audit = router.audit_intent(text=args["text"], context="", selected_tool=tool, extracted_args=args)
+    assert audit.result_contract["requested_hours"] == 24 * 7
+    assert audit.corrected_args["_requested_range_hours"] == 24 * 7
+
+
+def test_timescar_query_week_evaluator_rejects_24h_result() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.query")
+    contract = {"tool_id": "timescar.dm.query", "type": "timescar_query_range", "requested_hours": 24 * 7}
+    output = "TimesCar 预约查询结果\n范围：2026-05-05T19:24+09:00 至 2026-05-06T19:24+09:00（JST）\n状态：找到 1 单"
+    evaluation = router.evaluate_result(tool, output, contract)
+    assert not evaluation.passed
+    assert evaluation.gap_type == "registered_tool_parameter_gap"
+    assert "168h" in evaluation.reason
 
 
 def test_timescar_book_window_classifies_to_write_tool() -> None:
@@ -143,6 +168,55 @@ def test_model_first_timeout_falls_back_to_timescar_book_window() -> None:
     assert route_kind == "registered_task"
     assert classification.tool_id == "timescar.dm.book_window"
     assert "model_first_unavailable=TimeoutError" in classification.reason
+
+
+def test_correction_message_binds_to_recent_timescar_query() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        log = Path(tmp) / "invocations.jsonl"
+        log.write_text(
+            json.dumps({"tool_id": "timescar.dm.query", "trace_id": "trace_old"}, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        with patch.dict(harness_intent_audit.os.environ, {"OPENCLAW_HARNESS_TOOL_INVOCATION_LOG": str(log)}):
+            assert harness_intent_audit.resolve_correction_tool_id("我说的是未来一周，你查的时间段不对吧？") == "timescar.dm.query"
+
+
+def test_registered_readonly_parameter_gap_records_plan_without_success_reply() -> None:
+    registry = load_registry()
+    with tempfile.TemporaryDirectory() as tmp:
+        kernel_root = Path(tmp) / "kernel"
+        eval_log = Path(tmp) / "eval.jsonl"
+        audit_log = Path(tmp) / "audit.jsonl"
+        with patch.dict(
+            router.os.environ,
+            {
+                "OPENCLAW_HARNESS_EVALUATION_LOG": str(eval_log),
+                "OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(audit_log),
+            },
+        ), patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")), patch.object(
+            router,
+            "run_tool",
+            return_value=(
+                0,
+                "TimesCar 预约查询结果\n范围：2026-05-05T19:24+09:00 至 2026-05-06T19:24+09:00（JST）\n状态：找到 1 单",
+            ),
+        ):
+            result = router.handle(
+                "查一下未来一周的订车记录",
+                "discord_dm",
+                "999",
+                "2026-05-05T19:24:00+09:00",
+                registry_override=registry,
+                kernel_root=kernel_root,
+                replay_depth=1,
+            )
+        assert result.status == "unsupported"
+        assert result.route_kind == "registered_tool_parameter_gap"
+        assert "已拦截" in result.reply
+        assert "执行成功" not in result.reply
+        assert (kernel_root / "dm_capability_plans.jsonl").exists()
+        record = json.loads(eval_log.read_text(encoding="utf-8").splitlines()[0])
+        assert record["gap_type"] == "registered_tool_parameter_gap"
 
 
 def test_model_first_timeout_falls_back_to_available_car_followup() -> None:

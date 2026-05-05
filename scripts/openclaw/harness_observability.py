@@ -36,6 +36,8 @@ class EvaluationRecord:
     passed: bool
     reason: str
     result_contract: str
+    actual_result: str = ""
+    gap_type: str = ""
     created_at: str = field(default_factory=utc_now)
 
 

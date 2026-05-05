@@ -203,7 +203,9 @@
         "订车",
         "预约",
         "TimesCar",
-        "timescar"
+        "timescar",
+        "未来一周",
+        "一週間"
       ],
       "required_any": [
         "检查",
@@ -230,7 +232,7 @@
         "requires_trace": true
       },
       "invocation_log_policy": "harness_tool_invocation_jsonl",
-      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout"
     },

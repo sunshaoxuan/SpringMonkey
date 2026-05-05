@@ -95,6 +95,8 @@ def main() -> int:
         assert mod.is_adjust_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert not mod.is_adjust_request("好的，把刚刚这单取消掉吧")
+        assert mod.parse_query_hours("查一下未来一周的订车记录") == 24 * 7
+        assert mod.parse_query_hours("未来一週間のTimesCar予約を確認して") == 24 * 7
         try:
             mod.interpret_adjust_request("随便处理一下这单", message_time)
             raise AssertionError("ambiguous TimesCar text must not be accepted as adjust request")

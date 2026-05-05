@@ -31,7 +31,8 @@ if str(_HERE) not in sys.path:
 
 from dm_capability_gap_runner import run_gap
 from harness_governance import evaluate_tool_invocation
-from harness_observability import ToolInvocationRecord, record_tool_invocation
+from harness_intent_audit import audit_intent, evaluate_result, resolve_correction_tool_id
+from harness_observability import EvaluationRecord, ToolInvocationRecord, record_evaluation, record_tool_invocation
 from harness_runtime import make_id
 
 try:
@@ -465,6 +466,13 @@ def classify(text: str, channel: str, user_id: str, registry: dict[str, Any] | N
     return Classification(str(tool["intent_id"]), str(tool["tool_id"]), score, reason, tool)
 
 
+def classification_for_tool_id(registry: dict[str, Any], tool_id: str, reason: str) -> Classification | None:
+    tool = _tool_by_id(registry, tool_id)
+    if not tool:
+        return None
+    return Classification(str(tool["intent_id"]), str(tool["tool_id"]), 0.97, reason, tool)
+
+
 def parse_message_time(raw: str) -> datetime:
     value = datetime.fromisoformat((raw or utc_now()).replace("Z", "+00:00"))
     if value.tzinfo is None:
@@ -697,60 +705,76 @@ def handle(
     registry = registry_override or load_registry(registry_path)
     classification, model_route_kind = classify_intent_model_first(text, channel, user_id, registry, context=context)
     if classification.tool is None:
-        if model_route_kind in {"chat", "auto_safe_readonly_gap", "unsafe_gap", "ambiguous_gap", "registered_candidate"}:
-            route_kind, route_reason = model_route_kind, classification.reason
-        else:
-            route_kind, route_reason = classify_unregistered_intent(text)
-        if route_kind == "chat":
-            classification.reason = route_reason
-            try:
-                reply = model_chat_reply(text)
-            except Exception as exc:
-                reply = f"我收到消息，但聊天模型暂时不可用：{type(exc).__name__}: {exc}"
-            return RouterResult("chat", reply, classification, {}, 0, route_kind="chat")
-        gap_reason = f"{classification.reason}; intent_classifier={route_reason}"
-        gap_result = run_gap(
-            text=text,
-            channel=channel,
-            user_id=user_id,
-            intent_reason=gap_reason,
-            kernel_root=kernel_root,
-            repo_root=REPO,
-        )
-        if gap_result.status == "promoted" and gap_result.registry_tool and replay_depth < 1:
-            replay_registry = dict(registry)
-            replay_tools = list(replay_registry.get("tools", []))
-            if not any(str(tool.get("tool_id")) == str(gap_result.registry_tool.get("tool_id")) for tool in replay_tools):
-                replay_tools.append(gap_result.registry_tool)
-            replay_registry["tools"] = replay_tools
-            replay = handle(
-                text,
-                channel,
-                user_id,
-                message_timestamp,
-                registry_path=registry_path,
-                kernel_root=kernel_root,
-                replay_depth=replay_depth + 1,
-                registry_override=replay_registry,
-                context=context,
+        correction_tool_id = resolve_correction_tool_id(text, context)
+        if correction_tool_id:
+            corrected = classification_for_tool_id(
+                registry,
+                correction_tool_id,
+                f"bound correction message to recent registered tool; original_reason={classification.reason}",
             )
-            replay.args = {
-                **replay.args,
-                "_capability_gap_plan": asdict(gap_result.plan),
-                "_capability_gap_ref": gap_result.gap_ref,
-            }
-            replay.route_kind = "auto_promoted_replay"
-            return replay
-        reply = "\n".join(
-            [
-                gap_result.reply,
-                f"原始原因：{gap_reason}",
-            ]
-        )
-        return RouterResult("unsupported", reply, classification, {}, 0, route_kind=route_kind)
+            if corrected:
+                classification = corrected
+                model_route_kind = "registered_task"
+        if classification.tool is not None:
+            pass
+        else:
+            if model_route_kind in {"chat", "auto_safe_readonly_gap", "unsafe_gap", "ambiguous_gap", "registered_candidate"}:
+                route_kind, route_reason = model_route_kind, classification.reason
+            else:
+                route_kind, route_reason = classify_unregistered_intent(text)
+            if route_kind == "chat":
+                classification.reason = route_reason
+                try:
+                    reply = model_chat_reply(text)
+                except Exception as exc:
+                    reply = f"我收到消息，但聊天模型暂时不可用：{type(exc).__name__}: {exc}"
+                return RouterResult("chat", reply, classification, {}, 0, route_kind="chat")
+            gap_reason = f"{classification.reason}; intent_classifier={route_reason}"
+            gap_result = run_gap(
+                text=text,
+                channel=channel,
+                user_id=user_id,
+                intent_reason=gap_reason,
+                kernel_root=kernel_root,
+                repo_root=REPO,
+            )
+            if gap_result.status == "promoted" and gap_result.registry_tool and replay_depth < 1:
+                replay_registry = dict(registry)
+                replay_tools = list(replay_registry.get("tools", []))
+                if not any(str(tool.get("tool_id")) == str(gap_result.registry_tool.get("tool_id")) for tool in replay_tools):
+                    replay_tools.append(gap_result.registry_tool)
+                replay_registry["tools"] = replay_tools
+                replay = handle(
+                    text,
+                    channel,
+                    user_id,
+                    message_timestamp,
+                    registry_path=registry_path,
+                    kernel_root=kernel_root,
+                    replay_depth=replay_depth + 1,
+                    registry_override=replay_registry,
+                    context=context,
+                )
+                replay.args = {
+                    **replay.args,
+                    "_capability_gap_plan": asdict(gap_result.plan),
+                    "_capability_gap_ref": gap_result.gap_ref,
+                }
+                replay.route_kind = "auto_promoted_replay"
+                return replay
+            reply = "\n".join(
+                [
+                    gap_result.reply,
+                    f"原始原因：{gap_reason}",
+                ]
+            )
+            return RouterResult("unsupported", reply, classification, {}, 0, route_kind=route_kind)
 
     try:
         args = extract_args(classification.tool, text, message_timestamp)
+        audit = audit_intent(text=text, context=context, selected_tool=classification.tool, extracted_args=args)
+        args = audit.corrected_args
+        args["_result_contract"] = audit.result_contract
         decision = evaluate_tool_invocation(classification.tool, channel=channel, user_id=user_id)
         if not decision.allowed:
             return RouterResult(
@@ -771,6 +795,66 @@ def handle(
         args["_harness_task_id"] = make_id("task")
         timeout_seconds = int(registry.get("defaults", {}).get("timeout_seconds") or 1800)
         returncode, output = run_tool(classification.tool, args, timeout_seconds)
+        evaluation = evaluate_result(classification.tool, output, audit.result_contract)
+        record_evaluation(
+            EvaluationRecord(
+                trace_id=str(args.get("_harness_trace_id") or ""),
+                evaluator_agent="evaluatorAgent",
+                passed=evaluation.passed,
+                reason=evaluation.reason,
+                result_contract=json.dumps(evaluation.result_contract, ensure_ascii=False, sort_keys=True),
+                actual_result=json.dumps(evaluation.actual, ensure_ascii=False, sort_keys=True),
+                gap_type=evaluation.gap_type or "",
+            )
+        )
+        if returncode == 0 and not evaluation.passed:
+            gap_result = run_gap(
+                text=text,
+                channel=channel,
+                user_id=user_id,
+                intent_reason=f"{evaluation.gap_type or 'result_evaluation_failed'}: {evaluation.reason}",
+                kernel_root=kernel_root,
+                repo_root=REPO,
+                forced_safety_class=evaluation.gap_type or "registered_tool_parameter_gap",
+                forced_safety_reason=evaluation.reason,
+                registry_tool=classification.tool,
+            )
+            if gap_result.status == "promoted" and gap_result.registry_tool and replay_depth < 1:
+                replay = handle(
+                    text,
+                    channel,
+                    user_id,
+                    message_timestamp,
+                    registry_path=registry_path,
+                    kernel_root=kernel_root,
+                    replay_depth=replay_depth + 1,
+                    registry_override=registry,
+                    context=context,
+                )
+                replay.args = {
+                    **replay.args,
+                    "_capability_gap_plan": asdict(gap_result.plan),
+                    "_capability_gap_ref": gap_result.gap_ref,
+                    "_failed_evaluation": asdict(evaluation),
+                }
+                replay.route_kind = "registered_tool_parameter_gap_replay"
+                return replay
+            return RouterResult(
+                "unsupported",
+                "\n".join(
+                    [
+                        "汤猴事件入口已拦截一次可能错误的工具结果。",
+                        "状态：未向用户报告成功，已记录已注册工具参数缺口。",
+                        f"工具：{classification.tool_id}",
+                        f"原因：{evaluation.reason}",
+                        f"记录：{gap_result.gap_ref}",
+                    ]
+                ),
+                classification,
+                args,
+                0,
+                route_kind=evaluation.gap_type or "result_evaluation_failed",
+            )
         if is_executor_capability_gap(output):
             gap_result = run_gap(
                 text=text,

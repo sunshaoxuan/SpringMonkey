@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import os
+import re
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass
+class IntentAuditResult:
+    audit_status: str
+    corrected_args: dict[str, Any]
+    result_contract: dict[str, Any]
+    reason: str
+    confidence: float
+    created_at: str = field(default_factory=utc_now)
+
+
+@dataclass
+class ResultEvaluation:
+    passed: bool
+    reason: str
+    result_contract: dict[str, Any]
+    actual: dict[str, Any]
+    gap_type: str | None = None
+
+
+WEEK_PATTERN = re.compile(
+    r"(未来|今后|今後|接下来|接下來|向后|向後)?\s*(一|1|１|七|7|７)\s*(周|週|星期|礼拜|禮拜|週間|天|日)",
+    re.IGNORECASE,
+)
+NUMERIC_DAY_PATTERN = re.compile(r"未来\s*(\d+)\s*(天|日)")
+NUMERIC_HOUR_PATTERN = re.compile(r"未来\s*(\d+)\s*(小时|小時|h|H)")
+QUERY_RANGE_PATTERN = re.compile(r"范围：\s*([0-9T:+-]+)\s+至\s+([0-9T:+-]+)")
+CORRECTION_PATTERN = re.compile(r"(我说的是|我說的是|不是这个范围|不是這個範圍|时间段不对|時間段不對|查错|查錯|不对吧|不對吧)")
+
+
+def audit_log_path() -> Path:
+    configured = os.environ.get("OPENCLAW_HARNESS_INTENT_AUDIT_LOG", "").strip()
+    return Path(configured) if configured else WORKSPACE / "var" / "harness_intent_audits.jsonl"
+
+
+def append_audit(record: IntentAuditResult, path: Path | None = None) -> Path:
+    target = path or audit_log_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(asdict(record), ensure_ascii=False, sort_keys=True) + "\n")
+    return target
+
+
+def requested_timescar_query_hours(text: str) -> int | None:
+    raw = text or ""
+    match = NUMERIC_HOUR_PATTERN.search(raw)
+    if match:
+        return max(1, min(int(match.group(1)), 24 * 30))
+    match = NUMERIC_DAY_PATTERN.search(raw)
+    if match:
+        return max(1, min(int(match.group(1)) * 24, 24 * 30))
+    if WEEK_PATTERN.search(raw):
+        return 24 * 7
+    if "48" in raw:
+        return 48
+    return None
+
+
+def build_result_contract(tool: dict[str, Any], text: str, args: dict[str, Any]) -> dict[str, Any]:
+    tool_id = str(tool.get("tool_id") or "")
+    contract: dict[str, Any] = {"tool_id": tool_id}
+    if tool_id == "timescar.dm.query":
+        requested_hours = requested_timescar_query_hours(text)
+        contract.update(
+            {
+                "type": "timescar_query_range",
+                "requested_hours": requested_hours or 24,
+                "explicit_range_requested": requested_hours is not None,
+            }
+        )
+    return contract
+
+
+def audit_intent(
+    *,
+    text: str,
+    context: str,
+    selected_tool: dict[str, Any],
+    extracted_args: dict[str, Any],
+) -> IntentAuditResult:
+    corrected_args = dict(extracted_args)
+    contract = build_result_contract(selected_tool, text, corrected_args)
+    reason = "tool and extracted args are mechanically consistent"
+    confidence = 0.9
+    if selected_tool.get("tool_id") == "timescar.dm.query" and contract.get("explicit_range_requested"):
+        requested_hours = int(contract["requested_hours"])
+        corrected_args["_requested_range_hours"] = requested_hours
+        corrected_args["_intent_audit_context_used"] = bool(context)
+        reason = f"timescar query range contract requested_hours={requested_hours}"
+        confidence = 0.98
+    result = IntentAuditResult("passed", corrected_args, contract, reason, confidence)
+    append_audit(result)
+    return result
+
+
+def parse_iso_minute(value: str) -> datetime:
+    raw = value.strip()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    parsed = datetime.fromisoformat(raw)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def parse_timescar_output_range(output: str) -> dict[str, Any]:
+    match = QUERY_RANGE_PATTERN.search(output or "")
+    if not match:
+        return {}
+    start = parse_iso_minute(match.group(1))
+    end = parse_iso_minute(match.group(2))
+    hours = (end - start).total_seconds() / 3600
+    return {
+        "range_start": start.isoformat(timespec="minutes"),
+        "range_end": end.isoformat(timespec="minutes"),
+        "range_hours": hours,
+    }
+
+
+def evaluate_result(tool: dict[str, Any], output: str, result_contract: dict[str, Any]) -> ResultEvaluation:
+    if str(tool.get("tool_id") or "") != "timescar.dm.query":
+        return ResultEvaluation(True, "no mechanical evaluator required for this tool", result_contract, {})
+    actual = parse_timescar_output_range(output)
+    requested_hours = int(result_contract.get("requested_hours") or 24)
+    if not actual:
+        return ResultEvaluation(
+            False,
+            "TimesCar query output did not include a parseable range line",
+            result_contract,
+            actual,
+            "registered_tool_parameter_gap",
+        )
+    actual_hours = float(actual.get("range_hours") or 0)
+    if actual_hours + 0.1 < requested_hours:
+        return ResultEvaluation(
+            False,
+            f"requested range {requested_hours}h but tool output covered {actual_hours:.1f}h",
+            result_contract,
+            actual,
+            "registered_tool_parameter_gap",
+        )
+    return ResultEvaluation(True, "TimesCar query output satisfies requested range", result_contract, actual)
+
+
+def is_range_correction(text: str) -> bool:
+    return bool(CORRECTION_PATTERN.search(text or "") and requested_timescar_query_hours(text) is not None)
+
+
+def recent_tool_from_invocation_log(path: Path | None = None) -> str | None:
+    target = path or Path(os.environ.get("OPENCLAW_HARNESS_TOOL_INVOCATION_LOG", "")) if os.environ.get("OPENCLAW_HARNESS_TOOL_INVOCATION_LOG") else WORKSPACE / "var" / "harness_tool_invocations.jsonl"
+    if not target.is_file():
+        return None
+    try:
+        lines = target.read_text(encoding="utf-8").splitlines()[-20:]
+    except OSError:
+        return None
+    for line in reversed(lines):
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        tool_id = str(payload.get("tool_id") or "")
+        if tool_id:
+            return tool_id
+    return None
+
+
+def resolve_correction_tool_id(text: str, context: str = "") -> str | None:
+    if not is_range_correction(text):
+        return None
+    combined = f"{context}\n{text}"
+    if "timescar.dm.query" in combined or "TimesCar" in combined or "订车" in combined or "预约" in combined:
+        return "timescar.dm.query"
+    recent_tool = recent_tool_from_invocation_log()
+    if recent_tool == "timescar.dm.query":
+        return recent_tool
+    return None

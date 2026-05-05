@@ -30,8 +30,8 @@
     },
     {
       "id": "observability_layer",
-      "components": ["trace_id", "model_call_log", "token_cost", "latency", "result_evaluation"],
-      "primary_entrypoints": ["scripts/openclaw/harness_observability.py"]
+      "components": ["trace_id", "model_call_log", "token_cost", "latency", "intent_audit", "result_evaluation"],
+      "primary_entrypoints": ["scripts/openclaw/harness_observability.py", "scripts/openclaw/harness_intent_audit.py"]
     }
   ],
   "subagents": [
