@@ -11,11 +11,18 @@ REGISTRY = REPO / "config" / "openclaw" / "intent_tools.json"
 REQUIRED_KEYS = {
     "intent_id",
     "tool_id",
-    "patterns",
+    "capability_id",
+    "domain",
+    "actions",
+    "prompt_hints",
     "entrypoint",
     "args_schema",
     "permission",
     "write_operation",
+    "input_contract",
+    "output_contract",
+    "permission_scope",
+    "worker_agent",
     "verify_command",
     "failure_policy",
 }
@@ -48,9 +55,12 @@ def main() -> int:
         seen_intents.add(intent_id)
         seen_tools.add(tool_id)
 
-        patterns = tool.get("patterns")
-        if not isinstance(patterns, list) or not patterns:
-            fail(f"{tool_id}: patterns must be a non-empty list")
+        if not isinstance(tool.get("actions"), list) or not tool.get("actions"):
+            fail(f"{tool_id}: actions must be a non-empty list")
+        if not isinstance(tool.get("prompt_hints"), list):
+            fail(f"{tool_id}: prompt_hints must be a list")
+        if not isinstance(tool.get("input_contract"), dict) or not isinstance(tool.get("output_contract"), dict):
+            fail(f"{tool_id}: input_contract/output_contract must be objects")
         entrypoint = REPO / str(tool["entrypoint"])
         if not entrypoint.is_file():
             fail(f"{tool_id}: entrypoint not found: {entrypoint}")

@@ -30,11 +30,15 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import run_gap
+from harness_dispatcher import handle_event
 from harness_governance import evaluate_tool_invocation
+from harness_intent_agent import infer_intent_frame
 from harness_intent_audit import audit_intent, evaluate_result, resolve_correction_tool_id
 from harness_intent_completion import complete_implicit_intent
 from harness_observability import EvaluationRecord, ToolInvocationRecord, record_evaluation, record_tool_invocation
 from harness_runtime import make_id
+from harness_semantic_reviewer import review_intent_frame
+from harness_tool_binder import bind_tool
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -414,17 +418,9 @@ def guard_timescar_classification(text: str, registry: dict[str, Any], classific
 def classify_intent_model_first(text: str, channel: str, user_id: str, registry: dict[str, Any], context: str = "") -> tuple[Classification, str | None]:
     try:
         classification, route_kind = model_classify_intent(text, registry, context=context)
-        if classification.tool is not None:
-            guarded = guard_timescar_classification(text, registry, classification)
-            return guarded, route_kind
         return classification, route_kind
     except Exception as exc:
-        fallback = classify(text, channel, user_id, registry)
-        if fallback.tool is not None:
-            fallback.reason = f"{fallback.reason}; model_first_unavailable={type(exc).__name__}: {exc}"
-            return guard_timescar_classification(text, registry, fallback), "registered_task"
-        fallback.reason = f"{fallback.reason}; model_first_unavailable={type(exc).__name__}: {exc}"
-        return fallback, None
+        return Classification(None, None, 0.0, f"model_first_unavailable={type(exc).__name__}: {exc}"), None
 
 
 def model_chat_reply(text: str, *, timeout: int = 25) -> str:
@@ -735,201 +731,34 @@ def handle(
     context: str = "",
 ) -> RouterResult:
     registry = registry_override or load_registry(registry_path)
-    classification, model_route_kind = classify_intent_model_first(text, channel, user_id, registry, context=context)
-    if classification.tool is None:
-        completion = complete_implicit_intent(text, context)
-        correction_tool_id = completion.tool_id if completion.completed else resolve_correction_tool_id(text, context)
-        if correction_tool_id:
-            corrected = classification_for_tool_id(
-                registry,
-                correction_tool_id,
-                f"completed implicit intent; completion_reason={completion.reason if completion.completed else 'correction binding'}; original_reason={classification.reason}",
-                {
-                    "source": "implicit_completion",
-                    "tool_id": correction_tool_id,
-                    "canonical_text": completion.canonical_text if completion.completed else text,
-                    "parameters": completion.parameter_overrides if completion.completed else {},
-                    "reason": completion.reason if completion.completed else "correction binding",
-                    "confidence": completion.confidence if completion.completed else 0.8,
-                },
-            )
-            if corrected:
-                classification = corrected
-                model_route_kind = "registered_task"
-        if classification.tool is not None:
-            pass
-        else:
-            if model_route_kind in {"chat", "auto_safe_readonly_gap", "unsafe_gap", "ambiguous_gap", "registered_candidate"}:
-                route_kind, route_reason = model_route_kind, classification.reason
-            else:
-                route_kind, route_reason = classify_unregistered_intent(text)
-            if route_kind == "chat":
-                classification.reason = route_reason
-                try:
-                    reply = model_chat_reply(text)
-                except Exception as exc:
-                    reply = f"我收到消息，但聊天模型暂时不可用：{type(exc).__name__}: {exc}"
-                return RouterResult("chat", reply, classification, {}, 0, route_kind="chat")
-            gap_reason = f"{classification.reason}; intent_classifier={route_reason}"
-            gap_result = run_gap(
-                text=text,
-                channel=channel,
-                user_id=user_id,
-                intent_reason=gap_reason,
-                kernel_root=kernel_root,
-                repo_root=REPO,
-            )
-            if gap_result.status == "promoted" and gap_result.registry_tool and replay_depth < 1:
-                replay_registry = dict(registry)
-                replay_tools = list(replay_registry.get("tools", []))
-                if not any(str(tool.get("tool_id")) == str(gap_result.registry_tool.get("tool_id")) for tool in replay_tools):
-                    replay_tools.append(gap_result.registry_tool)
-                replay_registry["tools"] = replay_tools
-                replay = handle(
-                    text,
-                    channel,
-                    user_id,
-                    message_timestamp,
-                    registry_path=registry_path,
-                    kernel_root=kernel_root,
-                    replay_depth=replay_depth + 1,
-                    registry_override=replay_registry,
-                    context=context,
-                )
-                replay.args = {
-                    **replay.args,
-                    "_capability_gap_plan": asdict(gap_result.plan),
-                    "_capability_gap_ref": gap_result.gap_ref,
-                }
-                replay.route_kind = "auto_promoted_replay"
-                return replay
-            reply = "\n".join(
-                [
-                    gap_result.reply,
-                    f"原始原因：{gap_reason}",
-                ]
-            )
-            return RouterResult("unsupported", reply, classification, {}, 0, route_kind=route_kind)
-
-    try:
-        args = extract_args(classification.tool, text, message_timestamp)
-        args = apply_model_intent_frame(args, classification)
-        audit = audit_intent(text=args.get("text", text), context=context, selected_tool=classification.tool, extracted_args=args)
-        args = audit.corrected_args
-        args["_result_contract"] = audit.result_contract
-        decision = evaluate_tool_invocation(classification.tool, channel=channel, user_id=user_id)
-        if not decision.allowed:
-            return RouterResult(
-                "failed",
-                "\n".join(
-                    [
-                        "汤猴事件入口拒绝执行该工具。",
-                        f"工具：{classification.tool_id}",
-                        f"原因：{decision.reason}",
-                    ]
-                ),
-                classification,
-                args,
-                1,
-                route_kind="governance_denied",
-            )
-        args["_harness_trace_id"] = make_id("trace")
-        args["_harness_task_id"] = make_id("task")
-        timeout_seconds = int(registry.get("defaults", {}).get("timeout_seconds") or 1800)
-        returncode, output = run_tool(classification.tool, args, timeout_seconds)
-        evaluation = evaluate_result(classification.tool, output, audit.result_contract)
-        record_evaluation(
-            EvaluationRecord(
-                trace_id=str(args.get("_harness_trace_id") or ""),
-                evaluator_agent="evaluatorAgent",
-                passed=evaluation.passed,
-                reason=evaluation.reason,
-                result_contract=json.dumps(evaluation.result_contract, ensure_ascii=False, sort_keys=True),
-                actual_result=json.dumps(evaluation.actual, ensure_ascii=False, sort_keys=True),
-                gap_type=evaluation.gap_type or "",
-            )
-        )
-        if returncode == 0 and not evaluation.passed:
-            gap_result = run_gap(
-                text=text,
-                channel=channel,
-                user_id=user_id,
-                intent_reason=f"{evaluation.gap_type or 'result_evaluation_failed'}: {evaluation.reason}",
-                kernel_root=kernel_root,
-                repo_root=REPO,
-                forced_safety_class=evaluation.gap_type or "registered_tool_parameter_gap",
-                forced_safety_reason=evaluation.reason,
-                registry_tool=classification.tool,
-            )
-            if gap_result.status == "promoted" and gap_result.registry_tool and replay_depth < 1:
-                replay = handle(
-                    text,
-                    channel,
-                    user_id,
-                    message_timestamp,
-                    registry_path=registry_path,
-                    kernel_root=kernel_root,
-                    replay_depth=replay_depth + 1,
-                    registry_override=registry,
-                    context=context,
-                )
-                replay.args = {
-                    **replay.args,
-                    "_capability_gap_plan": asdict(gap_result.plan),
-                    "_capability_gap_ref": gap_result.gap_ref,
-                    "_failed_evaluation": asdict(evaluation),
-                }
-                replay.route_kind = "registered_tool_parameter_gap_replay"
-                return replay
-            return RouterResult(
-                "unsupported",
-                "\n".join(
-                    [
-                        "汤猴事件入口已拦截一次可能错误的工具结果。",
-                        "状态：未向用户报告成功，已记录已注册工具参数缺口。",
-                        f"工具：{classification.tool_id}",
-                        f"原因：{evaluation.reason}",
-                        f"记录：{gap_result.gap_ref}",
-                    ]
-                ),
-                classification,
-                args,
-                0,
-                route_kind=evaluation.gap_type or "result_evaluation_failed",
-            )
-        if is_executor_capability_gap(output):
-            gap_result = run_gap(
-                text=text,
-                channel=channel,
-                user_id=user_id,
-                intent_reason=f"registered tool executor capability gap: {output}",
-                kernel_root=kernel_root,
-                repo_root=REPO,
-            )
-            return RouterResult(
-                "unsupported",
-                "\n".join([gap_result.reply, f"工具：{classification.tool_id}"]),
-                classification,
-                args,
-                returncode,
-                route_kind="registered_tool_capability_gap",
-            )
-        reply = format_reply(classification.tool, args, returncode, output)
-        if returncode != 0 and classification.tool.get("failure_policy") == "reply_failure_and_record_gap":
-            record_capability_gap(text, channel, user_id, output or f"tool failed: {classification.tool_id}", kernel_root)
-        return RouterResult("ok" if returncode == 0 else "failed", reply, classification, args, returncode, route_kind="registered_task")
-    except Exception as exc:
-        reason = str(exc)
-        gap_ref = record_capability_gap(text, channel, user_id, reason, kernel_root)
-        reply = "\n".join(
-            [
-                "汤猴事件入口未能执行该工具。",
-                f"工具：{classification.tool_id}",
-                f"原因：{reason}",
-                f"记录：{gap_ref}",
-            ]
-        )
-        return RouterResult("failed", reply, classification, {}, 1, route_kind="registered_task")
+    timeout_seconds = int(registry.get("defaults", {}).get("timeout_seconds") or 1800)
+    result = handle_event(
+        text=text,
+        channel=channel,
+        user_id=user_id,
+        message_timestamp=message_timestamp,
+        registry=registry,
+        context=context,
+        kernel_root=kernel_root,
+        timeout_seconds=timeout_seconds,
+        extract_args=extract_args,
+        run_tool=run_tool,
+        format_reply=format_reply,
+        audit_intent=audit_intent,
+        evaluate_result=evaluate_result,
+    )
+    binding = result.binding
+    tool = binding.tool if binding else None
+    frame = result.intent_frame
+    classification = Classification(
+        str(tool.get("intent_id")) if tool else None,
+        str(tool.get("tool_id")) if tool else None,
+        float(frame.confidence) if frame else 0.0,
+        str(frame.reason) if frame else result.route_kind,
+        tool,
+        asdict(frame) if frame else None,
+    )
+    return RouterResult(result.status, result.reply, classification, result.args, result.returncode, result.route_kind)
 
 
 def main() -> int:
@@ -943,18 +772,19 @@ def main() -> int:
     parser.add_argument("--kernel-root", type=Path, default=Path(os.environ.get("OPENCLAW_AGENT_KERNEL_ROOT", DEFAULT_KERNEL_ROOT)))
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--classify-only", action="store_true")
+    parser.add_argument("--intent-frame-only", action="store_true")
     args = parser.parse_args()
-    if args.classify_only:
+    if args.classify_only or args.intent_frame_only:
         registry = load_registry(args.registry)
-        classification, route_kind = classify_intent_model_first(args.text, args.channel, args.user_id, registry, context=args.context)
-        extracted = {}
-        if classification.tool:
-            extracted = extract_args(classification.tool, args.text, args.message_timestamp)
+        frame = infer_intent_frame(args.text, context=args.context, registry=registry)
+        binding = bind_tool(frame, registry)
+        review = review_intent_frame(frame, binding.tool, args.text) if binding.tool else None
         payload = {
-            "classification": asdict(classification),
-            "args": extracted,
-            "would_execute": bool(classification.tool),
-            "route_kind": route_kind,
+            "intent_frame": asdict(frame),
+            "binding": asdict(binding),
+            "semantic_review": asdict(review) if review else None,
+            "would_execute": bool(binding.tool and (review is None or review.passed)),
+            "route_kind": binding.status,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0

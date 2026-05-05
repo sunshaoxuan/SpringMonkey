@@ -5,8 +5,8 @@
   "layers": [
     {
       "id": "agent_runtime",
-      "components": ["task_runner", "agent_loop", "state_manager", "failure_recovery"],
-      "primary_entrypoints": ["scripts/openclaw/harness_runtime.py", "scripts/openclaw/agent_society_kernel.py", "scripts/openclaw/job_orchestrator.py"]
+      "components": ["task_runner", "agent_loop", "state_manager", "failure_recovery", "dispatcher"],
+      "primary_entrypoints": ["scripts/openclaw/harness_runtime.py", "scripts/openclaw/harness_dispatcher.py", "scripts/openclaw/agent_society_kernel.py", "scripts/openclaw/job_orchestrator.py"]
     },
     {
       "id": "skill_layer",
@@ -15,13 +15,13 @@
     },
     {
       "id": "tool_layer",
-      "components": ["tool_registry", "tool_router", "tool_permission", "tool_invocation_log"],
-      "primary_entrypoints": ["config/openclaw/intent_tools.json", "scripts/openclaw/intent_tool_router.py"]
+      "components": ["tool_registry", "tool_binder", "tool_permission", "tool_invocation_log"],
+      "primary_entrypoints": ["config/openclaw/intent_tools.json", "scripts/openclaw/harness_tool_binder.py", "scripts/openclaw/intent_tool_router.py"]
     },
     {
       "id": "context_layer",
-      "components": ["prompt_builder", "memory_loader", "rag_context", "business_context"],
-      "primary_entrypoints": ["scripts/openclaw/harness_context.py"]
+      "components": ["prompt_builder", "memory_loader", "rag_context", "business_context", "intent_agent_context"],
+      "primary_entrypoints": ["scripts/openclaw/harness_context.py", "scripts/openclaw/harness_intent_agent.py"]
     },
     {
       "id": "governance_layer",
@@ -30,8 +30,8 @@
     },
     {
       "id": "observability_layer",
-      "components": ["trace_id", "model_call_log", "token_cost", "latency", "intent_audit", "result_evaluation"],
-      "primary_entrypoints": ["scripts/openclaw/harness_observability.py", "scripts/openclaw/harness_intent_audit.py"]
+      "components": ["trace_id", "model_call_log", "token_cost", "latency", "intent_audit", "semantic_review", "result_evaluation"],
+      "primary_entrypoints": ["scripts/openclaw/harness_observability.py", "scripts/openclaw/harness_intent_agent.py", "scripts/openclaw/harness_semantic_reviewer.py", "scripts/openclaw/harness_intent_audit.py"]
     }
   ],
   "subagents": [
@@ -85,8 +85,8 @@
     }
   ],
   "dispatcher_policy": {
-    "gateway_responsibilities": ["normalize_event", "classify_intent", "check_permission", "dispatch_worker", "send_typing_ack", "deliver_result"],
-    "gateway_forbidden": ["long_running_business_execution", "unregistered_write_operation", "silent_failure"],
+    "gateway_responsibilities": ["normalize_event", "build_context", "request_intent_frame", "bind_tool", "check_permission", "dispatch_worker", "send_typing_ack", "deliver_result"],
+    "gateway_forbidden": ["keyword_primary_intent_routing", "long_running_business_execution", "unregistered_write_operation", "silent_failure"],
     "long_task_requires_runtime_session": true
   },
   "trace_policy": {

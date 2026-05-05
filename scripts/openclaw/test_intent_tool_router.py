@@ -7,14 +7,41 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import intent_tool_router as router
+import harness_dispatcher
 import harness_intent_audit
 import harness_intent_completion
 import nl_time_range
 from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult, WEATHER_DM_QUERY_TOOL
+from harness_intent_agent import IntentFrame
 
 
 def load_registry() -> dict:
     return router.load_registry()
+
+
+def intent_frame(
+    *,
+    mode: str = "task",
+    domain: str = "timescar",
+    action: str = "query",
+    canonical_text: str = "查询 TimesCar 预约 未来一个月",
+    safety: str = "readonly",
+    tool_id: str | None = "timescar.dm.query",
+    parameters: dict | None = None,
+) -> IntentFrame:
+    return IntentFrame(
+        conversation_mode=mode,
+        domain=domain,
+        action=action,
+        canonical_text=canonical_text,
+        context_refs=[],
+        parameters=parameters or {"duration_hours": 720, "offset_hours": 0, "relation": "within"},
+        safety=safety,
+        result_contract={},
+        tool_candidates=[{"tool_id": tool_id, "confidence": 0.95, "reason": "test"}] if tool_id else [],
+        confidence=0.95,
+        reason="test frame",
+    )
 
 
 def test_timescar_query_classifies_to_registered_tool() -> None:
@@ -161,7 +188,11 @@ def test_implicit_completion_handle_routes_without_business_words() -> None:
                 "OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl"),
                 "OPENCLAW_HARNESS_EVALUATION_LOG": str(Path(tmp) / "eval.jsonl"),
             },
-        ), patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")), patch.object(
+        ), patch.object(
+            harness_dispatcher,
+            "infer_intent_frame",
+            return_value=intent_frame(canonical_text="查询 TimesCar 预约 一个月的"),
+        ), patch.object(
             router,
             "run_tool",
             return_value=(
@@ -193,6 +224,36 @@ def test_timescar_query_week_evaluator_rejects_24h_result() -> None:
     assert not evaluation.passed
     assert evaluation.gap_type == "registered_tool_parameter_gap"
     assert "168h" in evaluation.reason
+
+
+def test_executor_capability_gap_is_not_reported_success() -> None:
+    registry = load_registry()
+    with tempfile.TemporaryDirectory() as tmp, patch.dict(
+        router.os.environ,
+        {
+            "OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl"),
+            "OPENCLAW_HARNESS_EVALUATION_LOG": str(Path(tmp) / "eval.jsonl"),
+        },
+    ), patch.object(
+        harness_dispatcher,
+        "infer_intent_frame",
+        return_value=intent_frame(canonical_text="查询 TimesCar 预约 未来一周", parameters={"duration_hours": 168, "offset_hours": 0}),
+    ), patch.object(
+        router,
+        "run_tool",
+        return_value=(0, "capability_gap: missing verified executor"),
+    ):
+        result = router.handle(
+            "查一下未来一周的订车记录",
+            "discord_dm",
+            "999",
+            "2026-05-04T00:00:00+09:00",
+            registry_override=registry,
+            kernel_root=Path(tmp) / "kernel",
+        )
+    assert result.status == "unsupported"
+    assert result.route_kind == "registered_tool_capability_gap"
+    assert "执行器能力缺口" in result.reply
 
 
 def test_timescar_book_window_classifies_to_write_tool() -> None:
@@ -293,7 +354,7 @@ def test_model_first_selects_registered_tool_before_local_fallback() -> None:
     assert classification.tool_id == "timescar.dm.keep_next"
 
 
-def test_model_first_falls_back_to_local_registered_tool_when_unavailable() -> None:
+def test_model_first_does_not_fallback_to_local_registered_tool_when_unavailable() -> None:
     registry = load_registry()
     with patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")):
         classification, route_kind = router.classify_intent_model_first(
@@ -302,12 +363,12 @@ def test_model_first_falls_back_to_local_registered_tool_when_unavailable() -> N
             "999",
             registry,
         )
-    assert route_kind == "registered_task"
-    assert classification.tool_id == "timescar.dm.keep_next"
+    assert route_kind is None
+    assert classification.tool_id is None
     assert "model_first_unavailable=RuntimeError" in classification.reason
 
 
-def test_model_first_timeout_falls_back_to_timescar_book_window() -> None:
+def test_model_first_timeout_does_not_fallback_to_timescar_book_window() -> None:
     registry = load_registry()
     with patch.object(router, "model_classify_intent", side_effect=TimeoutError("timed out")):
         classification, route_kind = router.classify_intent_model_first(
@@ -316,8 +377,8 @@ def test_model_first_timeout_falls_back_to_timescar_book_window() -> None:
             "999",
             registry,
         )
-    assert route_kind == "registered_task"
-    assert classification.tool_id == "timescar.dm.book_window"
+    assert route_kind is None
+    assert classification.tool_id is None
     assert "model_first_unavailable=TimeoutError" in classification.reason
 
 
@@ -344,7 +405,11 @@ def test_registered_readonly_parameter_gap_records_plan_without_success_reply() 
                 "OPENCLAW_HARNESS_EVALUATION_LOG": str(eval_log),
                 "OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(audit_log),
             },
-        ), patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")), patch.object(
+        ), patch.object(
+            harness_dispatcher,
+            "infer_intent_frame",
+            return_value=intent_frame(canonical_text="查一下未来一周的订车记录", parameters={"duration_hours": 168, "offset_hours": 0, "relation": "within"}),
+        ), patch.object(
             router,
             "run_tool",
             return_value=(
@@ -360,7 +425,7 @@ def test_registered_readonly_parameter_gap_records_plan_without_success_reply() 
                 registry_override=registry,
                 kernel_root=kernel_root,
                 replay_depth=1,
-            )
+        )
         assert result.status == "unsupported"
         assert result.route_kind == "registered_tool_parameter_gap"
         assert "已拦截" in result.reply
@@ -370,7 +435,7 @@ def test_registered_readonly_parameter_gap_records_plan_without_success_reply() 
         assert record["gap_type"] == "registered_tool_parameter_gap"
 
 
-def test_model_first_timeout_falls_back_to_available_car_followup() -> None:
+def test_model_first_timeout_does_not_fallback_to_available_car_followup() -> None:
     registry = load_registry()
     with patch.object(router, "model_classify_intent", side_effect=TimeoutError("timed out")):
         classification, route_kind = router.classify_intent_model_first(
@@ -379,8 +444,8 @@ def test_model_first_timeout_falls_back_to_available_car_followup() -> None:
             "999",
             registry,
         )
-    assert route_kind == "registered_task"
-    assert classification.tool_id == "timescar.dm.book_window"
+    assert route_kind is None
+    assert classification.tool_id is None
 
 
 def test_model_first_can_select_timescar_cancel_status() -> None:
@@ -406,7 +471,7 @@ def test_model_first_can_select_timescar_cancel_status() -> None:
     assert classification.tool_id == "timescar.dm.cancel_status"
 
 
-def test_timescar_guard_overrides_model_adjust_for_cancel_followup() -> None:
+def test_model_first_no_longer_overrides_model_with_timescar_guard() -> None:
     registry = load_registry()
     adjust_tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.adjust_start")
     with patch.object(
@@ -426,8 +491,8 @@ def test_timescar_guard_overrides_model_adjust_for_cancel_followup() -> None:
     ):
         classification, route_kind = router.classify_intent_model_first("好的，把刚刚这单取消掉吧", "discord_dm", "999", registry)
     assert route_kind == "registered_task"
-    assert classification.tool_id == "timescar.dm.cancel_next"
-    assert "guarded" in classification.reason
+    assert classification.tool_id == "timescar.dm.adjust_start"
+    assert "guarded" not in classification.reason
 
 
 def test_timescar_adjust_with_cancel_time_phrase_stays_adjust() -> None:
@@ -439,8 +504,8 @@ def test_timescar_adjust_with_cancel_time_phrase_stays_adjust() -> None:
             "999",
             registry,
         )
-    assert route_kind == "registered_task"
-    assert classification.tool_id == "timescar.dm.adjust_start"
+    assert route_kind is None
+    assert classification.tool_id is None
 
 
 def test_unknown_records_gap_and_returns_ack() -> None:
@@ -466,30 +531,9 @@ def test_chat_only_passes_through_without_gap() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         kernel_root = Path(tmp) / "kernel"
         with patch.object(router, "run_tool") as run_tool, patch.object(
-            router, "model_classify_unregistered_intent", return_value=("chat", "small talk")
-        ) as model_classify, patch.object(router, "model_chat_reply", return_value="我在。") as model_chat:
-            result = router.handle(
-                "还活着吗",
-                "discord_dm",
-                "999",
-                "2026-05-04T00:00:00+09:00",
-                kernel_root=kernel_root,
-            )
-            run_tool.assert_not_called()
-            model_classify.assert_called_once()
-            model_chat.assert_called_once()
-        assert result.status == "chat"
-        assert result.route_kind == "chat"
-        assert result.classification.reason == "small talk"
-        assert result.reply == "我在。"
-        assert not (kernel_root / "intent_tool_router_gaps.jsonl").exists()
-
-
-def test_chat_reply_reports_model_failure_without_gap() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        kernel_root = Path(tmp) / "kernel"
-        with patch.object(router, "model_classify_unregistered_intent", return_value=("chat", "small talk")), patch.object(
-            router, "model_chat_reply", side_effect=RuntimeError("offline")
+            harness_dispatcher,
+            "infer_intent_frame",
+            return_value=intent_frame(mode="chat", domain="general", action="chat", canonical_text="我在。", tool_id=None),
         ):
             result = router.handle(
                 "还活着吗",
@@ -498,17 +542,38 @@ def test_chat_reply_reports_model_failure_without_gap() -> None:
                 "2026-05-04T00:00:00+09:00",
                 kernel_root=kernel_root,
             )
+            run_tool.assert_not_called()
         assert result.status == "chat"
-        assert "聊天模型暂时不可用" in result.reply
+        assert result.route_kind == "chat"
+        assert result.reply == "我在。"
         assert not (kernel_root / "intent_tool_router_gaps.jsonl").exists()
+
+
+def test_chat_reply_reports_model_failure_without_gap() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        kernel_root = Path(tmp) / "kernel"
+        with patch.object(harness_dispatcher, "infer_intent_frame", side_effect=RuntimeError("offline")):
+            result = router.handle(
+                "还活着吗",
+                "discord_dm",
+                "999",
+                "2026-05-04T00:00:00+09:00",
+                kernel_root=kernel_root,
+            )
+        assert result.status == "unsupported"
+        assert result.route_kind == "intent_model_unavailable"
+        assert "意图模型不可用" in result.reply
+        assert (kernel_root / "dm_capability_plans.jsonl").exists()
 
 
 def test_unregistered_task_records_gap() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         kernel_root = Path(tmp) / "kernel"
         with patch.object(router, "run_tool") as run_tool, patch.object(
-            router, "model_classify_unregistered_intent", return_value=("ambiguous_gap", "asks to add capability")
-        ) as model_classify:
+            harness_dispatcher,
+            "infer_intent_frame",
+            return_value=intent_frame(mode="gap", domain="unknown", action="gap", canonical_text="请帮我接入一个新的控制台能力。", tool_id=None),
+        ):
             result = router.handle(
                 "请帮我接入一个新的控制台能力。",
                 "discord_dm",
@@ -517,10 +582,8 @@ def test_unregistered_task_records_gap() -> None:
                 kernel_root=kernel_root,
             )
             run_tool.assert_not_called()
-            model_classify.assert_called_once()
         assert result.status == "unsupported"
-        assert result.route_kind == "ambiguous_gap"
-        assert "asks to add capability" in result.reply
+        assert result.route_kind == "gap"
         assert (kernel_root / "dm_capability_plans.jsonl").exists()
 
 
@@ -552,8 +615,10 @@ def test_unregistered_safe_readonly_gap_promotes_and_replays() -> None:
             registry_tool=WEATHER_DM_QUERY_TOOL,
         )
         with patch.object(
-            router, "model_classify_unregistered_intent", return_value=("auto_safe_readonly_gap", "weather lookup")
-        ), patch.object(router, "run_gap", return_value=gap_result) as run_gap, patch.object(
+            harness_dispatcher,
+            "infer_intent_frame",
+            return_value=intent_frame(domain="weather", action="query", canonical_text="请查询明天东京和长野天气、风况和能见度", tool_id="weather.dm.query"),
+        ), patch.object(harness_dispatcher, "run_gap", return_value=gap_result) as run_gap, patch.object(
             router, "run_tool", return_value=(0, "天气查询结果")
         ) as run_tool:
             result = router.handle(
@@ -565,17 +630,15 @@ def test_unregistered_safe_readonly_gap_promotes_and_replays() -> None:
                 kernel_root=kernel_root,
             )
         run_gap.assert_called_once()
-        run_tool.assert_called_once()
-        assert result.status == "ok"
-        assert result.route_kind == "auto_promoted_replay"
-        assert "_capability_gap_plan" in result.args
-        assert "天气查询结果" in result.reply
+        run_tool.assert_not_called()
+        assert result.status == "unsupported"
+        assert result.route_kind == "gap"
 
 
 def test_unregistered_write_gap_does_not_execute() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         kernel_root = Path(tmp) / "kernel"
-        with patch.object(router, "model_classify_unregistered_intent", return_value=("unsafe_gap", "write operation")), patch.object(
+        with patch.object(harness_dispatcher, "infer_intent_frame", side_effect=RuntimeError("offline")), patch.object(
             router, "run_tool"
         ) as run_tool:
             result = router.handle(
@@ -587,8 +650,8 @@ def test_unregistered_write_gap_does_not_execute() -> None:
             )
         run_tool.assert_not_called()
         assert result.status == "unsupported"
-        assert result.route_kind == "unsafe_gap"
-        assert "不能自动执行" in result.reply
+        assert result.route_kind == "intent_model_unavailable"
+        assert "意图模型不可用" in result.reply
 
 
 def test_unregistered_intent_falls_back_when_model_unavailable() -> None:
@@ -644,7 +707,5 @@ def test_classify_only_does_not_execute_tool() -> None:
     registry = load_registry()
     with patch.object(router, "model_classify_intent", side_effect=RuntimeError("offline")):
         result, route_kind = router.classify_intent_model_first("触发一轮17点的新闻任务", "discord_dm", "999", registry)
-    args = router.extract_args(result.tool or {}, "触发一轮17点的新闻任务", "2026-05-04T00:00:00+09:00")
-    assert route_kind == "registered_task"
-    assert result.tool_id == "openclaw.cron.run.news"
-    assert args == {"job_name": "news-digest-jst-1700"}
+    assert route_kind is None
+    assert result.tool_id is None

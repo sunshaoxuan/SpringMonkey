@@ -19,9 +19,12 @@ REQUIRED_LAYERS = {
     "observability_layer",
 }
 REQUIRED_TOOL_KEYS = {
-    "owner_agent",
-    "input_schema",
-    "output_schema",
+    "capability_id",
+    "domain",
+    "actions",
+    "worker_agent",
+    "input_contract",
+    "output_contract",
     "invocation_log_policy",
     "permission_scope",
 }
@@ -75,11 +78,11 @@ def verify() -> int:
         missing = sorted(REQUIRED_TOOL_KEYS - set(tool))
         if missing:
             fail(f"{tool_id}: missing harness tool keys: {missing}")
-        owner = str(tool.get("owner_agent") or "")
+        owner = str(tool.get("worker_agent") or tool.get("owner_agent") or "")
         if owner not in subagents:
-            fail(f"{tool_id}: unknown owner_agent {owner}")
-        if not isinstance(tool.get("input_schema"), dict) or not isinstance(tool.get("output_schema"), dict):
-            fail(f"{tool_id}: input_schema/output_schema must be objects")
+            fail(f"{tool_id}: unknown worker_agent {owner}")
+        if not isinstance(tool.get("input_contract"), dict) or not isinstance(tool.get("output_contract"), dict):
+            fail(f"{tool_id}: input_contract/output_contract must be objects")
         if not str(tool.get("invocation_log_policy") or ""):
             fail(f"{tool_id}: invocation_log_policy required")
         if bool(tool.get("write_operation")) and "write" not in str(tool.get("permission_scope") or ""):

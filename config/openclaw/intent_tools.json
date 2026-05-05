@@ -60,7 +60,42 @@
       "idempotency": "station_start_end_model_window",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_book_reservation_window.py && python scripts/timescar/test_timescar_dm_keep_cancel.py && python scripts/timescar/test_timescar_book_reservation_window.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_book_window",
+      "domain": "timescar",
+      "actions": [
+        "book"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "预订",
+        "預訂",
+        "预约一单",
+        "订一单",
+        "再预订",
+        "一单",
+        "车辆",
+        "车型",
+        "可以预订的车",
+        "可预订的车",
+        "能预订的车",
+        "换车",
+        "换成",
+        "TimesCar",
+        "timescar",
+        "惯用",
+        "早9点",
+        "21点"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "postcheck_contract": "station_start_end_model_window",
+      "safety": "write"
     },
     {
       "intent_id": "timescar.reservation_keep",
@@ -99,7 +134,33 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_keep",
+      "domain": "timescar",
+      "actions": [
+        "status"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "订车",
+        "预约",
+        "这单",
+        "订单",
+        "TimesCar",
+        "timescar",
+        "保留",
+        "不要取消",
+        "不取消",
+        "keep"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "safety": "readonly"
     },
     {
       "intent_id": "timescar.reservation_cancel_status",
@@ -143,7 +204,38 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_cancel_status",
+      "domain": "timescar",
+      "actions": [
+        "status"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "订车",
+        "预约",
+        "这单",
+        "订单",
+        "TimesCar",
+        "timescar",
+        "取消",
+        "取消了吗",
+        "取消了么",
+        "取消成功",
+        "是否取消",
+        "有没有取消",
+        "还在吗",
+        "还在不在",
+        "状态"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "safety": "readonly"
     },
     {
       "intent_id": "timescar.reservation_cancel",
@@ -192,7 +284,42 @@
       "idempotency": "target_booking_absent_after_success",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_cancel_reservation.py && python scripts/timescar/test_timescar_dm_keep_cancel.py && python scripts/timescar/test_timescar_cancel_reservation.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_cancel",
+      "domain": "timescar",
+      "actions": [
+        "cancel"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "订车",
+        "预约",
+        "这单",
+        "订单",
+        "刚刚这单",
+        "刚才这单",
+        "TimesCar",
+        "timescar",
+        "取消这单",
+        "这单取消",
+        "把这单取消",
+        "刚刚这单取消",
+        "刚才这单取消",
+        "取消掉",
+        "取消订单",
+        "取消预约",
+        "取消订车",
+        "cancel"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "postcheck_contract": "target_booking_absent_after_success",
+      "safety": "write"
     },
     {
       "intent_id": "timescar.reservation_query",
@@ -234,7 +361,36 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_query",
+      "domain": "timescar",
+      "actions": [
+        "query"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "订车",
+        "预约",
+        "TimesCar",
+        "timescar",
+        "未来一周",
+        "一週間",
+        "检查",
+        "查询",
+        "查看",
+        "看看",
+        "列表",
+        "记录",
+        "未来"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "safety": "readonly"
     },
     {
       "intent_id": "timescar.reservation_adjust_start",
@@ -274,7 +430,33 @@
       "idempotency": "ledger_by_normalized_dm_text",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_adjust_reservation_window.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "tool_stdout"
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_adjust_start",
+      "domain": "timescar",
+      "actions": [
+        "adjust"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "订车",
+        "预约",
+        "TimesCar",
+        "timescar",
+        "变更",
+        "开始时间",
+        "后天",
+        "延迟",
+        "延期"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "postcheck_contract": "ledger_by_normalized_dm_text",
+      "safety": "write"
     },
     {
       "intent_id": "news.cron_run",
@@ -318,7 +500,31 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/openclaw/run_job_by_name.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "cron_ack"
+      "reply_policy": "cron_ack",
+      "capability_id": "news.cron_run",
+      "domain": "news",
+      "actions": [
+        "run"
+      ],
+      "worker_agent": "newsWorker",
+      "prompt_hints": [
+        "新闻",
+        "播报",
+        "news",
+        "触发",
+        "重跑",
+        "跑一轮",
+        "补跑",
+        "执行"
+      ],
+      "input_contract": {
+        "type": "cron_job_from_text"
+      },
+      "output_contract": {
+        "type": "cron_ack",
+        "requires_trace": true
+      },
+      "safety": "readonly"
     },
     {
       "intent_id": "weather.cron_run",
@@ -354,7 +560,30 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py",
       "failure_policy": "reply_failure_and_record_gap",
-      "reply_policy": "cron_ack"
+      "reply_policy": "cron_ack",
+      "capability_id": "weather.cron_run",
+      "domain": "weather",
+      "actions": [
+        "run"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "天气",
+        "weather",
+        "触发",
+        "重跑",
+        "跑一轮",
+        "补跑",
+        "执行"
+      ],
+      "input_contract": {
+        "type": "fixed_cron_job"
+      },
+      "output_contract": {
+        "type": "cron_ack",
+        "requires_trace": true
+      },
+      "safety": "readonly"
     },
     {
       "intent_id": "weather.dm.query",
@@ -406,7 +635,41 @@
         "source": "agent_society_dm_gap_runner",
         "safety_class": "auto_safe_readonly",
         "status": "promoted_sample"
-      }
+      },
+      "capability_id": "weather.dm.query",
+      "domain": "weather",
+      "actions": [
+        "query"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "天气",
+        "天気",
+        "weather",
+        "风",
+        "風",
+        "能见度",
+        "視程",
+        "可視性",
+        "明天",
+        "后天",
+        "今天",
+        "预报",
+        "查询",
+        "看看",
+        "东京",
+        "東京",
+        "长野",
+        "長野"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "safety": "readonly"
     }
   ]
 }
