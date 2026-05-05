@@ -43,6 +43,16 @@
       "rollback": "Disable browserWorker dispatch and fall back to OpenClaw browser plugin."
     },
     {
+      "skill_id": "web.public_research",
+      "version": "1.0.0",
+      "domain": "web",
+      "owner_agent": "researchWorker",
+      "entrypoints": ["scripts/openclaw/web_research_tool.py", "scripts/openclaw/helpers/browser_cdp_human.py"],
+      "verify_commands": ["python -m pytest -q scripts/openclaw/test_web_research_tool.py"],
+      "publish_status": "published",
+      "rollback": "Disable openclaw.web.research in config/openclaw/intent_tools.json and keep web awareness docs only."
+    },
+    {
       "skill_id": "config.apply_verify",
       "version": "1.0.0",
       "domain": "config",

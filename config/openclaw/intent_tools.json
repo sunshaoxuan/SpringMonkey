@@ -670,6 +670,89 @@
         "requires_trace": true
       },
       "safety": "readonly"
+    },
+    {
+      "intent_id": "web.public_research",
+      "tool_id": "openclaw.web.research",
+      "description": "Research public web information from owner DM using search, fetch, and browser fallback evidence.",
+      "owner_agent": "researchWorker",
+      "patterns": [
+        "查一下",
+        "搜一下",
+        "搜索",
+        "联网",
+        "最新",
+        "现在",
+        "确认",
+        "这个链接",
+        "网站",
+        "公开信息",
+        "web",
+        "search"
+      ],
+      "required_any": [
+        "查一下",
+        "搜一下",
+        "搜索",
+        "最新",
+        "现在",
+        "确认",
+        "链接",
+        "网站",
+        "能打开吗",
+        "是否宕机"
+      ],
+      "entrypoint": "scripts/openclaw/web_research_tool.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true,
+        "requires_network_evidence": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/web_research_tool.py && python -m pytest -q scripts/openclaw/test_web_research_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "web.public_research",
+      "domain": "web",
+      "actions": [
+        "research"
+      ],
+      "worker_agent": "researchWorker",
+      "prompt_hints": [
+        "查一下",
+        "搜一下",
+        "搜索",
+        "联网",
+        "最新",
+        "现在",
+        "确认",
+        "这个链接",
+        "网站",
+        "公开信息",
+        "web",
+        "search",
+        "能打开吗",
+        "是否宕机"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "web_research",
+        "requires_network_attempt": true,
+        "requires_source_or_concrete_failure": true
+      },
+      "safety": "readonly"
     }
   ]
 }

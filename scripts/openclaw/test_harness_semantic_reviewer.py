@@ -48,3 +48,34 @@ def test_reviewer_rejects_write_tool_marked_readonly() -> None:
     review = review_intent_frame(frame(action="cancel", safety="readonly"), tool("timescar.dm.cancel_next"), "取消这单")
     assert not review.passed
     assert review.conflict_type == "safety_mismatch"
+
+
+def test_reviewer_accepts_readonly_web_research() -> None:
+    review = review_intent_frame(
+        frame(
+            domain="web",
+            action="research",
+            canonical_text="联网查询 OpenClaw 最新版本",
+            parameters={},
+            tool_candidates=[{"tool_id": "openclaw.web.research"}],
+        ),
+        tool("openclaw.web.research"),
+        "帮我查一下 OpenClaw 最新版本",
+    )
+    assert review.passed
+
+
+def test_reviewer_rejects_unsafe_web_research() -> None:
+    review = review_intent_frame(
+        frame(
+            domain="web",
+            action="research",
+            canonical_text="登录某网站帮我改配置",
+            parameters={},
+            tool_candidates=[{"tool_id": "openclaw.web.research"}],
+        ),
+        tool("openclaw.web.research"),
+        "登录某网站帮我改配置",
+    )
+    assert not review.passed
+    assert review.conflict_type == "unsafe_web_research"

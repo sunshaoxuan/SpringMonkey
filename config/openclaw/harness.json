@@ -54,6 +54,12 @@
       "default_permissions": ["invoke_read_tool"]
     },
     {
+      "id": "researchWorker",
+      "role": "run public read-only web search, fetch, browser fallback, source capture, and Chinese summary",
+      "may_execute_tools": true,
+      "default_permissions": ["invoke_read_tool", "invoke_public_web_research"]
+    },
+    {
       "id": "browserWorker",
       "role": "own browser/CDP sessions, login state, confirmation pages, screenshots, and post-checks",
       "may_execute_tools": true,

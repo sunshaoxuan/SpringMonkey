@@ -18,8 +18,8 @@ RUNTIME_ENV_FILES = (
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
 CONVERSATION_MODES = {"chat", "task", "clarification", "gap"}
-DOMAINS = {"timescar", "weather", "news", "cron", "config", "general", "unknown"}
-ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "chat", "gap"}
+DOMAINS = {"timescar", "weather", "news", "cron", "config", "web", "general", "unknown"}
+ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "research", "chat", "gap"}
 SAFETY_CLASSES = {"readonly", "write", "credential", "destructive", "ambiguous"}
 
 
@@ -177,14 +177,17 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Return strict JSON only. Do not let registry hints replace semantic understanding. "
         "Schema: {conversation_mode, domain, action, canonical_text, context_refs, parameters, safety, result_contract, tool_candidates, confidence, reason}. "
         "conversation_mode: chat|task|clarification|gap. "
-        "domain: timescar|weather|news|cron|config|general|unknown. "
-        "action: query|book|cancel|status|adjust|run|chat|gap. "
+        "domain: timescar|weather|news|cron|config|web|general|unknown. "
+        "action: query|book|cancel|status|adjust|run|research|chat|gap. "
         "safety: readonly|write|credential|destructive|ambiguous. "
         "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from the registry. "
         "For follow-ups, infer the complete intent from context and write it in canonical_text. "
         "For time ranges, output duration_hours, offset_hours, relation. "
         "Example: 未来一个月 means duration_hours=720 offset_hours=0 relation=within. "
         "Example: 未来一个月以后 means duration_hours=720 offset_hours=720 relation=after. "
+        "Example: 帮我查一下 XXX 最新情况 means domain=web action=research and tool candidate openclaw.web.research. "
+        "Example: 这个链接说了什么 means domain=web action=research and include the URL in parameters. "
+        "Example: 现在某服务是否宕机 means domain=web action=research and require current public sources. "
         "If the user asks normal conversation, set conversation_mode=chat and no tool candidates. "
         "If model cannot safely bind a task, set conversation_mode=clarification or gap."
     )

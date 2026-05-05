@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any
 
 from harness_intent_agent import IntentFrame
@@ -13,6 +14,12 @@ class SemanticReview:
     passed: bool
     reason: str
     conflict_type: str = ""
+
+
+WEB_RESEARCH_UNSAFE_RE = re.compile(
+    r"(登录|登入|log\s?in|sign\s?in|购买|付款|支付|预订|预约|订车|取消|修改|配置|设置|提交|删除|密码|token|secret|密钥|账号|account)",
+    re.IGNORECASE,
+)
 
 
 def review_intent_frame(frame: IntentFrame, tool: dict[str, Any] | None, original_text: str) -> SemanticReview:
@@ -41,4 +48,10 @@ def review_intent_frame(frame: IntentFrame, tool: dict[str, Any] | None, origina
                     f"model time parameters conflict with verifier: model duration={duration_i} offset={offset_i}; verifier duration={text_spec.duration_hours} offset={text_spec.offset_hours}",
                     "semantic_verifier_conflict",
                 )
+    if frame.domain == "web" and frame.action == "research":
+        if frame.safety != "readonly":
+            return SemanticReview(False, "web research must be readonly", "safety_mismatch")
+        combined = f"{original_text}\n{frame.canonical_text}"
+        if WEB_RESEARCH_UNSAFE_RE.search(combined):
+            return SemanticReview(False, "web research cannot handle write, credential, booking, or account operations", "unsafe_web_research")
     return SemanticReview(True, "semantic frame accepted")

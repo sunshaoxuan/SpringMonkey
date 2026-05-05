@@ -64,6 +64,14 @@ def requested_timescar_query_hours(text: str) -> int | None:
 def build_result_contract(tool: dict[str, Any], text: str, args: dict[str, Any]) -> dict[str, Any]:
     tool_id = str(tool.get("tool_id") or "")
     contract: dict[str, Any] = {"tool_id": tool_id}
+    if tool_id == "openclaw.web.research":
+        contract.update(
+            {
+                "type": "web_research",
+                "requires_network_attempt": True,
+                "requires_source_or_concrete_failure": True,
+            }
+        )
     if tool_id == "timescar.dm.query":
         spec = requested_range_spec(text)
         requested_hours = spec.duration_hours if spec else None
@@ -153,6 +161,26 @@ def parse_timescar_output_range(output: str) -> dict[str, Any]:
 
 
 def evaluate_result(tool: dict[str, Any], output: str, result_contract: dict[str, Any]) -> ResultEvaluation:
+    if str(tool.get("tool_id") or "") == "openclaw.web.research":
+        actual = parse_web_research_evidence(output)
+        attempted = bool(actual.get("search_attempted") or actual.get("fetch_attempted") or actual.get("browser_attempted"))
+        if not attempted:
+            return ResultEvaluation(
+                False,
+                "web research output did not show any search/fetch/browser attempt",
+                result_contract,
+                actual,
+                "research_not_attempted",
+            )
+        if not actual.get("sources") and not actual.get("failure"):
+            return ResultEvaluation(
+                False,
+                "web research output had neither sources nor concrete failure reason",
+                result_contract,
+                actual,
+                "research_missing_evidence",
+            )
+        return ResultEvaluation(True, "web research output includes network evidence", result_contract, actual)
     if str(tool.get("tool_id") or "") != "timescar.dm.query":
         return ResultEvaluation(True, "no mechanical evaluator required for this tool", result_contract, {})
     actual = parse_timescar_output_range(output)
@@ -185,6 +213,27 @@ def evaluate_result(tool: dict[str, Any], output: str, result_contract: dict[str
             "registered_tool_parameter_gap",
         )
     return ResultEvaluation(True, "TimesCar query output satisfies requested range", result_contract, actual)
+
+
+def parse_web_research_evidence(output: str) -> dict[str, Any]:
+    match = re.search(
+        r"检索证据：.*?search_attempted=(true|false).*?fetch_attempted=(true|false).*?browser_attempted=(true|false).*?sources=(\d+)",
+        output or "",
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return {}
+    failure = ""
+    reason_match = re.search(r"原因：([^\n]+)", output or "")
+    if reason_match:
+        failure = reason_match.group(1).strip()
+    return {
+        "search_attempted": match.group(1).lower() == "true",
+        "fetch_attempted": match.group(2).lower() == "true",
+        "browser_attempted": match.group(3).lower() == "true",
+        "sources": int(match.group(4)),
+        "failure": failure,
+    }
 
 
 def is_range_correction(text: str) -> bool:

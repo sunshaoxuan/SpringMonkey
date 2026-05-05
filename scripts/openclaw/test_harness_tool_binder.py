@@ -43,3 +43,17 @@ def test_unregistered_domain_action_becomes_gap() -> None:
     binding = bind_tool(frame("config", "query"), registry())
     assert binding.status == "gap"
     assert binding.tool is None
+
+
+def test_web_research_binds_registered_tool() -> None:
+    binding = bind_tool(frame("web", "research"), registry())
+    assert binding.status == "bound"
+    assert binding.tool and binding.tool["tool_id"] == "openclaw.web.research"
+
+
+def test_missing_web_research_tool_reports_system_gap() -> None:
+    data = registry()
+    data["tools"] = [tool for tool in data["tools"] if tool["tool_id"] != "openclaw.web.research"]
+    binding = bind_tool(frame("web", "research"), data)
+    assert binding.status == "gap"
+    assert "missing_registered_public_research_tool" in binding.reason

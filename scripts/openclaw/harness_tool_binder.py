@@ -37,4 +37,6 @@ def bind_tool(frame: IntentFrame, registry: dict[str, Any]) -> ToolBinding:
         action_ok = frame.action in actions
         if domain_ok and action_ok:
             return ToolBinding("bound", tool, f"bound by capability domain/action from IntentFrame: {frame.domain}/{frame.action}", frame.confidence)
+    if frame.domain == "web" and frame.action == "research":
+        return ToolBinding("gap", None, "missing_registered_public_research_tool: no registered web research tool", frame.confidence)
     return ToolBinding("gap", None, f"no registered tool for IntentFrame domain/action: {frame.domain}/{frame.action}", frame.confidence)

@@ -88,6 +88,32 @@ def test_intent_frame_chat_has_no_tool() -> None:
     assert frame.tool_candidates == []
 
 
+def test_intent_frame_web_research() -> None:
+    frame = agent.infer_intent_frame(
+        "帮我查一下 OpenClaw 最新版本",
+        context="",
+        registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "web",
+                "action": "research",
+                "canonical_text": "联网查询 OpenClaw 最新版本并用中文总结。",
+                "context_refs": [],
+                "parameters": {"freshness": "latest", "language": "zh-CN"},
+                "safety": "readonly",
+                "result_contract": {"type": "web_research"},
+                "tool_candidates": [{"tool_id": "openclaw.web.research", "confidence": 0.97, "reason": "public web research"}],
+                "confidence": 0.97,
+                "reason": "public information query",
+            }
+        ),
+    )
+    assert frame.domain == "web"
+    assert frame.action == "research"
+    assert frame.tool_candidates[0]["tool_id"] == "openclaw.web.research"
+
+
 def test_invalid_intent_frame_is_rejected() -> None:
     try:
         agent.validate_intent_frame({"conversation_mode": "task", "domain": "bad", "action": "query"})
