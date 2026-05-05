@@ -98,3 +98,39 @@ def test_discord_patch_does_not_add_business_router_success_prefix() -> None:
     source = (Path(__file__).resolve().parent / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "汤猴私信任务已由通用事件路由处理。" not in source
     assert "汤猴私信任务路由失败" in source
+
+
+def test_router_json_exposes_report_envelope_and_context_summary() -> None:
+    import intent_tool_router as router
+    import harness_dispatcher
+    from harness_intent_agent import IntentFrame
+    from unittest.mock import patch
+
+    registry = router.load_registry()
+    frame = IntentFrame(
+        conversation_mode="task",
+        domain="timescar",
+        action="cancel",
+        canonical_text="取消 TimesCar 明天预约",
+        context_refs=[],
+        parameters={},
+        safety="write",
+        result_contract={},
+        tool_candidates=[{"tool_id": "timescar.dm.cancel_next", "confidence": 0.95, "reason": "test"}],
+        confidence=0.95,
+        reason="test",
+    )
+    with tempfile.TemporaryDirectory() as tmp, patch.object(harness_dispatcher, "infer_intent_frame", return_value=frame):
+        result = router.handle(
+            "请取消明天的TimesCar预约",
+            "discord_public",
+            "999666719356354610",
+            "2026-05-05T00:00:00+09:00",
+            registry_override=registry,
+            kernel_root=Path(tmp) / "kernel",
+        )
+    assert result.route_kind == "governance_denied"
+    assert result.report
+    assert result.report["visibility"] == "owner_dm"
+    assert result.report["failure_type"] == "governance_denied"
+    assert result.context_summary and result.context_summary["trace_id"].startswith("trace_")

@@ -65,6 +65,8 @@ class RouterResult:
     args: dict[str, Any]
     returncode: int = 0
     route_kind: str = "unknown"
+    report: dict[str, Any] | None = None
+    context_summary: dict[str, Any] | None = None
 
 
 def utc_now() -> str:
@@ -765,7 +767,16 @@ def handle(
         tool,
         asdict(frame) if frame else None,
     )
-    return RouterResult(result.status, result.reply, classification, result.args, result.returncode, result.route_kind)
+    return RouterResult(
+        result.status,
+        result.reply,
+        classification,
+        result.args,
+        result.returncode,
+        result.route_kind,
+        asdict(result.report) if result.report else None,
+        result.context_summary,
+    )
 
 
 def main() -> int:
