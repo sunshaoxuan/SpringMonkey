@@ -1016,6 +1016,16 @@ def write_selected_items_and_workers(
             region = "world"
         selected[region].append(item)
 
+    dedupe_report: dict[str, list[dict[str, Any]]] = {}
+    for section, items in list(selected.items()):
+        kept, dropped = event_level_dedupe_items(items, section)
+        selected[section] = kept
+        if dropped:
+            dedupe_report[section] = dropped
+
+    if dedupe_report:
+        save_json(run_dir / "event_dedupe_dropped.json", {"version": 1, "sections": dedupe_report})
+
     for items in selected.values():
         items.sort(key=lambda x: int(x.get("published_ts") or 0), reverse=True)
 
@@ -1031,6 +1041,139 @@ def write_selected_items_and_workers(
             lines.append(f"• {fallback_line}")
         (run_dir / f"worker_{bid}.md").write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
     return selected
+
+
+EVENT_STOPWORDS = {
+    "china",
+    "chinese",
+    "says",
+    "said",
+    "report",
+    "reports",
+    "latest",
+    "update",
+    "news",
+    "people",
+    "person",
+    "state",
+    "media",
+    "according",
+    "after",
+    "over",
+    "against",
+    "with",
+    "from",
+    "that",
+    "this",
+    "have",
+    "has",
+    "will",
+    "about",
+}
+
+
+def _news_event_text(item: dict[str, Any]) -> str:
+    return " ".join(
+        str(item.get(key) or "")
+        for key in ("summary_zh", "source_title", "snippet")
+        if str(item.get(key) or "").strip()
+    )
+
+
+def event_tokens(text: str) -> set[str]:
+    """Tokenize a processed news item for same-event duplicate detection.
+
+    This is intentionally not source-aware: different outlets covering the same
+    real-world event should collide even when URL/title fingerprints differ.
+    """
+    lowered = (text or "").lower()
+    tokens: set[str] = set()
+    for word in re.findall(r"[a-z][a-z0-9-]{2,}", lowered):
+        if word not in EVENT_STOPWORDS:
+            tokens.add(word)
+    for number in re.findall(r"\d+", lowered):
+        tokens.add(f"n:{number}")
+    cjk = "".join(re.findall(r"[\u4e00-\u9fff]+", lowered))
+    for size in (2, 3, 4):
+        for idx in range(0, max(0, len(cjk) - size + 1)):
+            gram = cjk[idx : idx + size]
+            if gram and gram not in {"中国", "新闻", "报道", "表示", "指出"}:
+                tokens.add(gram)
+    return tokens
+
+
+def event_key_for_item(item: dict[str, Any], section: str) -> str:
+    tokens = event_tokens(_news_event_text(item))
+    # Stable, inspectable key; similarity clustering below is the real matcher.
+    core = sorted(tokens)[:12]
+    raw = "|".join([section, *core])
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def event_similarity(left: dict[str, Any], right: dict[str, Any]) -> float:
+    lt = event_tokens(_news_event_text(left))
+    rt = event_tokens(_news_event_text(right))
+    if not lt or not rt:
+        return 0.0
+    overlap = len(lt & rt)
+    base = min(len(lt), len(rt))
+    return overlap / max(base, 1)
+
+
+def event_item_score(item: dict[str, Any]) -> tuple[int, int, int]:
+    source = " ".join(str(item.get(key) or "").lower() for key in ("source_feed", "source_url", "source_title"))
+    source_score = 0
+    if "reuters" in source:
+        source_score += 40
+    if "apnews" in source or "ap-news" in source or "ap.org" in source:
+        source_score += 30
+    if "bbc" in source:
+        source_score += 25
+    if "npr" in source:
+        source_score += 20
+    if "scmp" in source:
+        source_score += 18
+    summary_len = len(str(item.get("summary_zh") or ""))
+    return (source_score, int(item.get("published_ts") or 0), summary_len)
+
+
+def event_level_dedupe_items(
+    items: list[dict[str, Any]],
+    section: str,
+    *,
+    threshold: float = 0.52,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    clusters: list[dict[str, Any]] = []
+    dropped: list[dict[str, Any]] = []
+    for item in items:
+        event_key = event_key_for_item(item, section)
+        item["event_key"] = event_key
+        best_cluster: dict[str, Any] | None = None
+        best_similarity = 0.0
+        for cluster in clusters:
+            similarity = max(event_similarity(item, existing) for existing in cluster["items"])
+            if similarity > best_similarity:
+                best_similarity = similarity
+                best_cluster = cluster
+        if best_cluster is None or best_similarity < threshold:
+            clusters.append({"event_key": event_key, "items": [item]})
+            continue
+        best_cluster["items"].append(item)
+
+    kept: list[dict[str, Any]] = []
+    for cluster in clusters:
+        members = cluster["items"]
+        winner = max(members, key=event_item_score)
+        winner["event_key"] = cluster["event_key"]
+        kept.append(winner)
+        for item in members:
+            if item is winner:
+                continue
+            item["event_key"] = cluster["event_key"]
+            item["dropped_reason"] = "same_event_duplicate"
+            item["kept_item_id"] = winner.get("item_id", "")
+            dropped.append(item)
+    return kept, dropped
 
 
 def strip_think_blocks(text: str) -> str:

@@ -387,6 +387,80 @@ class TestPlanAndTemplate(unittest.TestCase):
             self.assertEqual(len(selected["japan"]), 1)
             self.assertEqual(len(selected["world"]), 0)
 
+    def test_write_selected_items_dedupes_same_news_event_across_sources(self):
+        job = self.m.job_spec(self.cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(self.cfg, job)
+        with tempfile.TemporaryDirectory() as td:
+            run_dir = Path(td)
+            selected = self.m.write_selected_items_and_workers(
+                run_dir,
+                plan,
+                [
+                    {
+                        "item_id": "npr",
+                        "original_batch": "china",
+                        "region": "china",
+                        "category": "society",
+                        "source_feed": "npr",
+                        "source_title": "An explosion at a fireworks plant in China kills at least 26 people",
+                        "summary_zh": "中国湖南浏阳一烟花厂爆炸致至少26人死亡、61人受伤。",
+                        "source_url": "https://npr.example/fireworks",
+                        "published_ts": 100,
+                        "included": True,
+                    },
+                    {
+                        "item_id": "bbc",
+                        "original_batch": "china",
+                        "region": "china",
+                        "category": "society",
+                        "source_feed": "bbc",
+                        "source_title": "Explosion at China fireworks factory kills 26 people",
+                        "summary_zh": "中国湖南浏阳一烟花厂爆炸造成26人死亡、61人受伤。",
+                        "source_url": "https://bbc.example/fireworks",
+                        "published_ts": 200,
+                        "included": True,
+                    },
+                    {
+                        "item_id": "scmp",
+                        "original_batch": "china",
+                        "region": "china",
+                        "category": "society",
+                        "source_feed": "scmp",
+                        "source_title": "Death toll rises to 26 in China’s latest fireworks factory explosion",
+                        "summary_zh": "湖南浏阳一烟花厂爆炸死亡人数升至26人，另有61人受伤。",
+                        "source_url": "https://scmp.example/fireworks",
+                        "published_ts": 300,
+                        "included": True,
+                    },
+                    {
+                        "item_id": "ev",
+                        "original_batch": "china",
+                        "region": "china",
+                        "category": "economy",
+                        "source_feed": "cnbc",
+                        "source_title": "BYD's passenger EV sales drop",
+                        "summary_zh": "比亚迪4月乘用电动车交付量连续第八个月下滑。",
+                        "source_url": "https://cnbc.example/byd",
+                        "published_ts": 400,
+                        "included": True,
+                    },
+                ],
+                "本节无合格新增新闻条目。",
+            )
+            dropped = json.loads((run_dir / "event_dedupe_dropped.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(selected["china"]), 2)
+        self.assertEqual(len([x for x in selected["china"] if "烟花厂爆炸" in x["summary_zh"]]), 1)
+        self.assertTrue(selected["china"][0].get("event_key") or selected["china"][1].get("event_key"))
+        self.assertEqual(len(dropped["sections"]["china"]), 2)
+        self.assertTrue(all(x["dropped_reason"] == "same_event_duplicate" for x in dropped["sections"]["china"]))
+
+    def test_event_similarity_detects_chinese_same_event(self):
+        a = {"summary_zh": "中国湖南浏阳一烟花厂爆炸致至少26人死亡、61人受伤。"}
+        b = {"summary_zh": "湖南浏阳一烟花厂爆炸死亡人数升至26人，另有61人受伤。"}
+        c = {"summary_zh": "比亚迪4月乘用电动车交付量连续第八个月下滑。"}
+        self.assertGreaterEqual(self.m.event_similarity(a, b), 0.52)
+        self.assertLess(self.m.event_similarity(a, c), 0.2)
+
     def test_classification_prefers_region_over_content(self):
         f = _load_fetcher()
         self.assertEqual(
