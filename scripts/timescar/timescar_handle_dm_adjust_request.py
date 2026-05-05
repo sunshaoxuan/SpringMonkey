@@ -23,7 +23,7 @@ _OPENCLAW_DIR = Path(__file__).resolve().parents[1] / "openclaw"
 if str(_OPENCLAW_DIR) not in sys.path:
     sys.path.insert(0, str(_OPENCLAW_DIR))
 
-from nl_time_range import requested_range_hours
+from nl_time_range import requested_range_hours, requested_range_spec
 
 TZ = ZoneInfo("Asia/Tokyo")
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
@@ -185,6 +185,13 @@ def parse_query_hours(text: str) -> int:
     return int(requested_range_hours(text, default=24) or 24)
 
 
+def parse_query_window(text: str) -> tuple[int, int]:
+    spec = requested_range_spec(text, default=24)
+    if spec is None:
+        return 0, 24
+    return spec.offset_hours, spec.duration_hours
+
+
 def interpret_book_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
     raw = text.strip()
     any_available_followup = any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成"))
@@ -201,8 +208,9 @@ def interpret_book_request(text: str, message_time: datetime) -> tuple[datetime,
 
 
 def format_query_result(text: str, message_time: datetime) -> str:
-    hours = parse_query_hours(text)
-    end_time = message_time + timedelta(hours=hours)
+    offset_hours, hours = parse_query_window(text)
+    start_time = message_time + timedelta(hours=offset_hours)
+    end_time = start_time + timedelta(hours=hours)
     reservations = []
     for reservation in fetch_reservations():
         try:
@@ -210,12 +218,12 @@ def format_query_result(text: str, message_time: datetime) -> str:
             return_at = parse_iso_minute(str(reservation.get("return") or ""))
         except Exception:
             continue
-        if message_time <= start <= end_time:
+        if start_time <= start <= end_time:
             reservations.append((start, return_at, reservation))
     reservations.sort(key=lambda item: item[0])
     header = [
         f"TimesCar 预约查询结果",
-        f"范围：{format_iso_minute(message_time)} 至 {format_iso_minute(end_time)}（JST）",
+        f"范围：{format_iso_minute(start_time)} 至 {format_iso_minute(end_time)}（JST）",
     ]
     if not reservations:
         return "\n".join(header + ["状态：未来范围内没有即将开始的预约"])

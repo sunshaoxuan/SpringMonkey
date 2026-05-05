@@ -5,12 +5,12 @@ import json
 import os
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from harness_intent_completion import complete_implicit_intent
-from nl_time_range import requested_range_hours
+from nl_time_range import requested_range_hours, requested_range_spec
 
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
@@ -65,14 +65,26 @@ def build_result_contract(tool: dict[str, Any], text: str, args: dict[str, Any])
     tool_id = str(tool.get("tool_id") or "")
     contract: dict[str, Any] = {"tool_id": tool_id}
     if tool_id == "timescar.dm.query":
-        requested_hours = requested_timescar_query_hours(text)
+        spec = requested_range_spec(text)
+        requested_hours = spec.duration_hours if spec else None
+        offset_hours = spec.offset_hours if spec else 0
         contract.update(
             {
                 "type": "timescar_query_range",
                 "requested_hours": requested_hours or 24,
+                "offset_hours": offset_hours,
+                "relation": spec.relation if spec else "within",
                 "explicit_range_requested": requested_hours is not None,
             }
         )
+        if args.get("message_timestamp"):
+            try:
+                start = parse_iso_minute(str(args["message_timestamp"])) + timedelta(hours=offset_hours)
+                end = start + timedelta(hours=int(contract["requested_hours"]))
+                contract["expected_range_start"] = start.isoformat(timespec="minutes")
+                contract["expected_range_end"] = end.isoformat(timespec="minutes")
+            except Exception:
+                pass
     return contract
 
 
@@ -94,6 +106,7 @@ def audit_intent(
     if selected_tool.get("tool_id") == "timescar.dm.query" and contract.get("explicit_range_requested"):
         requested_hours = int(contract["requested_hours"])
         corrected_args["_requested_range_hours"] = requested_hours
+        corrected_args["_requested_offset_hours"] = int(contract.get("offset_hours") or 0)
         corrected_args["_intent_audit_context_used"] = bool(context)
         if not TIMESCAR_QUERY_CONTEXT_PATTERN.search(str(corrected_args.get("text") or "")):
             corrected_args["text"] = f"查询 TimesCar 预约 {corrected_args.get('text') or text}"
@@ -143,6 +156,16 @@ def evaluate_result(tool: dict[str, Any], output: str, result_contract: dict[str
             "registered_tool_parameter_gap",
         )
     actual_hours = float(actual.get("range_hours") or 0)
+    expected_start = result_contract.get("expected_range_start")
+    actual_start = actual.get("range_start")
+    if expected_start and actual_start and parse_iso_minute(str(actual_start)) < parse_iso_minute(str(expected_start)) - timedelta(minutes=2):
+        return ResultEvaluation(
+            False,
+            f"expected range to start at {expected_start} but tool output started at {actual_start}",
+            result_contract,
+            actual,
+            "registered_tool_parameter_gap",
+        )
     if actual_hours + 0.1 < requested_hours:
         return ResultEvaluation(
             False,

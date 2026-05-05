@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 
 
@@ -60,6 +61,14 @@ RANGE_PATTERN = re.compile(
     r"(小时|小時|時間|h|H|天|日|周|週|星期|礼拜|禮拜|週間|个月|個月|か月|ヶ月|月)",
     re.IGNORECASE,
 )
+AFTER_SUFFIX_PATTERN = re.compile(r"(以后|以後|之后|之後|later)")
+
+
+@dataclass(frozen=True)
+class TimeRangeSpec:
+    duration_hours: int
+    offset_hours: int = 0
+    relation: str = "within"
 
 
 def parse_cjk_number(value: str) -> int | None:
@@ -93,6 +102,11 @@ def parse_cjk_number(value: str) -> int | None:
 
 
 def requested_range_hours(text: str, *, default: int | None = None, max_hours: int = 24 * 30) -> int | None:
+    spec = requested_range_spec(text, default=None, max_hours=max_hours)
+    return spec.duration_hours if spec else default
+
+
+def requested_range_spec(text: str, *, default: int | None = None, max_hours: int = 24 * 30) -> TimeRangeSpec | None:
     raw = text or ""
     for match in RANGE_PATTERN.finditer(raw):
         amount = parse_cjk_number(match.group(1))
@@ -100,7 +114,14 @@ def requested_range_hours(text: str, *, default: int | None = None, max_hours: i
         if amount is None or amount <= 0:
             continue
         hours = amount * UNIT_HOURS[unit]
-        return max(1, min(hours, max_hours))
+        duration = max(1, min(hours, max_hours))
+        suffix = raw[match.end() : match.end() + 8]
+        if AFTER_SUFFIX_PATTERN.search(suffix):
+            return TimeRangeSpec(duration_hours=duration, offset_hours=duration, relation="after")
+        return TimeRangeSpec(duration_hours=duration)
     if "48" in raw:
-        return min(48, max_hours)
-    return default
+        duration = min(48, max_hours)
+        return TimeRangeSpec(duration_hours=duration)
+    if default is None:
+        return None
+    return TimeRangeSpec(duration_hours=default)

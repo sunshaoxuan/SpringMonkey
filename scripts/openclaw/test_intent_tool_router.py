@@ -45,6 +45,11 @@ def test_natural_language_time_range_parameter_parser() -> None:
     assert nl_time_range.requested_range_hours("未来４８小時の予約") == 48
     assert nl_time_range.requested_range_hours("一个月的") == 24 * 30
     assert nl_time_range.requested_range_hours("未来1ヶ月の予約") == 24 * 30
+    after = nl_time_range.requested_range_spec("未来一个月以后")
+    assert after
+    assert after.duration_hours == 24 * 30
+    assert after.offset_hours == 24 * 30
+    assert after.relation == "after"
 
 
 def test_implicit_range_followup_inherits_recent_timescar_query_and_enriches_text() -> None:
@@ -59,8 +64,24 @@ def test_implicit_range_followup_inherits_recent_timescar_query_and_enriches_tex
         with patch.dict(router.os.environ, {"OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl")}):
             audit = router.audit_intent(text=args["text"], context="", selected_tool=tool, extracted_args=args)
     assert audit.result_contract["requested_hours"] == 24 * 30
+    assert audit.result_contract["offset_hours"] == 0
     assert audit.corrected_args["_intent_audit_implied_query"] is True
     assert "TimesCar" in audit.corrected_args["text"]
+
+
+def test_after_suffix_creates_offset_range_contract() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.query")
+    args = router.extract_args(tool, "未来一个月以后的呢？", "2026-05-05T20:50:00+09:00")
+    with tempfile.TemporaryDirectory() as tmp, patch.dict(
+        router.os.environ,
+        {"OPENCLAW_HARNESS_INTENT_AUDIT_LOG": str(Path(tmp) / "audit.jsonl")},
+    ):
+        audit = router.audit_intent(text=args["text"], context="TimesCar query", selected_tool=tool, extracted_args=args)
+    assert audit.result_contract["requested_hours"] == 24 * 30
+    assert audit.result_contract["offset_hours"] == 24 * 30
+    assert audit.result_contract["relation"] == "after"
+    assert audit.result_contract["expected_range_start"].startswith("2026-06-04T20:50")
 
 
 def test_intent_completion_records_inherited_query_and_parameter_override() -> None:
