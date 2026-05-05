@@ -202,13 +202,19 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
 
 
 def validate_intent_frame(data: dict[str, Any]) -> IntentFrame:
+    parameters = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+    time_range = parameters.get("time_range")
+    if isinstance(time_range, dict):
+        for key in ("duration_hours", "offset_hours", "relation"):
+            if key in time_range and key not in parameters:
+                parameters[key] = time_range[key]
     frame = IntentFrame(
         conversation_mode=str(data.get("conversation_mode") or "gap"),
         domain=str(data.get("domain") or "unknown"),
         action=str(data.get("action") or "gap"),
         canonical_text=str(data.get("canonical_text") or ""),
         context_refs=data.get("context_refs") if isinstance(data.get("context_refs"), list) else [],
-        parameters=data.get("parameters") if isinstance(data.get("parameters"), dict) else {},
+        parameters=parameters,
         safety=str(data.get("safety") or "ambiguous"),
         result_contract=data.get("result_contract") if isinstance(data.get("result_contract"), dict) else {},
         tool_candidates=data.get("tool_candidates") if isinstance(data.get("tool_candidates"), list) else [],

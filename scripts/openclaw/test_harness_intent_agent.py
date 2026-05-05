@@ -44,6 +44,25 @@ def test_intent_frame_timescar_month_query() -> None:
     assert frame.parameters["offset_hours"] == 0
 
 
+def test_intent_frame_normalizes_nested_time_range() -> None:
+    frame = agent.validate_intent_frame(
+        {
+            "conversation_mode": "task",
+            "domain": "timescar",
+            "action": "query",
+            "canonical_text": "查询未来一个月内的 TimesCar 订车记录。",
+            "parameters": {"time_range": {"duration_hours": 720, "offset_hours": 0, "relation": "within"}},
+            "safety": "readonly",
+            "tool_candidates": [{"tool_id": "timescar.dm.query", "confidence": 0.98, "reason": "registered query capability"}],
+            "confidence": 0.98,
+            "reason": "TimesCar reservation query",
+        }
+    )
+    assert frame.parameters["duration_hours"] == 720
+    assert frame.parameters["offset_hours"] == 0
+    assert frame.parameters["relation"] == "within"
+
+
 def test_intent_frame_chat_has_no_tool() -> None:
     frame = agent.infer_intent_frame(
         "你好",
