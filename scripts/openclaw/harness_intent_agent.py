@@ -141,7 +141,7 @@ def extract_json_object(text: str) -> dict[str, Any]:
     return data
 
 
-def call_model(messages: list[dict[str, str]], *, timeout: int = 15, temperature: float = 0) -> tuple[str, dict[str, Any]]:
+def call_model(messages: list[dict[str, str]], *, timeout: int = 30, temperature: float = 0) -> tuple[str, dict[str, Any]]:
     base_url, api_key, model = intent_model_config()
     payload = {"model": model, "messages": messages, "temperature": temperature}
     headers = {"Content-Type": "application/json"}
@@ -181,11 +181,16 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "action: query|book|cancel|status|adjust|run|research|chat|gap. "
         "safety: readonly|write|credential|destructive|ambiguous. "
         "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from the registry. "
+        "Choose the tool by the capability required to answer, not by a business keyword in the message. "
+        "If the user asks for public rules, policy, pricing, opening hours, current status, latest facts, or external knowledge about any business domain, choose domain=web action=research with openclaw.web.research unless a more specific registered read-only tool can answer directly. "
+        "Use gap only when no registered tool can plausibly answer or the request is unsafe/ambiguous; do not use gap merely because the topic name belongs to another domain. "
+        "Operational tools such as TimesCar query/book/cancel/adjust are for concrete reservations, not public policy knowledge. "
         "For follow-ups, infer the complete intent from context and write it in canonical_text. "
         "For time ranges, output duration_hours, offset_hours, relation. "
         "Example: 未来一个月 means duration_hours=720 offset_hours=0 relation=within. "
         "Example: 未来一个月以后 means duration_hours=720 offset_hours=720 relation=after. "
         "Example: 帮我查一下 XXX 最新情况 means domain=web action=research and tool candidate openclaw.web.research. "
+        "Example: 我订的车可以提前多久订 means public service policy research, so domain=web action=research, not timescar gap. "
         "Example: 这个链接说了什么 means domain=web action=research and include the URL in parameters. "
         "Example: 现在某服务是否宕机 means domain=web action=research and require current public sources. "
         "If the user asks normal conversation, set conversation_mode=chat and no tool candidates. "
@@ -242,7 +247,7 @@ def infer_intent_frame(
     *,
     context: str,
     registry: dict[str, Any],
-    timeout: int = 15,
+    timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
     messages = build_prompt(text, context, registry)

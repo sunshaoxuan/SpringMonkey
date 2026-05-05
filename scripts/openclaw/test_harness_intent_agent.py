@@ -114,6 +114,14 @@ def test_intent_frame_web_research() -> None:
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.web.research"
 
 
+def test_prompt_makes_model_choose_capability_not_business_keyword() -> None:
+    messages = agent.build_prompt("我订的车可以提前多久订？", "", load_registry())
+    system = messages[0]["content"]
+    assert "Choose the tool by the capability required to answer" in system
+    assert "public rules, policy" in system
+    assert "not timescar gap" in system
+
+
 def test_invalid_intent_frame_is_rejected() -> None:
     try:
         agent.validate_intent_frame({"conversation_mode": "task", "domain": "bad", "action": "query"})

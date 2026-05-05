@@ -674,7 +674,7 @@
     {
       "intent_id": "web.public_research",
       "tool_id": "openclaw.web.research",
-      "description": "Research public web information from owner DM using search, fetch, and browser fallback evidence.",
+      "description": "Research public web information, current facts, service rules, policy pages, pricing, opening hours, and external knowledge from owner DM using search, fetch, and browser fallback evidence.",
       "owner_agent": "researchWorker",
       "patterns": [
         "查一下",
@@ -687,6 +687,10 @@
         "这个链接",
         "网站",
         "公开信息",
+        "服务规则",
+        "政策",
+        "价格",
+        "营业时间",
         "web",
         "search"
       ],
@@ -700,7 +704,11 @@
         "链接",
         "网站",
         "能打开吗",
-        "是否宕机"
+        "是否宕机",
+        "服务规则",
+        "政策",
+        "价格",
+        "营业时间"
       ],
       "entrypoint": "scripts/openclaw/web_research_tool.py",
       "args_schema": {
@@ -739,6 +747,10 @@
         "这个链接",
         "网站",
         "公开信息",
+        "服务规则",
+        "政策",
+        "价格",
+        "营业时间",
         "web",
         "search",
         "能打开吗",
