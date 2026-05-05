@@ -29,6 +29,7 @@
 | 定时任务查看 | `openclaw cron list --json` + 宿主机 `cron/jobs.json` |
 | Discord 私信控制台入口 | `scripts/remote_fix_discord_dm_event_inbound.py`；必须走 Discord Gateway 事件触发，私信不得靠轮询作为正式入口 |
 | Discord 私信通用工具路由 | `config/openclaw/intent_tools.json` + `scripts/openclaw/intent_tool_router.py`；未命中必须 ack 并记录 capability gap |
+| OpenClaw Harness 分层运行契约 | `config/openclaw/harness.json` + `config/openclaw/skills.json` + `scripts/openclaw/verify_harness_registry.py`；Gateway 只 dispatch，长任务交给 owner SubAgent/Worker |
 | 仓库同步 | `REPOSITORY_GUARDRAILS.md` 与既定 git/自动化；少手改 dist |
 | 远程 OpenClaw 运维（本机统一入口） | `docs/ops/TOOLS_REGISTRY.md` + `scripts/openclaw_remote_cli.py` |
 | OpenClaw 运行时护栏 / 补丁 | `scripts/openclaw/ensure_agent_society_runtime_guard.sh`；相关 `patch_*.py` 与 `docs/runtime-notes/preemptive-compaction-guard-2026-04.md` |

@@ -8,6 +8,7 @@
       "intent_id": "timescar.reservation_book_window",
       "tool_id": "timescar.dm.book_window",
       "description": "Book a TimesCar reservation from owner DM for an explicit window using the habitual station and model.",
+      "owner_agent": "timescarWorker",
       "patterns": [
         "预订",
         "預訂",
@@ -45,7 +46,16 @@
         "force": true
       },
       "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
       "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "confirm_policy": "deterministic_tool_with_confirm_page_and_postcheck",
       "idempotency": "station_start_end_model_window",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_book_reservation_window.py && python scripts/timescar/test_timescar_dm_keep_cancel.py && python scripts/timescar/test_timescar_book_reservation_window.py",
@@ -56,6 +66,7 @@
       "intent_id": "timescar.reservation_keep",
       "tool_id": "timescar.dm.keep_next",
       "description": "Record owner decision to keep the next TimesCar reservation so cancel reminder skips it.",
+      "owner_agent": "timescarWorker",
       "patterns": [
         "订车",
         "预约",
@@ -76,7 +87,16 @@
         "force": false
       },
       "permission": "owner_dm",
+      "permission_scope": "owner_dm",
       "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout"
@@ -85,6 +105,7 @@
       "intent_id": "timescar.reservation_cancel_status",
       "tool_id": "timescar.dm.cancel_status",
       "description": "Confirm whether the recent TimesCar reservation cancellation succeeded; read-only status check.",
+      "owner_agent": "timescarWorker",
       "patterns": [
         "订车",
         "预约",
@@ -110,7 +131,16 @@
         "force": false
       },
       "permission": "owner_dm",
+      "permission_scope": "owner_dm",
       "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout"
@@ -119,6 +149,7 @@
       "intent_id": "timescar.reservation_cancel",
       "tool_id": "timescar.dm.cancel_next",
       "description": "Cancel the next TimesCar reservation from owner DM through a verified deterministic browser submitter.",
+      "owner_agent": "timescarWorker",
       "patterns": [
         "订车",
         "预约",
@@ -147,7 +178,16 @@
         "force": true
       },
       "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
       "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "confirm_policy": "deterministic_tool_with_confirm_page_and_postcheck",
       "idempotency": "target_booking_absent_after_success",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_cancel_reservation.py && python scripts/timescar/test_timescar_dm_keep_cancel.py && python scripts/timescar/test_timescar_cancel_reservation.py",
@@ -158,6 +198,7 @@
       "intent_id": "timescar.reservation_query",
       "tool_id": "timescar.dm.query",
       "description": "Query TimesCar reservations from Discord owner DM.",
+      "owner_agent": "timescarWorker",
       "patterns": [
         "订车",
         "预约",
@@ -179,7 +220,16 @@
         "force": false
       },
       "permission": "owner_dm",
+      "permission_scope": "owner_dm",
       "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout"
@@ -188,6 +238,7 @@
       "intent_id": "timescar.reservation_adjust_start",
       "tool_id": "timescar.dm.adjust_start",
       "description": "Adjust a TimesCar reservation start time from explicit Discord owner DM.",
+      "owner_agent": "timescarWorker",
       "patterns": [
         "订车",
         "预约",
@@ -207,7 +258,16 @@
         "force": true
       },
       "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
       "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "confirm_policy": "deterministic_tool_with_idempotency",
       "idempotency": "ledger_by_normalized_dm_text",
       "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_adjust_reservation_window.py",
@@ -218,6 +278,7 @@
       "intent_id": "news.cron_run",
       "tool_id": "openclaw.cron.run.news",
       "description": "Run formal news cron jobs by name; never generate ad hoc news text.",
+      "owner_agent": "newsWorker",
       "patterns": [
         "新闻",
         "播报",
@@ -243,7 +304,16 @@
         }
       },
       "permission": "owner_dm",
+      "permission_scope": "owner_dm",
       "write_operation": false,
+      "input_schema": {
+        "type": "cron_job_from_text"
+      },
+      "output_schema": {
+        "type": "cron_ack",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/openclaw/run_job_by_name.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "cron_ack"
@@ -252,6 +322,7 @@
       "intent_id": "weather.cron_run",
       "tool_id": "openclaw.cron.run.weather",
       "description": "Run formal weather cron job by name.",
+      "owner_agent": "toolWorker",
       "patterns": [
         "天气",
         "weather"
@@ -269,7 +340,16 @@
         "job_name": "weather-report-jst-0700"
       },
       "permission": "owner_dm",
+      "permission_scope": "owner_dm",
       "write_operation": false,
+      "input_schema": {
+        "type": "fixed_cron_job"
+      },
+      "output_schema": {
+        "type": "cron_ack",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "cron_ack"
@@ -278,6 +358,7 @@
       "intent_id": "weather.dm.query",
       "tool_id": "weather.dm.query",
       "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",
+      "owner_agent": "toolWorker",
       "patterns": [
         "天气",
         "天気",
@@ -306,7 +387,16 @@
         "force": false
       },
       "permission": "owner_dm",
+      "permission_scope": "owner_dm",
       "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/weather/handle_dm_weather_query.py && python scripts/weather/test_handle_dm_weather_query.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout",

@@ -204,6 +204,8 @@
 - `openclaw/intent_tool_router.py`：Discord owner DM 通用工具路由器；优先用大模型基于本次消息/上下文/注册表工具清单选择路由，本地硬匹配只作兜底；普通聊天直接回 DM，未命中任务进入 DM capability gap runner
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
+- `openclaw/verify_harness_registry.py`：校验 OpenClaw Harness manifest、skill registry、tool registry 的 SubAgent/权限/输出契约字段
+- `openclaw/harness_runtime.py` / `harness_context.py` / `harness_governance.py` / `harness_observability.py`：Harness v1 薄运行时；分别提供任务 envelope、上下文隔离、权限判定、工具调用/评价日志
 - `openclaw/test_intent_tool_router.py` / `openclaw/test_intent_tool_registry.py`：验证 TimesCar 查询/改单、新闻 cron 路由、DM gap promotion 与未命中 gap 记录
 - `openclaw/test_dm_capability_gap_runner.py`：验证 DM 安全只读 gap 会产出注册表工具候选，写操作 gap 不会自动执行
 - `openclaw/repair_legacy_gateway_config.py`：修复会阻断 Gateway 启动或通道加载的旧配置字段/不可用插件引用；用于服务进不了 `ready`、Discord 私信完全无响应、日志出现 `Unsupported channel: discord` 的故障

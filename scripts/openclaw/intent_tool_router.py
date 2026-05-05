@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
@@ -29,6 +30,9 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import run_gap
+from harness_governance import evaluate_tool_invocation
+from harness_observability import ToolInvocationRecord, record_tool_invocation
+from harness_runtime import make_id
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -545,6 +549,7 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
         cmd = [sys.executable, str(entrypoint), args["job_name"]]
     else:
         raise ValueError(f"unsupported execution mode: {mode}")
+    started = time.monotonic()
     proc = subprocess.run(
         cmd,
         cwd=REPO,
@@ -555,7 +560,22 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
         stderr=subprocess.PIPE,
         timeout=timeout_seconds,
     )
+    latency_ms = int((time.monotonic() - started) * 1000)
     append_tool_diagnostic(tool, args, proc.returncode, proc.stderr or "")
+    trace_id = str(args.get("_harness_trace_id") or make_id("trace"))
+    task_id = str(args.get("_harness_task_id") or make_id("task"))
+    record_tool_invocation(
+        ToolInvocationRecord(
+            trace_id=trace_id,
+            task_id=task_id,
+            tool_id=str(tool.get("tool_id") or ""),
+            owner_agent=str(tool.get("owner_agent") or "toolWorker"),
+            status="ok" if proc.returncode == 0 else "failed",
+            latency_ms=latency_ms,
+            result_summary=(proc.stdout or proc.stderr or "")[:700],
+            permission_scope=str(tool.get("permission_scope") or tool.get("permission") or ""),
+        )
+    )
     return proc.returncode, (proc.stdout or "").strip()
 
 
@@ -731,6 +751,24 @@ def handle(
 
     try:
         args = extract_args(classification.tool, text, message_timestamp)
+        decision = evaluate_tool_invocation(classification.tool, channel=channel, user_id=user_id)
+        if not decision.allowed:
+            return RouterResult(
+                "failed",
+                "\n".join(
+                    [
+                        "汤猴事件入口拒绝执行该工具。",
+                        f"工具：{classification.tool_id}",
+                        f"原因：{decision.reason}",
+                    ]
+                ),
+                classification,
+                args,
+                1,
+                route_kind="governance_denied",
+            )
+        args["_harness_trace_id"] = make_id("trace")
+        args["_harness_task_id"] = make_id("task")
         timeout_seconds = int(registry.get("defaults", {}).get("timeout_seconds") or 1800)
         returncode, output = run_tool(classification.tool, args, timeout_seconds)
         if is_executor_capability_gap(output):

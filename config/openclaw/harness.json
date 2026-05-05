@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "name": "OpenClaw Harness",
+  "description": "Machine-readable runtime harness map for gateway dispatch, subagents, governance, context, and observability.",
+  "layers": [
+    {
+      "id": "agent_runtime",
+      "components": ["task_runner", "agent_loop", "state_manager", "failure_recovery"],
+      "primary_entrypoints": ["scripts/openclaw/harness_runtime.py", "scripts/openclaw/agent_society_kernel.py", "scripts/openclaw/job_orchestrator.py"]
+    },
+    {
+      "id": "skill_layer",
+      "components": ["skill_registry", "skill_version", "skill_test", "skill_publish"],
+      "primary_entrypoints": ["config/openclaw/skills.json"]
+    },
+    {
+      "id": "tool_layer",
+      "components": ["tool_registry", "tool_router", "tool_permission", "tool_invocation_log"],
+      "primary_entrypoints": ["config/openclaw/intent_tools.json", "scripts/openclaw/intent_tool_router.py"]
+    },
+    {
+      "id": "context_layer",
+      "components": ["prompt_builder", "memory_loader", "rag_context", "business_context"],
+      "primary_entrypoints": ["scripts/openclaw/harness_context.py"]
+    },
+    {
+      "id": "governance_layer",
+      "components": ["permission_guard", "human_approval", "policy_engine", "audit_log"],
+      "primary_entrypoints": ["scripts/openclaw/harness_governance.py"]
+    },
+    {
+      "id": "observability_layer",
+      "components": ["trace_id", "model_call_log", "token_cost", "latency", "result_evaluation"],
+      "primary_entrypoints": ["scripts/openclaw/harness_observability.py"]
+    }
+  ],
+  "subagents": [
+    {
+      "id": "intentAgent",
+      "role": "classify chat/task/tool/gap and choose registered tool candidates",
+      "may_execute_tools": false,
+      "default_permissions": ["read_context", "read_registry"]
+    },
+    {
+      "id": "plannerAgent",
+      "role": "split non-atomic tasks into ordered or parallel steps with result contracts",
+      "may_execute_tools": false,
+      "default_permissions": ["read_context", "read_registry", "write_runtime_plan"]
+    },
+    {
+      "id": "toolWorker",
+      "role": "invoke deterministic registered CLI/script tools and normalize outputs",
+      "may_execute_tools": true,
+      "default_permissions": ["invoke_read_tool"]
+    },
+    {
+      "id": "browserWorker",
+      "role": "own browser/CDP sessions, login state, confirmation pages, screenshots, and post-checks",
+      "may_execute_tools": true,
+      "default_permissions": ["invoke_browser_tool"]
+    },
+    {
+      "id": "newsWorker",
+      "role": "run news collection, dedupe, Chinese processing, classification, draft verification, and publish formatting",
+      "may_execute_tools": true,
+      "default_permissions": ["invoke_news_tool"]
+    },
+    {
+      "id": "timescarWorker",
+      "role": "run TimesCar query, booking, cancel, adjust, and daily-report flows with deterministic post-checks",
+      "may_execute_tools": true,
+      "default_permissions": ["invoke_timescar_tool", "owner_dm_write"]
+    },
+    {
+      "id": "recoveryWorker",
+      "role": "record failures, classify capability gaps, generate bounded repairers, and run bounded retries",
+      "may_execute_tools": true,
+      "default_permissions": ["write_gap", "invoke_repair_tool"]
+    },
+    {
+      "id": "evaluatorAgent",
+      "role": "evaluate result contracts and route failed evaluations back to recovery",
+      "may_execute_tools": false,
+      "default_permissions": ["read_trace", "write_evaluation"]
+    }
+  ],
+  "dispatcher_policy": {
+    "gateway_responsibilities": ["normalize_event", "classify_intent", "check_permission", "dispatch_worker", "send_typing_ack", "deliver_result"],
+    "gateway_forbidden": ["long_running_business_execution", "unregistered_write_operation", "silent_failure"],
+    "long_task_requires_runtime_session": true
+  },
+  "trace_policy": {
+    "trace_id_prefix": "trace",
+    "state_root": "/var/lib/openclaw/.openclaw/workspace/state/harness",
+    "logs": {
+      "tool_invocation": "/var/lib/openclaw/.openclaw/workspace/var/harness_tool_invocations.jsonl",
+      "model_call": "/var/lib/openclaw/.openclaw/workspace/var/harness_model_calls.jsonl",
+      "audit": "/var/lib/openclaw/.openclaw/workspace/var/harness_audit.jsonl",
+      "evaluation": "/var/lib/openclaw/.openclaw/workspace/var/harness_evaluations.jsonl"
+    }
+  }
+}

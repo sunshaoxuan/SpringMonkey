@@ -73,6 +73,24 @@
       "type": "script",
       "path": "scripts/openclaw/verify_intent_tool_registry.py",
       "summary": "校验 intent_tools 注册表、entrypoint、写操作权限与幂等/确认策略"
+    },
+    {
+      "id": "registry.openclaw_harness",
+      "type": "config",
+      "path": "config/openclaw/harness.json",
+      "summary": "OpenClaw Harness 六层、SubAgent pool、dispatcher policy 与 trace policy"
+    },
+    {
+      "id": "registry.openclaw_skills",
+      "type": "config",
+      "path": "config/openclaw/skills.json",
+      "summary": "OpenClaw Harness skill registry：技能版本、owner worker、验证命令、发布状态与回滚说明"
+    },
+    {
+      "id": "script.verify_harness_registry",
+      "type": "script",
+      "path": "scripts/openclaw/verify_harness_registry.py",
+      "summary": "校验 Harness manifest、Skill registry 与 Tool registry 的 SubAgent/权限/输出契约字段"
     }
   ]
 }

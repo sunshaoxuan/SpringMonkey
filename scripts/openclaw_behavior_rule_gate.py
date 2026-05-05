@@ -24,6 +24,8 @@ BEHAVIOR_PREFIXES = (
 
 BEHAVIOR_EXACT = {
     "config/openclaw/intent_tools.json",
+    "config/openclaw/harness.json",
+    "config/openclaw/skills.json",
     "scripts/INDEX.md",
     "docs/CAPABILITY_INDEX.md",
     "docs/registry/GATEWAY.md",
@@ -36,6 +38,7 @@ BEHAVIOR_EXACT = {
     "scripts/test_repository_guardrails.py",
     "scripts/openclaw/intent_tool_router.py",
     "scripts/openclaw/verify_intent_tool_registry.py",
+    "scripts/openclaw/verify_harness_registry.py",
     "scripts/openclaw/test_intent_tool_router.py",
     "scripts/openclaw/test_intent_tool_registry.py",
 }
@@ -133,6 +136,18 @@ def verify_intent_registry() -> None:
         raise SystemExit(proc.stdout.strip())
 
 
+def verify_harness_registry() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/openclaw/verify_harness_registry.py"],
+        cwd=REPO,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if proc.returncode != 0:
+        raise SystemExit(proc.stdout.strip())
+
+
 def verify_js_patch_syntax_gates() -> None:
     offenders: list[str] = []
     patch_paths = {REPO / "scripts" / "openclaw" / "patch_discord_timescar_dm_preroute.py"}
@@ -207,6 +222,7 @@ def main() -> int:
     args = parse_args()
     verify_no_uncommitted_behavior_changes()
     verify_intent_registry()
+    verify_harness_registry()
     verify_js_patch_syntax_gates()
     if not args.skip_pushed_check:
         verify_head_pushed(args.remote_ref)

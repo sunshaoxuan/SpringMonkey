@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "description": "OpenClaw Harness skill registry. Every durable capability must have an owner worker, version, tests, publish status, and rollback note.",
+  "skills": [
+    {
+      "skill_id": "timescar.reservations",
+      "version": "1.0.0",
+      "domain": "timescar",
+      "owner_agent": "timescarWorker",
+      "entrypoints": ["scripts/timescar/timescar_handle_dm_adjust_request.py", "scripts/timescar/task_runtime.py"],
+      "verify_commands": ["python scripts/timescar/test_timescar_dm_keep_cancel.py", "python scripts/timescar/test_timescar_book_reservation_window.py", "python scripts/timescar/test_timescar_cancel_reservation.py"],
+      "publish_status": "published",
+      "rollback": "Disable TimesCar write tools in config/openclaw/intent_tools.json and redeploy Discord DM router patch."
+    },
+    {
+      "skill_id": "news.broadcast",
+      "version": "1.0.0",
+      "domain": "news",
+      "owner_agent": "newsWorker",
+      "entrypoints": ["scripts/news/run_news_pipeline.py", "scripts/news/verify_broadcast_draft.py"],
+      "verify_commands": ["python scripts/news/test_news_pipeline.py", "python scripts/news/test_run_news_pipeline_trace.py"],
+      "publish_status": "published",
+      "rollback": "Run previous committed news config and disable failing cron job until verification passes."
+    },
+    {
+      "skill_id": "weather.dm_and_cron",
+      "version": "1.0.0",
+      "domain": "weather",
+      "owner_agent": "toolWorker",
+      "entrypoints": ["scripts/weather/handle_dm_weather_query.py", "scripts/weather/discord_weather_report.py"],
+      "verify_commands": ["python scripts/weather/test_handle_dm_weather_query.py", "python scripts/weather/test_discord_weather_report.py"],
+      "publish_status": "published",
+      "rollback": "Disable weather.dm.query in intent_tools.json and keep formal cron job only."
+    },
+    {
+      "skill_id": "browser.cdp",
+      "version": "1.0.0",
+      "domain": "browser",
+      "owner_agent": "browserWorker",
+      "entrypoints": ["scripts/openclaw/helpers/browser_cdp_human.py"],
+      "verify_commands": ["python scripts/openclaw/test_browser_control_helper.py"],
+      "publish_status": "published",
+      "rollback": "Disable browserWorker dispatch and fall back to OpenClaw browser plugin."
+    },
+    {
+      "skill_id": "config.apply_verify",
+      "version": "1.0.0",
+      "domain": "config",
+      "owner_agent": "toolWorker",
+      "entrypoints": ["scripts/news/apply_news_config.py", "scripts/news/verify_news_config.py"],
+      "verify_commands": ["python scripts/news/verify_news_config.py"],
+      "publish_status": "published",
+      "rollback": "Revert config commit and rerun host pull from the previous known-good commit."
+    },
+    {
+      "skill_id": "self_recovery",
+      "version": "1.0.0",
+      "domain": "recovery",
+      "owner_agent": "recoveryWorker",
+      "entrypoints": ["scripts/openclaw/agent_society_runtime_record_gap.py", "scripts/openclaw/cron_failure_self_heal.py", "scripts/openclaw/agent_society_helper_toolsmith.py"],
+      "verify_commands": ["python scripts/openclaw/test_agent_society_runtime_record_gap.py", "python scripts/openclaw/test_cron_failure_self_heal.py"],
+      "publish_status": "published",
+      "rollback": "Disable recovery worker dispatch and keep gap recording only."
+    }
+  ]
+}
