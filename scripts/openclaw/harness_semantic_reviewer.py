@@ -17,7 +17,7 @@ class SemanticReview:
 
 
 WEB_RESEARCH_UNSAFE_RE = re.compile(
-    r"(登录|登入|log\s?in|sign\s?in|购买|付款|支付|预订|预约|订车|取消|修改|配置|设置|提交|删除|密码|token|secret|密钥|账号|account)",
+    r"(登录|登入|log\s?in|sign\s?in|购买|付款|支付|取消|修改|改配置|设置|提交|删除|密码|token|secret|密钥|账号|account)",
     re.IGNORECASE,
 )
 

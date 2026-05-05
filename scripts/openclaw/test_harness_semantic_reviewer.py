@@ -65,6 +65,21 @@ def test_reviewer_accepts_readonly_web_research() -> None:
     assert review.passed
 
 
+def test_reviewer_accepts_public_booking_policy_research() -> None:
+    review = review_intent_frame(
+        frame(
+            domain="web",
+            action="research",
+            canonical_text="查询 TimesCar 订车服务的公开规则：车辆预约可以提前多久预订。",
+            parameters={},
+            tool_candidates=[{"tool_id": "openclaw.web.research"}],
+        ),
+        tool("openclaw.web.research"),
+        "我订的车可以提前多久订？",
+    )
+    assert review.passed
+
+
 def test_reviewer_rejects_unsafe_web_research() -> None:
     review = review_intent_frame(
         frame(
