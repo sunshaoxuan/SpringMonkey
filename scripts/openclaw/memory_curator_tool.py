@@ -18,6 +18,7 @@ NOISE_RE = re.compile(
     re.IGNORECASE,
 )
 XHS_RE = re.compile(r"(XHS|小红书|小紅書|Costco|Frutteto|コストコ|フルッテート|投稿)", re.IGNORECASE)
+HIGH_VALUE_XHS_RE = re.compile(r"(Costco|Frutteto|无水印|無水印|投稿流程|话题|話題|规则|規則|发布|發布|小红书文档|小紅書文檔)", re.IGNORECASE)
 
 
 @dataclass
@@ -126,6 +127,9 @@ def noise_score(text: str) -> tuple[int, list[str]]:
     if text.count("{") > 3 and text.count("}") > 3:
         score += 1
         reasons.append("raw json/log fragment")
+    if HIGH_VALUE_XHS_RE.search(text) and not re.search(r"(encrypted_content|iVBORw0KGgo|base64|gAAAAA)", text, re.IGNORECASE):
+        score = max(0, score - 2)
+        reasons.append("contains high-value XHS content; downgraded")
     return score, reasons
 
 
