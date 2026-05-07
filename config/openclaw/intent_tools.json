@@ -765,6 +765,141 @@
         "requires_source_or_concrete_failure": true
       },
       "safety": "readonly"
+    },
+    {
+      "intent_id": "memory.backfill.xhs",
+      "tool_id": "memory.backfill.xhs",
+      "description": "Backfill prior Xiaohongshu/XHS writing and publishing session history into long-term memory.",
+      "owner_agent": "memoryWorker",
+      "patterns": [
+        "小红书",
+        "小紅書",
+        "XHS",
+        "xhs",
+        "长记忆",
+        "長記憶",
+        "回填",
+        "保存",
+        "投稿"
+      ],
+      "required_any": [
+        "回填",
+        "长记忆",
+        "長記憶",
+        "保存",
+        "记住",
+        "記住"
+      ],
+      "entrypoint": "scripts/openclaw/memory_backfill_tool.py",
+      "args_schema": {
+        "mode": "memory_backfill",
+        "topic": "xhs",
+        "since": "2026-04-01",
+        "write": true
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "fixed_memory_backfill"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/memory_backfill_tool.py && python -m pytest -q scripts/openclaw/test_memory_backfill_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "memory.backfill.xhs",
+      "domain": "memory",
+      "actions": [
+        "backfill"
+      ],
+      "worker_agent": "memoryWorker",
+      "prompt_hints": [
+        "把之前小红书投稿相关记录回填到长记忆",
+        "小红书",
+        "小紅書",
+        "XHS",
+        "xhs",
+        "长记忆",
+        "長記憶",
+        "回填",
+        "保存",
+        "投稿"
+      ],
+      "input_contract": {
+        "type": "fixed_memory_backfill"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result"
+      },
+      "safety": "readonly"
+    },
+    {
+      "intent_id": "openclaw.self_evolution.status",
+      "tool_id": "openclaw.self_evolution.status",
+      "description": "Report recent capability-gap events, repair plans, and promoted helpers for the self-evolution loop.",
+      "owner_agent": "toolWorker",
+      "patterns": [
+        "自演进",
+        "自進化",
+        "自我修复",
+        "自我修復",
+        "能力缺口",
+        "修复状态",
+        "修復狀態"
+      ],
+      "required_any": [
+        "检查",
+        "檢查",
+        "状态",
+        "狀態",
+        "列出",
+        "最近"
+      ],
+      "entrypoint": "scripts/openclaw/self_evolution_status.py",
+      "args_schema": {
+        "mode": "self_evolution_status",
+        "limit": 5
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "none"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_status.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.self_evolution.status",
+      "domain": "self",
+      "actions": [
+        "status",
+        "list"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "检查自演进状态",
+        "列出最近能力缺口和修复状态",
+        "自演进",
+        "自進化",
+        "能力缺口",
+        "修复状态"
+      ],
+      "input_contract": {
+        "type": "none"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result"
+      },
+      "safety": "readonly"
     }
   ]
 }

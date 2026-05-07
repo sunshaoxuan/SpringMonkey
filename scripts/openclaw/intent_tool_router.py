@@ -532,6 +532,14 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
         return {"job_name": job_name}
     if mode == "fixed_cron_job":
         return {"job_name": str(schema["job_name"])}
+    if mode == "memory_backfill":
+        return {
+            "topic": str(schema.get("topic") or "xhs"),
+            "since": str(schema.get("since") or "2026-04-01"),
+            "write": bool(schema.get("write", True)),
+        }
+    if mode == "self_evolution_status":
+        return {"limit": int(schema.get("limit") or 5)}
     raise ValueError(f"unsupported args_schema mode: {mode}")
 
 
@@ -589,6 +597,18 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             cmd.append("--force")
     elif mode in {"cron_job_from_text", "fixed_cron_job"}:
         cmd = [sys.executable, str(entrypoint), args["job_name"]]
+    elif mode == "memory_backfill":
+        cmd = [
+            sys.executable,
+            str(entrypoint),
+            "--topic",
+            args["topic"],
+            "--since",
+            args["since"],
+            "--write" if args.get("write") else "--dry-run",
+        ]
+    elif mode == "self_evolution_status":
+        cmd = [sys.executable, str(entrypoint), "--limit", str(args.get("limit") or 5)]
     else:
         raise ValueError(f"unsupported execution mode: {mode}")
     started = time.monotonic()

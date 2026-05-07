@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from dm_capability_gap_runner import run_gap
+from capability_repair_runner import run_repair
 from harness_context import build_context_bundle, context_to_prompt
 from harness_governance import evaluate_tool_invocation
 from harness_intent_agent import IntentFrame, infer_intent_frame
@@ -73,6 +73,7 @@ def handle_event(
     audit_intent: Auditor,
     evaluate_result: Evaluator,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
+    replay_depth: int = 0,
 ) -> DispatchResult:
     trace_id = make_id("trace")
     task_id = make_id("task")
@@ -140,10 +141,19 @@ def handle_event(
         frame = infer_intent_frame(text, context=prompt_context, registry=registry, model_caller=model_caller)
     except Exception as exc:
         reason = f"intent model unavailable or invalid: {type(exc).__name__}: {exc}"
-        gap_result = run_gap(text=text, channel=channel, user_id=user_id, intent_reason=reason, kernel_root=kernel_root)
+        repair = run_repair(
+            text=text,
+            channel=channel,
+            user_id=user_id,
+            stage="intent",
+            reason=reason,
+            kernel_root=kernel_root,
+            context=context,
+            replay_depth=replay_depth,
+        )
         return finish(
             "unsupported",
-            "\n".join(["汤猴未执行该请求。", "原因：意图模型不可用或返回无效 IntentFrame。", f"记录：{gap_result.gap_ref}"]),
+            "\n".join(["汤猴未执行该请求。", "原因：意图模型不可用或返回无效 IntentFrame。", f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             None,
             None,
             None,
@@ -158,10 +168,42 @@ def handle_event(
     if binding.status == "chat":
         return finish("chat", frame_reply(frame), frame, binding, None, {}, 0, "chat", stage="intent")
     if binding.status in {"clarification", "gap"} or not binding.tool:
-        gap_result = run_gap(text=text, channel=channel, user_id=user_id, intent_reason=binding.reason, kernel_root=kernel_root)
+        repair = run_repair(
+            text=text,
+            channel=channel,
+            user_id=user_id,
+            stage="binding",
+            reason=binding.reason,
+            kernel_root=kernel_root,
+            context=context,
+            replay_depth=replay_depth,
+        )
+        if repair.replay_allowed and repair.registry_tool and replay_depth < 1:
+            replay_registry = json.loads(json.dumps(registry, ensure_ascii=False))
+            if not any(str(tool.get("tool_id")) == str(repair.registry_tool.get("tool_id")) for tool in replay_registry.get("tools", [])):
+                replay_registry.setdefault("tools", []).append(repair.registry_tool)
+            replayed = handle_event(
+                text=text,
+                channel=channel,
+                user_id=user_id,
+                message_timestamp=message_timestamp,
+                registry=replay_registry,
+                context=context,
+                kernel_root=kernel_root,
+                timeout_seconds=timeout_seconds,
+                extract_args=extract_args,
+                run_tool=run_tool,
+                format_reply=format_reply,
+                audit_intent=audit_intent,
+                evaluate_result=evaluate_result,
+                model_caller=model_caller,
+                replay_depth=replay_depth + 1,
+            )
+            replayed.reply = "\n".join([replayed.reply, f"自演进重放：{repair.gap_ref}"])
+            return replayed
         return finish(
             "unsupported",
-            "\n".join([frame_reply(frame), f"记录：{gap_result.gap_ref}"]),
+            "\n".join([frame_reply(frame), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,
             None,
@@ -174,10 +216,20 @@ def handle_event(
 
     review = review_intent_frame(frame, binding.tool, text)
     if not review.passed:
-        gap_result = run_gap(text=text, channel=channel, user_id=user_id, intent_reason=f"{review.conflict_type}: {review.reason}", kernel_root=kernel_root)
+        repair = run_repair(
+            text=text,
+            channel=channel,
+            user_id=user_id,
+            stage="semantic_review",
+            reason=f"{review.conflict_type}: {review.reason}",
+            kernel_root=kernel_root,
+            context=context,
+            registry_tool=binding.tool,
+            replay_depth=replay_depth,
+        )
         return finish(
             "unsupported",
-            "\n".join(["汤猴已拦截语义冲突，未执行工具。", f"原因：{review.reason}", f"记录：{gap_result.gap_ref}"]),
+            "\n".join(["汤猴已拦截语义冲突，未执行工具。", f"原因：{review.reason}", f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,
             review,
@@ -215,17 +267,37 @@ def handle_event(
 
     returncode, output = run_tool(binding.tool, args, timeout_seconds)
     if is_executor_capability_gap(output):
-        gap_result = run_gap(
+        repair = run_repair(
             text=text,
             channel=channel,
             user_id=user_id,
-            intent_reason=f"registered tool executor capability gap: {output}",
+            stage="execute",
+            reason="registered tool executor capability gap",
+            execution_output=output,
             kernel_root=kernel_root,
             registry_tool=binding.tool,
+            replay_depth=replay_depth,
         )
+        if repair.replay_allowed and replay_depth < 1:
+            retry_code, retry_output = run_tool(binding.tool, args, timeout_seconds)
+            if retry_code == 0:
+                return finish(
+                    "ok",
+                    "\n".join([format_reply(binding.tool, args, retry_code, retry_output), f"自演进重放：{repair.gap_ref}"]),
+                    frame,
+                    binding,
+                    review,
+                    args,
+                    retry_code,
+                    "registered_task_replayed",
+                    stage="report",
+                    tool=binding.tool,
+                    visibility=decision.report_visibility,
+                    public_payload=retry_output,
+                )
         return finish(
             "unsupported",
-            "\n".join(["汤猴事件入口发现注册工具执行器能力缺口。", f"工具：{binding.tool.get('tool_id')}", f"记录：{gap_result.gap_ref}"]),
+            "\n".join(["汤猴事件入口发现注册工具执行器能力缺口。", f"工具：{binding.tool.get('tool_id')}", f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,
             review,
@@ -236,6 +308,51 @@ def handle_event(
             tool=binding.tool,
             visibility=decision.report_visibility,
             failure_type="executor_capability_gap",
+        )
+    if returncode != 0:
+        repair = run_repair(
+            text=text,
+            channel=channel,
+            user_id=user_id,
+            stage="execute",
+            reason=f"registered tool returned non-zero exit code {returncode}",
+            execution_output=output,
+            kernel_root=kernel_root,
+            context=context,
+            registry_tool=binding.tool,
+            replay_depth=replay_depth,
+        )
+        if repair.replay_allowed and replay_depth < 1:
+            retry_code, retry_output = run_tool(binding.tool, args, timeout_seconds)
+            if retry_code == 0:
+                return finish(
+                    "ok",
+                    "\n".join([format_reply(binding.tool, args, retry_code, retry_output), f"自演进重放：{repair.gap_ref}"]),
+                    frame,
+                    binding,
+                    review,
+                    args,
+                    retry_code,
+                    "registered_task_replayed",
+                    stage="report",
+                    tool=binding.tool,
+                    visibility=decision.report_visibility,
+                    public_payload=retry_output,
+                )
+            returncode, output = retry_code, retry_output
+        return finish(
+            "failed",
+            "\n".join([format_reply(binding.tool, args, returncode, output), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
+            frame,
+            binding,
+            review,
+            args,
+            returncode,
+            "registered_tool_failed",
+            stage="execute",
+            tool=binding.tool,
+            visibility=decision.report_visibility,
+            failure_type="executor_failed",
         )
     evaluation = evaluate_result(binding.tool, output, audit.result_contract)
     record_evaluation(
@@ -250,19 +367,41 @@ def handle_event(
         )
     )
     if returncode == 0 and not evaluation.passed:
-        gap_result = run_gap(
+        repair = run_repair(
             text=text,
             channel=channel,
             user_id=user_id,
-            intent_reason=f"{evaluation.gap_type or 'result_evaluation_failed'}: {evaluation.reason}",
+            stage="evaluate",
+            reason=f"{evaluation.gap_type or 'result_evaluation_failed'}: {evaluation.reason}",
+            execution_output=output,
             kernel_root=kernel_root,
             forced_safety_class=evaluation.gap_type or "registered_tool_parameter_gap",
             forced_safety_reason=evaluation.reason,
             registry_tool=binding.tool,
+            replay_depth=replay_depth,
         )
+        if repair.replay_allowed and replay_depth < 1:
+            retry_code, retry_output = run_tool(binding.tool, args, timeout_seconds)
+            if retry_code == 0:
+                retry_eval = evaluate_result(binding.tool, retry_output, audit.result_contract)
+                if retry_eval.passed:
+                    return finish(
+                        "ok",
+                        "\n".join([format_reply(binding.tool, args, retry_code, retry_output), f"自演进重放：{repair.gap_ref}"]),
+                        frame,
+                        binding,
+                        review,
+                        args,
+                        retry_code,
+                        "registered_task_replayed",
+                        stage="report",
+                        tool=binding.tool,
+                        visibility=decision.report_visibility,
+                        public_payload=retry_output,
+                    )
         return finish(
             "unsupported",
-            "\n".join(["汤猴事件入口已拦截一次不满足契约的工具结果。", f"工具：{binding.tool.get('tool_id')}", f"原因：{evaluation.reason}", f"记录：{gap_result.gap_ref}"]),
+            "\n".join(["汤猴事件入口已拦截一次不满足契约的工具结果。", f"工具：{binding.tool.get('tool_id')}", f"原因：{evaluation.reason}", f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,
             review,
