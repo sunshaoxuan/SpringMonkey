@@ -8,11 +8,13 @@ import re
 import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 
 DEFAULT_DB_PATH = Path("/var/lib/openclaw/.openclaw/memory/lancedb")
+DEFAULT_AUDIT_LOG = Path("/var/lib/openclaw/.openclaw/workspace/var/memory_curator_audit.jsonl")
 NOISE_RE = re.compile(
     r"(encrypted_content|iVBORw0KGgo|base64|gAAAAA|\.png\s|root root \d+|url\.parse\(\)|DEP0169|System \(untrusted\))",
     re.IGNORECASE,
@@ -157,6 +159,20 @@ def delete_marked(db_path: Path, ids: list[str]) -> list[str]:
     return [str(item) for item in data.get("deleted", [])]
 
 
+def write_audit(topic: str, marked: list[CuratedMemory], deleted: list[str], path: Path = DEFAULT_AUDIT_LOG) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "topic": topic,
+        "candidate_count": len(marked),
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "candidates": [asdict(item) for item in marked],
+    }
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+
+
 def format_report(topic: str, marked: list[CuratedMemory], deleted: list[str]) -> str:
     lines = [
         "长记忆质量检查",
@@ -177,18 +193,21 @@ def main() -> int:
     parser.add_argument("--forget-marked", action="store_true")
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--audit-log", type=Path, default=DEFAULT_AUDIT_LOG)
     args = parser.parse_args()
     entries = list_memories(args.db_path)
     marked = curate(entries, args.topic)[: max(0, args.limit)]
     deleted: list[str] = []
     if args.forget_marked:
         deleted = delete_marked(args.db_path, [item.id for item in marked])
+        write_audit(args.topic, marked, deleted, args.audit_log)
     payload = {
         "status": "ok",
         "topic": args.topic,
         "candidate_count": len(marked),
         "deleted_count": len(deleted),
         "deleted": deleted,
+        "audit_log": str(args.audit_log) if args.forget_marked else "",
         "candidates": [asdict(item) for item in marked],
     }
     if args.json:

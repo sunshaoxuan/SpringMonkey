@@ -24,11 +24,19 @@ def read_jsonl_tail(path: Path, limit: int) -> list[dict]:
 def lifecycle(event: dict) -> str:
     status = str(event.get("runner_status") or "recorded")
     if event.get("replay_allowed"):
+        if status == "promoted":
+            return "recorded -> planned -> generated -> verified -> promoted -> replay_ready"
         return "recorded -> planned -> verified -> replay_ready"
     resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
     package_status = str(resolved_by.get("status") or "")
     if package_status == "generated":
         return "recorded -> planned -> generated -> verify_required"
+    if package_status == "verified":
+        return "recorded -> planned -> generated -> verified -> promote_required"
+    if package_status == "promoted":
+        return "recorded -> planned -> generated -> verified -> promoted"
+    if package_status == "failed":
+        return "recorded -> planned -> generated -> failed"
     if package_status == "blocked_requires_authorization" or status == "blocked":
         return "recorded -> planned -> blocked"
     return f"recorded -> {status}"
@@ -54,13 +62,23 @@ def main() -> int:
         f"补强计划：{len(plans)} 条最近记录",
         f"已推广 helper：{helper_count}",
     ]
+    unresolved = [
+        event
+        for event in events
+        if str(event.get("runner_status") or "") not in {"promoted", "verified", "replayed"}
+        and not bool(event.get("replay_allowed"))
+    ]
+    if unresolved:
+        lines.append(f"未解决缺口：{len(unresolved)}")
     for index, event in enumerate(reversed(events), start=1):
         resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
         lines.append(
             f"{index}. stage={event.get('stage')} status={event.get('runner_status')} "
             f"safety={event.get('safety_class')} replay={event.get('replay_allowed')} "
             f"tool={event.get('tool_id') or 'none'} lifecycle={lifecycle(event)} "
-            f"resolved_by={resolved_by.get('package_id') or 'none'}"
+            f"resolved_by={resolved_by.get('package_id') or 'none'} "
+            f"fingerprint={event.get('repair_fingerprint') or 'none'} "
+            f"verify={str(resolved_by.get('verify_output_tail') or '')[:120]}"
         )
     print("\n".join(lines))
     return 0

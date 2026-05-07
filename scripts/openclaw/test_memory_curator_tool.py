@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import memory_curator_tool as curator
@@ -47,3 +50,21 @@ def test_delete_marked_deletes_only_supplied_ids() -> None:
     assert deleted == ["11111111-1111-1111-1111-111111111111"]
     assert node.call_args.args[0]["action"] == "delete"
     assert node.call_args.args[0]["ids"] == ["11111111-1111-1111-1111-111111111111"]
+
+
+def test_curator_writes_audit_for_deleted_rows() -> None:
+    marked = [
+        curator.CuratedMemory(
+            id="11111111-1111-1111-1111-111111111111",
+            reason="contains encrypted/base64/path-log noise",
+            text_preview="XHS noise",
+            score=3,
+        )
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        audit = Path(tmp) / "audit.jsonl"
+        curator.write_audit("xhs", marked, ["11111111-1111-1111-1111-111111111111"], audit)
+        rows = [json.loads(line) for line in audit.read_text(encoding="utf-8").splitlines()]
+
+    assert rows[0]["topic"] == "xhs"
+    assert rows[0]["deleted_count"] == 1

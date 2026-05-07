@@ -14,7 +14,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import GapRunnerResult, run_gap
-from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package
+from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, repair_fingerprint, verify_and_promote_package
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
@@ -59,6 +59,35 @@ def append_event(kernel_root: Path, payload: dict[str, Any]) -> Path:
     return path
 
 
+def read_events(kernel_root: Path) -> list[dict[str, Any]]:
+    path = event_log_path(kernel_root)
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
+def upsert_event(kernel_root: Path, payload: dict[str, Any], fingerprint: str) -> Path:
+    path = event_log_path(kernel_root)
+    rows = read_events(kernel_root)
+    replaced = False
+    for index, row in enumerate(rows):
+        if row.get("repair_fingerprint") == fingerprint:
+            rows[index] = payload
+            replaced = True
+            break
+    if not replaced:
+        rows.append(payload)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(row, ensure_ascii=False, sort_keys=True) for row in rows) + "\n", encoding="utf-8")
+    return path
+
+
 def is_tool_readonly(tool: dict[str, Any] | None) -> bool:
     return bool(tool) and not bool(tool.get("write_operation"))
 
@@ -82,6 +111,20 @@ def replay_decision(
     return True, "verified read-only repair can be replayed once"
 
 
+def package_replay_decision(*, stage: str, package: ToolsmithPackage | None, replay_depth: int) -> tuple[bool, str]:
+    if replay_depth > 0:
+        return False, "bounded replay already attempted"
+    if stage not in REPLAYABLE_STAGES:
+        return False, f"stage {stage} is not replayable"
+    if package is None:
+        return False, "no promoted repair package"
+    if package.status != "promoted":
+        return False, f"repair package status is {package.status}, not promoted"
+    if package.write_operation:
+        return False, "repair package is write-scoped"
+    return True, "promoted read-only repair package can be replayed once"
+
+
 def run_repair(
     *,
     text: str,
@@ -98,6 +141,7 @@ def run_repair(
     forced_safety_reason: str | None = None,
     replay_depth: int = 0,
 ) -> RepairRunnerResult:
+    repo_root = repo_root or Path(__file__).resolve().parents[2]
     intent_reason = reason
     if execution_output:
         intent_reason = f"{intent_reason}; output={execution_output[:1200]}"
@@ -107,7 +151,7 @@ def run_repair(
         user_id=user_id,
         intent_reason=intent_reason,
         kernel_root=kernel_root,
-        repo_root=repo_root or Path(__file__).resolve().parents[2],
+        repo_root=repo_root,
         forced_safety_class=forced_safety_class,
         forced_safety_reason=forced_safety_reason,
         registry_tool=registry_tool,
@@ -132,17 +176,38 @@ def run_repair(
             reason=reason,
             safety_class=gap_result.safety_class,
             kernel_root=kernel_root,
-            repo_root=repo_root or Path(__file__).resolve().parents[2],
+            repo_root=repo_root,
             registry_tool=registry_tool or gap_result.registry_tool,
             apply_readonly=False,
         )
+        if toolsmith_package.status == "generated" and toolsmith_package.safety_class == "auto_safe_readonly":
+            toolsmith_package = verify_and_promote_package(toolsmith_package, kernel_root=kernel_root, repo_root=repo_root)
         append_package_log(kernel_root, toolsmith_package)
-        if toolsmith_package.status == "generated":
-            status = "generated"
+        package_replay_allowed, package_replay_reason = package_replay_decision(
+            stage=stage,
+            package=toolsmith_package,
+            replay_depth=replay_depth,
+        )
+        if package_replay_allowed:
+            replay_allowed = True
+            replay_reason = package_replay_reason
+            status = "promoted"
+        elif toolsmith_package.status in {"generated", "verified", "promoted", "failed"}:
+            status = toolsmith_package.status
         elif toolsmith_package.status == "blocked_requires_authorization":
             status = "blocked"
+    effective_tool = registry_tool or gap_result.registry_tool or (toolsmith_package.registry_patch if toolsmith_package and toolsmith_package.status == "promoted" else None)
+    fingerprint = ""
+    if toolsmith_package:
+        fingerprint = toolsmith_package.fingerprint
+    else:
+        tool_id = str((effective_tool or {}).get("tool_id") or "")
+        entrypoint = str((effective_tool or {}).get("entrypoint") or "")
+        fingerprint = repair_fingerprint(text=text, reason=reason, tool_id=tool_id, entrypoint=entrypoint)
     event = {
         "created_at": utc_now(),
+        "updated_at": utc_now(),
+        "repair_fingerprint": fingerprint,
         "text": text,
         "channel": channel,
         "user_id": user_id,
@@ -156,7 +221,7 @@ def run_repair(
         "safety_class": gap_result.safety_class,
         "replay_allowed": replay_allowed,
         "replay_reason": replay_reason,
-        "tool_id": (registry_tool or gap_result.registry_tool or {}).get("tool_id"),
+        "tool_id": (effective_tool or {}).get("tool_id"),
         "plan": asdict(gap_result.plan),
         "resolved_by": None if toolsmith_package is None else {
             "package_id": toolsmith_package.package_id,
@@ -164,9 +229,11 @@ def run_repair(
             "gap_type": toolsmith_package.gap_type,
             "tool_id": toolsmith_package.tool_id,
             "replay_policy": toolsmith_package.replay_policy,
+            "verify_output_tail": toolsmith_package.verify_output[-2000:],
+            "promoted_at": toolsmith_package.promoted_at,
         },
     }
-    log_path = append_event(kernel_root, event)
+    log_path = upsert_event(kernel_root, event, fingerprint)
     reply = "\n".join(
         [
             gap_result.reply,
@@ -185,7 +252,7 @@ def run_repair(
         replay_reason=replay_reason,
         reply=reply,
         plan=asdict(gap_result.plan),
-        registry_tool=registry_tool or gap_result.registry_tool,
+        registry_tool=effective_tool,
         toolsmith_package=None if toolsmith_package is None else asdict(toolsmith_package),
         event_log=str(log_path),
         created_at=event["created_at"],

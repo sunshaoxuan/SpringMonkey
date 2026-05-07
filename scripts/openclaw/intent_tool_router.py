@@ -539,7 +539,7 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
             "write": bool(schema.get("write", True)),
         }
     if mode == "memory_curator":
-        wants_delete = bool(re.search(r"(清理|删除|刪除|forget|移除)", text, re.IGNORECASE))
+        wants_delete = bool(re.search(r"(确认清理|確認清理|执行清理|執行清理|confirm clean|forget-marked)", text, re.IGNORECASE))
         return {
             "topic": str(schema.get("topic") or "xhs"),
             "forget_marked": bool(schema.get("forget_marked", False)) or wants_delete,

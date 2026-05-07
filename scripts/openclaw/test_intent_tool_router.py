@@ -594,31 +594,17 @@ def test_unregistered_safe_readonly_gap_promotes_and_replays() -> None:
         registry_path = Path(tmp) / "intent_tools.json"
         registry_path.write_text(json.dumps(registry, ensure_ascii=False), encoding="utf-8")
         kernel_root = Path(tmp) / "kernel"
-        plan = CapabilityPlan(
-            capability_id="capability_test",
-            source_gap_id="gap_test",
-            safety_class="auto_safe_readonly",
-            tool_id="weather.dm.query",
-            entrypoint="scripts/weather/handle_dm_weather_query.py",
-            registry_patch=WEATHER_DM_QUERY_TOOL,
-            verify_commands=[],
-            replay_text="请查询明天东京和长野天气、风况和能见度",
-            status="promoted_replay_ready",
-            reason="public read-only query wording",
-        )
-        gap_result = GapRunnerResult(
+        repair_result = SimpleNamespace(
             status="promoted",
-            safety_class="auto_safe_readonly",
-            plan=plan,
             gap_ref="kernel_session=session_test gap_id=gap_test",
-            reply="ready",
+            replay_allowed=True,
             registry_tool=WEATHER_DM_QUERY_TOOL,
         )
         with patch.object(
             harness_dispatcher,
             "infer_intent_frame",
             return_value=intent_frame(domain="weather", action="query", canonical_text="请查询明天东京和长野天气、风况和能见度", tool_id="weather.dm.query"),
-        ), patch.object(harness_dispatcher, "run_gap", return_value=gap_result) as run_gap, patch.object(
+        ), patch.object(harness_dispatcher, "run_repair", return_value=repair_result) as run_repair, patch.object(
             router, "run_tool", return_value=(0, "天气查询结果")
         ) as run_tool:
             result = router.handle(
@@ -629,10 +615,11 @@ def test_unregistered_safe_readonly_gap_promotes_and_replays() -> None:
                 registry_path=registry_path,
                 kernel_root=kernel_root,
             )
-        run_gap.assert_called_once()
-        run_tool.assert_not_called()
-        assert result.status == "unsupported"
-        assert result.route_kind == "gap"
+        run_repair.assert_called_once()
+        run_tool.assert_called_once()
+        assert result.status == "ok"
+        assert result.route_kind in {"registered_task", "registered_task_replayed"}
+        assert "自演进重放" in result.reply
 
 
 def test_unregistered_write_gap_does_not_execute() -> None:

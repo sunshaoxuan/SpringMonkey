@@ -75,3 +75,26 @@ def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:
     assert result.status in {"generated", "verified"}
     assert events[-1]["resolved_by"]
     assert events[-1]["resolved_by"]["replay_policy"] in {"verify_before_replay", "blocked_until_human_authorization"}
+
+
+def test_repair_runner_reuses_same_gap_event_fingerprint() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "kernel"
+        kwargs = {
+            "text": "请帮我做一个新的只读查询",
+            "channel": "discord_dm",
+            "user_id": "tester",
+            "stage": "binding",
+            "reason": "no registered tool for readonly lookup",
+            "kernel_root": root,
+            "repo_root": Path(tmp),
+            "forced_safety_class": "auto_safe_readonly",
+            "forced_safety_reason": "test readonly gap",
+        }
+        first = runner.run_repair(**kwargs)
+        second = runner.run_repair(**kwargs)
+        events = [json.loads(line) for line in Path(second.event_log).read_text(encoding="utf-8").splitlines()]
+
+    assert first.toolsmith_package["package_id"] == second.toolsmith_package["package_id"]
+    assert len(events) == 1
+    assert events[0]["repair_fingerprint"]
