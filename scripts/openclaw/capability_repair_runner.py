@@ -14,6 +14,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import GapRunnerResult, run_gap
+from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
@@ -41,6 +42,7 @@ class RepairRunnerResult:
     reply: str
     plan: dict[str, Any]
     registry_tool: dict[str, Any] | None = None
+    toolsmith_package: dict[str, Any] | None = None
     event_log: str = ""
     created_at: str = ""
 
@@ -117,12 +119,28 @@ def run_repair(
         registry_tool=registry_tool,
     )
     status = gap_result.status
+    toolsmith_package: ToolsmithPackage | None = None
     if replay_allowed:
         status = "verified"
     elif gap_result.status == "blocked":
         status = "blocked"
     elif gap_result.status == "planned":
         status = "planned"
+    if not replay_allowed:
+        toolsmith_package = generate_repair_package(
+            text=text,
+            reason=reason,
+            safety_class=gap_result.safety_class,
+            kernel_root=kernel_root,
+            repo_root=repo_root or Path(__file__).resolve().parents[2],
+            registry_tool=registry_tool or gap_result.registry_tool,
+            apply_readonly=False,
+        )
+        append_package_log(kernel_root, toolsmith_package)
+        if toolsmith_package.status == "generated":
+            status = "generated"
+        elif toolsmith_package.status == "blocked_requires_authorization":
+            status = "blocked"
     event = {
         "created_at": utc_now(),
         "text": text,
@@ -140,6 +158,13 @@ def run_repair(
         "replay_reason": replay_reason,
         "tool_id": (registry_tool or gap_result.registry_tool or {}).get("tool_id"),
         "plan": asdict(gap_result.plan),
+        "resolved_by": None if toolsmith_package is None else {
+            "package_id": toolsmith_package.package_id,
+            "status": toolsmith_package.status,
+            "gap_type": toolsmith_package.gap_type,
+            "tool_id": toolsmith_package.tool_id,
+            "replay_policy": toolsmith_package.replay_policy,
+        },
     }
     log_path = append_event(kernel_root, event)
     reply = "\n".join(
@@ -147,6 +172,7 @@ def run_repair(
             gap_result.reply,
             f"自演进状态：{status}",
             f"重放判定：{'允许' if replay_allowed else '不允许'}，{replay_reason}",
+            f"工具匠：{toolsmith_package.status if toolsmith_package else 'not_needed'}",
             f"事件日志：{log_path}",
         ]
     )
@@ -160,6 +186,7 @@ def run_repair(
         reply=reply,
         plan=asdict(gap_result.plan),
         registry_tool=registry_tool or gap_result.registry_tool,
+        toolsmith_package=None if toolsmith_package is None else asdict(toolsmith_package),
         event_log=str(log_path),
         created_at=event["created_at"],
     )

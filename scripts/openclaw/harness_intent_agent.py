@@ -19,7 +19,7 @@ RUNTIME_ENV_FILES = (
 )
 CONVERSATION_MODES = {"chat", "task", "clarification", "gap"}
 DOMAINS = {"timescar", "weather", "news", "cron", "config", "web", "memory", "self", "general", "unknown"}
-ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "research", "backfill", "list", "retry", "chat", "gap"}
+ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "research", "backfill", "quality", "clean", "list", "retry", "chat", "gap"}
 SAFETY_CLASSES = {"readonly", "write", "credential", "destructive", "ambiguous"}
 
 
@@ -178,7 +178,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Schema: {conversation_mode, domain, action, canonical_text, context_refs, parameters, safety, result_contract, tool_candidates, confidence, reason}. "
         "conversation_mode: chat|task|clarification|gap. "
         "domain: timescar|weather|news|cron|config|web|memory|self|general|unknown. "
-        "action: query|book|cancel|status|adjust|run|research|backfill|list|retry|chat|gap. "
+        "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|chat|gap. "
         "safety: readonly|write|credential|destructive|ambiguous. "
         "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from the registry. "
         "Choose the tool by the capability required to answer, not by a business keyword in the message. "
@@ -191,6 +191,8 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Example: 未来一个月以后 means duration_hours=720 offset_hours=720 relation=after. "
         "Example: 帮我查一下 XXX 最新情况 means domain=web action=research and tool candidate openclaw.web.research. "
         "Example: 把之前小红书投稿相关记录回填到长记忆 means domain=memory action=backfill and tool candidate memory.backfill.xhs. "
+        "Example: 检查长记忆质量 means domain=memory action=quality and tool candidate memory.curator.xhs. "
+        "Example: 清理小红书长记忆噪声 means domain=memory action=clean and tool candidate memory.curator.xhs. "
         "Example: 检查自演进状态 means domain=self action=status and tool candidate openclaw.self_evolution.status. "
         "Example: 我订的车可以提前多久订 means public service policy research, so domain=web action=research, not timescar gap. "
         "Example: 这个链接说了什么 means domain=web action=research and include the URL in parameters. "

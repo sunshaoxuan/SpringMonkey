@@ -21,6 +21,19 @@ def read_jsonl_tail(path: Path, limit: int) -> list[dict]:
     return rows
 
 
+def lifecycle(event: dict) -> str:
+    status = str(event.get("runner_status") or "recorded")
+    if event.get("replay_allowed"):
+        return "recorded -> planned -> verified -> replay_ready"
+    resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
+    package_status = str(resolved_by.get("status") or "")
+    if package_status == "generated":
+        return "recorded -> planned -> generated -> verify_required"
+    if package_status == "blocked_requires_authorization" or status == "blocked":
+        return "recorded -> planned -> blocked"
+    return f"recorded -> {status}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Report current Agent Society self-evolution status.")
     parser.add_argument("--kernel-root", type=Path, default=DEFAULT_KERNEL_ROOT)
@@ -42,10 +55,12 @@ def main() -> int:
         f"已推广 helper：{helper_count}",
     ]
     for index, event in enumerate(reversed(events), start=1):
+        resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
         lines.append(
             f"{index}. stage={event.get('stage')} status={event.get('runner_status')} "
             f"safety={event.get('safety_class')} replay={event.get('replay_allowed')} "
-            f"tool={event.get('tool_id') or 'none'}"
+            f"tool={event.get('tool_id') or 'none'} lifecycle={lifecycle(event)} "
+            f"resolved_by={resolved_by.get('package_id') or 'none'}"
         )
     print("\n".join(lines))
     return 0

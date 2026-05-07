@@ -900,6 +900,80 @@
         "type": "plain_text_business_result"
       },
       "safety": "readonly"
+    },
+    {
+      "intent_id": "memory.curator.xhs",
+      "tool_id": "memory.curator.xhs",
+      "description": "Inspect Xiaohongshu/XHS long-term memory quality and optionally remove clearly noisy memory rows.",
+      "owner_agent": "memoryWorker",
+      "patterns": [
+        "小红书",
+        "小紅書",
+        "XHS",
+        "xhs",
+        "长记忆",
+        "長記憶",
+        "质量",
+        "品質",
+        "噪声",
+        "噪音",
+        "清理"
+      ],
+      "required_any": [
+        "检查长记忆质量",
+        "检查長記憶品質",
+        "清理小红书长记忆噪声",
+        "清理",
+        "噪声",
+        "噪音",
+        "质量",
+        "品質"
+      ],
+      "entrypoint": "scripts/openclaw/memory_curator_tool.py",
+      "args_schema": {
+        "mode": "memory_curator",
+        "topic": "xhs",
+        "forget_marked": false,
+        "limit": 25
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "fixed_memory_curator"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/memory_curator_tool.py && python -m pytest -q scripts/openclaw/test_memory_curator_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "memory.curator.xhs",
+      "domain": "memory",
+      "actions": [
+        "quality",
+        "clean"
+      ],
+      "worker_agent": "memoryWorker",
+      "prompt_hints": [
+        "检查长记忆质量",
+        "清理小红书长记忆噪声",
+        "小红书",
+        "XHS",
+        "长记忆",
+        "质量",
+        "噪声",
+        "清理"
+      ],
+      "input_contract": {
+        "type": "fixed_memory_curator"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result"
+      },
+      "safety": "readonly"
     }
   ]
 }

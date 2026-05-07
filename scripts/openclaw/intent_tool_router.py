@@ -538,6 +538,12 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
             "since": str(schema.get("since") or "2026-04-01"),
             "write": bool(schema.get("write", True)),
         }
+    if mode == "memory_curator":
+        return {
+            "topic": str(schema.get("topic") or "xhs"),
+            "forget_marked": bool(schema.get("forget_marked", False)),
+            "limit": int(schema.get("limit") or 25),
+        }
     if mode == "self_evolution_status":
         return {"limit": int(schema.get("limit") or 5)}
     raise ValueError(f"unsupported args_schema mode: {mode}")
@@ -606,6 +612,16 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             "--since",
             args["since"],
             "--write" if args.get("write") else "--dry-run",
+        ]
+    elif mode == "memory_curator":
+        cmd = [
+            sys.executable,
+            str(entrypoint),
+            "--topic",
+            args["topic"],
+            "--limit",
+            str(args.get("limit") or 25),
+            "--forget-marked" if args.get("forget_marked") else "--dry-run",
         ]
     elif mode == "self_evolution_status":
         cmd = [sys.executable, str(entrypoint), "--limit", str(args.get("limit") or 5)]

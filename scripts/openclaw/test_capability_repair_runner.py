@@ -56,3 +56,22 @@ def test_repair_runner_blocks_write_replay() -> None:
     assert result.status == "blocked"
     assert result.replay_allowed is False
     assert "not a verified read-only tool" in result.replay_reason or result.safety_class == "requires_confirmation_or_credentials"
+
+
+def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_repair(
+            text="请帮我做一个新的只读查询",
+            channel="discord_dm",
+            user_id="tester",
+            stage="binding",
+            reason="no registered tool for readonly lookup",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+            forced_safety_class="auto_safe_readonly",
+            forced_safety_reason="test readonly gap",
+        )
+        events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
+    assert result.status in {"generated", "verified"}
+    assert events[-1]["resolved_by"]
+    assert events[-1]["resolved_by"]["replay_policy"] in {"verify_before_replay", "blocked_until_human_authorization"}
