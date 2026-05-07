@@ -110,6 +110,8 @@ def concise_topic_summary(topic: str, source: str, text: str) -> str | None:
         line = re.sub(r"\s+", " ", raw).strip()
         if not line or len(line) < 8:
             continue
+        if is_noise_line(line):
+            continue
         if not pattern.search(line):
             continue
         if line in seen:
@@ -122,6 +124,17 @@ def concise_topic_summary(topic: str, source: str, text: str) -> str | None:
         return None
     body = "；".join(lines)
     return f"{topic.upper()} 长记忆回填：来源 {source}。要点：{body}"
+
+
+def is_noise_line(line: str) -> bool:
+    lowered = line.lower()
+    if "encrypted_content" in lowered or "ivborw0kggo" in lowered or "base64" in lowered:
+        return True
+    if len(line) > 180 and re.fullmatch(r"[A-Za-z0-9+/=_:;.,{}\"\\\-\s]+", line):
+        return True
+    if line.count("/") > 8 and not re.search(r"(小红书|小紅書|投稿|Costco|Frutteto|コストコ|フルッテート)", line, re.IGNORECASE):
+        return True
+    return False
 
 
 def collect_candidates(topic: str, sessions_dir: Path, since: datetime | None) -> list[MemoryCandidate]:
@@ -227,8 +240,11 @@ def write_candidates(
 ) -> list[dict[str, Any]]:
     import uuid
     rows: list[dict[str, Any]] = []
+    existing_texts = read_backfilled_texts(backfill_log)
     created_at = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
     for item in candidates:
+        if item.text in existing_texts:
+            continue
         rows.append(
             {
                 "id": str(uuid.uuid4()),
@@ -246,6 +262,21 @@ def write_candidates(
         for row, item in zip(rows, candidates):
             fh.write(json.dumps({"created_at": utc_now(), "id": row["id"], "topic": item.topic, "source": item.source, "text": item.text}, ensure_ascii=False) + "\n")
     return rows
+
+
+def read_backfilled_texts(path: Path) -> set[str]:
+    if not path.is_file():
+        return set()
+    seen: set[str] = set()
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        text = str(payload.get("text") or "")
+        if text:
+            seen.add(text)
+    return seen
 
 
 def format_output(topic: str, candidates: list[MemoryCandidate], rows: list[dict[str, Any]], write: bool) -> str:
