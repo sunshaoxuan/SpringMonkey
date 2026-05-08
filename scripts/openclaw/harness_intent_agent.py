@@ -13,6 +13,8 @@ from typing import Any, Callable
 
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
+REPO = Path(__file__).resolve().parents[2]
+RECURRING_JOB_CAPABILITIES = REPO / "config" / "openclaw" / "recurring_job_capabilities.json"
 RUNTIME_ENV_FILES = (
     Path("/etc/openclaw/openclaw.env"),
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
@@ -105,6 +107,45 @@ def cron_status_frame(text: str) -> IntentFrame | None:
         reason="deterministic XHS cron status lookup",
         source="local_rule",
     )
+
+
+def recurring_cron_run_frame(text: str) -> IntentFrame | None:
+    raw = normalize_text(text)
+    run_tokens = ("开始执行", "执行", "触发", "运行", "启动", "跑一轮", "重试", "补跑")
+    if not any(token in raw for token in run_tokens):
+        return None
+    try:
+        data = json.loads(RECURRING_JOB_CAPABILITIES.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    jobs = data.get("jobs") if isinstance(data.get("jobs"), list) else []
+    for job in jobs:
+        if not isinstance(job, dict) or not bool(job.get("allow_manual_run")):
+            continue
+        aliases = [str(item) for item in job.get("topic_aliases", [])]
+        if not any(normalize_text(alias) in raw for alias in aliases):
+            continue
+        return IntentFrame(
+            conversation_mode="task",
+            domain="cron",
+            action="run",
+            canonical_text=text.strip(),
+            context_refs=[],
+            parameters={"capability_id": str(job.get("capability_id") or "")},
+            safety="write" if bool(job.get("write_operation")) else "readonly",
+            result_contract={"type": "recurring_cron_run", "capability_id": str(job.get("capability_id") or "")},
+            tool_candidates=[
+                {
+                    "tool_id": "openclaw.cron.run.recurring_job",
+                    "confidence": 0.97,
+                    "reason": "deterministic configured recurring job run request",
+                }
+            ],
+            confidence=0.97,
+            reason="deterministic configured recurring job run request",
+            source="local_rule",
+        )
+    return None
 
 
 def model_call_log_path() -> Path:
@@ -322,7 +363,7 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
-    local_frame = relative_timescar_adjust_frame(text) or cron_status_frame(text)
+    local_frame = relative_timescar_adjust_frame(text) or recurring_cron_run_frame(text) or cron_status_frame(text)
     if local_frame:
         append_jsonl(
             model_call_log_path(),

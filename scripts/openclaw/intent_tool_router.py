@@ -550,6 +550,8 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
     if mode == "cron_status":
         topic = str(schema.get("topic") or "xhs")
         return {"text": text, "message_timestamp": message_timestamp, "topic": topic}
+    if mode == "recurring_cron_job_from_text":
+        return {"text": text, "message_timestamp": message_timestamp}
     raise ValueError(f"unsupported args_schema mode: {mode}")
 
 
@@ -640,6 +642,15 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             "--topic",
             str(args.get("topic") or "xhs"),
         ]
+    elif mode == "recurring_cron_job_from_text":
+        cmd = [
+            sys.executable,
+            str(entrypoint),
+            "--text",
+            args["text"],
+            "--message-timestamp",
+            args["message_timestamp"],
+        ]
     else:
         raise ValueError(f"unsupported execution mode: {mode}")
     started = time.monotonic()
@@ -677,10 +688,17 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
 def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, output: str) -> str:
     reply_policy = tool.get("reply_policy")
     if returncode == 0 and reply_policy == "cron_ack":
+        job_name = args.get("job_name")
+        if not job_name and output:
+            try:
+                parsed = json.loads(output)
+                job_name = parsed.get("job_name")
+            except json.JSONDecodeError:
+                job_name = None
         return "\n".join(
             [
                 "OpenClaw 正式任务已由汤猴事件入口触发。",
-                f"任务：{args.get('job_name')}",
+                f"任务：{job_name or 'configured recurring job'}",
                 output or "cron run command completed",
             ]
         )

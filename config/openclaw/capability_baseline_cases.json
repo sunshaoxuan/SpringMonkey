@@ -181,6 +181,20 @@
         "governance_allowed": true
       },
       "auto_repair": "readonly"
+    },
+    {
+      "id": "recurring_job_run_content_writing",
+      "text": "接下来，请你开始执行每3天一次的小红书撰稿计划。",
+      "live_intent": true,
+      "expected": {
+        "domain": "cron",
+        "action": "run",
+        "tool_id": "openclaw.cron.run.recurring_job",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
     }
   ]
 }

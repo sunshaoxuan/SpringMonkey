@@ -35,6 +35,18 @@ def test_xhs_cron_status_local_rule_and_args() -> None:
     assert args["topic"] == "xhs"
 
 
+def test_recurring_cron_run_local_rule_and_args() -> None:
+    registry = baseline.load_json(baseline.DEFAULT_REGISTRY)
+    frame = infer_intent_frame("接下来，请你开始执行每3天一次的小红书撰稿计划。", context="", registry=registry)
+    assert frame.domain == "cron"
+    assert frame.action == "run"
+    assert frame.safety == "write"
+    assert frame.tool_candidates[0]["tool_id"] == "openclaw.cron.run.recurring_job"
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "openclaw.cron.run.recurring_job")
+    args = extract_args(tool, frame.canonical_text, "2026-05-09T00:00:00+09:00")
+    assert args["text"] == "接下来，请你开始执行每3天一次的小红书撰稿计划。"
+
+
 def test_cron_status_tool_reads_jobs_json() -> None:
     from cron_status_tool import format_status
 

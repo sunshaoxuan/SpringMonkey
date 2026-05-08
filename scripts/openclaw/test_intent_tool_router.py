@@ -12,7 +12,7 @@ import harness_intent_audit
 import harness_intent_completion
 import nl_time_range
 from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult, WEATHER_DM_QUERY_TOOL
-from harness_intent_agent import IntentFrame
+from harness_intent_agent import IntentFrame, infer_intent_frame
 
 
 def load_registry() -> dict:
@@ -358,6 +358,19 @@ def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:
     assert result.tool_id == "openclaw.cron.status"
     args = router.extract_args(result.tool or {}, frame.canonical_text, "2026-05-04T00:00:00+09:00")
     assert args["topic"] == "xhs"
+
+
+def test_configured_recurring_job_run_binds_to_generic_cron_tool() -> None:
+    registry = router.load_registry()
+    frame = infer_intent_frame("接下来，请你开始执行每3天一次的小红书撰稿计划。", context="", registry=registry)
+    assert frame.domain == "cron"
+    assert frame.action == "run"
+    assert frame.safety == "write"
+    result = router.classification_for_tool_id(registry, frame.tool_candidates[0]["tool_id"], frame.reason, intent_frame=frame.__dict__)
+    assert result is not None
+    assert result.tool_id == "openclaw.cron.run.recurring_job"
+    args = router.extract_args(result.tool or {}, frame.canonical_text, "2026-05-09T00:00:00+09:00")
+    assert args["text"] == "接下来，请你开始执行每3天一次的小红书撰稿计划。"
 
 
 def test_weather_query_maps_to_registered_tool() -> None:

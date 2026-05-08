@@ -252,6 +252,7 @@
 - `openclaw/toolsmith_repair_runner.py`：第四阶段语义化只读工具匠；从 `intent_tools.json` 选择相近注册工具，继承契约/权限/日志策略，生成可验证的 ready helper 修复包
 - `openclaw/verify_capability_baseline.py`：第五阶段能力基线闸门；验证关键 owner DM 能力的 `intent_frame -> binding -> semantic_review -> governance`，并支持按 `domain/action/safety` 查找抽象能力族，默认不执行业务工具
 - `openclaw/regression_repair_runner.py`：第五阶段回归收紧入口；将匹配基线或同能力族的失败归类为既有能力回归 / `known_direction_repair`，生成带参考工具的结构化修复包，写操作停在授权等待
+- `openclaw/recurring_cron_run_tool.py`：通用 recurring job 触发器；从 `config/openclaw/recurring_job_capabilities.json` 解析已登记任务，校验启用状态、模型和投递 owner 后再运行对应 OpenClaw cron job
 - `openclaw/cron_status_tool.py`：只读查询 OpenClaw cron 任务状态；用于确认 XHS 等 recurring task 是否存在、启用和使用何种模型
 - `openclaw/helpers/browser_cdp_human.py`：真实浏览器 CDP fallback helper；当 OpenClaw `browser` 工具 targetId/tab/ref 漂移或误判为 headless/profile=user 时，直接连接宿主机常驻 Chrome CDP，并输出结构化证据
 - `openclaw/test_browser_control_helper.py`：验证浏览器控制漂移会被分类为 `browser_control`，并优先选择 `browser_cdp_human.py`

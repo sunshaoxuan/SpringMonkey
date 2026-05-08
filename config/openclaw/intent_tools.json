@@ -606,6 +606,74 @@
       "safety": "readonly"
     },
     {
+      "intent_id": "cron.recurring_job_run",
+      "tool_id": "openclaw.cron.run.recurring_job",
+      "description": "Run a configured recurring cron job after resolving the target from the recurring job capability registry.",
+      "owner_agent": "toolWorker",
+      "patterns": [
+        "定时任务",
+        "定期任务",
+        "recurring task",
+        "cron job"
+      ],
+      "required_any": [
+        "开始执行",
+        "执行",
+        "触发",
+        "运行",
+        "启动",
+        "跑一轮",
+        "重试"
+      ],
+      "entrypoint": "scripts/openclaw/recurring_cron_run_tool.py",
+      "args_schema": {
+        "mode": "recurring_cron_job_from_text"
+      },
+      "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
+      "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "cron_ack",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "confirm_policy": "configured_recurring_job_owner_dm_command",
+      "idempotency": "recurring_job_id_manual_run",
+      "verify_command": "python -m compileall -q scripts/openclaw/recurring_cron_run_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "cron_ack",
+      "capability_id": "cron.recurring_job_run",
+      "domain": "cron",
+      "actions": [
+        "run"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "定时任务",
+        "定期任务",
+        "recurring task",
+        "cron job",
+        "开始执行",
+        "执行",
+        "触发",
+        "运行",
+        "启动",
+        "跑一轮",
+        "重试"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "cron_ack",
+        "requires_trace": true
+      },
+      "safety": "write"
+    },
+    {
       "intent_id": "weather.dm.query",
       "tool_id": "weather.dm.query",
       "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",

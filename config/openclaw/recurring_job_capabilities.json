@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "jobs": [
+    {
+      "capability_id": "recurring.content_writing.every_3_days",
+      "job_name": "xhs-recommendation-every-3-days",
+      "topic_aliases": [
+        "小红书",
+        "小紅書",
+        "XHS",
+        "xhs",
+        "小红书撰稿",
+        "小红书文章",
+        "每3天",
+        "每三天"
+      ],
+      "run_aliases": [
+        "开始执行",
+        "执行",
+        "触发",
+        "运行",
+        "启动",
+        "跑一轮",
+        "重试"
+      ],
+      "allow_manual_run": true,
+      "expected_model": "openai-codex/gpt-5.5",
+      "expected_delivery_user_id": "999666719356354610",
+      "permission_scope": "owner_dm_write",
+      "write_operation": true
+    }
+  ]
+}
