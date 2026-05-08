@@ -224,7 +224,13 @@ def latest_cron_session(job_id: str, sessions_dir: Path = DEFAULT_SESSIONS_DIR, 
             candidates.append(path)
     if not candidates:
         return None
-    candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+    candidates.sort(
+        key=lambda item: (
+            1 if item.name.endswith(".jsonl") and ".trajectory." not in item.name else 0,
+            item.stat().st_mtime,
+        ),
+        reverse=True,
+    )
     return candidates[0]
 
 

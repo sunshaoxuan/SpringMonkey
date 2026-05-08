@@ -239,3 +239,26 @@ def test_cron_final_report_finds_job_id_beyond_file_head(tmp_path: Path) -> None
 
     assert report["found"] is True
     assert report["text"] == "deep done"
+
+
+def test_cron_final_report_prefers_primary_session_over_trajectory(tmp_path: Path) -> None:
+    trajectory = tmp_path / "abc.trajectory.jsonl"
+    primary = tmp_path / "abc.jsonl"
+    trajectory.write_text("agent:main:cron:job_1:run:abc\n", encoding="utf-8")
+    primary.write_text(
+        "agent:main:cron:job_1:run:abc\n"
+        + json.dumps(
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "primary done", "textSignature": '{"phase":"final_answer"}'}],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = tool.cron_final_report("job_1", started_at=0, sessions_dir=tmp_path)
+
+    assert report["found"] is True
+    assert report["text"] == "primary done"
