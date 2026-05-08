@@ -35,6 +35,7 @@ TOOLS: dict[str, str] = {
     "reply-media-repair": "remote_repair_reply_media_images.py",
     "capability-awareness": "remote_refresh_capability_awareness.py",
     "memory-repair": "remote_repair_memory_lancedb.py",
+    "memory-verify": "remote_verify_stage3_memory.py",
     "memory-guard": "remote_install_memory_lancedb_guard.py",
     "agent-society-runtime": "remote_install_agent_society_runtime_guard.py",
     "agent-society-guard": "remote_install_agent_society_startup_guard.py",

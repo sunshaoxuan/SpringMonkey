@@ -6,7 +6,18 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-PLUGIN = Path("/usr/lib/node_modules/openclaw/dist/extensions/memory-lancedb/index.js")
+PLUGIN_CANDIDATES = (
+    Path("/root/.openclaw/npm/node_modules/@openclaw/memory-lancedb/dist/index.js"),
+    Path("/var/lib/openclaw/.openclaw/npm/node_modules/@openclaw/memory-lancedb/dist/index.js"),
+    Path("/usr/lib/node_modules/openclaw/dist/extensions/memory-lancedb/index.js"),
+)
+
+
+def plugin_path() -> Path:
+    for candidate in PLUGIN_CANDIDATES:
+        if candidate.is_file():
+            return candidate
+    return PLUGIN_CANDIDATES[0]
 
 OLD = """var Embeddings = class {
 \tconstructor(apiKey, model, baseUrl, dimensions) {
@@ -80,6 +91,7 @@ NEW = """var Embeddings = class {
 
 
 def main() -> int:
+    PLUGIN = plugin_path()
     if not PLUGIN.is_file():
         raise SystemExit(f"plugin not found: {PLUGIN}")
     text = PLUGIN.read_text(encoding="utf-8")
@@ -87,6 +99,9 @@ def main() -> int:
         print("already patched")
         return 0
     if OLD not in text:
+        if "ProviderAdapterEmbeddings" in text or "getMemoryEmbeddingProvider" in text:
+            print("raw embeddings patch not needed for provider-adapter plugin layout")
+            return 0
         raise SystemExit("expected Embeddings block not found; plugin layout changed")
     backup = PLUGIN.with_name(f"{PLUGIN.name}.bak-memory-raw-embeddings-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
     shutil.copy2(PLUGIN, backup)

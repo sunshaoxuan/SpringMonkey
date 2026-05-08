@@ -107,8 +107,13 @@
   - 典型用法：`python SpringMonkey/scripts/remote_refresh_capability_awareness.py`
 
 - `remote_repair_memory_lancedb.py`
-  - 用途：修复 `memory-lancedb` 插件的 embeddings 路径与维度配置，重启 gateway 并做长记忆回归验证。
+  - 用途：修复 `memory-lancedb` 插件的 embeddings 路径、OpenClaw schema 迁移、文本检索 fallback 与维度配置，重启 gateway 并做长记忆回归验证。
   - 典型用法：`python SpringMonkey/scripts/remote_repair_memory_lancedb.py`
+
+- `remote_verify_stage3_memory.py`
+  - 用途：只读验收第三阶段收尾；输出 git/service/plugin/ltm stats/ltm search/XHS LanceDB 直查/curator dry-run/自演进状态与 embedding 端点证据。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_stage3_memory.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py memory-verify`
 
 - `remote_install_memory_lancedb_guard.py`
   - 用途：为 `memory-lancedb` 安装启动级自愈守护；每次 `openclaw.service` 启动前自动重打补丁，启动后自动校验 embeddings 必须为 1024 维。

@@ -18,6 +18,8 @@ LOCAL_PATCH = _SCRIPTS / "openclaw" / "patch_memory_lancedb_raw_embeddings_curre
 REMOTE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_memory_lancedb_raw_embeddings_current.py"
 LOCAL_AUTOCAPTURE_PATCH = _SCRIPTS / "openclaw" / "patch_memory_lancedb_autocapture_current.py"
 REMOTE_AUTOCAPTURE_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_memory_lancedb_autocapture_current.py"
+LOCAL_TEXT_FALLBACK_PATCH = _SCRIPTS / "openclaw" / "patch_memory_lancedb_text_fallback_current.py"
+REMOTE_TEXT_FALLBACK_PATCH = "/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/patch_memory_lancedb_text_fallback_current.py"
 
 REMOTE = r"""
 set -e
@@ -30,6 +32,7 @@ export HOME=/var/lib/openclaw
 REPO=/var/lib/openclaw/repos/SpringMonkey
 PATCH="${REPO}/scripts/openclaw/patch_memory_lancedb_raw_embeddings_current.py"
 AUTOCAPTURE_PATCH="${REPO}/scripts/openclaw/patch_memory_lancedb_autocapture_current.py"
+TEXT_FALLBACK_PATCH="${REPO}/scripts/openclaw/patch_memory_lancedb_text_fallback_current.py"
 PLUGIN="/usr/lib/node_modules/openclaw/dist/extensions/memory-lancedb/index.js"
 if [ ! -f "$PATCH" ]; then
   echo "[memory-guard] missing patch script: $PATCH" >&2
@@ -37,6 +40,10 @@ if [ ! -f "$PATCH" ]; then
 fi
 if [ ! -f "$AUTOCAPTURE_PATCH" ]; then
   echo "[memory-guard] missing patch script: $AUTOCAPTURE_PATCH" >&2
+  exit 1
+fi
+if [ ! -f "$TEXT_FALLBACK_PATCH" ]; then
+  echo "[memory-guard] missing patch script: $TEXT_FALLBACK_PATCH" >&2
   exit 1
 fi
 python3 "$PATCH" >/tmp/memory-lancedb-guard-patch.log 2>&1 || {
@@ -47,9 +54,22 @@ python3 "$AUTOCAPTURE_PATCH" >/tmp/memory-lancedb-guard-autocapture.log 2>&1 || 
   cat /tmp/memory-lancedb-guard-autocapture.log >&2 || true
   exit 1
 }
+python3 "$TEXT_FALLBACK_PATCH" >/tmp/memory-lancedb-guard-text-fallback.log 2>&1 || {
+  cat /tmp/memory-lancedb-guard-text-fallback.log >&2 || true
+  exit 1
+}
 python3 - <<'PY'
 from pathlib import Path
-plugin = Path("/usr/lib/node_modules/openclaw/dist/extensions/memory-lancedb/index.js")
+for candidate in (
+    Path("/root/.openclaw/npm/node_modules/@openclaw/memory-lancedb/dist/index.js"),
+    Path("/var/lib/openclaw/.openclaw/npm/node_modules/@openclaw/memory-lancedb/dist/index.js"),
+    Path("/usr/lib/node_modules/openclaw/dist/extensions/memory-lancedb/index.js"),
+):
+    if candidate.is_file():
+        plugin = candidate
+        break
+else:
+    raise SystemExit("[memory-guard] plugin not found")
 text = plugin.read_text(encoding="utf-8")
 required = [
     "const response = await fetch(`${baseUrl}/embeddings`, {",
@@ -57,6 +77,8 @@ required = [
     "function stripConversationMetadata(text) {",
     "remember|记住|记一下|请记住|别忘了",
     "const normalizedTexts = texts.map((text) => stripConversationMetadata(text)).filter(Boolean);",
+    "async textSearch(queryText, limit = 5)",
+    "vector search failed, using text fallback",
 ]
 missing = [item for item in required if item not in text]
 if missing:
@@ -146,6 +168,9 @@ def main() -> int:
         return 1
     if not LOCAL_AUTOCAPTURE_PATCH.is_file():
         print(f"missing local patch script: {LOCAL_AUTOCAPTURE_PATCH}", file=sys.stderr)
+        return 1
+    if not LOCAL_TEXT_FALLBACK_PATCH.is_file():
+        print(f"missing local patch script: {LOCAL_TEXT_FALLBACK_PATCH}", file=sys.stderr)
         return 1
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
