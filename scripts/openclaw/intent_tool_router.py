@@ -689,19 +689,20 @@ def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, ou
     reply_policy = tool.get("reply_policy")
     if returncode == 0 and reply_policy == "cron_ack":
         job_name = args.get("job_name")
+        final_report = ""
         if not job_name and output:
             try:
                 parsed = json.loads(output)
                 job_name = parsed.get("job_name")
+                final_report = str(parsed.get("final_report") or "")
             except json.JSONDecodeError:
                 job_name = None
-        return "\n".join(
-            [
-                "OpenClaw 正式任务已由汤猴事件入口触发。",
-                f"任务：{job_name or 'configured recurring job'}",
-                output or "cron run command completed",
-            ]
-        )
+        lines = ["OpenClaw 正式任务已完成。", f"任务：{job_name or 'configured recurring job'}"]
+        if final_report:
+            lines.extend(["", final_report])
+        else:
+            lines.append(output or "cron run command completed")
+        return "\n".join(lines)
     if returncode == 0:
         return output or "工具执行完成，但没有返回业务输出。"
     return f"工具执行失败，退出码：{returncode}\n{output or 'no output'}"

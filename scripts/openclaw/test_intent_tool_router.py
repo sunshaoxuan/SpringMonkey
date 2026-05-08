@@ -730,6 +730,26 @@ def test_run_tool_keeps_stderr_out_of_user_output() -> None:
         assert "DEP0169" in record["stderr"]
 
 
+def test_cron_ack_prefers_final_report_over_raw_json() -> None:
+    tool = {"reply_policy": "cron_ack"}
+    output = json.dumps(
+        {
+            "status": "success",
+            "job_name": "content-job",
+            "final_report": "已完成。\nhttps://docs.example/doc",
+            "diagnostics": {"stderr_hidden": True},
+        },
+        ensure_ascii=False,
+    )
+
+    reply = router.format_reply(tool, {}, 0, output)
+
+    assert "OpenClaw 正式任务已完成。" in reply
+    assert "任务：content-job" in reply
+    assert "https://docs.example/doc" in reply
+    assert "stderr_hidden" not in reply
+
+
 def test_discord_patch_uses_stdout_only_for_user_reply() -> None:
     source = (router.REPO / "scripts" / "openclaw" / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "[stdout, stderr].filter" not in source

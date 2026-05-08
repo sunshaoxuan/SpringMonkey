@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from typing import Any
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_CAPABILITIES = REPO / "config" / "openclaw" / "recurring_job_capabilities.json"
 DEFAULT_JOBS_PATH = Path("/var/lib/openclaw/.openclaw/cron/jobs.json")
+DEFAULT_SESSIONS_DIR = Path("/var/lib/openclaw/.openclaw/agents/main/sessions")
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -160,6 +162,82 @@ def failure_payload(
     }
 
 
+def message_text(message: dict[str, Any]) -> str:
+    content = message.get("content")
+    if isinstance(content, str):
+        return content.strip()
+    if not isinstance(content, list):
+        return ""
+    parts: list[str] = []
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "text" and str(item.get("text") or "").strip():
+            parts.append(str(item.get("text") or "").strip())
+    return "\n".join(parts).strip()
+
+
+def is_final_answer(message: dict[str, Any]) -> bool:
+    if message.get("role") != "assistant":
+        return False
+    content = message.get("content")
+    if not isinstance(content, list):
+        return bool(message_text(message))
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        signature = item.get("textSignature")
+        if isinstance(signature, str) and '"phase":"final_answer"' in signature:
+            return True
+    return False
+
+
+def parse_session_final_answer(path: Path) -> str:
+    final = ""
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        message = row.get("message") if isinstance(row.get("message"), dict) else {}
+        if is_final_answer(message):
+            text = message_text(message)
+            if text:
+                final = text
+    return final
+
+
+def latest_cron_session(job_id: str, sessions_dir: Path = DEFAULT_SESSIONS_DIR, *, started_at: float = 0.0) -> Path | None:
+    if not sessions_dir.is_dir():
+        return None
+    candidates: list[Path] = []
+    needle = f"cron:{job_id}:run"
+    for path in sessions_dir.glob("*.jsonl"):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        if started_at and stat.st_mtime + 2 < started_at:
+            continue
+        head = path.read_text(encoding="utf-8", errors="replace")[:20000]
+        if needle in head:
+            candidates.append(path)
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+    return candidates[0]
+
+
+def cron_final_report(job_id: str, *, started_at: float, sessions_dir: Path = DEFAULT_SESSIONS_DIR) -> dict[str, Any]:
+    session = latest_cron_session(job_id, sessions_dir, started_at=started_at)
+    if not session:
+        return {"found": False, "reason": "no matching cron session found"}
+    final = parse_session_final_answer(session)
+    if not final:
+        return {"found": False, "session_file": str(session), "reason": "matching session has no final answer"}
+    return {"found": True, "session_file": str(session), "text": final}
+
+
 def run_capability(
     *,
     text: str,
@@ -194,6 +272,7 @@ def run_capability(
             "job_id": job_id,
             "command": command,
         }
+    started_at = time.time()
     proc = subprocess.run(
         command,
         text=True,
@@ -204,7 +283,7 @@ def run_capability(
         timeout=timeout,
     )
     if proc.returncode == 0:
-        return proc.returncode, success_payload(
+        payload = success_payload(
             capability=capability,
             job_name=job_name,
             job_id=job_id,
@@ -212,6 +291,13 @@ def run_capability(
             stdout=proc.stdout or "",
             stderr=proc.stderr or "",
         )
+        report = cron_final_report(job_id, started_at=started_at)
+        if report.get("found"):
+            payload["final_report"] = report.get("text")
+            payload["session_file"] = report.get("session_file")
+        else:
+            payload["final_report_status"] = report
+        return proc.returncode, payload
     return proc.returncode, failure_payload(
         capability=capability,
         job_name=job_name,

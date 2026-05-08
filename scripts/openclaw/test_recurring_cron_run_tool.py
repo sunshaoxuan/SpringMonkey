@@ -165,3 +165,53 @@ def test_failed_run_keeps_stderr_tail(tmp_path: Path) -> None:
     assert code == 7
     assert payload["status"] == "failed"
     assert payload["stderr"] == "real failure"
+
+
+def test_parse_session_final_answer_extracts_final_text(tmp_path: Path) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text(
+        "\n".join(
+            [
+                json.dumps({"message": {"role": "assistant", "content": [{"type": "text", "text": "progress"}]}}),
+                json.dumps(
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "已完成。\nhttps://docs.example/doc",
+                                    "textSignature": '{"phase":"final_answer"}',
+                                }
+                            ],
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert tool.parse_session_final_answer(session) == "已完成。\nhttps://docs.example/doc"
+
+
+def test_cron_final_report_finds_latest_matching_session(tmp_path: Path) -> None:
+    session = tmp_path / "run.jsonl"
+    session.write_text(
+        json.dumps(
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "done", "textSignature": '{"phase":"final_answer"}'}],
+                },
+                "sessionKey": "agent:main:cron:job_1:run:abc",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = tool.cron_final_report("job_1", started_at=0, sessions_dir=tmp_path)
+
+    assert report["found"] is True
+    assert report["text"] == "done"
