@@ -125,6 +125,11 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_capability_baseline.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py capability-baseline`
 
+- `remote_fix_xhs_cron_model.py`
+  - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.5`，保留 schedule/message/delivery。
+  - 典型用法：`python SpringMonkey/scripts/remote_fix_xhs_cron_model.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py xhs-cron-model`
+
 - `remote_deploy_toolsmith_semantic.py`
   - 用途：第四阶段生产闭环部署；先跑本地能力基线、工具匠测试和注册表校验，再 push、远端 fast-forward，并执行 `capability-baseline` 与 `toolsmith-verify`。
   - 典型用法：`python SpringMonkey/scripts/remote_deploy_toolsmith_semantic.py`

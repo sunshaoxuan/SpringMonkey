@@ -56,6 +56,7 @@ TOOLS: dict[str, str] = {
     "stabilize": "remote_stabilize_host.py",
     "cron-run": "remote_cron_run_by_name.py",
     "cron-enable": "remote_enable_cron_jobs.py",
+    "xhs-cron-model": "remote_fix_xhs_cron_model.py",
 }
 
 
