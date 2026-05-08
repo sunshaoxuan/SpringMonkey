@@ -38,6 +38,7 @@ TOOLS: dict[str, str] = {
     "memory-verify": "remote_verify_stage3_memory.py",
     "memory-guard": "remote_install_memory_lancedb_guard.py",
     "toolsmith-verify": "remote_verify_toolsmith_semantic.py",
+    "capability-baseline": "remote_verify_capability_baseline.py",
     "toolsmith-deploy": "remote_deploy_toolsmith_semantic.py",
     "agent-society-runtime": "remote_install_agent_society_runtime_guard.py",
     "agent-society-guard": "remote_install_agent_society_startup_guard.py",

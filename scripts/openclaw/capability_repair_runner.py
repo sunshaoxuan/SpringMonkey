@@ -14,6 +14,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import GapRunnerResult, run_gap
+from regression_repair_runner import run_regression_repair
 from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, mark_deployed, repair_fingerprint, verify_and_promote_package
 
 
@@ -146,6 +147,88 @@ def run_repair(
     deploy_readonly: bool = False,
 ) -> RepairRunnerResult:
     repo_root = repo_root or Path(__file__).resolve().parents[2]
+    regression = run_regression_repair(
+        text=text,
+        stage=stage,
+        reason=reason,
+        kernel_root=kernel_root,
+        cases_path=repo_root / "config" / "openclaw" / "capability_baseline_cases.json",
+        registry_path=repo_root / "config" / "openclaw" / "intent_tools.json",
+    )
+    if regression.matched:
+        replay_allowed = regression.status == "verified" and not regression.write_operation and replay_depth == 0
+        replay_reason = (
+            "verified read-only baseline regression can be replayed once"
+            if replay_allowed
+            else ("write-scoped baseline regression requires explicit authorization" if regression.write_operation else f"regression status is {regression.status}")
+        )
+        event = {
+            "created_at": utc_now(),
+            "updated_at": utc_now(),
+            "repair_fingerprint": regression.fingerprint,
+            "text": text,
+            "channel": channel,
+            "user_id": user_id,
+            "stage": stage,
+            "reason": reason,
+            "execution_output_tail": execution_output[-2000:],
+            "context_tail": context[-2000:],
+            "gap_ref": f"regression_ref={regression.package.get('package_id')}",
+            "gap_status": "regression",
+            "runner_status": regression.status,
+            "safety_class": "requires_confirmation_or_credentials" if regression.write_operation else "auto_safe_readonly",
+            "replay_allowed": replay_allowed,
+            "replay_reason": replay_reason,
+            "tool_id": regression.expected_tool_id,
+            "regression_ref": regression.package.get("package_id"),
+            "baseline_case_id": regression.baseline_case_id,
+            "expected_tool_id": regression.expected_tool_id,
+            "actual_stage": regression.actual_stage,
+            "repair_status": regression.status,
+            "regression_type": regression.regression_type,
+            "plan": {
+                "gap_id": regression.package.get("package_id"),
+                "summary": f"Existing baseline capability regression: {regression.baseline_case_id}",
+                "next_required_change": regression.package.get("candidate_changes", []),
+                "verify_command": regression.package.get("verify_command"),
+            },
+            "resolved_by": {
+                "package_id": regression.package.get("package_id"),
+                "status": regression.status,
+                "gap_type": regression.regression_type,
+                "tool_id": regression.expected_tool_id,
+                "replay_policy": "await_explicit_authorization" if regression.write_operation else "verify_before_replay",
+                "verify_output_tail": regression.package.get("baseline_result", {}).get("reason", ""),
+                "promoted_at": utc_now() if replay_allowed else "",
+                "deployment_status": "awaiting_authorization" if regression.write_operation else "not_requested",
+            },
+        }
+        log_path = upsert_event(kernel_root, event, regression.fingerprint)
+        reply = "\n".join(
+            [
+                "汤猴识别到这是既有能力回归，不是新工具缺口。",
+                f"baseline_case={regression.baseline_case_id}",
+                f"expected_tool={regression.expected_tool_id}",
+                f"regression_type={regression.regression_type}",
+                f"修复包状态：{regression.status}",
+                f"重放判定：{'允许' if replay_allowed else '不允许'}，{replay_reason}",
+                f"事件日志：{log_path}",
+            ]
+        )
+        return RepairRunnerResult(
+            status=regression.status,
+            stage=stage,
+            safety_class="requires_confirmation_or_credentials" if regression.write_operation else "auto_safe_readonly",
+            gap_ref=f"regression_ref={regression.package.get('package_id')}",
+            replay_allowed=replay_allowed,
+            replay_reason=replay_reason,
+            reply=reply,
+            plan=event["plan"],
+            registry_tool=registry_tool,
+            toolsmith_package=regression.package,
+            event_log=str(log_path),
+            created_at=utc_now(),
+        )
     intent_reason = reason
     if execution_output:
         intent_reason = f"{intent_reason}; output={execution_output[:1200]}"

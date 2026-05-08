@@ -344,6 +344,22 @@ def test_news_1700_maps_to_formal_cron_job() -> None:
     assert args["job_name"] == "news-digest-jst-1700"
 
 
+def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:
+    registry = load_registry()
+    frame = harness_dispatcher.infer_intent_frame(
+        "检查每3天一次的小红书文章撰写任务状态。",
+        context="",
+        registry=registry,
+    )
+    assert frame.source == "local_rule"
+    assert frame.domain == "cron"
+    assert frame.action == "status"
+    result = router.classify("检查每3天一次的小红书文章撰写任务状态。", "discord_dm", "999", registry)
+    assert result.tool_id == "openclaw.cron.status"
+    args = router.extract_args(result.tool or {}, frame.canonical_text, "2026-05-04T00:00:00+09:00")
+    assert args["topic"] == "xhs"
+
+
 def test_weather_query_maps_to_registered_tool() -> None:
     result = router.classify("请查询明天东京和长野天气、风况和能见度", "discord_dm", "999", load_registry())
     assert result.intent_id == "weather.dm.query"

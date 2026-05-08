@@ -78,6 +78,35 @@ def relative_timescar_adjust_frame(text: str) -> IntentFrame | None:
     )
 
 
+def cron_status_frame(text: str) -> IntentFrame | None:
+    raw = normalize_text(text)
+    has_cron_subject = any(token in raw for token in ("定时任务", "定期任务", "cron", "任务状态", "任务在哪", "任务"))
+    has_xhs = any(token in raw for token in ("小红书", "小紅書", "xhs", "XHS"))
+    has_status = any(token in raw for token in ("检查", "查看", "查询", "状态", "在哪", "没看到", "列出"))
+    if not (has_cron_subject and has_xhs and has_status):
+        return None
+    return IntentFrame(
+        conversation_mode="task",
+        domain="cron",
+        action="status",
+        canonical_text=text.strip(),
+        context_refs=[],
+        parameters={"topic": "xhs"},
+        safety="readonly",
+        result_contract={"type": "cron_status", "topic": "xhs"},
+        tool_candidates=[
+            {
+                "tool_id": "openclaw.cron.status",
+                "confidence": 0.97,
+                "reason": "deterministic cron status lookup for XHS recurring task",
+            }
+        ],
+        confidence=0.97,
+        reason="deterministic XHS cron status lookup",
+        source="local_rule",
+    )
+
+
 def model_call_log_path() -> Path:
     configured = os.environ.get("OPENCLAW_HARNESS_MODEL_CALL_LOG", "").strip()
     return Path(configured) if configured else WORKSPACE / "var" / "harness_model_calls.jsonl"
@@ -236,6 +265,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "For liveness greetings such as '还活着吗', reply briefly, e.g. '在。'. "
         "For short follow-ups such as '未来一个月以后的呢？', inspect Recent tool invocations in context; if the last task was a TimesCar query, inherit domain=timescar action=query and produce a complete canonical_text. "
         "For TimesCar follow-ups like '把这单的开始时间往后推24小时，结束时间不变', choose domain=timescar action=adjust, safety=write, and tool candidate timescar.dm.adjust_start. "
+        "For recurring task status such as '检查每3天一次的小红书文章撰写任务状态', choose domain=cron action=status and tool candidate openclaw.cron.status. "
         "If model cannot safely bind a task, set conversation_mode=clarification or gap."
     )
     user = "\n".join(
@@ -292,7 +322,7 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
-    local_frame = relative_timescar_adjust_frame(text)
+    local_frame = relative_timescar_adjust_frame(text) or cron_status_frame(text)
     if local_frame:
         append_jsonl(
             model_call_log_path(),

@@ -120,8 +120,13 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_toolsmith_semantic.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py toolsmith-verify`
 
+- `remote_verify_capability_baseline.py`
+  - 用途：只读验收第五阶段能力基线；远端验证 registry/harness、能力基线和 TimesCar 写操作回归授权门。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_capability_baseline.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py capability-baseline`
+
 - `remote_deploy_toolsmith_semantic.py`
-  - 用途：第四阶段生产闭环部署；先跑本地工具匠测试和注册表校验，再 push、远端 fast-forward，并执行 `toolsmith-verify`。
+  - 用途：第四阶段生产闭环部署；先跑本地能力基线、工具匠测试和注册表校验，再 push、远端 fast-forward，并执行 `capability-baseline` 与 `toolsmith-verify`。
   - 典型用法：`python SpringMonkey/scripts/remote_deploy_toolsmith_semantic.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py toolsmith-deploy`
 
@@ -240,6 +245,9 @@
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核，现已包含 `failure_pattern` 累积与 `candidate -> emerging -> learned` 生命周期
 - `openclaw/agent_society_helper_toolsmith.py`：生成 bounded business repairer；输出 helper contract、repair workflow 与 drift guard，而不再只是薄 scaffold
 - `openclaw/toolsmith_repair_runner.py`：第四阶段语义化只读工具匠；从 `intent_tools.json` 选择相近注册工具，继承契约/权限/日志策略，生成可验证的 ready helper 修复包
+- `openclaw/verify_capability_baseline.py`：第五阶段能力基线闸门；验证关键 owner DM 能力的 `intent_frame -> binding -> semantic_review -> governance`，默认不执行业务工具
+- `openclaw/regression_repair_runner.py`：第五阶段回归收紧入口；将匹配基线的失败归类为既有能力回归，生成结构化修复包，写操作停在授权等待
+- `openclaw/cron_status_tool.py`：只读查询 OpenClaw cron 任务状态；用于确认 XHS 等 recurring task 是否存在、启用和使用何种模型
 - `openclaw/helpers/browser_cdp_human.py`：真实浏览器 CDP fallback helper；当 OpenClaw `browser` 工具 targetId/tab/ref 漂移或误判为 headless/profile=user 时，直接连接宿主机常驻 Chrome CDP，并输出结构化证据
 - `openclaw/test_browser_control_helper.py`：验证浏览器控制漂移会被分类为 `browser_control`，并优先选择 `browser_cdp_human.py`
 - `openclaw/test_agent_society_composed_repairer_plan.py`：验证 planner 会把多个 promoted business repairer 组合成 bounded repair pipeline，而不是只挑一个 helper

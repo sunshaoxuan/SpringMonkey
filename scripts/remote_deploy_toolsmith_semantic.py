@@ -20,6 +20,7 @@ def run(command: list[str], *, check: bool = True) -> int:
 
 def main() -> int:
     checks = [
+        [sys.executable, "scripts/openclaw/verify_capability_baseline.py"],
         [sys.executable, "-m", "pytest", "-q", "scripts/openclaw/test_toolsmith_repair_runner.py", "scripts/openclaw/test_capability_repair_runner.py"],
         [sys.executable, "scripts/openclaw/verify_intent_tool_registry.py"],
         [sys.executable, "scripts/openclaw/verify_harness_registry.py"],
@@ -30,6 +31,7 @@ def main() -> int:
     run(["git", "status", "--short"])
     run(["git", "push", "origin", "main"])
     run([sys.executable, "scripts/openclaw_remote_cli.py", "git-pull"])
+    run([sys.executable, "scripts/openclaw_remote_cli.py", "capability-baseline"])
     run([sys.executable, "scripts/openclaw_remote_cli.py", "toolsmith-verify"])
     print("DONE")
     return 0

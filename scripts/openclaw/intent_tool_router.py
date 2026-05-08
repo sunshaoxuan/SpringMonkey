@@ -547,6 +547,9 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
         }
     if mode == "self_evolution_status":
         return {"limit": int(schema.get("limit") or 5)}
+    if mode == "cron_status":
+        topic = str(schema.get("topic") or "xhs")
+        return {"text": text, "message_timestamp": message_timestamp, "topic": topic}
     raise ValueError(f"unsupported args_schema mode: {mode}")
 
 
@@ -626,6 +629,17 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
         ]
     elif mode == "self_evolution_status":
         cmd = [sys.executable, str(entrypoint), "--limit", str(args.get("limit") or 5)]
+    elif mode == "cron_status":
+        cmd = [
+            sys.executable,
+            str(entrypoint),
+            "--text",
+            args["text"],
+            "--message-timestamp",
+            args["message_timestamp"],
+            "--topic",
+            str(args.get("topic") or "xhs"),
+        ]
     else:
         raise ValueError(f"unsupported execution mode: {mode}")
     started = time.monotonic()

@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "channel": "discord_dm",
+    "user_id": "999666719356354610",
+    "message_timestamp": "2026-05-08T23:00:00+09:00"
+  },
+  "cases": [
+    {
+      "id": "timescar_query_48h",
+      "text": "检查一下未来48小时的订车记录。",
+      "expected": {
+        "domain": "timescar",
+        "action": "query",
+        "tool_id": "timescar.dm.query",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "parameters": {
+        "duration_hours": 48,
+        "offset_hours": 0,
+        "relation": "within"
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "timescar_keep_next",
+      "text": "请保留明天的订车。",
+      "expected": {
+        "domain": "timescar",
+        "action": "status",
+        "tool_id": "timescar.dm.keep_next",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "timescar_cancel_next",
+      "text": "把这单取消掉。",
+      "expected": {
+        "domain": "timescar",
+        "action": "cancel",
+        "tool_id": "timescar.dm.cancel_next",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
+      "id": "timescar_cancel_status",
+      "text": "这单取消了吗？",
+      "expected": {
+        "domain": "timescar",
+        "action": "status",
+        "tool_id": "timescar.dm.cancel_status",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "timescar_adjust_explicit",
+      "text": "请把明天开始的订车改到后天早9点，结束时间不变。",
+      "expected": {
+        "domain": "timescar",
+        "action": "adjust",
+        "tool_id": "timescar.dm.adjust_start",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
+      "id": "timescar_adjust_relative_this_booking",
+      "text": "把这单的开始时间往后推24小时，结束时间不变。",
+      "live_intent": true,
+      "expected": {
+        "domain": "timescar",
+        "action": "adjust",
+        "tool_id": "timescar.dm.adjust_start",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
+      "id": "memory_xhs_backfill",
+      "text": "把之前小红书投稿相关记录回填到长记忆。",
+      "expected": {
+        "domain": "memory",
+        "action": "backfill",
+        "tool_id": "memory.backfill.xhs",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "memory_xhs_curator_dry_run",
+      "text": "检查长记忆质量。",
+      "expected": {
+        "domain": "memory",
+        "action": "quality",
+        "tool_id": "memory.curator.xhs",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "memory_xhs_curator_confirm",
+      "text": "确认清理小红书长记忆噪声。",
+      "expected": {
+        "domain": "memory",
+        "action": "clean",
+        "tool_id": "memory.curator.xhs",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "self_evolution_status",
+      "text": "检查自演进状态。",
+      "expected": {
+        "domain": "self",
+        "action": "status",
+        "tool_id": "openclaw.self_evolution.status",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "weather_dm_query",
+      "text": "请查询明天东京和长野天气、风况和能见度。",
+      "expected": {
+        "domain": "weather",
+        "action": "query",
+        "tool_id": "weather.dm.query",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "news_cron_1700",
+      "text": "触发一轮17点的新闻任务。",
+      "expected": {
+        "domain": "news",
+        "action": "run",
+        "tool_id": "openclaw.cron.run.news",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
+      "id": "xhs_cron_status",
+      "text": "检查每3天一次的小红书文章撰写任务状态。",
+      "live_intent": true,
+      "expected": {
+        "domain": "cron",
+        "action": "status",
+        "tool_id": "openclaw.cron.status",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    }
+  ]
+}
