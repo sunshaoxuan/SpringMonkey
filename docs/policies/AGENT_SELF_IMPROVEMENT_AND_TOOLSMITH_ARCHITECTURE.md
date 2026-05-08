@@ -183,6 +183,8 @@ Current implemented step:
 
 - the toolsmith can now generate a bounded business repairer, not just a thin scaffold
 - for safe read-only capability gaps, the toolsmith can select a similar registered tool from `intent_tools.json`, inherit its contracts and routing metadata, and generate a semantic ready helper instead of a generic draft
+- before generic gap repair, the regression runner now checks the capability baseline by abstract `domain/action/safety`; same-family misses are classified as `known_direction_repair` instead of being treated as unknown blocked gaps
+- repair packages now include same-family reference tools so the repair path inherits an existing contract, permission scope, safety class, and logging policy instead of hard-coding one concrete task
 - generated repairers include a helper contract, a multi-step repair workflow, and a drift guard
 - promotion now requires not only executable output, but also a non-empty repair workflow and a passing drift check
 - promoted repairers can now be composed by the planner into a bounded multi-repairer workflow when the current session matches more than one durable failure surface

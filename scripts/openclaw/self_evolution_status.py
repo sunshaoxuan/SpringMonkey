@@ -24,6 +24,12 @@ def read_jsonl_tail(path: Path, limit: int) -> list[dict]:
 def lifecycle(event: dict) -> str:
     status = str(event.get("runner_status") or "recorded")
     if event.get("regression_ref"):
+        if event.get("match_kind") == "capability_family":
+            if status == "awaiting_authorization":
+                return "known_direction_detected -> package_verified -> awaiting_authorization"
+            if status in {"verified", "deployed"}:
+                return f"known_direction_detected -> package_{status} -> replay_ready"
+            return f"known_direction_detected -> {status}"
         if status == "awaiting_authorization":
             return "regression_detected -> package_verified -> awaiting_authorization"
         if status in {"verified", "deployed"}:
@@ -90,6 +96,7 @@ def main() -> int:
             f"tool={event.get('tool_id') or 'none'} lifecycle={lifecycle(event)} "
             f"baseline={event.get('baseline_case_id') or 'none'} "
             f"regression={event.get('regression_type') or 'none'} "
+            f"match={event.get('match_kind') or 'none'} "
             f"resolved_by={resolved_by.get('package_id') or 'none'} "
             f"fingerprint={event.get('repair_fingerprint') or 'none'} "
             f"verify={str(resolved_by.get('verify_output_tail') or '')[:120]}"

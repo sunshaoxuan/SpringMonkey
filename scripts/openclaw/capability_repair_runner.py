@@ -186,9 +186,15 @@ def run_repair(
             "actual_stage": regression.actual_stage,
             "repair_status": regression.status,
             "regression_type": regression.regression_type,
+            "match_kind": regression.match_kind,
+            "reference_tools": regression.reference_tools or [],
             "plan": {
                 "gap_id": regression.package.get("package_id"),
-                "summary": f"Existing baseline capability regression: {regression.baseline_case_id}",
+                "summary": (
+                    f"Known-direction capability repair: {regression.baseline_case_id}"
+                    if regression.match_kind == "capability_family"
+                    else f"Existing baseline capability regression: {regression.baseline_case_id}"
+                ),
                 "next_required_change": regression.package.get("candidate_changes", []),
                 "verify_command": regression.package.get("verify_command"),
             },
@@ -210,6 +216,7 @@ def run_repair(
                 f"baseline_case={regression.baseline_case_id}",
                 f"expected_tool={regression.expected_tool_id}",
                 f"regression_type={regression.regression_type}",
+                f"match_kind={regression.match_kind}",
                 f"修复包状态：{regression.status}",
                 f"重放判定：{'允许' if replay_allowed else '不允许'}，{replay_reason}",
                 f"事件日志：{log_path}",
@@ -365,6 +372,7 @@ def main() -> int:
     parser.add_argument("--replay-depth", type=int, default=0)
     parser.add_argument("--semantic", action="store_true")
     parser.add_argument("--deploy-readonly", action="store_true")
+    parser.add_argument("--known-direction", action="store_true", help="Compatibility flag: baseline/family repair is always attempted before generic gaps.")
     args = parser.parse_args()
     result = run_repair(
         text=args.text,

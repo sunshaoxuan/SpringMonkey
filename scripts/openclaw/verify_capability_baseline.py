@@ -66,6 +66,63 @@ def find_case(text: str, cases_path: Path = DEFAULT_CASES) -> dict[str, Any] | N
     return None
 
 
+def expected_signature(case: dict[str, Any]) -> dict[str, Any]:
+    expected = case.get("expected") if isinstance(case.get("expected"), dict) else {}
+    return {
+        "domain": str(expected.get("domain") or ""),
+        "action": str(expected.get("action") or ""),
+        "safety": str(expected.get("safety") or ""),
+        "write_operation": bool(expected.get("write_operation")),
+        "tool_id": str(expected.get("tool_id") or ""),
+        "capability_family": str(case.get("capability_family") or ""),
+        "auto_repair": str(case.get("auto_repair") or ""),
+    }
+
+
+def find_capability_family_case(
+    text: str,
+    registry: dict[str, Any],
+    cases_path: Path = DEFAULT_CASES,
+    *,
+    fail_open_model: bool = False,
+) -> tuple[dict[str, Any] | None, IntentFrame | None, str]:
+    """Find a baseline case by abstract capability shape, not exact text.
+
+    This is intentionally conservative: the inferred frame must agree on
+    domain/action/safety with an existing baseline case. It does not bind a
+    specific business keyword to a repair path.
+    """
+    _, cases = baseline_cases(cases_path)
+    try:
+        frame = infer_intent_frame(text, context="", registry=registry)
+    except Exception as exc:
+        if fail_open_model:
+            return None, None, f"intent inference unavailable: {type(exc).__name__}: {exc}"
+        raise
+    candidates: list[tuple[int, dict[str, Any]]] = []
+    for case in cases:
+        signature = expected_signature(case)
+        if signature["domain"] != frame.domain or signature["action"] != frame.action:
+            continue
+        score = 10
+        if signature["safety"] == frame.safety:
+            score += 4
+        elif signature["safety"] and frame.safety:
+            score -= 6
+        if signature["auto_repair"] == "readonly" and frame.safety == "readonly":
+            score += 2
+        if signature["auto_repair"] == "authorization_required" and frame.safety in {"write", "credential", "destructive"}:
+            score += 2
+        if signature["capability_family"]:
+            score += 1
+        if score > 0:
+            candidates.append((score, case))
+    if not candidates:
+        return None, frame, f"no baseline capability family for {frame.domain}/{frame.action}/{frame.safety}"
+    candidates.sort(key=lambda item: (item[0], str(item[1].get("id") or "")), reverse=True)
+    return candidates[0][1], frame, "matched baseline capability family"
+
+
 def make_expected_frame(case: dict[str, Any]) -> IntentFrame:
     expected = case.get("expected") if isinstance(case.get("expected"), dict) else {}
     parameters = case.get("parameters") if isinstance(case.get("parameters"), dict) else {}

@@ -138,6 +138,7 @@ The current direct-task failure bridge now also supports:
 24. drift checking now also happens inside `next_step()` planning, so a promoted repairer can still be filtered out at execution time if the current session/step no longer matches its failure surface
 25. composed repair pipelines now include a bounded repair-graph budget and a rollback policy, so each step knows how many repairers and workflow stages are allowed before it must stop and return blocker evidence
 26. safe read-only toolsmith packages can now use existing registered tools as semantic references, inherit their contracts and safety metadata, and generate ready helpers that return structured business output instead of a generic `draft` payload
+27. capability repair now checks exact baseline cases first, then abstract capability families by `domain/action/safety`; same-family binding misses become `known_direction_repair` packages with reference tools and replay gates instead of generic blocked gaps
 
 In other words, error classification is no longer only a static table.
 
