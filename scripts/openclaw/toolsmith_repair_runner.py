@@ -138,13 +138,14 @@ def score_reference_tool(tool: dict[str, Any], *, domain: str, actions: list[str
     return score
 
 
-def find_reference_tool(repo_root: Path, *, text: str, gap_type: str, readonly: bool = True) -> dict[str, Any] | None:
+def find_reference_tool(repo_root: Path, *, text: str, gap_type: str, readonly: bool = True, exclude_tool_id: str = "") -> dict[str, Any] | None:
     domain, actions = infer_domain_actions(text, gap_type)
     input_type = "dm_text_timestamp"
     candidates = [
         tool
         for tool in registry_tools(repo_root)
         if bool(tool.get("write_operation")) is not readonly
+        and str(tool.get("tool_id") or "") != exclude_tool_id
     ]
     ranked = sorted(
         candidates,
@@ -424,7 +425,7 @@ def generate_repair_package(
     if existing is not None:
         return existing
     registry_patch = build_registry_patch(tool_id, entrypoint, text)
-    reference_tool = find_reference_tool(repo_root, text=text, gap_type=gap_type, readonly=True) if semantic and not write_like else None
+    reference_tool = find_reference_tool(repo_root, text=text, gap_type=gap_type, readonly=True, exclude_tool_id=tool_id) if semantic and not write_like else None
     registry_patch = build_registry_patch(tool_id, entrypoint, text, reference_tool=reference_tool, semantic=semantic and not write_like)
     files: list[str] = []
     status = "blocked_requires_authorization" if write_like else "generated"
