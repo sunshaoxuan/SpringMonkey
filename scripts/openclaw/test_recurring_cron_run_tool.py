@@ -215,3 +215,27 @@ def test_cron_final_report_finds_latest_matching_session(tmp_path: Path) -> None
 
     assert report["found"] is True
     assert report["text"] == "done"
+
+
+def test_cron_final_report_finds_job_id_beyond_file_head(tmp_path: Path) -> None:
+    session = tmp_path / "run.jsonl"
+    session.write_text(
+        "x" * 25000
+        + "\n"
+        + json.dumps({"sessionKey": "agent:main:cron:job_deep:run:abc"})
+        + "\n"
+        + json.dumps(
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": "deep done", "textSignature": '{"phase":"final_answer"}'}],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = tool.cron_final_report("job_deep", started_at=0, sessions_dir=tmp_path)
+
+    assert report["found"] is True
+    assert report["text"] == "deep done"

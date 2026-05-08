@@ -219,8 +219,8 @@ def latest_cron_session(job_id: str, sessions_dir: Path = DEFAULT_SESSIONS_DIR, 
             continue
         if started_at and stat.st_mtime + 2 < started_at:
             continue
-        head = path.read_text(encoding="utf-8", errors="replace")[:20000]
-        if needle in head:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if needle in text or job_id in text:
             candidates.append(path)
     if not candidates:
         return None
