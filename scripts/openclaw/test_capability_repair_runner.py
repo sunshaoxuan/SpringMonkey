@@ -98,3 +98,53 @@ def test_repair_runner_reuses_same_gap_event_fingerprint() -> None:
     assert first.toolsmith_package["package_id"] == second.toolsmith_package["package_id"]
     assert len(events) == 1
     assert events[0]["repair_fingerprint"]
+
+
+def test_repair_runner_deploy_readonly_requires_deployed_package() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        (repo / "config" / "openclaw").mkdir(parents=True)
+        (repo / "scripts" / "openclaw").mkdir(parents=True)
+        (repo / "config" / "openclaw" / "intent_tools.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "tools": [
+                        {
+                            "tool_id": "openclaw.self_evolution.status",
+                            "entrypoint": "scripts/openclaw/self_evolution_status.py",
+                            "write_operation": False,
+                            "domain": "self",
+                            "actions": ["status"],
+                            "input_schema": {"type": "none"},
+                            "output_schema": {"type": "plain_text_business_result"},
+                            "permission_scope": "owner_dm_readonly",
+                            "safety": "readonly",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        with patch("toolsmith_repair_runner.run_command", return_value=(True, "ok")):
+            result = runner.run_repair(
+                text="检查修复包状态",
+                channel="discord_dm",
+                user_id="tester",
+                stage="binding",
+                reason="no registered tool for readonly self evolution package status",
+                kernel_root=Path(tmp) / "kernel",
+                repo_root=repo,
+                forced_safety_class="auto_safe_readonly",
+                forced_safety_reason="test readonly gap",
+                semantic=True,
+                deploy_readonly=True,
+            )
+        events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
+
+    assert result.status == "deployed"
+    assert result.replay_allowed is True
+    assert events[-1]["resolved_by"]["status"] == "deployed"
+    assert events[-1]["resolved_by"]["deployment_status"] == "git_deploy_requested"

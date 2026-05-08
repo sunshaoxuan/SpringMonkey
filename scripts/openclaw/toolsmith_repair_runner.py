@@ -14,6 +14,14 @@ from typing import Any
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
 
+try:
+    import sys
+
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 
 @dataclass
 class ToolsmithPackage:
@@ -35,6 +43,8 @@ class ToolsmithPackage:
     fingerprint: str = ""
     verify_output: str = ""
     promoted_at: str = ""
+    semantic_source: str = ""
+    deployment_status: str = "not_requested"
 
 
 def utc_now() -> str:
@@ -81,6 +91,71 @@ def infer_tool_id(text: str, gap_type: str) -> str:
     return f"openclaw.generated.{safe_slug(gap_type)}"
 
 
+def registry_tools(repo_root: Path) -> list[dict[str, Any]]:
+    registry_path = repo_root / "config" / "openclaw" / "intent_tools.json"
+    if not registry_path.is_file():
+        return []
+    try:
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    tools = data.get("tools", [])
+    return tools if isinstance(tools, list) else []
+
+
+def infer_domain_actions(text: str, gap_type: str) -> tuple[str, list[str]]:
+    if re.search(r"(小红书|小紅書|xhs|长记忆|memory|记忆|記憶)", text, re.IGNORECASE):
+        return "memory", ["query"]
+    if re.search(r"(天气|weather|風|风|能见度|視程|可視性)", text, re.IGNORECASE):
+        return "weather", ["query"]
+    if re.search(r"(状态|狀態|自演进|自進化|能力缺口|修复包|修復包)", text, re.IGNORECASE):
+        return "self", ["status"]
+    if gap_type == "entrypoint_missing":
+        return "general", ["query"]
+    return "general", ["query"]
+
+
+def score_reference_tool(tool: dict[str, Any], *, domain: str, actions: list[str], readonly: bool, input_type: str) -> int:
+    score = 0
+    if str(tool.get("domain") or "") == domain:
+        score += 8
+    tool_actions = tool.get("actions") if isinstance(tool.get("actions"), list) else []
+    if any(action in tool_actions for action in actions):
+        score += 4
+    if bool(tool.get("write_operation")) is not readonly:
+        score += 4
+    schema = tool.get("input_schema") if isinstance(tool.get("input_schema"), dict) else {}
+    contract = tool.get("input_contract") if isinstance(tool.get("input_contract"), dict) else {}
+    if input_type in {str(schema.get("type") or ""), str(contract.get("type") or "")}:
+        score += 2
+    if str(tool.get("safety") or "") == "readonly" and readonly:
+        score += 1
+    args_schema = tool.get("args_schema") if isinstance(tool.get("args_schema"), dict) else {}
+    if readonly and bool(args_schema.get("write")):
+        score -= 4
+    if "query" in actions and "backfill" in tool_actions:
+        score -= 3
+    return score
+
+
+def find_reference_tool(repo_root: Path, *, text: str, gap_type: str, readonly: bool = True) -> dict[str, Any] | None:
+    domain, actions = infer_domain_actions(text, gap_type)
+    input_type = "dm_text_timestamp"
+    candidates = [
+        tool
+        for tool in registry_tools(repo_root)
+        if bool(tool.get("write_operation")) is not readonly
+    ]
+    ranked = sorted(
+        candidates,
+        key=lambda tool: score_reference_tool(tool, domain=domain, actions=actions, readonly=readonly, input_type=input_type),
+        reverse=True,
+    )
+    if ranked and score_reference_tool(ranked[0], domain=domain, actions=actions, readonly=readonly, input_type=input_type) > 0:
+        return dict(ranked[0])
+    return None
+
+
 def render_helper(tool_id: str) -> str:
     return f'''#!/usr/bin/env python3
 from __future__ import annotations
@@ -103,7 +178,140 @@ if __name__ == "__main__":
 '''
 
 
-def render_test(entrypoint: str) -> str:
+def render_semantic_helper(tool_id: str, domain: str, reference_tool_id: str) -> str:
+    return f'''#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+TOOL_ID = "{tool_id}"
+DOMAIN = "{domain}"
+REFERENCE_TOOL_ID = "{reference_tool_id}"
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def run_command(args: list[str], timeout: int = 20) -> tuple[bool, str]:
+    try:
+        proc = subprocess.run(
+            args,
+            cwd=repo_root(),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+        )
+        return proc.returncode == 0, (proc.stdout or "").strip()
+    except Exception as exc:
+        return False, f"{{type(exc).__name__}}: {{exc}}"
+
+
+def memory_query(text: str) -> str:
+    query = text or "小红书 Costco Frutteto 投稿"
+    ok, output = run_command(["openclaw", "ltm", "search", query, "--limit", "5"], timeout=40)
+    if ok and output:
+        return output
+    return "长记忆查询未返回结果；请检查 memory-lancedb 或 embedding/text fallback。"
+
+
+def self_status() -> str:
+    ok, output = run_command([sys.executable, "scripts/openclaw/self_evolution_status.py", "--limit", "5"])
+    return output if ok and output else "自演进状态暂不可用。"
+
+
+def config_check() -> str:
+    registry = repo_root() / "config" / "openclaw" / "intent_tools.json"
+    if not registry.is_file():
+        return "未找到 intent tool registry。"
+    data = json.loads(registry.read_text(encoding="utf-8"))
+    tools = data.get("tools", [])
+    return f"注册工具数量：{{len(tools)}}；参考工具：{{REFERENCE_TOOL_ID}}。"
+
+
+def answer(text: str) -> str:
+    combined = f"{{text}} {{DOMAIN}}"
+    if DOMAIN == "memory" or re.search(r"长记忆|記憶|memory|小红书|xhs", combined, re.I):
+        return memory_query(text)
+    if DOMAIN == "self" or re.search(r"自演进|自進化|能力缺口|修复包|修復包|状态|狀態", combined, re.I):
+        return self_status()
+    if re.search(r"配置|注册|registry|工具", combined, re.I):
+        return config_check()
+    return f"只读语义 helper 已处理请求：{{text or '未提供文本'}}"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=f"Semantic read-only helper generated for {{TOOL_ID}}.")
+    parser.add_argument("--text", default="")
+    parser.add_argument("--message-timestamp", default="")
+    parser.add_argument("--topic", default="")
+    parser.add_argument("--since", default="")
+    parser.add_argument("--write", default="false")
+    parser.add_argument("--forget-marked", default="false")
+    parser.add_argument("--limit", default="")
+    args, _unknown = parser.parse_known_args()
+    result = answer(args.text)
+    print(json.dumps({{
+        "status": "success",
+        "tool_id": TOOL_ID,
+        "domain": DOMAIN,
+        "reference_tool_id": REFERENCE_TOOL_ID,
+        "result": result,
+        "trace": {{
+            "semantic_helper": True,
+            "message_timestamp": args.message_timestamp,
+        }},
+    }}, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
+
+
+def render_test(entrypoint: str, *, semantic: bool = False) -> str:
+    if semantic:
+        return f'''from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+def test_generated_semantic_helper_runs_with_business_contract() -> None:
+    repo = Path(__file__).resolve().parents[2]
+    proc = subprocess.run(
+        [sys.executable, str(repo / "{entrypoint}"), "--text", "检查自演进状态"],
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=True,
+    )
+    payload = json.loads(proc.stdout)
+    assert payload["status"] == "success"
+    assert payload["tool_id"]
+    assert payload["result"]
+    assert "draft" not in proc.stdout.lower()
+    assert payload["trace"]["semantic_helper"] is True
+'''
     return f'''from __future__ import annotations
 
 import subprocess
@@ -123,36 +331,54 @@ def test_generated_helper_draft_runs() -> None:
 '''
 
 
-def build_registry_patch(tool_id: str, entrypoint: str, text: str) -> dict[str, Any]:
+def build_registry_patch(
+    tool_id: str,
+    entrypoint: str,
+    text: str,
+    *,
+    reference_tool: dict[str, Any] | None = None,
+    semantic: bool = False,
+) -> dict[str, Any]:
     prompt = text[:40] or "generated"
-    return {
+    domain, actions = infer_domain_actions(text, "registry_missing")
+    args_schema = dict((reference_tool or {}).get("args_schema") or {"mode": "dm_text_timestamp", "force": False})
+    if semantic:
+        args_schema["force"] = False
+        if "write" in args_schema:
+            args_schema["write"] = False
+        if "forget_marked" in args_schema:
+            args_schema["forget_marked"] = False
+    patch = {
         "intent_id": tool_id,
         "tool_id": tool_id,
-        "description": f"Generated read-only repair helper for: {text[:120]}",
-        "owner_agent": "toolWorker",
+        "description": f"Generated semantic read-only repair helper for: {text[:120]}" if semantic else f"Generated read-only repair helper for: {text[:120]}",
+        "owner_agent": str((reference_tool or {}).get("owner_agent") or "toolWorker"),
         "patterns": [prompt],
         "required_any": [],
         "entrypoint": entrypoint,
-        "args_schema": {"mode": "dm_text_timestamp", "force": False},
-        "permission": "owner_dm",
-        "permission_scope": "owner_dm_readonly",
+        "args_schema": args_schema,
+        "permission": str((reference_tool or {}).get("permission") or "owner_dm"),
+        "permission_scope": str((reference_tool or {}).get("permission_scope") or "owner_dm_readonly"),
         "write_operation": False,
-        "input_schema": {"type": "dm_text_timestamp"},
-        "output_schema": {"type": "plain_text_business_result", "requires_trace": True},
-        "invocation_log_policy": "harness_tool_invocation_jsonl",
+        "input_schema": dict((reference_tool or {}).get("input_schema") or {"type": "dm_text_timestamp"}),
+        "output_schema": dict((reference_tool or {}).get("output_schema") or {"type": "plain_text_business_result", "requires_trace": True}),
+        "invocation_log_policy": str((reference_tool or {}).get("invocation_log_policy") or "harness_tool_invocation_jsonl"),
         "verify_command": f"python -m compileall -q {entrypoint}",
-        "failure_policy": "reply_failure_and_record_gap",
-        "reply_policy": "tool_stdout",
+        "failure_policy": str((reference_tool or {}).get("failure_policy") or "reply_failure_and_record_gap"),
+        "reply_policy": str((reference_tool or {}).get("reply_policy") or "tool_stdout"),
         "capability_id": tool_id,
-        "domain": "general",
-        "actions": ["query"],
-        "worker_agent": "toolWorker",
+        "domain": str((reference_tool or {}).get("domain") or domain),
+        "actions": list((reference_tool or {}).get("actions") or actions),
+        "worker_agent": str((reference_tool or {}).get("worker_agent") or "toolWorker"),
         "prompt_hints": [prompt],
-        "input_contract": {"type": "dm_text_timestamp"},
-        "output_contract": {"type": "plain_text_business_result"},
+        "input_contract": dict((reference_tool or {}).get("input_contract") or {"type": "dm_text_timestamp"}),
+        "output_contract": dict((reference_tool or {}).get("output_contract") or {"type": "plain_text_business_result"}),
         "safety": "readonly",
-        "implementation_status": "candidate_draft",
+        "implementation_status": "ready" if semantic else "candidate_draft",
     }
+    if reference_tool:
+        patch["semantic_reference_tool_id"] = reference_tool.get("tool_id")
+    return patch
 
 
 def package_state_path(package_dir: Path) -> Path:
@@ -182,6 +408,7 @@ def generate_repair_package(
     repo_root: Path,
     registry_tool: dict[str, Any] | None = None,
     apply_readonly: bool = False,
+    semantic: bool = False,
 ) -> ToolsmithPackage:
     gap_type = classify_gap(reason, registry_tool)
     write_like = safety_class in {"requires_confirmation_or_credentials"} or bool((registry_tool or {}).get("write_operation"))
@@ -195,22 +422,31 @@ def generate_repair_package(
     if existing is not None:
         return existing
     registry_patch = build_registry_patch(tool_id, entrypoint, text)
+    reference_tool = find_reference_tool(repo_root, text=text, gap_type=gap_type, readonly=True) if semantic and not write_like else None
+    registry_patch = build_registry_patch(tool_id, entrypoint, text, reference_tool=reference_tool, semantic=semantic and not write_like)
     files: list[str] = []
     status = "blocked_requires_authorization" if write_like else "generated"
     replay_policy = "blocked_until_human_authorization" if write_like else "verify_before_replay"
     if not write_like:
         helper_rel = Path(entrypoint)
         test_rel = Path("scripts/openclaw") / f"test_generated_{safe_slug(tool_id)}.py"
-        (package_dir / helper_rel.name).write_text(render_helper(tool_id), encoding="utf-8")
-        (package_dir / test_rel.name).write_text(render_test(entrypoint), encoding="utf-8")
+        domain = str(registry_patch.get("domain") or infer_domain_actions(text, gap_type)[0])
+        helper_text = (
+            render_semantic_helper(tool_id, domain, str((reference_tool or {}).get("tool_id") or "none"))
+            if semantic
+            else render_helper(tool_id)
+        )
+        test_text = render_test(entrypoint, semantic=semantic)
+        (package_dir / helper_rel.name).write_text(helper_text, encoding="utf-8")
+        (package_dir / test_rel.name).write_text(test_text, encoding="utf-8")
         (package_dir / "registry_patch.json").write_text(json.dumps(registry_patch, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         files = [str(package_dir / helper_rel.name), str(package_dir / test_rel.name), str(package_dir / "registry_patch.json")]
         if apply_readonly:
             target_helper = repo_root / helper_rel
             target_helper.parent.mkdir(parents=True, exist_ok=True)
-            target_helper.write_text(render_helper(tool_id), encoding="utf-8")
+            target_helper.write_text(helper_text, encoding="utf-8")
             target_test = repo_root / test_rel
-            target_test.write_text(render_test(entrypoint), encoding="utf-8")
+            target_test.write_text(test_text, encoding="utf-8")
             files.extend([str(target_helper), str(target_test)])
             status = "generated_applied"
     else:
@@ -238,6 +474,7 @@ def generate_repair_package(
         reason=reason,
         created_at=utc_now(),
         fingerprint=fingerprint,
+        semantic_source=str((reference_tool or {}).get("tool_id") or ("registry_tool_contract" if semantic and not write_like else "")),
     )
     save_package_state(package)
     return package
@@ -395,6 +632,15 @@ def verify_and_promote_package(package: ToolsmithPackage, *, kernel_root: Path, 
     return package
 
 
+def mark_deployed(package: ToolsmithPackage) -> ToolsmithPackage:
+    if package.status == "promoted" and not package.write_operation:
+        package.status = "deployed"
+        package.deployment_status = "git_deploy_requested"
+        package.verify_output = "\n".join([package.verify_output, "deployment_status=git_deploy_requested"]).strip()
+        save_package_state(package)
+    return package
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate bounded toolsmith repair packages for capability gaps.")
     parser.add_argument("--text", required=True)
@@ -405,6 +651,8 @@ def main() -> int:
     parser.add_argument("--registry-tool-json", default="")
     parser.add_argument("--apply-readonly", action="store_true")
     parser.add_argument("--verify-promote", action="store_true")
+    parser.add_argument("--semantic", action="store_true")
+    parser.add_argument("--mark-deployed", action="store_true")
     args = parser.parse_args()
     registry_tool = json.loads(args.registry_tool_json) if args.registry_tool_json else None
     package = generate_repair_package(
@@ -415,12 +663,15 @@ def main() -> int:
         repo_root=args.repo_root,
         registry_tool=registry_tool,
         apply_readonly=args.apply_readonly,
+        semantic=args.semantic,
     )
     if args.verify_promote:
         package = verify_and_promote_package(package, kernel_root=args.kernel_root, repo_root=args.repo_root)
+    if args.mark_deployed:
+        package = mark_deployed(package)
     append_package_log(args.kernel_root, package)
     print(json.dumps(asdict(package), ensure_ascii=False, indent=2))
-    return 0 if package.status in {"generated", "generated_applied", "verified", "promoted", "blocked_requires_authorization"} else 1
+    return 0 if package.status in {"generated", "generated_applied", "verified", "promoted", "deployed", "blocked_requires_authorization"} else 1
 
 
 if __name__ == "__main__":

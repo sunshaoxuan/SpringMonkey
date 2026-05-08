@@ -182,6 +182,7 @@ The toolsmith function decides whether to:
 Current implemented step:
 
 - the toolsmith can now generate a bounded business repairer, not just a thin scaffold
+- for safe read-only capability gaps, the toolsmith can select a similar registered tool from `intent_tools.json`, inherit its contracts and routing metadata, and generate a semantic ready helper instead of a generic draft
 - generated repairers include a helper contract, a multi-step repair workflow, and a drift guard
 - promotion now requires not only executable output, but also a non-empty repair workflow and a passing drift check
 - promoted repairers can now be composed by the planner into a bounded multi-repairer workflow when the current session matches more than one durable failure surface
@@ -250,6 +251,7 @@ Current boundary:
 - pattern learning is durable and tested
 - semantic clustering is now broader for common timeout / drift / tool-missing / execution-blocked variants
 - truly distant adjacent sub-shapes are still not merged unless the current signature logic can justify it
+- automatic semantic helper deployment remains limited to read-only, no-credential, no-side-effect repairs; write operations still produce authorization evidence instead of production changes
 
 ## Durable State Model
 

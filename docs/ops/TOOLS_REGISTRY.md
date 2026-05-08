@@ -33,6 +33,8 @@
 | 回复图片/截图发送修复 | 截图已生成但回复日志出现 `dropping blocked reply media` / `Failed to optimize image` / 缺少 `sharp` | `remote_repair_reply_media_images.py` | `OPENCLAW_SSH_PASSWORD`；可选 `--check-only` |
 | 能力认知刷新 | 更新 runtime 注入提示，让模型按当前宿主机能力说话 | `remote_refresh_capability_awareness.py` | `OPENCLAW_SSH_PASSWORD` |
 | 长记忆修复 | 修复 `memory-lancedb` embeddings 路径与维度配置，重启 gateway 并做 recall 回归验证 | `remote_repair_memory_lancedb.py` | `OPENCLAW_SSH_PASSWORD` |
+| 语义化工具匠验收 | 远端临时生成只读 semantic repair package，验证不是 draft helper，并检查服务/注册表/长记忆 smoke | `remote_verify_toolsmith_semantic.py` | `OPENCLAW_SSH_PASSWORD` |
+| 语义化工具匠部署 | 本地测试和注册表校验通过后 push，远端 fast-forward，再执行语义化工具匠 smoke | `remote_deploy_toolsmith_semantic.py` | `OPENCLAW_SSH_PASSWORD` |
 | 长记忆启动级自愈 | 为 `memory-lancedb` 安装 `ExecStartPre`/`ExecStartPost` 守护：启动前自动重打补丁，启动后自动校验 1024 维 embeddings | `remote_install_memory_lancedb_guard.py` | `OPENCLAW_SSH_PASSWORD` |
 | qwen 兜底策略说明 | 历史 qwen-first 超时安装器已禁用；当前默认是 Codex 主、Qwen/Ollama 兜底 | `remote_install_qwen_timeout_retry_policy.py` | 无，脚本默认拒绝执行旧策略 |
 | 国际渠道预部署 | 启用国际向官方渠道插件并预注册空配置入口 | `remote_enable_international_channels.py` | `OPENCLAW_SSH_PASSWORD` |

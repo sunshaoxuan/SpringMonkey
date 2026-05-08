@@ -24,6 +24,8 @@ def read_jsonl_tail(path: Path, limit: int) -> list[dict]:
 def lifecycle(event: dict) -> str:
     status = str(event.get("runner_status") or "recorded")
     if event.get("replay_allowed"):
+        if status == "deployed":
+            return "recorded -> planned -> generated -> verified -> promoted -> deployed -> replay_ready"
         if status == "promoted":
             return "recorded -> planned -> generated -> verified -> promoted -> replay_ready"
         return "recorded -> planned -> verified -> replay_ready"
@@ -35,6 +37,8 @@ def lifecycle(event: dict) -> str:
         return "recorded -> planned -> generated -> verified -> promote_required"
     if package_status == "promoted":
         return "recorded -> planned -> generated -> verified -> promoted"
+    if package_status == "deployed":
+        return "recorded -> planned -> generated -> verified -> promoted -> deployed"
     if package_status == "failed":
         return "recorded -> planned -> generated -> failed"
     if package_status == "blocked_requires_authorization" or status == "blocked":
@@ -65,7 +69,7 @@ def main() -> int:
     unresolved = [
         event
         for event in events
-        if str(event.get("runner_status") or "") not in {"promoted", "verified", "replayed"}
+        if str(event.get("runner_status") or "") not in {"promoted", "verified", "deployed", "replayed"}
         and not bool(event.get("replay_allowed"))
     ]
     if unresolved:

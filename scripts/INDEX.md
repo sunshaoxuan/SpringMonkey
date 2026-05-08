@@ -115,6 +115,16 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_stage3_memory.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py memory-verify`
 
+- `remote_verify_toolsmith_semantic.py`
+  - 用途：只读验收第四阶段工具匠语义化；在远端临时 kernel 中生成语义只读修复包，确认 `implementation_status=ready` 且不再是 draft helper。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_toolsmith_semantic.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py toolsmith-verify`
+
+- `remote_deploy_toolsmith_semantic.py`
+  - 用途：第四阶段生产闭环部署；先跑本地工具匠测试和注册表校验，再 push、远端 fast-forward，并执行 `toolsmith-verify`。
+  - 典型用法：`python SpringMonkey/scripts/remote_deploy_toolsmith_semantic.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py toolsmith-deploy`
+
 - `remote_install_memory_lancedb_guard.py`
   - 用途：为 `memory-lancedb` 安装启动级自愈守护；每次 `openclaw.service` 启动前自动重打补丁，启动后自动校验 embeddings 必须为 1024 维。
   - 典型用法：`python SpringMonkey/scripts/remote_install_memory_lancedb_guard.py`
@@ -229,6 +239,7 @@
 - `openclaw/test_helper_retirement.py`：验证 helper 被 drift gate 连续拒绝后会 deprecated，且不会再进入 future tool candidates
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核，现已包含 `failure_pattern` 累积与 `candidate -> emerging -> learned` 生命周期
 - `openclaw/agent_society_helper_toolsmith.py`：生成 bounded business repairer；输出 helper contract、repair workflow 与 drift guard，而不再只是薄 scaffold
+- `openclaw/toolsmith_repair_runner.py`：第四阶段语义化只读工具匠；从 `intent_tools.json` 选择相近注册工具，继承契约/权限/日志策略，生成可验证的 ready helper 修复包
 - `openclaw/helpers/browser_cdp_human.py`：真实浏览器 CDP fallback helper；当 OpenClaw `browser` 工具 targetId/tab/ref 漂移或误判为 headless/profile=user 时，直接连接宿主机常驻 Chrome CDP，并输出结构化证据
 - `openclaw/test_browser_control_helper.py`：验证浏览器控制漂移会被分类为 `browser_control`，并优先选择 `browser_cdp_human.py`
 - `openclaw/test_agent_society_composed_repairer_plan.py`：验证 planner 会把多个 promoted business repairer 组合成 bounded repair pipeline，而不是只挑一个 helper

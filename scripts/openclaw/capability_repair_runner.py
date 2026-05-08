@@ -14,7 +14,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import GapRunnerResult, run_gap
-from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, repair_fingerprint, verify_and_promote_package
+from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, mark_deployed, repair_fingerprint, verify_and_promote_package
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
@@ -111,15 +111,17 @@ def replay_decision(
     return True, "verified read-only repair can be replayed once"
 
 
-def package_replay_decision(*, stage: str, package: ToolsmithPackage | None, replay_depth: int) -> tuple[bool, str]:
+def package_replay_decision(*, stage: str, package: ToolsmithPackage | None, replay_depth: int, require_deployed: bool = False) -> tuple[bool, str]:
     if replay_depth > 0:
         return False, "bounded replay already attempted"
     if stage not in REPLAYABLE_STAGES:
         return False, f"stage {stage} is not replayable"
     if package is None:
         return False, "no promoted repair package"
-    if package.status != "promoted":
+    if package.status not in {"promoted", "deployed"}:
         return False, f"repair package status is {package.status}, not promoted"
+    if require_deployed and package.status != "deployed":
+        return False, "repair package is promoted but not marked deployed"
     if package.write_operation:
         return False, "repair package is write-scoped"
     return True, "promoted read-only repair package can be replayed once"
@@ -140,6 +142,8 @@ def run_repair(
     forced_safety_class: str | None = None,
     forced_safety_reason: str | None = None,
     replay_depth: int = 0,
+    semantic: bool = False,
+    deploy_readonly: bool = False,
 ) -> RepairRunnerResult:
     repo_root = repo_root or Path(__file__).resolve().parents[2]
     intent_reason = reason
@@ -179,20 +183,24 @@ def run_repair(
             repo_root=repo_root,
             registry_tool=registry_tool or gap_result.registry_tool,
             apply_readonly=False,
+            semantic=semantic or deploy_readonly,
         )
         if toolsmith_package.status == "generated" and toolsmith_package.safety_class == "auto_safe_readonly":
             toolsmith_package = verify_and_promote_package(toolsmith_package, kernel_root=kernel_root, repo_root=repo_root)
+        if deploy_readonly and toolsmith_package.status == "promoted" and not toolsmith_package.write_operation:
+            toolsmith_package = mark_deployed(toolsmith_package)
         append_package_log(kernel_root, toolsmith_package)
         package_replay_allowed, package_replay_reason = package_replay_decision(
             stage=stage,
             package=toolsmith_package,
             replay_depth=replay_depth,
+            require_deployed=deploy_readonly,
         )
         if package_replay_allowed:
             replay_allowed = True
             replay_reason = package_replay_reason
-            status = "promoted"
-        elif toolsmith_package.status in {"generated", "verified", "promoted", "failed"}:
+            status = toolsmith_package.status
+        elif toolsmith_package.status in {"generated", "verified", "promoted", "deployed", "failed"}:
             status = toolsmith_package.status
         elif toolsmith_package.status == "blocked_requires_authorization":
             status = "blocked"
@@ -231,6 +239,7 @@ def run_repair(
             "replay_policy": toolsmith_package.replay_policy,
             "verify_output_tail": toolsmith_package.verify_output[-2000:],
             "promoted_at": toolsmith_package.promoted_at,
+            "deployment_status": toolsmith_package.deployment_status,
         },
     }
     log_path = upsert_event(kernel_root, event, fingerprint)
@@ -271,6 +280,8 @@ def main() -> int:
     parser.add_argument("--kernel-root", type=Path, default=DEFAULT_KERNEL_ROOT)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--replay-depth", type=int, default=0)
+    parser.add_argument("--semantic", action="store_true")
+    parser.add_argument("--deploy-readonly", action="store_true")
     args = parser.parse_args()
     result = run_repair(
         text=args.text,
@@ -283,9 +294,11 @@ def main() -> int:
         kernel_root=args.kernel_root,
         repo_root=args.repo_root,
         replay_depth=args.replay_depth,
+        semantic=args.semantic,
+        deploy_readonly=args.deploy_readonly,
     )
     print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
-    return 0 if result.status in {"recorded", "planned", "generated", "verified", "promoted", "replayed", "blocked"} else 1
+    return 0 if result.status in {"recorded", "planned", "generated", "verified", "promoted", "deployed", "replayed", "blocked"} else 1
 
 
 if __name__ == "__main__":

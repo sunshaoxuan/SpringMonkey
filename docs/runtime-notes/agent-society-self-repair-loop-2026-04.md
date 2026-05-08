@@ -137,6 +137,7 @@ The current direct-task failure bridge now also supports:
 23. when more than one promoted business repairer matches the current session, the planner can now compose those repairers into one bounded repair pipeline and inject that plan into the next step instead of blindly selecting a single helper
 24. drift checking now also happens inside `next_step()` planning, so a promoted repairer can still be filtered out at execution time if the current session/step no longer matches its failure surface
 25. composed repair pipelines now include a bounded repair-graph budget and a rollback policy, so each step knows how many repairers and workflow stages are allowed before it must stop and return blocker evidence
+26. safe read-only toolsmith packages can now use existing registered tools as semantic references, inherit their contracts and safety metadata, and generate ready helpers that return structured business output instead of a generic `draft` payload
 
 In other words, error classification is no longer only a static table.
 
@@ -157,6 +158,7 @@ It still lacks:
 
 - automatic interception of every direct task
 - automatic code generation for helper tools
+- fully general code generation for arbitrary helper tools
 - automatic promotion for categories beyond the currently aligned `execution_blocked`, `runtime_timeout`, and `tool_missing` paths
 - composition beyond a small bounded set of promoted business repairers, including explicit rollback / budget policies for larger repair graphs
 

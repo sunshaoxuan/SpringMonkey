@@ -57,6 +57,7 @@
 | Cron 失败自动自修复入口 | cron timeout / failed 不再只能发失败通知；宿主机 watcher 会把失败写进 durable kernel，走同一条 `gap -> helper -> pattern` 自增强链 | `scripts/openclaw/cron_failure_self_heal.py`、`scripts/remote_install_cron_failure_self_heal.py`、`scripts/openclaw/test_cron_failure_self_heal.py` |
 | Promoted Helper 正式注册层 | promoted helper 不再只存在于单个 session；现在会进入 durable helper registry，并影响后续新 session 的默认工具选择 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_promoted_helper_registry.py` |
 | 自动生成业务修复器 | helper 不再只是薄模板；现在会生成带 contract、repair workflow、drift guard 的 bounded business repairer，并把漂移校验纳入 promotion 条件 | `scripts/openclaw/agent_society_helper_toolsmith.py`、`scripts/openclaw/test_agent_society_business_repairer.py` |
+| 语义化只读工具匠 | 缺少只读工具时，工具匠可从 `intent_tools.json` 选择相近注册工具，继承输入/输出契约、权限、安全和日志策略，生成非 draft 的 ready helper 修复包 | `scripts/openclaw/toolsmith_repair_runner.py`、`scripts/openclaw/test_toolsmith_repair_runner.py`、`scripts/remote_verify_toolsmith_semantic.py` |
 | 多 repairer 组合规划 | planner 可以从 durable promoted-helper registry 里挑出多个 business repairer，并把它们组合成一个 bounded repair pipeline 注入后续 step 决策 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_composed_repairer_plan.py` |
 | step 级漂移门控 | planner 在每个 step 选择前重审 promoted repairer 是否仍匹配当前 failure surface；漂移 helper 会被过滤并写入计划说明，而不是继续执行 | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_step_drift_guard.py` |
 | repair graph 预算与回滚 | 多 repairer 组合计划现在自带每步预算上限和 rollback policy，防止修复图无约束扩张，并要求失败时先回写 rollback evidence | `scripts/openclaw/agent_society_kernel.py`、`scripts/openclaw/test_agent_society_repair_graph_budget.py` |
@@ -99,6 +100,8 @@
 | `scripts/remote_enable_browser_capabilities.py` | 修复 Node TLS / `web_fetch` 证书链，并安装 `xvfb` + Playwright，固化浏览器能力基线 |
 | `scripts/remote_refresh_capability_awareness.py` | 刷新 runtime workspace 的能力基线提示，避免沿用过时的“无联网能力”认知 |
 | `scripts/remote_repair_memory_lancedb.py` | 修复 `memory-lancedb` embeddings 路径与维度配置，重启 gateway 并做长记忆回归验证 |
+| `scripts/remote_verify_toolsmith_semantic.py` | 远端只读验收语义化工具匠：生成临时 semantic repair package，并验证服务、注册表和长记忆 smoke |
+| `scripts/remote_deploy_toolsmith_semantic.py` | 语义化工具匠生产闭环部署：本地测试、push、远端 fast-forward、远端 smoke |
 | `scripts/remote_install_memory_lancedb_guard.py` | 为 `memory-lancedb` 安装启动级自愈守护，避免补丁被升级/重装覆盖后静默回退 |
 | `scripts/remote_enable_international_channels.py` | 预部署国际向官方渠道插件（Telegram / Slack / Signal / Matrix 等），默认不写密钥 |
 | `scripts/push_line_credentials_remote.py` | 将 LINE token/secret 写入宿主机并启用 `channels.line` |
