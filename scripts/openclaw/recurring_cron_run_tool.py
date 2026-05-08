@@ -108,6 +108,58 @@ def cron_run_command(job_id: str) -> list[str]:
     return ["openclaw", "cron", "run", job_id]
 
 
+def diagnostic_lines(stderr: str) -> list[str]:
+    return [line.strip() for line in (stderr or "").splitlines() if line.strip()]
+
+
+def success_payload(
+    *,
+    capability: dict[str, Any],
+    job_name: str,
+    job_id: str,
+    returncode: int,
+    stdout: str,
+    stderr: str,
+) -> dict[str, Any]:
+    lines = diagnostic_lines(stderr)
+    payload: dict[str, Any] = {
+        "status": "success",
+        "capability_id": capability.get("capability_id"),
+        "job_name": job_name,
+        "job_id": job_id,
+        "returncode": returncode,
+        "summary": "configured recurring job was triggered",
+        "diagnostics": {
+            "stderr_line_count": len(lines),
+            "stderr_hidden": bool(lines),
+        },
+    }
+    clean_stdout = (stdout or "").strip()
+    if clean_stdout:
+        payload["stdout"] = clean_stdout[-1200:]
+    return payload
+
+
+def failure_payload(
+    *,
+    capability: dict[str, Any],
+    job_name: str,
+    job_id: str,
+    returncode: int,
+    stdout: str,
+    stderr: str,
+) -> dict[str, Any]:
+    return {
+        "status": "failed",
+        "capability_id": capability.get("capability_id"),
+        "job_name": job_name,
+        "job_id": job_id,
+        "returncode": returncode,
+        "stdout": (stdout or "").strip()[-2000:],
+        "stderr": (stderr or "").strip()[-2000:],
+    }
+
+
 def run_capability(
     *,
     text: str,
@@ -151,15 +203,23 @@ def run_capability(
         stderr=subprocess.PIPE,
         timeout=timeout,
     )
-    return proc.returncode, {
-        "status": "success" if proc.returncode == 0 else "failed",
-        "capability_id": capability.get("capability_id"),
-        "job_name": job_name,
-        "job_id": job_id,
-        "returncode": proc.returncode,
-        "stdout": (proc.stdout or "").strip()[-2000:],
-        "stderr": (proc.stderr or "").strip()[-2000:],
-    }
+    if proc.returncode == 0:
+        return proc.returncode, success_payload(
+            capability=capability,
+            job_name=job_name,
+            job_id=job_id,
+            returncode=proc.returncode,
+            stdout=proc.stdout or "",
+            stderr=proc.stderr or "",
+        )
+    return proc.returncode, failure_payload(
+        capability=capability,
+        job_name=job_name,
+        job_id=job_id,
+        returncode=proc.returncode,
+        stdout=proc.stdout or "",
+        stderr=proc.stderr or "",
+    )
 
 
 def main() -> int:
