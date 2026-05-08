@@ -400,15 +400,27 @@
       "patterns": [
         "订车",
         "预约",
+        "这单",
+        "订单",
         "TimesCar",
-        "timescar"
+        "timescar",
+        "往后推",
+        "后推",
+        "推迟",
+        "延后"
       ],
       "required_any": [
         "变更",
         "开始时间",
         "后天",
         "延迟",
-        "延期"
+        "延期",
+        "往后推",
+        "后推",
+        "推迟",
+        "延后",
+        "24小时",
+        "结束时间不变"
       ],
       "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
       "args_schema": {
@@ -440,13 +452,21 @@
       "prompt_hints": [
         "订车",
         "预约",
+        "这单",
+        "订单",
         "TimesCar",
         "timescar",
         "变更",
         "开始时间",
         "后天",
         "延迟",
-        "延期"
+        "延期",
+        "往后推",
+        "后推",
+        "推迟",
+        "延后",
+        "24小时",
+        "结束时间不变"
       ],
       "input_contract": {
         "type": "dm_text_timestamp"

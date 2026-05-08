@@ -110,10 +110,48 @@ def find_booking_for_start(reservations: list[dict], target_start: datetime) -> 
     return str(matches[0].get("bookingNumber") or "") or None
 
 
+def parse_relative_start_shift_hours(text: str) -> int | None:
+    raw = normalize_text(text)
+    if not any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟")):
+        return None
+    match = re.search(r"(\d{1,3})\s*(?:小时|小時|h|H)", text)
+    if match:
+        return int(match.group(1))
+    if any(token in raw for token in ("一天", "1天", "一日", "1日")):
+        return 24
+    return None
+
+
+def is_this_booking_reference(text: str) -> bool:
+    raw = normalize_text(text)
+    return any(token in raw for token in ("这单", "這單", "刚刚这单", "刚才这单", "订单", "這張", "这张"))
+
+
+def interpret_relative_adjust_request(text: str, message_time: datetime) -> tuple[datetime, datetime] | None:
+    raw = normalize_text(text)
+    hours = parse_relative_start_shift_hours(text)
+    if hours is None:
+        return None
+    if not is_this_booking_reference(text):
+        return None
+    if "开始" not in raw:
+        return None
+    if "结束时间不变" not in raw and "结束不变" not in raw and "終わり不変" not in raw:
+        return None
+    reservation = find_next_reservation(fetch_reservations(), message_time)
+    if reservation is None:
+        raise IntentError("未来 48 小时内没有找到可调整的 TimesCar 预约")
+    current_start = parse_iso_minute(str(reservation.get("start") or ""))
+    return current_start, current_start + timedelta(hours=hours)
+
+
 def interpret_adjust_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
     raw = text.strip()
     if not raw:
         raise IntentError("空指令")
+    relative = interpret_relative_adjust_request(raw, message_time)
+    if relative:
+        return relative
     if "明天" not in raw or "后天" not in raw:
         raise IntentError("当前 TimesCar 专用执行器只接受明确包含“明天”和“后天”的改开始时间指令")
     if "开始" not in raw or ("订车" not in raw and "预约" not in raw and "TimesCar" not in raw and "timescar" not in raw):
@@ -174,6 +212,14 @@ def is_adjust_request(text: str) -> bool:
     raw = text.strip()
     if is_cancel_request(raw) or is_keep_request(raw) or is_book_request(raw) or is_cancel_status_request(raw) or is_query_request(raw):
         return False
+    normalized = normalize_text(raw)
+    if (
+        is_this_booking_reference(raw)
+        and "开始" in normalized
+        and parse_relative_start_shift_hours(raw) is not None
+        and any(token in normalized for token in ("结束时间不变", "结束不变", "終わり不変"))
+    ):
+        return True
     if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
         return False
     if not any(token in raw for token in ("开始时间", "后天", "延迟", "延期", "变更", "改到", "改成", "结束时间不变")):
@@ -474,6 +520,50 @@ def run_adjuster(booking: str, current_start: datetime, new_start: datetime, for
     return run_child_tool(cmd)
 
 
+def format_adjust_result(text: str, message_time: datetime, force: bool) -> str:
+    current_start, new_start = interpret_adjust_request(text, message_time)
+    key = command_key(text)
+    ledger = load_ledger()
+    previous = ledger.get(key)
+    if previous and previous.get("status") == "ok":
+        return "\n".join(
+            [
+                "TimesCar 预约变更结果",
+                "状态：该 Discord 私信指令此前已由汤猴完成，未重复提交",
+                f"上次完成：{previous.get('completedAt')}",
+                f"预约编号：{previous.get('bookingNumber')}",
+                f"目标开始：{previous.get('newStart')}",
+                f"目标结束：{previous.get('newReturn', '保持原结束时间')}",
+            ]
+        )
+
+    reservations = fetch_reservations()
+    booking = find_booking_for_start(reservations, current_start)
+    if not booking:
+        booking = find_booking_for_start(reservations, new_start)
+    if not booking:
+        raise IntentError(
+            f"未能唯一定位 TimesCar 预约：currentStart={format_iso_minute(current_start)} "
+            f"newStart={format_iso_minute(new_start)}"
+        )
+
+    result = run_adjuster(booking, current_start, new_start, force)
+    output = result.stdout.strip()
+    if result.returncode != 0:
+        raise IntentError(output or f"TimesCar 变更执行器失败，退出码：{result.returncode}")
+
+    ledger[key] = {
+        "status": "ok",
+        "completedAt": datetime.now(TZ).isoformat(timespec="seconds"),
+        "messageTime": message_time.isoformat(timespec="seconds"),
+        "bookingNumber": booking,
+        "currentStart": format_iso_minute(current_start),
+        "newStart": format_iso_minute(new_start),
+    }
+    save_ledger(ledger)
+    return output
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--text", required=True)
@@ -501,49 +591,7 @@ def main() -> int:
     if not is_adjust_request(args.text):
         raise IntentError("未能识别 TimesCar 子意图，未执行任何预约变更")
 
-    current_start, new_start = interpret_adjust_request(args.text, message_time)
-    key = command_key(args.text)
-    ledger = load_ledger()
-    previous = ledger.get(key)
-    if previous and previous.get("status") == "ok":
-        print(
-            "\n".join(
-                [
-                    "TimesCar 预约变更结果",
-                    "状态：该 Discord 私信指令此前已由汤猴完成，未重复提交",
-                    f"上次完成：{previous.get('completedAt')}",
-                    f"预约编号：{previous.get('bookingNumber')}",
-                    f"目标开始：{previous.get('newStart')}",
-                    f"目标结束：{previous.get('newReturn', '保持原结束时间')}",
-                ]
-            )
-        )
-        return 0
-
-    reservations = fetch_reservations()
-    booking = find_booking_for_start(reservations, current_start)
-    if not booking:
-        booking = find_booking_for_start(reservations, new_start)
-    if not booking:
-        raise IntentError(
-            f"未能唯一定位 TimesCar 预约：currentStart={format_iso_minute(current_start)} "
-            f"newStart={format_iso_minute(new_start)}"
-        )
-
-    result = run_adjuster(booking, current_start, new_start, args.force)
-    print(result.stdout.strip())
-    if result.returncode != 0:
-        return result.returncode
-
-    ledger[key] = {
-        "status": "ok",
-        "completedAt": datetime.now(TZ).isoformat(timespec="seconds"),
-        "messageTime": message_time.isoformat(timespec="seconds"),
-        "bookingNumber": booking,
-        "currentStart": format_iso_minute(current_start),
-        "newStart": format_iso_minute(new_start),
-    }
-    save_ledger(ledger)
+    print(format_adjust_result(args.text, message_time, args.force))
     return 0
 
 

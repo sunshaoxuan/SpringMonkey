@@ -44,6 +44,40 @@ class IntentFrame:
     created_at: str = field(default_factory=utc_now)
 
 
+def normalize_text(text: str) -> str:
+    return "".join((text or "").split())
+
+
+def relative_timescar_adjust_frame(text: str) -> IntentFrame | None:
+    raw = normalize_text(text)
+    has_booking_ref = any(token in raw for token in ("这单", "這單", "刚刚这单", "刚才这单", "订单", "这张", "這張"))
+    has_start_shift = "开始" in raw and any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟"))
+    has_24h = any(token in raw for token in ("24小时", "24小時", "一天", "1天", "一日", "1日"))
+    keeps_end = any(token in raw for token in ("结束时间不变", "结束不变", "終わり不変"))
+    if not (has_booking_ref and has_start_shift and has_24h and keeps_end):
+        return None
+    return IntentFrame(
+        conversation_mode="task",
+        domain="timescar",
+        action="adjust",
+        canonical_text=text.strip(),
+        context_refs=[{"type": "recent_timescar_reservation", "selector": "next_reservation_within_48h"}],
+        parameters={"relative_start_shift_hours": 24, "preserve_return_time": True},
+        safety="write",
+        result_contract={"type": "timescar_adjust_start", "preserve_return_time": True},
+        tool_candidates=[
+            {
+                "tool_id": "timescar.dm.adjust_start",
+                "confidence": 0.98,
+                "reason": "deterministic TimesCar follow-up: move this booking start later while preserving end time",
+            }
+        ],
+        confidence=0.98,
+        reason="deterministic TimesCar relative start adjustment follow-up",
+        source="local_rule",
+    )
+
+
 def model_call_log_path() -> Path:
     configured = os.environ.get("OPENCLAW_HARNESS_MODEL_CALL_LOG", "").strip()
     return Path(configured) if configured else WORKSPACE / "var" / "harness_model_calls.jsonl"
@@ -201,6 +235,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "For chat mode, canonical_text must be the exact natural user-facing reply, not an analysis of the user's intent. "
         "For liveness greetings such as '还活着吗', reply briefly, e.g. '在。'. "
         "For short follow-ups such as '未来一个月以后的呢？', inspect Recent tool invocations in context; if the last task was a TimesCar query, inherit domain=timescar action=query and produce a complete canonical_text. "
+        "For TimesCar follow-ups like '把这单的开始时间往后推24小时，结束时间不变', choose domain=timescar action=adjust, safety=write, and tool candidate timescar.dm.adjust_start. "
         "If model cannot safely bind a task, set conversation_mode=clarification or gap."
     )
     user = "\n".join(
@@ -257,6 +292,21 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
+    local_frame = relative_timescar_adjust_frame(text)
+    if local_frame:
+        append_jsonl(
+            model_call_log_path(),
+            {
+                "created_at": utc_now(),
+                "kind": "intent_frame",
+                "ok": True,
+                "model": "local_rule",
+                "latency_ms": 0,
+                "text": text,
+                "frame": asdict(local_frame),
+            },
+        )
+        return local_frame
     messages = build_prompt(text, context, registry)
     meta: dict[str, Any] = {}
     try:

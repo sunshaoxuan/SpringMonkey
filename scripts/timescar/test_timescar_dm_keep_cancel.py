@@ -35,6 +35,8 @@ def main() -> int:
         original_fetch = mod.fetch_reservations
         original_run_canceller = mod.run_canceller
         original_run_booker = mod.run_booker
+        original_run_adjuster = mod.run_adjuster
+        adjust_calls = []
         try:
             mod.fetch_reservations = lambda: reservations
             mod.run_booker = lambda start, end, force, model_preference: subprocess.CompletedProcess(
@@ -60,9 +62,26 @@ def main() -> int:
                 ),
                 stderr="",
             )
+            def fake_adjuster(booking, current_start, new_start, force):
+                adjust_calls.append((booking, current_start, new_start, force))
+                return subprocess.CompletedProcess(
+                    args=["timescar_adjust_reservation_window.py"],
+                    returncode=0,
+                    stdout=(
+                        "TimesCar 预约变更结果\n"
+                        "状态：预约变更已提交并回查确认\n"
+                        f"预约编号：{booking}\n"
+                        f"原开始：{current_start.strftime('%Y-%m-%dT%H:%M')}\n"
+                        f"新开始：{new_start.strftime('%Y-%m-%dT%H:%M')}"
+                    ),
+                    stderr="",
+                )
+
+            mod.run_adjuster = fake_adjuster
             book = mod.format_book_result("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。", message_time, force=True)
             book_any = mod.format_book_result("那就把车换成可以预订的车", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
+            relative_adjust = mod.format_adjust_result("把这单的开始时间往后推24小时，结束时间不变。", message_time, force=True)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
             cancel_followup = mod.format_cancel_result("好的，把刚刚这单取消掉吧", message_time, force=True)
             reservations.clear()
@@ -71,6 +90,7 @@ def main() -> int:
             mod.fetch_reservations = original_fetch
             mod.run_canceller = original_run_canceller
             mod.run_booker = original_run_booker
+            mod.run_adjuster = original_run_adjuster
         assert "预约已提交并回查确认" in book
         assert "预约开始：2026-05-05T09:00" in book
         assert "预约已提交并回查确认" in book_any
@@ -78,6 +98,15 @@ def main() -> int:
         assert mod.DECISIONS_PATH.exists()
         data = json.loads(mod.DECISIONS_PATH.read_text(encoding="utf-8"))
         assert data["keepBookingNumbers"]["B123456"]["status"] == "keep"
+        assert "预约变更已提交并回查确认" in relative_adjust
+        assert adjust_calls == [
+            (
+                "B123456",
+                message_time + timedelta(hours=12),
+                message_time + timedelta(hours=36),
+                True,
+            )
+        ]
         assert "预约取消已提交并回查确认" in cancel
         assert "预约编号：B123456" in cancel
         assert "预约取消已提交并回查确认" in cancel_followup
@@ -93,6 +122,7 @@ def main() -> int:
         assert mod.is_cancel_status_request("这单取消了吗？")
         assert mod.is_adjust_request("请把明天开始的订车改到后天早9点")
         assert mod.is_adjust_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
+        assert mod.is_adjust_request("把这单的开始时间往后推24小时，结束时间不变。")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert not mod.is_adjust_request("好的，把刚刚这单取消掉吧")
         assert mod.parse_query_hours("查一下未来一周的订车记录") == 24 * 7
