@@ -341,6 +341,8 @@ def build_registry_patch(
 ) -> dict[str, Any]:
     prompt = text[:40] or "generated"
     domain, actions = infer_domain_actions(text, "registry_missing")
+    reference_actions = list((reference_tool or {}).get("actions") or [])
+    merged_actions = list(dict.fromkeys(reference_actions + actions))
     args_schema = dict((reference_tool or {}).get("args_schema") or {"mode": "dm_text_timestamp", "force": False})
     if semantic:
         args_schema["force"] = False
@@ -368,7 +370,7 @@ def build_registry_patch(
         "reply_policy": str((reference_tool or {}).get("reply_policy") or "tool_stdout"),
         "capability_id": tool_id,
         "domain": str((reference_tool or {}).get("domain") or domain),
-        "actions": list((reference_tool or {}).get("actions") or actions),
+        "actions": merged_actions,
         "worker_agent": str((reference_tool or {}).get("worker_agent") or "toolWorker"),
         "prompt_hints": [prompt],
         "input_contract": dict((reference_tool or {}).get("input_contract") or {"type": "dm_text_timestamp"}),

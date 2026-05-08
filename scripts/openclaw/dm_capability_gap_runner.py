@@ -52,7 +52,7 @@ class GapRunnerResult:
 
 
 AUTO_SAFE_READONLY_RE = re.compile(
-    r"(天气|天気|weather|预报|予報|风况|風|能见度|視程|可視性|节假日|祝日|红日子|赤い日|holiday)",
+    r"(天气|天気|weather|预报|予報|风况|風|能见度|視程|可視性|节假日|祝日|红日子|赤い日|holiday|小红书|小紅書|xhs|长记忆|長記憶|memory|Frutteto|Costco|投稿)",
     re.IGNORECASE,
 )
 

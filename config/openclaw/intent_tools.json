@@ -974,6 +974,58 @@
         "type": "plain_text_business_result"
       },
       "safety": "readonly"
+    },
+    {
+      "intent_id": "memory.generated_readonly",
+      "tool_id": "memory.generated_readonly",
+      "description": "Generated semantic read-only repair helper for: 请查询小红书长记忆里 Frutteto 投稿记录",
+      "owner_agent": "memoryWorker",
+      "patterns": [
+        "请查询小红书长记忆里 Frutteto 投稿记录"
+      ],
+      "required_any": [],
+      "entrypoint": "scripts/openclaw/helpers/generated_memory_generated_readonly.py",
+      "args_schema": {
+        "mode": "memory_curator",
+        "topic": "xhs",
+        "forget_marked": false,
+        "limit": 25,
+        "force": false
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "fixed_memory_curator"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/helpers/generated_memory_generated_readonly.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "memory.generated_readonly",
+      "domain": "memory",
+      "actions": [
+        "quality",
+        "clean",
+        "query"
+      ],
+      "worker_agent": "memoryWorker",
+      "prompt_hints": [
+        "请查询小红书长记忆里 Frutteto 投稿记录"
+      ],
+      "input_contract": {
+        "type": "fixed_memory_curator"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result"
+      },
+      "safety": "readonly",
+      "implementation_status": "ready",
+      "semantic_reference_tool_id": "memory.curator.xhs"
     }
   ]
 }
