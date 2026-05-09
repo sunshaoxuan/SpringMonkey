@@ -199,7 +199,7 @@ def handle_event(
                 model_caller=model_caller,
                 replay_depth=replay_depth + 1,
             )
-            replayed.reply = "\n".join([replayed.reply, f"自演进重放：{repair.gap_ref}"])
+            replayed.reply = "\n".join([replayed.reply, "自演进：已修复并重试。"])
             return replayed
         return finish(
             "unsupported",
@@ -283,7 +283,7 @@ def handle_event(
             if retry_code == 0:
                 return finish(
                     "ok",
-                    "\n".join([format_reply(binding.tool, args, retry_code, retry_output), f"自演进重放：{repair.gap_ref}"]),
+                    "\n".join([format_reply(binding.tool, args, retry_code, retry_output), "自演进：已修复并重试。"]),
                     frame,
                     binding,
                     review,
@@ -327,7 +327,7 @@ def handle_event(
             if retry_code == 0:
                 return finish(
                     "ok",
-                    "\n".join([format_reply(binding.tool, args, retry_code, retry_output), f"自演进重放：{repair.gap_ref}"]),
+                    "\n".join([format_reply(binding.tool, args, retry_code, retry_output), "自演进：已修复并重试。"]),
                     frame,
                     binding,
                     review,
@@ -387,7 +387,7 @@ def handle_event(
                 if retry_eval.passed:
                     return finish(
                         "ok",
-                        "\n".join([format_reply(binding.tool, args, retry_code, retry_output), f"自演进重放：{repair.gap_ref}"]),
+                        "\n".join([format_reply(binding.tool, args, retry_code, retry_output), "自演进：已修复并重试。"]),
                         frame,
                         binding,
                         review,

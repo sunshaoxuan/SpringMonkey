@@ -13,6 +13,11 @@ from typing import Any
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 URL_RE = re.compile(r"https?://[^\s<>()\]\"']+", re.IGNORECASE)
 WEB_EVIDENCE_RE = re.compile(r"^检索证据：.*$", re.MULTILINE)
+DIAGNOSTIC_LINE_RE = re.compile(
+    r"^(记录|自演进|自演进状态|重放判定|工具匠|事件日志|诊断|trace_id|kernel_session|gap_id|plan_log)：?.*$",
+    re.IGNORECASE,
+)
+DIAGNOSTIC_TOKEN_RE = re.compile(r"(kernel_session=|gap_id=|plan_log=|trace_id=|/var/lib/openclaw|/tmp/openclaw|capability_gap_events\.jsonl)")
 
 
 def utc_now() -> str:
@@ -129,25 +134,49 @@ def display_summary(envelope: ReportEnvelope) -> str:
     summary = envelope.summary
     if envelope.tool_id == "openclaw.web.research" and envelope.status == "ok":
         summary = concise_web_research_summary(summary)
+    summary = concise_operational_summary(summary)
     if not envelope.allow_links:
         summary = suppress_links(summary)
     return summary
+
+
+def concise_operational_summary(text: str, *, max_lines: int = 5, max_chars: int = 700) -> str:
+    kept: list[str] = []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line == "自演进：已修复并重试。":
+            kept.append(line)
+            continue
+        if DIAGNOSTIC_LINE_RE.match(line) or DIAGNOSTIC_TOKEN_RE.search(line):
+            continue
+        if line.startswith("{") or line.startswith("}") or line.startswith('"'):
+            continue
+        kept.append(line)
+        if len(kept) >= max_lines:
+            break
+    summary = "\n".join(kept).strip() or "任务已处理，详细诊断已记录后台。"
+    if len(summary) > max_chars:
+        summary = summary[: max_chars - 1].rstrip() + "…"
+    return summary
+
+
+def status_label(status: str) -> str:
+    return {
+        "ok": "成功",
+        "chat": "回复",
+        "failed": "失败",
+        "unsupported": "未执行",
+    }.get(status, status or "unknown")
 
 
 def format_owner_reply(envelope: ReportEnvelope) -> str:
     summary = display_summary(envelope)
     if envelope.status == "chat":
         return summary
-    lines = [summary]
-    meta = [
-        f"任务：{envelope.task_id}",
-        f"阶段：{envelope.stage or 'unknown'}",
-        f"工具：{envelope.tool_id or 'none'}",
-        f"写操作：{'是' if envelope.write_operation else '否'}",
-        f"回查：{envelope.postcheck}",
-    ]
-    if envelope.failure_type:
-        meta.append(f"失败类型：{envelope.failure_type}")
-    meta.append(f"诊断：{envelope.diagnostics_ref}")
-    lines.append("\n".join(meta))
+    lines = [summary, f"状态：{status_label(envelope.status)}"]
+    if envelope.write_operation and envelope.status != "ok":
+        lines.append("写操作：未执行")
+    lines.append("详细诊断：后台日志保留，不投递到公共频道。")
     return "\n".join(item for item in lines if item).strip()

@@ -89,9 +89,10 @@ def test_reporter_formats_trace_stage_tool_and_postcheck() -> None:
         saved = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
     reply = format_owner_reply(envelope)
     assert saved["trace_id"] == "trace_test"
-    assert "阶段：evaluate" in reply
-    assert "工具：timescar.dm.cancel_next" in reply
-    assert "回查：target_booking_absent_after_success" in reply
+    assert "阶段：evaluate" not in reply
+    assert "工具：timescar.dm.cancel_next" not in reply
+    assert "回查：target_booking_absent_after_success" not in reply
+    assert "详细诊断：后台日志保留" in reply
 
 
 def test_reporter_suppresses_links_by_default() -> None:
@@ -144,6 +145,32 @@ def test_reporter_summarizes_web_research_without_sources_or_evidence() -> None:
     assert "检索证据" not in reply
     assert "https://example.com" not in reply
     assert "结论一" in reply
+
+
+def test_reporter_hides_self_repair_diagnostics_from_owner_reply() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_gap",
+        trace_id="trace_gap",
+        status="unsupported",
+        visibility="owner_dm",
+        summary=(
+            "未执行：需要补齐内部自演进能力。\n"
+            "记录：kernel_session=session_x gap_id=gap_y plan_log=/var/lib/openclaw/kernel/dm.jsonl\n"
+            "自演进：promoted\n"
+            "重放判定：允许，promoted read-only repair package can be replayed once\n"
+            "工具匠：promoted\n"
+            "事件日志：/tmp/openclaw/capability_gap_events.jsonl"
+        ),
+        diagnostics_ref="trace_id=trace_gap route=gap",
+        stage="binding",
+        failure_type="tool_binding_gap",
+    )
+    reply = format_owner_reply(envelope)
+    assert "未执行：需要补齐内部自演进能力。" in reply
+    assert "kernel_session" not in reply
+    assert "gap_id" not in reply
+    assert "事件日志" not in reply
+    assert "详细诊断：后台日志保留" in reply
 
 
 def test_discord_patch_does_not_add_business_router_success_prefix() -> None:

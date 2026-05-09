@@ -85,5 +85,5 @@ def test_dispatcher_records_nonzero_tool_failure_and_replays_readonly_once() -> 
         events = (Path(tmp) / "kernel" / "capability_gap_events.jsonl").read_text(encoding="utf-8").splitlines()
     assert result.status == "ok"
     assert calls["count"] == 2
-    assert "自演进重放" in result.reply
+    assert "自演进：已修复并重试。" in result.reply
     assert json.loads(events[-1])["replay_allowed"] is True

@@ -674,7 +674,7 @@ def test_unregistered_safe_readonly_gap_promotes_and_replays() -> None:
         run_tool.assert_called_once()
         assert result.status == "ok"
         assert result.route_kind in {"registered_task", "registered_task_replayed"}
-        assert "自演进重放" in result.reply
+        assert "自演进：已修复并重试。" in result.reply
 
 
 def test_unregistered_write_gap_does_not_execute() -> None:
