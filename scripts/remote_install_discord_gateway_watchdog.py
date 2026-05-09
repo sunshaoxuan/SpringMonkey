@@ -47,7 +47,7 @@ DISCORD_READY_HINTS = (
     "discord client ready",
     "provider ready",
 )
-ACTIVE_LONG_TASK_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
+ACTIVE_LONG_TASK_STATUSES = {"running"}
 
 
 def sh(args: list[str], *, check: bool = False) -> subprocess.CompletedProcess[str]:
