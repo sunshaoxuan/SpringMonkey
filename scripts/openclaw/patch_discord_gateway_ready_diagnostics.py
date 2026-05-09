@@ -14,31 +14,31 @@ DIST_ROOTS = [
 TARGET = "provider-hTInySyN.js"
 MARKER = "springmonkey gateway ready diagnostics"
 
-OLD = '''\t\t\tcreateWebSocket(url) {
-\t\t\t\tif (!url) throw new Error("Gateway URL is required");
-\t\t\t\tconst wsFlowId = randomUUID();
-\t\t\t\tconst socket = new (params.testing?.webSocketCtor ?? ws.default)(url, {
-\t\t\t\t\thandshakeTimeout: DISCORD_GATEWAY_HANDSHAKE_TIMEOUT_MS,
-\t\t\t\t\t...params.wsAgent ? { agent: params.wsAgent } : {}
-\t\t\t\t});'''
+OLD = '''\t\tcreateWebSocket(url) {
+\t\t\tif (!url) throw new Error("Gateway URL is required");
+\t\t\tconst wsFlowId = randomUUID();
+\t\t\tconst socket = new (params.testing?.webSocketCtor ?? ws.default)(url, {
+\t\t\t\thandshakeTimeout: DISCORD_GATEWAY_HANDSHAKE_TIMEOUT_MS,
+\t\t\t\t...params.wsAgent ? { agent: params.wsAgent } : {}
+\t\t\t});'''
 
-NEW = '''\t\t\tcreateWebSocket(url) {
-\t\t\t\tif (!url) throw new Error("Gateway URL is required");
-\t\t\t\tconst wsFlowId = randomUUID();
-\t\t\t\tparams.runtime.log?.("discord gateway diag: springmonkey gateway ready diagnostics createWebSocket url=" + String(url).replace(/token=[^&]+/g, "token=<redacted>"));
-\t\t\t\tconst socket = new (params.testing?.webSocketCtor ?? ws.default)(url, {
-\t\t\t\t\thandshakeTimeout: DISCORD_GATEWAY_HANDSHAKE_TIMEOUT_MS,
-\t\t\t\t\t...params.wsAgent ? { agent: params.wsAgent } : {}
-\t\t\t\t});
-\t\t\t\tsocket.on?.("open", () => params.runtime.log?.("discord gateway diag: websocket open"));
-\t\t\t\tsocket.on?.("close", (code, reason) => params.runtime.error?.("discord gateway diag: websocket close code=" + String(code) + " reason=" + String(reason || "")));
-\t\t\t\tsocket.on?.("error", (error) => params.runtime.error?.("discord gateway diag: websocket error " + (error?.stack || error?.message || String(error))));
-\t\t\t\tsocket.on?.("message", (data) => {
-\t\t\t\t\ttry {
-\t\t\t\t\t\tconst payload = JSON.parse(Buffer.isBuffer(data) ? data.toString("utf8") : String(data));
-\t\t\t\t\t\tif (payload?.op === 10 || payload?.t === "READY" || payload?.op === 9) params.runtime.log?.("discord gateway diag: inbound op=" + String(payload?.op) + " t=" + String(payload?.t));
-\t\t\t\t\t} catch {}
-\t\t\t\t});'''
+NEW = '''\t\tcreateWebSocket(url) {
+\t\t\tif (!url) throw new Error("Gateway URL is required");
+\t\t\tconst wsFlowId = randomUUID();
+\t\t\tparams.runtime.log?.("discord gateway diag: springmonkey gateway ready diagnostics createWebSocket url=" + String(url).replace(/token=[^&]+/g, "token=<redacted>"));
+\t\t\tconst socket = new (params.testing?.webSocketCtor ?? ws.default)(url, {
+\t\t\t\thandshakeTimeout: DISCORD_GATEWAY_HANDSHAKE_TIMEOUT_MS,
+\t\t\t\t...params.wsAgent ? { agent: params.wsAgent } : {}
+\t\t\t});
+\t\t\tsocket.on?.("open", () => params.runtime.log?.("discord gateway diag: websocket open"));
+\t\t\tsocket.on?.("close", (code, reason) => params.runtime.error?.("discord gateway diag: websocket close code=" + String(code) + " reason=" + String(reason || "")));
+\t\t\tsocket.on?.("error", (error) => params.runtime.error?.("discord gateway diag: websocket error " + (error?.stack || error?.message || String(error))));
+\t\t\tsocket.on?.("message", (data) => {
+\t\t\t\ttry {
+\t\t\t\t\tconst payload = JSON.parse(Buffer.isBuffer(data) ? data.toString("utf8") : String(data));
+\t\t\t\t\tif (payload?.op === 10 || payload?.t === "READY" || payload?.op === 9) params.runtime.log?.("discord gateway diag: inbound op=" + String(payload?.op) + " t=" + String(payload?.t));
+\t\t\t\t} catch {}
+\t\t\t});'''
 
 
 def patch_file(path: Path) -> bool:
