@@ -810,6 +810,81 @@
       "safety": "write"
     },
     {
+      "intent_id": "openclaw.artifact.update_followup",
+      "tool_id": "openclaw.artifact.update_followup",
+      "description": "Execute follow-up edits, additions, image insertion, or corrections on the most recent delivered artifact.",
+      "owner_agent": "toolWorker",
+      "patterns": [
+        "交付物",
+        "文档",
+        "文件",
+        "Google Docs",
+        "修改",
+        "更新",
+        "补充",
+        "插入",
+        "图片",
+        "配图",
+        "edit",
+        "update"
+      ],
+      "required_any": [
+        "修改",
+        "更新",
+        "补充",
+        "插入",
+        "加上",
+        "配图",
+        "图片",
+        "改一下",
+        "edit",
+        "update"
+      ],
+      "entrypoint": "scripts/openclaw/artifact_update_followup_tool.py",
+      "args_schema": {
+        "mode": "artifact_update_followup",
+        "execute_agent": true,
+        "agent_timeout": 900
+      },
+      "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
+      "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "confirm_policy": "owner_requested_delivered_artifact_update",
+      "idempotency": "latest_artifact_url_followup_text",
+      "verify_command": "python -m compileall -q scripts/openclaw/artifact_update_followup_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.artifact.update_followup",
+      "domain": "artifact",
+      "actions": [
+        "update",
+        "edit"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "recent delivered artifact update",
+        "edit the generated document",
+        "add images to delivered document",
+        "do not create a missing-tool gap for artifact follow-ups"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "must_report_actual_update_or_blocker": true
+      },
+      "safety": "write"
+    },
+    {
       "intent_id": "weather.dm.query",
       "tool_id": "weather.dm.query",
       "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",

@@ -79,6 +79,33 @@ def test_artifact_access_followup_is_model_routed_away_from_task_status() -> Non
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.artifact.access_followup"
 
 
+def test_artifact_update_followup_is_model_routed_to_update_tool() -> None:
+    frame = agent.infer_intent_frame(
+        "请给刚才生成的文档补充三张高清无水印图片并更新交付物。",
+        context="Recent long task final report includes a Google Docs URL.",
+        registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "artifact",
+                "action": "update",
+                "canonical_text": "为最近交付的 Google Docs 文件补充三张图片并更新交付物。",
+                "context_refs": [{"type": "recent_delivered_artifact", "selector": "latest_google_doc"}],
+                "parameters": {"artifact_kind": "google_doc", "image_count": 3},
+                "safety": "write",
+                "result_contract": {"type": "artifact_update_followup"},
+                "tool_candidates": [{"tool_id": "openclaw.artifact.update_followup", "confidence": 0.98, "reason": "artifact update follow-up"}],
+                "confidence": 0.98,
+                "reason": "The user is asking to edit the delivered artifact, not to check task status.",
+            }
+        ),
+    )
+
+    assert frame.domain == "artifact"
+    assert frame.action == "update"
+    assert frame.tool_candidates[0]["tool_id"] == "openclaw.artifact.update_followup"
+
+
 def test_intent_frame_normalizes_nested_time_range() -> None:
     frame = agent.validate_intent_frame(
         {

@@ -26,7 +26,7 @@ RUNTIME_ENV_FILES = (
 )
 CONVERSATION_MODES = {"chat", "task", "clarification", "gap"}
 DOMAINS = {"timescar", "weather", "news", "cron", "config", "web", "memory", "self", "artifact", "general", "unknown"}
-ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "research", "backfill", "quality", "clean", "list", "retry", "access", "share", "chat", "gap"}
+ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "research", "backfill", "quality", "clean", "list", "retry", "access", "share", "update", "edit", "chat", "gap"}
 SAFETY_CLASSES = {"readonly", "write", "credential", "destructive", "ambiguous"}
 
 
@@ -269,7 +269,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Schema: {conversation_mode, domain, action, canonical_text, context_refs, parameters, safety, result_contract, tool_candidates, confidence, reason}. "
         "conversation_mode: chat|task|clarification|gap. "
         "domain: timescar|weather|news|cron|config|web|memory|self|artifact|general|unknown. "
-        "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|access|share|chat|gap. "
+        "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|access|share|update|edit|chat|gap. "
         "safety: readonly|write|credential|destructive|ambiguous. "
         "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from the registry. "
         "Choose the tool by the capability required to answer, not by a business keyword in the message. "
@@ -287,6 +287,8 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Example: 检查自演进状态 means domain=self action=status and tool candidate openclaw.self_evolution.status. "
         "Example: 我打不开刚才生成的 Google Docs，请给我查看权限 means domain=artifact action=access and tool candidate openclaw.artifact.access_followup; do not answer with task status. "
         "Example: 给刚才那个文档开查看权限 means domain=artifact action=share and tool candidate openclaw.artifact.access_followup. "
+        "Example: 给刚才那个文档补充三张图片并更新内容 means domain=artifact action=update and tool candidate openclaw.artifact.update_followup; do not create a missing-tool gap. "
+        "Example: 修改刚才交付的文件 means domain=artifact action=edit and tool candidate openclaw.artifact.update_followup. "
         "Example: 我订的车可以提前多久订 means public service policy research, so domain=web action=research, not timescar gap. "
         "Example: 这个链接说了什么 means domain=web action=research and include the URL in parameters. "
         "Example: 现在某服务是否宕机 means domain=web action=research and require current public sources. "

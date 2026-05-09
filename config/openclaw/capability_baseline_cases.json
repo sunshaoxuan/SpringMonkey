@@ -156,6 +156,19 @@
       "auto_repair": "authorization_required"
     },
     {
+      "id": "artifact_update_followup",
+      "text": "请给刚才生成的文档补充三张图片并更新交付物。",
+      "expected": {
+        "domain": "artifact",
+        "action": "update",
+        "tool_id": "openclaw.artifact.update_followup",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
       "id": "weather_dm_query",
       "text": "请查询明天东京和长野天气、风况和能见度。",
       "expected": {
