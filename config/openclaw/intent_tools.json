@@ -766,7 +766,9 @@
       ],
       "entrypoint": "scripts/openclaw/artifact_access_followup_tool.py",
       "args_schema": {
-        "mode": "artifact_access_followup"
+        "mode": "artifact_access_followup",
+        "execute_agent": true,
+        "agent_timeout": 900
       },
       "permission": "owner_dm_write",
       "permission_scope": "owner_dm_write",

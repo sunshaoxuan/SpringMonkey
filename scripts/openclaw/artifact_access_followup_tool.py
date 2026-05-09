@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -39,7 +40,63 @@ def latest_artifact(tasks: list[dict[str, Any]]) -> tuple[dict[str, Any] | None,
     return None, ""
 
 
-def build_reply(task: dict[str, Any] | None, doc_url: str) -> str:
+def strip_ansi(text: str) -> str:
+    return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", text or "")
+
+
+def run_access_agent(doc_url: str, *, timeout_seconds: int) -> tuple[bool, str]:
+    prompt = (
+        "请处理最近一次已交付文档的查看权限问题。\n"
+        f"目标文档：{doc_url}\n"
+        "用户明确要求：给 owner 查看文件的许可。不要重复报告文件生成任务成功。"
+        "请使用已登录的 Google Docs/Drive 浏览器会话打开共享设置，授予当前 owner 可查看权限；"
+        "如果无法修改权限，只报告具体阻断点。完成后用中文说明“已授权查看”或“未完成：原因”。"
+    )
+    try:
+        proc = subprocess.run(
+            [
+                "openclaw",
+                "--no-color",
+                "agent",
+                "--agent",
+                "main",
+                "--message",
+                prompt,
+                "--timeout",
+                str(timeout_seconds),
+                "--thinking",
+                "medium",
+                "--json",
+            ],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout_seconds + 60,
+        )
+    except Exception as exc:
+        return False, f"未完成：无法启动权限处理 agent：{type(exc).__name__}: {exc}"
+    output = strip_ansi(proc.stdout or "").strip()
+    if proc.returncode != 0:
+        return False, f"未完成：权限处理 agent 退出码 {proc.returncode}。"
+    try:
+        payload = json.loads(output)
+    except json.JSONDecodeError:
+        return ("已授权查看" in output), output[-700:] or "未完成：权限处理 agent 没有返回可读结果。"
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    text = ""
+    payloads = result.get("payloads") if isinstance(result.get("payloads"), list) else []
+    for item in payloads:
+        if isinstance(item, dict) and str(item.get("text") or "").strip():
+            text = str(item.get("text") or "").strip()
+            break
+    text = text or str((result.get("meta") or {}).get("finalAssistantVisibleText") or "").strip()
+    ok = str(payload.get("status") or "") == "ok" and "已授权查看" in text
+    return ok, text or "未完成：权限处理 agent 没有返回最终结论。"
+
+
+def build_reply(task: dict[str, Any] | None, doc_url: str, *, execute_agent: bool = False, agent_timeout: int = 900) -> str:
     lines = [
         "交付物访问请求已识别。",
         "结论：这不是文件生成状态查询，不能只回复“任务成功”。",
@@ -61,6 +118,10 @@ def build_reply(task: dict[str, Any] | None, doc_url: str) -> str:
             f"来源任务：{title}",
         ]
     )
+    if execute_agent:
+        ok, result = run_access_agent(doc_url, timeout_seconds=agent_timeout)
+        lines[3] = f"执行结果：{result}"
+        lines[4] = "当前状态：已证明 Google Docs 查看权限已经授予。" if ok else "当前状态：权限处理未完成。"
     return "\n".join(lines)
 
 
@@ -69,9 +130,11 @@ def main() -> int:
     parser.add_argument("--text", required=True)
     parser.add_argument("--message-timestamp", default="")
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
+    parser.add_argument("--execute-agent", action="store_true")
+    parser.add_argument("--agent-timeout", type=int, default=900)
     args = parser.parse_args()
     task, doc_url = latest_artifact(load_tasks(args.state))
-    print(build_reply(task, doc_url))
+    print(build_reply(task, doc_url, execute_agent=args.execute_agent, agent_timeout=args.agent_timeout))
     return 0
 
 
