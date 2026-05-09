@@ -42,9 +42,9 @@ def main() -> int:
     out = stdout.read().decode("utf-8", errors="replace")
     err = stderr.read().decode("utf-8", errors="replace")
     client.close()
-    sys.stdout.write(out)
+    sys.stdout.buffer.write(out.encode("utf-8", errors="replace"))
     if err.strip():
-        sys.stderr.write(err)
+        sys.stderr.buffer.write(err.encode("utf-8", errors="replace"))
     return 0 if "DONE" in out else 1
 
 
