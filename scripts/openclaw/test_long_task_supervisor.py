@@ -108,6 +108,31 @@ def test_deliver_owner_dm_falls_back_to_created_dm_channel(monkeypatch) -> None:
     assert "retry=discord_http_200" in evidence
 
 
+def test_delivery_queue_fallback_tracks_ack(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    queue = tmp_path / "delivery-queue"
+    sessions.mkdir()
+    supervisor.register_task(source="cron", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
+    final_session(sessions / "run.jsonl", run_id="run_1", text="最终结果")
+
+    def fake_queue(task: dict, body: str) -> tuple[bool, str]:
+        _ok, evidence = supervisor.enqueue_openclaw_delivery(task, body, queue_dir=queue, owner_user_id="owner")
+        return False, evidence
+
+    queued = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=True, repair=False, deliverer=fake_queue)
+
+    assert queued[0]["status"] == "delivery_queued"
+    queue_id = queued[0]["delivery_queue_id"]
+    assert supervisor.delivery_queue_state(queue_id, queue_dir=queue) == "pending"
+    (queue / f"{queue_id}.json").unlink()
+
+    delivered = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=True, repair=False)
+
+    assert delivered[0]["status"] == "delivered"
+    assert delivered[0]["delivery_state"] == "delivered"
+
+
 def test_timeout_marks_task_and_records_no_fake_success(tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     sessions = tmp_path / "sessions"

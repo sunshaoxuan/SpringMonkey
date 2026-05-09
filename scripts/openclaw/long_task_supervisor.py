@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -18,11 +19,12 @@ DEFAULT_STATE_PATH = WORKSPACE / "state" / "long_task_supervisor" / "tasks.json"
 DEFAULT_EVENTS_PATH = WORKSPACE / "state" / "long_task_supervisor" / "events.jsonl"
 DEFAULT_SESSIONS_DIR = Path("/var/lib/openclaw/.openclaw/agents/main/sessions")
 DEFAULT_CONFIG_PATH = Path("/var/lib/openclaw/.openclaw/openclaw.json")
+DEFAULT_DELIVERY_QUEUE_DIR = Path("/var/lib/openclaw/.openclaw/delivery-queue")
 DEFAULT_OWNER_DM_CHANNEL = "1497009159940608020"
 DEFAULT_OWNER_USER_ID = "999666719356354610"
 DEFAULT_TIMEOUT_SECONDS = 3600
 
-ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed"}
+ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -252,16 +254,73 @@ def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEF
             return True, evidence
         channel_id, dm_evidence = create_owner_dm_channel(token)
         if not channel_id:
+            queued, queue_evidence = enqueue_openclaw_delivery(task, text)
+            if queued:
+                return False, queue_evidence
             return False, f"{evidence}; create_dm_failed={dm_evidence}"
         retry_ok, retry_evidence = deliver_to_channel(token, channel_id, text)
+        if not retry_ok:
+            queued, queue_evidence = enqueue_openclaw_delivery(task, text)
+            if queued:
+                return False, queue_evidence
         return retry_ok, f"{evidence}; create_dm={dm_evidence}; retry={retry_evidence}"
     channel_id, dm_evidence = create_owner_dm_channel(token)
     if not channel_id:
         fallback_channel = os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL
         ok, evidence = deliver_to_channel(token, fallback_channel, text)
+        if not ok:
+            queued, queue_evidence = enqueue_openclaw_delivery(task, text)
+            if queued:
+                return False, queue_evidence
         return ok, f"create_dm_failed={dm_evidence}; fallback={evidence}"
     ok, evidence = deliver_to_channel(token, channel_id, text)
+    if not ok:
+        queued, queue_evidence = enqueue_openclaw_delivery(task, text)
+        if queued:
+            return False, queue_evidence
     return ok, f"create_dm={dm_evidence}; send={evidence}"
+
+
+def enqueue_openclaw_delivery(
+    task: dict[str, Any],
+    text: str,
+    *,
+    queue_dir: Path = DEFAULT_DELIVERY_QUEUE_DIR,
+    owner_user_id: str = DEFAULT_OWNER_USER_ID,
+) -> tuple[bool, str]:
+    queue_dir.mkdir(parents=True, exist_ok=True)
+    entry_id = str(uuid.uuid4())
+    payload = {
+        "id": entry_id,
+        "enqueuedAt": int(time.time() * 1000),
+        "channel": "discord",
+        "to": f"user:{owner_user_id}",
+        "accountId": "default",
+        "payloads": [{"text": text[:1900]}],
+        "bestEffort": False,
+        "session": {
+            "key": f"long-task-supervisor:{task.get('run_id') or task.get('task_id') or entry_id}",
+            "agentId": "main",
+        },
+        "retryCount": 0,
+    }
+    path = queue_dir / f"{entry_id}.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    return True, f"delivery_queued:{entry_id}"
+
+
+def delivery_queue_state(entry_id: str, *, queue_dir: Path = DEFAULT_DELIVERY_QUEUE_DIR) -> str:
+    if not entry_id:
+        return "missing"
+    if (queue_dir / f"{entry_id}.json").exists():
+        return "pending"
+    if (queue_dir / "failed" / f"{entry_id}.json").exists():
+        return "failed"
+    return "acked"
 
 
 def final_delivery_text(task: dict[str, Any]) -> str:
@@ -317,6 +376,24 @@ def poll_tasks(
         if not isinstance(task, dict) or str(task.get("status") or "") not in ACTIVE_STATUSES:
             continue
         task["last_seen"] = utc_now()
+        if task.get("status") == "delivery_queued":
+            queue_status = delivery_queue_state(str(task.get("delivery_queue_id") or ""))
+            task["delivery_queue_state"] = queue_status
+            if queue_status == "acked":
+                task["status"] = "delivered"
+                task["stage"] = "delivered"
+                task["delivery_state"] = "delivered"
+                task["delivered_at"] = utc_now()
+                append_event({"event": "delivered", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "via": "openclaw_delivery_queue"})
+                changed = True
+            elif queue_status == "failed":
+                task["status"] = "delivery_failed"
+                task["stage"] = "delivery_failed"
+                task["delivery_state"] = "failed"
+                append_event({"event": "delivery_failed", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "evidence": "openclaw_delivery_queue_failed"})
+                changed = True
+            results.append(dict(task))
+            continue
         if not task.get("final_report") and task.get("status") == "running":
             report = find_final_report(task, sessions_dir=sessions_dir)
             if report.get("found"):
@@ -347,6 +424,14 @@ def poll_tasks(
                 task["delivery_state"] = "delivered"
                 task["delivered_at"] = utc_now()
                 append_event({"event": "delivered", "task_id": task.get("task_id"), "run_id": task.get("run_id")})
+            elif evidence.startswith("delivery_queued:"):
+                queue_id = evidence.split(":", 1)[1]
+                task["status"] = "delivery_queued"
+                task["stage"] = "delivery_queued"
+                task["delivery_state"] = "queued"
+                task["delivery_queue_id"] = queue_id
+                task["delivery_queue_state"] = "pending"
+                append_event({"event": "delivery_queued", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "delivery_queue_id": queue_id})
             else:
                 task["status"] = "delivery_failed"
                 task["stage"] = "delivery_failed"
