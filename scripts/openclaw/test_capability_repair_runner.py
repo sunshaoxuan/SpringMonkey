@@ -20,6 +20,8 @@ def blocker_response(kind: str, safety: str, confidence: float = 0.92) -> str:
             "allowed_repair_action": "test repair action",
             "replay_policy": "allow_after_verified_promoted" if safety == "auto_safe_readonly" else "blocked_until_authorization",
             "reasoning_summary": f"test {kind}",
+            "autonomy_allowed": False,
+            "autonomy_boundary": "test",
         },
         ensure_ascii=False,
     )
@@ -124,6 +126,43 @@ def test_repair_runner_low_confidence_llm_blocks_helper_generation() -> None:
     assert result.replay_allowed is False
     assert result.toolsmith_package["status"] == "blocked_requires_authorization"
     assert result.toolsmith_package["gap_type"] == "permission_missing"
+
+
+def test_repair_runner_allows_llm_approved_internal_autonomy() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_repair(
+            text="请修复你自己的内部绑定并重试原任务",
+            channel="discord_dm",
+            user_id="tester",
+            stage="binding",
+            reason="no registered internal repair tool",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+            blocker_model_caller=lambda _messages: json.dumps(
+                {
+                    "intent_kind": "self_improvement",
+                    "blocker_kind": "access_or_approval_blocker",
+                    "safety_class": "auto_safe_readonly",
+                    "confidence": 0.94,
+                    "expected_capability_family": "self_repair",
+                    "missing_condition": "internal access path is missing but no external approval is required",
+                    "allowed_repair_action": "autonomous_internal_repair",
+                    "replay_policy": "allow_after_verified_promoted",
+                    "reasoning_summary": "Internal self-improvement repair is allowed within privacy and rights boundaries.",
+                    "autonomy_allowed": True,
+                    "autonomy_boundary": "low_risk_internal_self_improvement",
+                },
+                ensure_ascii=False,
+            ),
+        )
+        events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
+
+    assert result.status in {"generated", "verified"}
+    assert result.safety_class == "auto_safe_readonly"
+    assert result.toolsmith_package["status"] in {"generated", "promoted"}
+    assert result.toolsmith_package["tool_id"] != "openclaw.authorization_required"
+    assert events[-1]["autonomy_allowed"] is True
+    assert events[-1]["allowed_repair_action"] == "autonomous_internal_repair"
 
 
 def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:

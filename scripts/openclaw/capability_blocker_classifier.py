@@ -28,6 +28,11 @@ REPLAY_POLICIES = {
     "blocked_until_authorization",
     "blocked_until_human_review",
 }
+AUTONOMOUS_REPAIR_ACTIONS = {
+    "autonomous_internal_repair",
+    "autonomous_readonly_repair",
+    "generate_helper_and_verify",
+}
 
 
 @dataclass
@@ -41,6 +46,8 @@ class CapabilityBlockerClassification:
     allowed_repair_action: str
     replay_policy: str
     reasoning_summary: str
+    autonomy_allowed: bool = False
+    autonomy_boundary: str = "human_review_required"
     ok: bool = True
     error: str = ""
 
@@ -56,6 +63,8 @@ def conservative_blocker(error: str = "") -> CapabilityBlockerClassification:
         allowed_repair_action="record_gap_only",
         replay_policy="blocked_until_human_review",
         reasoning_summary="Conservatively blocked because the model did not produce a trusted blocker classification.",
+        autonomy_allowed=False,
+        autonomy_boundary="model_unavailable_or_low_confidence",
         ok=False,
         error=error,
     )
@@ -71,6 +80,12 @@ def validate_classification(data: dict[str, Any]) -> CapabilityBlockerClassifica
         safety_class = "unsupported_or_ambiguous"
     if replay_policy not in REPLAY_POLICIES:
         replay_policy = "blocked_until_human_review"
+    allowed_repair_action = str(data.get("allowed_repair_action") or "record_gap_only").strip()
+    autonomy_allowed = bool(data.get("autonomy_allowed")) or (
+        allowed_repair_action in AUTONOMOUS_REPAIR_ACTIONS
+        and safety_class == "auto_safe_readonly"
+        and replay_policy == "allow_after_verified_promoted"
+    )
     return CapabilityBlockerClassification(
         intent_kind=str(data.get("intent_kind") or "unknown").strip() or "unknown",
         blocker_kind=blocker_kind,
@@ -78,9 +93,11 @@ def validate_classification(data: dict[str, Any]) -> CapabilityBlockerClassifica
         confidence=max(0.0, min(float(data.get("confidence") or 0.0), 1.0)),
         expected_capability_family=str(data.get("expected_capability_family") or "unknown").strip() or "unknown",
         missing_condition=str(data.get("missing_condition") or "").strip(),
-        allowed_repair_action=str(data.get("allowed_repair_action") or "record_gap_only").strip(),
+        allowed_repair_action=allowed_repair_action,
         replay_policy=replay_policy,
         reasoning_summary=str(data.get("reasoning_summary") or "model blocker classification").strip(),
+        autonomy_allowed=autonomy_allowed,
+        autonomy_boundary=str(data.get("autonomy_boundary") or ("low_risk_internal" if autonomy_allowed else "human_review_required")).strip(),
     )
 
 
@@ -108,20 +125,26 @@ def build_blocker_prompt(
         "You are OpenClaw's semantic capability-blocker classifier. "
         "Return strict JSON only. "
         "Schema: {intent_kind, blocker_kind, safety_class, confidence, expected_capability_family, "
-        "missing_condition, allowed_repair_action, replay_policy, reasoning_summary}. "
+        "missing_condition, allowed_repair_action, replay_policy, reasoning_summary, autonomy_allowed, autonomy_boundary}. "
         "blocker_kind must be one of: access_or_approval_blocker, credential_missing, "
         "registered_tool_regression, tool_binding_gap, readonly_tool_missing, write_operation_request, ambiguous. "
         "safety_class must be one of: auto_safe_readonly, requires_confirmation_or_credentials, unsupported_or_ambiguous. "
         "replay_policy must be one of: allow_after_verified_promoted, blocked_until_authorization, blocked_until_human_review. "
         "Classify by semantic meaning, not by keyword matching. "
-        "If the user says they cannot see, access, open, use, approve, authorize, or continue because another party or system approval is missing, "
-        "choose access_or_approval_blocker with requires_confirmation_or_credentials and blocked_until_authorization. "
+        "Default autonomy policy: allow the agent to operate freely for low-risk self-improvement, internal logs, repository changes, helper generation, tests, "
+        "registry updates, local/remote verification, and retrying the original task when no personal privacy is exposed and no third-party rights are affected. "
+        "For those low-risk internal repairs, set autonomy_allowed=true, safety_class=auto_safe_readonly, "
+        "allowed_repair_action=autonomous_internal_repair, replay_policy=allow_after_verified_promoted. "
+        "Do not block merely because the text mentions access or approval if the missing access can be resolved with already authorized internal tools, "
+        "owner-owned workspace state, generated artifacts, or existing service credentials. "
+        "Choose access_or_approval_blocker with requires_confirmation_or_credentials and blocked_until_authorization only when external approval is actually missing, "
+        "the agent would need to bypass access control, expose private data outside the owner boundary, or affect another person's rights. "
         "If credentials, login, 2FA, token, or secret material is missing, choose credential_missing. "
         "If the request is a known existing capability that should have bound to a registered tool, choose registered_tool_regression. "
         "If the user asks for a safe read-only capability that needs a new deterministic helper, choose readonly_tool_missing. "
-        "If the request changes external state or writes data, choose write_operation_request. "
+        "If the request changes external state or writes data outside the self-improvement workspace, choose write_operation_request. "
         "If uncertain, choose ambiguous and blocked_until_human_review. "
-        "Never suggest generating a read-only helper for access, approval, credential, or unclear blockers."
+        "Never suggest generating a helper for credential theft, access-control bypass, privacy exposure, payment, deletion, or third-party-rights-impacting actions."
     )
     user = "\n".join(
         [

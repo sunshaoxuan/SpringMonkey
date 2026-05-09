@@ -13,6 +13,11 @@ from typing import Any
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
+AUTONOMOUS_REPAIR_ACTIONS = {
+    "autonomous_internal_repair",
+    "autonomous_readonly_repair",
+    "generate_helper_and_verify",
+}
 
 try:
     import sys
@@ -72,6 +77,8 @@ def repair_fingerprint(*, text: str, reason: str, tool_id: str, entrypoint: str)
 
 def classify_gap(reason: str, registry_tool: dict[str, Any] | None = None, llm_classification: dict[str, Any] | None = None) -> str:
     blocker_kind = str((llm_classification or {}).get("blocker_kind") or "")
+    if bool((llm_classification or {}).get("autonomy_allowed")) or str((llm_classification or {}).get("allowed_repair_action") or "") in AUTONOMOUS_REPAIR_ACTIONS:
+        return "registry_missing"
     if blocker_kind in {"access_or_approval_blocker", "credential_missing"}:
         return "permission_missing"
     if blocker_kind == "registered_tool_regression":
@@ -429,14 +436,15 @@ def generate_repair_package(
 ) -> ToolsmithPackage:
     gap_type = classify_gap(reason, registry_tool, llm_classification)
     blocker_kind = str((llm_classification or {}).get("blocker_kind") or "")
+    autonomy_allowed = bool((llm_classification or {}).get("autonomy_allowed")) or str((llm_classification or {}).get("allowed_repair_action") or "") in AUTONOMOUS_REPAIR_ACTIONS
     model_blocks_toolsmith = blocker_kind in {
         "access_or_approval_blocker",
         "credential_missing",
         "write_operation_request",
         "ambiguous",
-    }
+    } and not autonomy_allowed
     write_like = (
-        safety_class in {"requires_confirmation_or_credentials", "unsupported_or_ambiguous"}
+        (safety_class in {"requires_confirmation_or_credentials", "unsupported_or_ambiguous"} and not autonomy_allowed)
         or bool((registry_tool or {}).get("write_operation"))
         or model_blocks_toolsmith
     )

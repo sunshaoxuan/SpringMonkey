@@ -249,7 +249,10 @@ def run_repair(
             repo_root=repo_root,
             model_caller=blocker_model_caller,
         )
-        if blocker.blocker_kind == "registered_tool_regression":
+        if blocker.autonomy_allowed:
+            forced_safety_class = "auto_safe_readonly"
+            forced_safety_reason = blocker.reasoning_summary
+        elif blocker.blocker_kind == "registered_tool_regression":
             forced_safety_class = "unsupported_or_ambiguous"
             forced_safety_reason = "LLM classified this as registered_tool_regression but no baseline case matched; human review required"
         else:
@@ -346,6 +349,8 @@ def run_repair(
         "llm_confidence": blocker.confidence if blocker else None,
         "missing_condition": blocker.missing_condition if blocker else "",
         "allowed_repair_action": blocker.allowed_repair_action if blocker else "",
+        "autonomy_allowed": blocker.autonomy_allowed if blocker else None,
+        "autonomy_boundary": blocker.autonomy_boundary if blocker else "",
         "llm_classification_ok": blocker.ok if blocker else None,
         "llm_classification_error": blocker.error if blocker else "",
         "plan": asdict(gap_result.plan),

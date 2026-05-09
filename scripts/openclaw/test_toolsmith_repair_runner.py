@@ -103,6 +103,28 @@ def test_toolsmith_llm_access_blocker_creates_authorization_package_not_helper()
     assert auth_payload["llm_classification"]["blocker_kind"] == "access_or_approval_blocker"
 
 
+def test_toolsmith_llm_autonomy_allowed_access_blocker_can_generate_helper() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        package = runner.generate_repair_package(
+            text="请修复内部自演进状态读取",
+            reason="model classified low-risk internal repair",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=root / "repo",
+            llm_classification={
+                "blocker_kind": "access_or_approval_blocker",
+                "allowed_repair_action": "autonomous_internal_repair",
+                "autonomy_allowed": True,
+            },
+        )
+
+    assert package.status == "generated"
+    assert package.write_operation is False
+    assert package.tool_id != "openclaw.authorization_required"
+    assert package.registry_patch["write_operation"] is False
+
+
 def test_toolsmith_promotes_readonly_package_after_verify() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
