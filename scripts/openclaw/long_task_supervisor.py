@@ -19,6 +19,7 @@ DEFAULT_EVENTS_PATH = WORKSPACE / "state" / "long_task_supervisor" / "events.jso
 DEFAULT_SESSIONS_DIR = Path("/var/lib/openclaw/.openclaw/agents/main/sessions")
 DEFAULT_CONFIG_PATH = Path("/var/lib/openclaw/.openclaw/openclaw.json")
 DEFAULT_OWNER_DM_CHANNEL = "1497009159940608020"
+DEFAULT_OWNER_USER_ID = "999666719356354610"
 DEFAULT_TIMEOUT_SECONDS = 3600
 
 ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed"}
@@ -209,24 +210,58 @@ def discord_token(config_path: Path = DEFAULT_CONFIG_PATH) -> str:
     return str((discord or {}).get("token") or "")
 
 
-def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEFAULT_CONFIG_PATH) -> tuple[bool, str]:
-    channel_id = str(task.get("reply_channel_id") or os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL)
-    token = discord_token(config_path)
-    if not token:
-        return False, "missing Discord token"
-    content = text[:1900]
-    body = json.dumps({"content": content, "allowed_mentions": {"parse": []}}, ensure_ascii=False).encode("utf-8")
+def discord_request(token: str, path: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
-        f"https://discord.com/api/v10/channels/{channel_id}/messages",
+        f"https://discord.com/api/v10{path}",
         data=body,
         headers={"Authorization": f"Bot {token}", "Content-Type": "application/json"},
         method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
-            return 200 <= resp.status < 300, f"discord_http_{resp.status}"
+            raw = resp.read().decode("utf-8", errors="replace")
+            data = json.loads(raw) if raw.strip() else {}
+            return 200 <= resp.status < 300, f"discord_http_{resp.status}", data if isinstance(data, dict) else {}
     except Exception as exc:
-        return False, f"{type(exc).__name__}: {exc}"
+        return False, f"{type(exc).__name__}: {exc}", {}
+
+
+def create_owner_dm_channel(token: str, *, owner_user_id: str = DEFAULT_OWNER_USER_ID) -> tuple[str, str]:
+    ok, evidence, data = discord_request(token, "/users/@me/channels", {"recipient_id": owner_user_id})
+    if not ok:
+        return "", evidence
+    channel_id = str(data.get("id") or "")
+    return channel_id, evidence if channel_id else "discord_dm_channel_missing_id"
+
+
+def deliver_to_channel(token: str, channel_id: str, text: str) -> tuple[bool, str]:
+    payload = {"content": text[:1900], "allowed_mentions": {"parse": []}}
+    ok, evidence, _data = discord_request(token, f"/channels/{channel_id}/messages", payload)
+    return ok, evidence
+
+
+def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEFAULT_CONFIG_PATH) -> tuple[bool, str]:
+    token = discord_token(config_path)
+    if not token:
+        return False, "missing Discord token"
+    preferred_channel = str(task.get("reply_channel_id") or os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or "").strip()
+    if preferred_channel:
+        ok, evidence = deliver_to_channel(token, preferred_channel, text)
+        if ok:
+            return True, evidence
+        channel_id, dm_evidence = create_owner_dm_channel(token)
+        if not channel_id:
+            return False, f"{evidence}; create_dm_failed={dm_evidence}"
+        retry_ok, retry_evidence = deliver_to_channel(token, channel_id, text)
+        return retry_ok, f"{evidence}; create_dm={dm_evidence}; retry={retry_evidence}"
+    channel_id, dm_evidence = create_owner_dm_channel(token)
+    if not channel_id:
+        fallback_channel = os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL
+        ok, evidence = deliver_to_channel(token, fallback_channel, text)
+        return ok, f"create_dm_failed={dm_evidence}; fallback={evidence}"
+    ok, evidence = deliver_to_channel(token, channel_id, text)
+    return ok, f"create_dm={dm_evidence}; send={evidence}"
 
 
 def final_delivery_text(task: dict[str, Any]) -> str:

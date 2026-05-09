@@ -204,6 +204,7 @@ def test_successful_enqueue_registers_long_task_when_no_final_yet(tmp_path: Path
             timeout=10,
             supervisor_state=state,
             sessions_dir=sessions,
+            reply_channel_id="dm_channel_1",
         )
 
     assert code == 0
@@ -212,6 +213,7 @@ def test_successful_enqueue_registers_long_task_when_no_final_yet(tmp_path: Path
     data = json.loads(state.read_text(encoding="utf-8"))
     assert data["tasks"][0]["run_id"] == "manual:job_1:1"
     assert data["tasks"][0]["status"] == "running"
+    assert data["tasks"][0]["reply_channel_id"] == "dm_channel_1"
 
 
 def test_parse_session_final_answer_extracts_final_text(tmp_path: Path) -> None:

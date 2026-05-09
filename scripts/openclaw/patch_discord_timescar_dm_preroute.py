@@ -30,6 +30,8 @@ async function runSpringMonkeyIntentToolRouter(params) {
 			params.authorId || "unknown",
 			"--message-timestamp",
 			params.messageTimestamp || new Date().toISOString(),
+			"--reply-channel-id",
+			params.channelId || "",
 			"--context",
 			params.context || "",
 			"--json"

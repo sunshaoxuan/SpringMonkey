@@ -552,7 +552,11 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
     if mode == "long_task_status":
         return {"limit": int(schema.get("limit") or 10)}
     if mode == "recurring_cron_job_from_text":
-        return {"text": text, "message_timestamp": message_timestamp}
+        return {
+            "text": text,
+            "message_timestamp": message_timestamp,
+            "reply_channel_id": os.environ.get("OPENCLAW_REPLY_CHANNEL_ID", "").strip(),
+        }
     raise ValueError(f"unsupported args_schema mode: {mode}")
 
 
@@ -654,6 +658,8 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             "--message-timestamp",
             args["message_timestamp"],
         ]
+        if args.get("reply_channel_id"):
+            cmd.extend(["--reply-channel-id", str(args.get("reply_channel_id") or "")])
     else:
         raise ValueError(f"unsupported execution mode: {mode}")
     started = time.monotonic()
@@ -870,12 +876,15 @@ def main() -> int:
     parser.add_argument("--user-id", default="unknown")
     parser.add_argument("--message-timestamp", default=utc_now())
     parser.add_argument("--context", default="")
+    parser.add_argument("--reply-channel-id", default="")
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--kernel-root", type=Path, default=Path(os.environ.get("OPENCLAW_AGENT_KERNEL_ROOT", DEFAULT_KERNEL_ROOT)))
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--classify-only", action="store_true")
     parser.add_argument("--intent-frame-only", action="store_true")
     args = parser.parse_args()
+    if args.reply_channel_id:
+        os.environ["OPENCLAW_REPLY_CHANNEL_ID"] = args.reply_channel_id
     if args.classify_only or args.intent_frame_only:
         registry = load_registry(args.registry)
         from harness_context import build_context_bundle, context_to_prompt

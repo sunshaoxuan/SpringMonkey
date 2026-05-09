@@ -87,6 +87,27 @@ def test_delivery_failure_keeps_final_for_retry(tmp_path: Path) -> None:
     assert retry[0]["status"] == "delivered"
 
 
+def test_deliver_owner_dm_falls_back_to_created_dm_channel(monkeypatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(supervisor, "discord_token", lambda _config_path=supervisor.DEFAULT_CONFIG_PATH: "token")
+    monkeypatch.setattr(supervisor, "create_owner_dm_channel", lambda _token: ("dm_channel", "discord_http_200"))
+
+    def fake_deliver(_token: str, channel_id: str, text: str) -> tuple[bool, str]:
+        calls.append((channel_id, text))
+        if channel_id == "stale_channel":
+            return False, "HTTPError: HTTP Error 403: Forbidden"
+        return True, "discord_http_200"
+
+    monkeypatch.setattr(supervisor, "deliver_to_channel", fake_deliver)
+
+    ok, evidence = supervisor.deliver_owner_dm({"reply_channel_id": "stale_channel"}, "最终结果")
+
+    assert ok is True
+    assert calls == [("stale_channel", "最终结果"), ("dm_channel", "最终结果")]
+    assert "retry=discord_http_200" in evidence
+
+
 def test_timeout_marks_task_and_records_no_fake_success(tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     sessions = tmp_path / "sessions"

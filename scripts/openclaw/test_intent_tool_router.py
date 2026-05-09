@@ -373,6 +373,15 @@ def test_configured_recurring_job_run_binds_to_generic_cron_tool() -> None:
     assert args["text"] == "接下来，请你开始执行每3天一次的小红书撰稿计划。"
 
 
+def test_recurring_cron_args_include_reply_channel_id(monkeypatch) -> None:
+    tool = {"args_schema": {"mode": "recurring_cron_job_from_text"}}
+    monkeypatch.setenv("OPENCLAW_REPLY_CHANNEL_ID", "dm_channel_1")
+
+    args = router.extract_args(tool, "执行任务", "2026-05-09T00:00:00+09:00")
+
+    assert args["reply_channel_id"] == "dm_channel_1"
+
+
 def test_weather_query_maps_to_registered_tool() -> None:
     result = router.classify("请查询明天东京和长野天气、风况和能见度", "discord_dm", "999", load_registry())
     assert result.intent_id == "weather.dm.query"
