@@ -7,8 +7,8 @@
       "version": "1.0.0",
       "domain": "timescar",
       "owner_agent": "timescarWorker",
-      "entrypoints": ["scripts/timescar/timescar_handle_dm_adjust_request.py", "scripts/timescar/task_runtime.py"],
-      "verify_commands": ["python scripts/timescar/test_timescar_dm_keep_cancel.py", "python scripts/timescar/test_timescar_book_reservation_window.py", "python scripts/timescar/test_timescar_cancel_reservation.py"],
+      "entrypoints": ["scripts/timescar/timescar_handle_dm_adjust_request.py", "scripts/timescar/timescar_extend_sun_3weeks.py", "scripts/timescar/task_runtime.py"],
+      "verify_commands": ["python scripts/timescar/test_timescar_dm_keep_cancel.py", "python scripts/timescar/test_timescar_book_reservation_window.py", "python scripts/timescar/test_timescar_cancel_reservation.py", "python scripts/timescar/test_timescar_extend_sun_3weeks.py"],
       "publish_status": "published",
       "rollback": "Disable TimesCar write tools in config/openclaw/intent_tools.json and redeploy Discord DM router patch."
     },

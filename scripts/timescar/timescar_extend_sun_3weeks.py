@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 import subprocess
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -70,9 +71,24 @@ def parse_reference_date(raw: str | None) -> datetime | None:
     return datetime.strptime(raw, "%Y-%m-%d").replace(tzinfo=TZ)
 
 
-def fetch_reservations() -> list[dict]:
-    data = json.loads(subprocess.check_output(["python3", str(WORKSPACE / "scripts" / "timescar_fetch_reservations.py")], text=True))
-    return data.get("reservations", [])
+def fetch_script_path() -> Path:
+    return Path(__file__).with_name("timescar_fetch_reservations.py")
+
+
+def fetch_reservations(attempts: int = 3, delay_seconds: float = 5.0) -> list[dict]:
+    last_error: Exception | None = None
+    cmd = ["python3", str(fetch_script_path())]
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            raw = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
+            data = extract_json(raw)
+            return data.get("reservations", [])
+        except Exception as exc:
+            last_error = exc
+            if attempt >= max(1, attempts):
+                break
+            time.sleep(delay_seconds * attempt)
+    raise last_error if last_error else RuntimeError("fetch reservations failed")
 
 
 def _select_target_reservation_with_reference(reference_now: datetime) -> dict | None:
