@@ -25,6 +25,8 @@ DEFAULT_OWNER_USER_ID = "999666719356354610"
 DEFAULT_TIMEOUT_SECONDS = 3600
 
 ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
+OWNER_QUEUE_TARGET = f"user:{DEFAULT_OWNER_USER_ID}"
+LEGACY_OWNER_CHANNEL_TARGET = f"channel:{DEFAULT_OWNER_USER_ID}"
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -323,9 +325,75 @@ def delivery_queue_state(entry_id: str, *, queue_dir: Path = DEFAULT_DELIVERY_QU
     return "acked"
 
 
+def read_delivery_queue_entry(path: Path) -> dict[str, Any] | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def queue_payload_text(entry: dict[str, Any]) -> str:
+    payloads = entry.get("payloads")
+    if not isinstance(payloads, list):
+        return ""
+    parts: list[str] = []
+    for payload in payloads:
+        if isinstance(payload, dict) and str(payload.get("text") or "").strip():
+            parts.append(str(payload.get("text") or "").strip())
+    return "\n".join(parts).strip()
+
+
+def repair_owner_queue_target(path: Path, entry: dict[str, Any]) -> bool:
+    if str(entry.get("to") or "") != LEGACY_OWNER_CHANNEL_TARGET:
+        return False
+    repaired = dict(entry)
+    repaired["to"] = OWNER_QUEUE_TARGET
+    repaired["retryCount"] = 0
+    repaired.pop("lastError", None)
+    repaired.pop("lastAttemptAt", None)
+    path.write_text(json.dumps(repaired, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return True
+
+
+def find_cron_failure_delivery(
+    task: dict[str, Any],
+    *,
+    queue_dir: Path = DEFAULT_DELIVERY_QUEUE_DIR,
+) -> dict[str, Any]:
+    if str(task.get("source") or "") != "cron":
+        return {"found": False}
+    if not queue_dir.is_dir():
+        return {"found": False, "reason": "delivery queue missing"}
+    needles = [str(task.get("job_id") or ""), str(task.get("job_name") or ""), str(task.get("run_id") or "")]
+    needles = [item for item in needles if item]
+    for path in sorted(queue_dir.glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
+        entry = read_delivery_queue_entry(path)
+        if not entry:
+            continue
+        session = entry.get("session") if isinstance(entry.get("session"), dict) else {}
+        session_key = str((session or {}).get("key") or "")
+        text = queue_payload_text(entry)
+        haystack = "\n".join([session_key, text])
+        if "cron" not in haystack.lower() or "failed" not in haystack.lower():
+            continue
+        if needles and not any(needle in haystack for needle in needles):
+            continue
+        repaired = repair_owner_queue_target(path, entry)
+        return {
+            "found": True,
+            "delivery_queue_id": str(entry.get("id") or path.stem),
+            "delivery_queue_path": str(path),
+            "delivery_queue_target_repaired": repaired,
+            "text": text or "Cron job failed before final report.",
+        }
+    return {"found": False}
+
+
 def final_delivery_text(task: dict[str, Any]) -> str:
     title = str(task.get("job_name") or task.get("job_id") or "long task")
-    return "\n".join(["长任务完成", f"任务：{title}", "", str(task.get("final_report") or "").strip()]).strip()
+    heading = "长任务失败" if str(task.get("result_status") or "") == "failed" else "长任务完成"
+    return "\n".join([heading, f"任务：{title}", "", str(task.get("final_report") or "").strip()]).strip()
 
 
 def record_timeout_gap(task: dict[str, Any], *, repair: bool) -> str:
@@ -367,6 +435,7 @@ def poll_tasks(
     repair: bool = True,
     now_ts: float | None = None,
     deliverer: Callable[[dict[str, Any], str], tuple[bool, str]] | None = None,
+    queue_dir: Path = DEFAULT_DELIVERY_QUEUE_DIR,
 ) -> list[dict[str, Any]]:
     now_ts = time.time() if now_ts is None else now_ts
     data = read_state(state_path)
@@ -377,11 +446,12 @@ def poll_tasks(
             continue
         task["last_seen"] = utc_now()
         if task.get("status") == "delivery_queued":
-            queue_status = delivery_queue_state(str(task.get("delivery_queue_id") or ""))
+            queue_status = delivery_queue_state(str(task.get("delivery_queue_id") or ""), queue_dir=queue_dir)
             task["delivery_queue_state"] = queue_status
             if queue_status == "acked":
-                task["status"] = "delivered"
-                task["stage"] = "delivered"
+                result_status = str(task.get("result_status") or "success")
+                task["status"] = "failed" if result_status == "failed" else "delivered"
+                task["stage"] = "cron_failed_delivered" if result_status == "failed" else "delivered"
                 task["delivery_state"] = "delivered"
                 task["delivered_at"] = utc_now()
                 append_event({"event": "delivered", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "via": "openclaw_delivery_queue"})
@@ -395,6 +465,29 @@ def poll_tasks(
             results.append(dict(task))
             continue
         if not task.get("final_report") and task.get("status") == "running":
+            cron_failure = find_cron_failure_delivery(task, queue_dir=queue_dir)
+            if cron_failure.get("found"):
+                task["status"] = "delivery_queued"
+                task["stage"] = "cron_failed_delivery_queued"
+                task["result_status"] = "failed"
+                task["final_report"] = str(cron_failure.get("text") or "Cron job failed before final report.").strip()
+                task["delivery_state"] = "queued"
+                task["delivery_queue_id"] = str(cron_failure.get("delivery_queue_id") or "")
+                task["delivery_queue_path"] = str(cron_failure.get("delivery_queue_path") or "")
+                task["delivery_queue_state"] = "pending"
+                task["delivery_queue_target_repaired"] = bool(cron_failure.get("delivery_queue_target_repaired"))
+                append_event(
+                    {
+                        "event": "cron_failure_detected",
+                        "task_id": task.get("task_id"),
+                        "run_id": task.get("run_id"),
+                        "delivery_queue_id": task.get("delivery_queue_id"),
+                        "target_repaired": task.get("delivery_queue_target_repaired"),
+                    }
+                )
+                changed = True
+                results.append(dict(task))
+                continue
             report = find_final_report(task, sessions_dir=sessions_dir)
             if report.get("found"):
                 task["status"] = "final_detected"

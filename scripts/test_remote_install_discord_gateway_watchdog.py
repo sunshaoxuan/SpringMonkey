@@ -21,6 +21,8 @@ def test_watchdog_detects_discord_start_account_stall() -> None:
     assert "STARTUP_STUCK_PHASE = \"phase=channels.discord.start-account\"" in remote
     assert "STARTUP_STUCK_HINT = \"client initialized as\"" in remote
     assert "discord_startup_stalled" in remote
+    assert "defer_active_long_tasks" in remote
+    assert "ACTIVE_LONG_TASK_STATUSES" in remote
     assert "no_recent_discord_gateway_timeout_or_startup_stall" in remote
 
 

@@ -32,6 +32,7 @@ import urllib.request
 from pathlib import Path
 
 STATE = Path("/var/lib/openclaw/.openclaw/state/discord_gateway_watchdog.json")
+LONG_TASK_STATE = Path("/var/lib/openclaw/.openclaw/workspace/state/long_task_supervisor/tasks.json")
 COOLDOWN_SECONDS = 300
 SINCE = "10 minutes ago"
 PATTERN = "Gateway heartbeat ACK timeout"
@@ -46,6 +47,7 @@ DISCORD_READY_HINTS = (
     "discord client ready",
     "provider ready",
 )
+ACTIVE_LONG_TASK_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
 
 
 def sh(args: list[str], *, check: bool = False) -> subprocess.CompletedProcess[str]:
@@ -73,6 +75,31 @@ def health_ok() -> bool:
         return '"ok":true' in payload
     except Exception:
         return False
+
+
+def active_long_tasks() -> list[dict]:
+    try:
+        data = json.loads(LONG_TASK_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    tasks = data.get("tasks") if isinstance(data, dict) else []
+    if not isinstance(tasks, list):
+        return []
+    active: list[dict] = []
+    for item in tasks:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("status") or "") in ACTIVE_LONG_TASK_STATUSES:
+            active.append(
+                {
+                    "task_id": item.get("task_id"),
+                    "run_id": item.get("run_id"),
+                    "job_id": item.get("job_id"),
+                    "status": item.get("status"),
+                    "stage": item.get("stage"),
+                }
+            )
+    return active[:5]
 
 
 def latest_timeout_line() -> str:
@@ -114,6 +141,10 @@ def main() -> int:
         return 0
     if now - last_restart < COOLDOWN_SECONDS:
         print(json.dumps({"ok": True, "action": "none", "reason": "cooldown", "line": line[-300:]}))
+        return 0
+    active_tasks = active_long_tasks()
+    if active_tasks:
+        print(json.dumps({"ok": True, "action": "none", "reason": "defer_active_long_tasks", "activeLongTasks": active_tasks, "line": line[-300:]}, ensure_ascii=False))
         return 0
 
     before_health = health_ok()

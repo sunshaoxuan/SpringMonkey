@@ -133,6 +133,43 @@ def test_delivery_queue_fallback_tracks_ack(tmp_path: Path) -> None:
     assert delivered[0]["delivery_state"] == "delivered"
 
 
+def test_cron_failure_delivery_marks_task_failed_and_repairs_owner_target(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    queue = tmp_path / "delivery-queue"
+    sessions.mkdir()
+    queue.mkdir()
+    supervisor.register_task(source="cron", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
+    entry = {
+        "id": "queue_1",
+        "channel": "discord",
+        "to": supervisor.LEGACY_OWNER_CHANNEL_TARGET,
+        "payloads": [{"text": 'Cron job "job" failed: cron: job interrupted by gateway restart'}],
+        "retryCount": 3,
+        "lastError": "Unknown Channel",
+        "session": {"key": "cron:job_1:failure"},
+    }
+    (queue / "queue_1.json").write_text(json.dumps(entry), encoding="utf-8")
+
+    tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=True, repair=False, queue_dir=queue)
+
+    assert tasks[0]["status"] == "delivery_queued"
+    assert tasks[0]["stage"] == "cron_failed_delivery_queued"
+    assert tasks[0]["result_status"] == "failed"
+    assert tasks[0]["delivery_queue_target_repaired"] is True
+    repaired = json.loads((queue / "queue_1.json").read_text(encoding="utf-8"))
+    assert repaired["to"] == supervisor.OWNER_QUEUE_TARGET
+    assert repaired["retryCount"] == 0
+    assert "lastError" not in repaired
+
+    (queue / "queue_1.json").unlink()
+    delivered = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=True, repair=False, queue_dir=queue)
+
+    assert delivered[0]["status"] == "failed"
+    assert delivered[0]["stage"] == "cron_failed_delivered"
+    assert delivered[0]["delivery_state"] == "delivered"
+
+
 def test_timeout_marks_task_and_records_no_fake_success(tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     sessions = tmp_path / "sessions"
