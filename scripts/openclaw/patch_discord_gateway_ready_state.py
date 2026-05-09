@@ -12,7 +12,7 @@ DIST_ROOTS = [
 ]
 
 TARGET = "provider-hTInySyN.js"
-MARKER = "springmonkey gateway ready state patch"
+MARKER = "springmonkey gateway ready state patch v2"
 
 OLD = '''\tasync handleDispatch(payload) {
 \t\tif (!this.client || !payload.t) return;
@@ -24,7 +24,7 @@ OLD = '''\tasync handleDispatch(payload) {
 \t\t\tthis.isConnected = true;
 \t\t}'''
 
-NEW = '''\tasync handleDispatch(payload) {
+OLD_V1 = '''\tasync handleDispatch(payload) {
 \t\tif (!this.client || !payload.t) return;
 \t\tif (payload.t === GatewayDispatchEvents.Ready) {
 \t\t\tconst ready = payload.d;
@@ -35,16 +35,29 @@ NEW = '''\tasync handleDispatch(payload) {
 \t\t\tthis.emitter.emit("debug", "springmonkey gateway ready state patch: READY handled isConnected=true");
 \t\t}'''
 
+NEW = '''\tasync handleDispatch(payload) {
+\t\tif (!this.client || !payload.t) return;
+\t\tif (payload.t === "READY") console.log("discord gateway trace: handleDispatch READY entered enum=" + String(GatewayDispatchEvents.Ready));
+\t\tif (payload.t === GatewayDispatchEvents.Ready) {
+\t\t\tconst ready = payload.d;
+\t\t\tthis.sessionId = ready.session_id ?? null;
+\t\t\tthis.resumeGatewayUrl = ready.resume_gateway_url ?? null;
+\t\t\tthis.reconnectAttempts = 0;
+\t\t\tthis.isConnected = true;
+\t\t\tconsole.log("discord gateway trace: springmonkey gateway ready state patch v2 READY handled isConnected=" + String(this.isConnected));
+\t\t}'''
+
 
 def patch_file(path: Path) -> bool:
     text = path.read_text(encoding="utf-8")
     if MARKER in text:
         return False
-    if OLD not in text:
+    old = OLD if OLD in text else OLD_V1 if OLD_V1 in text else ""
+    if not old:
         raise SystemExit(f"gateway ready state anchor not found in {path}")
     backup = path.with_suffix(path.suffix + f".bak-gateway-ready-state-{datetime.now().strftime('%Y%m%d%H%M%S')}")
     shutil.copy2(path, backup)
-    path.write_text(text.replace(OLD, NEW, 1), encoding="utf-8")
+    path.write_text(text.replace(old, NEW, 1), encoding="utf-8")
     print(f"patched {path} backup={backup}")
     return True
 
