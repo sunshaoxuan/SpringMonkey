@@ -143,6 +143,19 @@
       "auto_repair": "readonly"
     },
     {
+      "id": "artifact_access_followup",
+      "text": "我需要查看刚才生成的 Google Docs，请给我文件查看权限。",
+      "expected": {
+        "domain": "artifact",
+        "action": "access",
+        "tool_id": "openclaw.artifact.access_followup",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
       "id": "weather_dm_query",
       "text": "请查询明天东京和长野天气、风况和能见度。",
       "expected": {

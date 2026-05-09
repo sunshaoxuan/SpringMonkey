@@ -487,6 +487,8 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
         return {"text": text, "message_timestamp": message_timestamp, "topic": topic}
     if mode == "long_task_status":
         return {"limit": int(schema.get("limit") or 10)}
+    if mode == "artifact_access_followup":
+        return {"text": text, "message_timestamp": message_timestamp}
     if mode == "recurring_cron_job_from_text":
         return {
             "text": text,
@@ -585,6 +587,15 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
         ]
     elif mode == "long_task_status":
         cmd = [sys.executable, str(entrypoint), "status", "--limit", str(args.get("limit") or 10)]
+    elif mode == "artifact_access_followup":
+        cmd = [
+            sys.executable,
+            str(entrypoint),
+            "--text",
+            args["text"],
+            "--message-timestamp",
+            args["message_timestamp"],
+        ]
     elif mode == "recurring_cron_job_from_text":
         cmd = [
             sys.executable,

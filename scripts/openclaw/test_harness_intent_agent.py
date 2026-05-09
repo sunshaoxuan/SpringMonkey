@@ -52,6 +52,33 @@ def test_long_task_status_uses_deterministic_frame() -> None:
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.long_task.status"
 
 
+def test_artifact_access_followup_is_model_routed_away_from_task_status() -> None:
+    frame = agent.infer_intent_frame(
+        "我需要查看刚才生成的 Google Docs，请给我文件查看权限。",
+        context="Recent long task final report includes a Google Docs URL.",
+        registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "artifact",
+                "action": "access",
+                "canonical_text": "为最近交付的 Google Docs 文件处理查看权限，不要重复报告生成任务成功。",
+                "context_refs": [{"type": "recent_delivered_artifact", "selector": "latest_google_doc"}],
+                "parameters": {"artifact_kind": "google_doc", "access_level": "viewer"},
+                "safety": "write",
+                "result_contract": {"type": "artifact_access_followup"},
+                "tool_candidates": [{"tool_id": "openclaw.artifact.access_followup", "confidence": 0.98, "reason": "artifact access follow-up"}],
+                "confidence": 0.98,
+                "reason": "The user is asking for viewing permission, not job status.",
+            }
+        ),
+    )
+
+    assert frame.domain == "artifact"
+    assert frame.action == "access"
+    assert frame.tool_candidates[0]["tool_id"] == "openclaw.artifact.access_followup"
+
+
 def test_intent_frame_normalizes_nested_time_range() -> None:
     frame = agent.validate_intent_frame(
         {

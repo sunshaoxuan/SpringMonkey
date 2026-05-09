@@ -735,6 +735,79 @@
       "safety": "readonly"
     },
     {
+      "intent_id": "openclaw.artifact.access_followup",
+      "tool_id": "openclaw.artifact.access_followup",
+      "description": "Handle follow-up requests about access, viewing permission, or sharing for the most recent delivered artifact.",
+      "owner_agent": "toolWorker",
+      "patterns": [
+        "交付物",
+        "文档",
+        "文件",
+        "Google Docs",
+        "Google Drive",
+        "查看权限",
+        "共享权限",
+        "许可",
+        "打不开",
+        "access",
+        "permission",
+        "share"
+      ],
+      "required_any": [
+        "查看权限",
+        "共享权限",
+        "许可",
+        "授权",
+        "访问",
+        "打不开",
+        "open access",
+        "permission",
+        "share"
+      ],
+      "entrypoint": "scripts/openclaw/artifact_access_followup_tool.py",
+      "args_schema": {
+        "mode": "artifact_access_followup"
+      },
+      "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
+      "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "confirm_policy": "owner_requested_artifact_access_followup",
+      "idempotency": "latest_artifact_url_access_level",
+      "verify_command": "python -m compileall -q scripts/openclaw/artifact_access_followup_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.artifact.access_followup",
+      "domain": "artifact",
+      "actions": [
+        "access",
+        "share"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "recent delivered artifact access",
+        "Google Docs viewing permission",
+        "shared document permission",
+        "grant owner access to generated file",
+        "do not repeat task status when the user asks for access"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "must_not_report_generation_success_as_completion": true
+      },
+      "safety": "write"
+    },
+    {
       "intent_id": "weather.dm.query",
       "tool_id": "weather.dm.query",
       "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",
