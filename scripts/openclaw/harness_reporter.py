@@ -132,12 +132,61 @@ def concise_web_research_summary(text: str) -> str:
 
 def display_summary(envelope: ReportEnvelope) -> str:
     summary = envelope.summary
+    summary = structured_tool_summary(summary)
     if envelope.tool_id == "openclaw.web.research" and envelope.status == "ok":
         summary = concise_web_research_summary(summary)
     summary = concise_operational_summary(summary)
     if not envelope.allow_links:
         summary = suppress_links(summary)
     return summary
+
+
+def structured_tool_summary(text: str) -> str:
+    raw = (text or "").strip()
+    if not raw.startswith("{"):
+        return text
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return text
+    if not isinstance(payload, dict):
+        return text
+    result = str(payload.get("result") or payload.get("final_report") or "").strip()
+    tool_id = str(payload.get("tool_id") or "")
+    status = str(payload.get("status") or "").strip()
+    if tool_id.startswith("openclaw.generated.") or "自演进状态" in result:
+        return summarize_self_evolution_result(result, tool_status=status)
+    return result or text
+
+
+def summarize_self_evolution_result(result: str, *, tool_status: str = "") -> str:
+    helper_match = re.search(r"已推广 helper：\s*(\d+)", result or "")
+    unresolved_match = re.search(r"未解决缺口：\s*(\d+)", result or "")
+    promoted = bool(re.search(r"status=promoted|lifecycle=.*promoted|已推广 helper：\s*[1-9]", result or ""))
+    generated = "status=generated" in (result or "")
+    blocked = "status=blocked" in (result or "")
+
+    if promoted:
+        first = "自演进处理完成：内部只读修复已验证并登记。"
+    elif generated:
+        first = "自演进已生成修复包，但还没有提升为可用能力。"
+    elif blocked:
+        first = "自演进已识别阻断，需要授权或补充条件后才能继续。"
+    elif tool_status == "success":
+        first = "自演进状态检查完成。"
+    else:
+        first = "自演进处理已有结果。"
+
+    details: list[str] = []
+    if helper_match:
+        details.append(f"已推广 helper：{helper_match.group(1)}")
+    if unresolved_match:
+        details.append(f"未解决缺口：{unresolved_match.group(1)}")
+    second = "；".join(details)
+    if second:
+        second += "。"
+    next_step = "下一步：可以直接重试原任务；若仍失败，汤猴应沿同一缺口继续收紧。"
+    return "\n".join(line for line in [first, second, next_step] if line)
 
 
 def concise_operational_summary(text: str, *, max_lines: int = 5, max_chars: int = 700) -> str:
@@ -147,6 +196,9 @@ def concise_operational_summary(text: str, *, max_lines: int = 5, max_chars: int
         if not line:
             continue
         if line == "自演进：已修复并重试。":
+            kept.append(line)
+            continue
+        if line.startswith(("自演进处理完成", "自演进已生成修复包", "自演进已识别阻断", "自演进状态检查完成")):
             kept.append(line)
             continue
         if DIAGNOSTIC_LINE_RE.match(line) or DIAGNOSTIC_TOKEN_RE.search(line):

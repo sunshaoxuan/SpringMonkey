@@ -173,6 +173,38 @@ def test_reporter_hides_self_repair_diagnostics_from_owner_reply() -> None:
     assert "详细诊断：后台日志保留" in reply
 
 
+def test_reporter_summarizes_generated_helper_json_reply() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_self",
+        trace_id="trace_self",
+        status="ok",
+        visibility="owner_dm",
+        summary=json.dumps(
+            {
+                "status": "success",
+                "tool_id": "openclaw.generated.registry_missing",
+                "result": (
+                    "自演进状态\n"
+                    "已推广 helper：3\n"
+                    "未解决缺口：2\n"
+                    "1. stage=binding status=promoted safety=auto_safe_readonly replay=True "
+                    "tool=openclaw.generated.registry_missing lifecycle=recorded -> promoted"
+                ),
+            },
+            ensure_ascii=False,
+        ),
+        diagnostics_ref="trace_id=trace_self route=registered_task",
+        stage="report",
+        tool_id="openclaw.generated.registry_missing",
+    )
+    reply = format_owner_reply(envelope)
+    assert "自演进处理完成" in reply
+    assert "已推广 helper：3" in reply
+    assert "下一步：可以直接重试原任务" in reply
+    assert "stage=binding" not in reply
+    assert "{\"status\"" not in reply
+
+
 def test_discord_patch_does_not_add_business_router_success_prefix() -> None:
     source = (Path(__file__).resolve().parent / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "汤猴私信任务已由通用事件路由处理。" not in source
