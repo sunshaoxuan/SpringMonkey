@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
+DEFAULT_LONG_TASK_STATE = Path("/var/lib/openclaw/.openclaw/workspace/state/long_task_supervisor/tasks.json")
 
 
 def read_jsonl_tail(path: Path, limit: int) -> list[dict]:
@@ -77,13 +78,24 @@ def main() -> int:
             helper_count = len(json.loads(registry.read_text(encoding="utf-8")).get("promoted_helpers", []))
         except Exception:
             helper_count = 0
+    long_tasks: list[dict] = []
+    if DEFAULT_LONG_TASK_STATE.is_file():
+        try:
+            loaded = json.loads(DEFAULT_LONG_TASK_STATE.read_text(encoding="utf-8"))
+            long_tasks = [item for item in loaded.get("tasks", []) if isinstance(item, dict)][-args.limit :]
+        except Exception:
+            long_tasks = []
     lines = [
         "自演进状态",
         f"能力缺口事件：{len(events)} 条最近记录",
         f"补强计划：{len(plans)} 条最近记录",
         f"回归收紧包：{len(regressions)} 条最近记录",
         f"已推广 helper：{helper_count}",
+        f"长任务记录：{len(long_tasks)} 条最近记录",
     ]
+    active_long_tasks = [item for item in long_tasks if str(item.get("status") or "") in {"running", "final_detected", "delivery_failed"}]
+    if active_long_tasks:
+        lines.append(f"长任务待收口：{len(active_long_tasks)}")
     unresolved = [
         event
         for event in events
@@ -92,6 +104,12 @@ def main() -> int:
     ]
     if unresolved:
         lines.append(f"未解决缺口：{len(unresolved)}")
+    for index, task in enumerate(reversed(long_tasks), start=1):
+        title = str(task.get("job_name") or task.get("job_id") or task.get("run_id") or "long task")
+        lines.append(
+            f"long-task {index}. {title} status={task.get('status')} "
+            f"stage={task.get('stage')} delivery={task.get('delivery_state')}"
+        )
     for index, event in enumerate(reversed(events), start=1):
         resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
         lines.append(

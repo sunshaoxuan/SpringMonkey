@@ -125,6 +125,16 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_capability_baseline.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py capability-baseline`
 
+- `remote_verify_long_task_supervisor.py`
+  - 用途：只读验收长任务闭环 supervisor；远端临时注册任务、伪造 final session、轮询确认进入 `final_detected`。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_long_task_supervisor.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-verify`
+
+- `remote_install_long_task_supervisor.py`
+  - 用途：安装 `openclaw-long-task-supervisor.timer`，每分钟执行一次 `long_task_supervisor.py poll --deliver`，负责长任务最终结果补发和超时收口。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_long_task_supervisor.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-supervisor`
+
 - `remote_fix_xhs_cron_model.py`
   - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.5`，保留 schedule/message/delivery。
   - 典型用法：`python SpringMonkey/scripts/remote_fix_xhs_cron_model.py`

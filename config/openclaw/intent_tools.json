@@ -674,6 +674,67 @@
       "safety": "write"
     },
     {
+      "intent_id": "openclaw.long_task.status",
+      "tool_id": "openclaw.long_task.status",
+      "description": "Report recent long task lifecycle status from the generic supervisor.",
+      "owner_agent": "toolWorker",
+      "patterns": [
+        "长任务",
+        "長任務",
+        "正在进行的任务",
+        "最近失败的长任务",
+        "long task"
+      ],
+      "required_any": [
+        "检查",
+        "查看",
+        "查询",
+        "状态",
+        "列出",
+        "失败",
+        "重试"
+      ],
+      "entrypoint": "scripts/openclaw/long_task_supervisor.py",
+      "args_schema": {
+        "mode": "long_task_status",
+        "limit": 10
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "none"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/long_task_supervisor.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.long_task.status",
+      "domain": "cron",
+      "actions": [
+        "status"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "长任务",
+        "正在进行的任务",
+        "检查长任务状态",
+        "列出最近正在进行的任务",
+        "重试最近失败的长任务"
+      ],
+      "input_contract": {
+        "type": "none"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result"
+      },
+      "safety": "readonly"
+    },
+    {
       "intent_id": "weather.dm.query",
       "tool_id": "weather.dm.query",
       "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",

@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+import long_task_supervisor
+
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_CAPABILITIES = REPO / "config" / "openclaw" / "recurring_job_capabilities.json"
@@ -142,6 +144,17 @@ def success_payload(
     return payload
 
 
+def parse_cron_run_id(stdout: str) -> str:
+    raw = (stdout or "").strip()
+    if not raw:
+        return ""
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return ""
+    return str(payload.get("runId") or payload.get("run_id") or "")
+
+
 def failure_payload(
     *,
     capability: dict[str, Any],
@@ -251,6 +264,9 @@ def run_capability(
     jobs_path: Path,
     dry_run: bool,
     timeout: int,
+    supervisor_state: Path = long_task_supervisor.DEFAULT_STATE_PATH,
+    sessions_dir: Path = DEFAULT_SESSIONS_DIR,
+    reply_channel_id: str = "",
 ) -> tuple[int, dict[str, Any]]:
     capability = resolve_capability(text, configured_jobs(capabilities_path))
     if not capability:
@@ -289,6 +305,7 @@ def run_capability(
         timeout=timeout,
     )
     if proc.returncode == 0:
+        run_id = parse_cron_run_id(proc.stdout or "")
         payload = success_payload(
             capability=capability,
             job_name=job_name,
@@ -297,12 +314,29 @@ def run_capability(
             stdout=proc.stdout or "",
             stderr=proc.stderr or "",
         )
-        report = cron_final_report(job_id, started_at=started_at)
+        report = cron_final_report(job_id, started_at=started_at, sessions_dir=sessions_dir)
         if report.get("found"):
             payload["final_report"] = report.get("text")
             payload["session_file"] = report.get("session_file")
+            payload["status"] = "success"
         else:
+            if run_id:
+                task = long_task_supervisor.register_task(
+                    source="cron",
+                    job_id=job_id,
+                    run_id=run_id,
+                    job_name=job_name,
+                    reply_target="owner_dm",
+                    reply_channel_id=reply_channel_id,
+                    original_text=text,
+                    timeout_seconds=timeout,
+                    state_path=supervisor_state,
+                )
+                payload["long_task_id"] = task.get("task_id")
+                payload["run_id"] = run_id
             payload["final_report_status"] = report
+            payload["status"] = "running"
+            payload["summary"] = "configured recurring job was triggered and is being tracked"
         return proc.returncode, payload
     return proc.returncode, failure_payload(
         capability=capability,
@@ -322,6 +356,9 @@ def main() -> int:
     parser.add_argument("--jobs-path", type=Path, default=Path(os.environ.get("OPENCLAW_CRON_JOBS_PATH", str(DEFAULT_JOBS_PATH))))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--timeout", type=int, default=3600)
+    parser.add_argument("--supervisor-state", type=Path, default=long_task_supervisor.DEFAULT_STATE_PATH)
+    parser.add_argument("--sessions-dir", type=Path, default=DEFAULT_SESSIONS_DIR)
+    parser.add_argument("--reply-channel-id", default="")
     args = parser.parse_args()
     code, payload = run_capability(
         text=args.text,
@@ -329,6 +366,9 @@ def main() -> int:
         jobs_path=args.jobs_path,
         dry_run=args.dry_run,
         timeout=args.timeout,
+        supervisor_state=args.supervisor_state,
+        sessions_dir=args.sessions_dir,
+        reply_channel_id=args.reply_channel_id,
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
     return code

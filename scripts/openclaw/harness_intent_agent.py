@@ -109,6 +109,34 @@ def cron_status_frame(text: str) -> IntentFrame | None:
     )
 
 
+def long_task_status_frame(text: str) -> IntentFrame | None:
+    raw = normalize_text(text)
+    has_long_task = any(token in raw for token in ("长任务", "長任務", "进行中的任务", "正在进行的任务", "最近失败的长任务"))
+    has_status = any(token in raw for token in ("检查", "查看", "查询", "状态", "列出", "重试", "失败"))
+    if not (has_long_task and has_status):
+        return None
+    return IntentFrame(
+        conversation_mode="task",
+        domain="cron",
+        action="status",
+        canonical_text=text.strip(),
+        context_refs=[],
+        parameters={"subject": "long_task"},
+        safety="readonly",
+        result_contract={"type": "long_task_status"},
+        tool_candidates=[
+            {
+                "tool_id": "openclaw.long_task.status",
+                "confidence": 0.98,
+                "reason": "deterministic long task lifecycle status lookup",
+            }
+        ],
+        confidence=0.98,
+        reason="deterministic long task lifecycle status lookup",
+        source="local_rule",
+    )
+
+
 def recurring_cron_run_frame(text: str) -> IntentFrame | None:
     raw = normalize_text(text)
     run_tokens = ("开始执行", "执行", "触发", "运行", "启动", "跑一轮", "重试", "补跑")
@@ -363,7 +391,7 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
-    local_frame = relative_timescar_adjust_frame(text) or recurring_cron_run_frame(text) or cron_status_frame(text)
+    local_frame = relative_timescar_adjust_frame(text) or long_task_status_frame(text) or recurring_cron_run_frame(text) or cron_status_frame(text)
     if local_frame:
         append_jsonl(
             model_call_log_path(),

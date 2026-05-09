@@ -167,6 +167,53 @@ def test_failed_run_keeps_stderr_tail(tmp_path: Path) -> None:
     assert payload["stderr"] == "real failure"
 
 
+def test_successful_enqueue_registers_long_task_when_no_final_yet(tmp_path: Path) -> None:
+    capabilities = tmp_path / "capabilities.json"
+    jobs = tmp_path / "jobs.json"
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    write_json(
+        capabilities,
+        {
+            "schema_version": 1,
+            "jobs": [
+                {
+                    "capability_id": "recurring.test",
+                    "job_name": "content-job",
+                    "topic_aliases": ["内容任务"],
+                    "run_aliases": ["执行"],
+                    "allow_manual_run": True,
+                }
+            ],
+        },
+    )
+    write_json(jobs, {"jobs": [{"id": "job_1", "name": "content-job", "enabled": True}]})
+    completed = SimpleNamespace(
+        returncode=0,
+        stdout=json.dumps({"ok": True, "enqueued": True, "runId": "manual:job_1:1"}),
+        stderr="plugin noise",
+    )
+
+    with patch.object(tool.subprocess, "run", return_value=completed):
+        code, payload = tool.run_capability(
+            text="执行内容任务",
+            capabilities_path=capabilities,
+            jobs_path=jobs,
+            dry_run=False,
+            timeout=10,
+            supervisor_state=state,
+            sessions_dir=sessions,
+        )
+
+    assert code == 0
+    assert payload["status"] == "running"
+    assert payload["long_task_id"]
+    data = json.loads(state.read_text(encoding="utf-8"))
+    assert data["tasks"][0]["run_id"] == "manual:job_1:1"
+    assert data["tasks"][0]["status"] == "running"
+
+
 def test_parse_session_final_answer_extracts_final_text(tmp_path: Path) -> None:
     session = tmp_path / "session.jsonl"
     session.write_text(

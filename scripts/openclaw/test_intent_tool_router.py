@@ -750,6 +750,26 @@ def test_cron_ack_prefers_final_report_over_raw_json() -> None:
     assert "stderr_hidden" not in reply
 
 
+def test_cron_ack_running_reports_tracking_not_completion() -> None:
+    tool = {"reply_policy": "cron_ack"}
+    output = json.dumps(
+        {
+            "status": "running",
+            "job_name": "content-job",
+            "long_task_id": "long_abc",
+            "stdout": "{\"ok\":true,\"enqueued\":true}",
+        },
+        ensure_ascii=False,
+    )
+
+    reply = router.format_reply(tool, {}, 0, output)
+
+    assert "长任务已启动并进入跟踪" in reply
+    assert "状态：正在进行" in reply
+    assert "正式任务已完成" not in reply
+    assert "enqueued" not in reply
+
+
 def test_discord_patch_uses_stdout_only_for_user_reply() -> None:
     source = (router.REPO / "scripts" / "openclaw" / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "[stdout, stderr].filter" not in source

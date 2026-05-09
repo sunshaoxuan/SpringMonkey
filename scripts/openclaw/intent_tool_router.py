@@ -549,6 +549,8 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
     if mode == "cron_status":
         topic = str(schema.get("topic") or "xhs")
         return {"text": text, "message_timestamp": message_timestamp, "topic": topic}
+    if mode == "long_task_status":
+        return {"limit": int(schema.get("limit") or 10)}
     if mode == "recurring_cron_job_from_text":
         return {"text": text, "message_timestamp": message_timestamp}
     raise ValueError(f"unsupported args_schema mode: {mode}")
@@ -641,6 +643,8 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             "--topic",
             str(args.get("topic") or "xhs"),
         ]
+    elif mode == "long_task_status":
+        cmd = [sys.executable, str(entrypoint), "status", "--limit", str(args.get("limit") or 10)]
     elif mode == "recurring_cron_job_from_text":
         cmd = [
             sys.executable,
@@ -689,18 +693,29 @@ def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, ou
     if returncode == 0 and reply_policy == "cron_ack":
         job_name = args.get("job_name")
         final_report = ""
+        status = ""
+        long_task_id = ""
         if not job_name and output:
             try:
                 parsed = json.loads(output)
                 job_name = parsed.get("job_name")
                 final_report = str(parsed.get("final_report") or "")
+                status = str(parsed.get("status") or "")
+                long_task_id = str(parsed.get("long_task_id") or "")
             except json.JSONDecodeError:
                 job_name = None
-        lines = ["OpenClaw 正式任务已完成。", f"任务：{job_name or 'configured recurring job'}"]
+        if status == "running" and not final_report:
+            lines = ["OpenClaw 长任务已启动并进入跟踪。", f"任务：{job_name or 'configured recurring job'}"]
+            if long_task_id:
+                lines.append(f"跟踪编号：{long_task_id}")
+            lines.extend(["状态：正在进行", "后续：完成或失败后会补发结果到 owner DM。"])
+            return "\n".join(lines)
         if final_report:
+            lines = ["OpenClaw 正式任务已完成。", f"任务：{job_name or 'configured recurring job'}"]
             lines.extend(["", final_report])
         else:
-            lines.append(output or "cron run command completed")
+            lines = ["OpenClaw 长任务已触发；最终报告尚未检测到。", f"任务：{job_name or 'configured recurring job'}"]
+            lines.append("任务已触发，但没有检测到最终报告；后台会继续跟踪。")
         return "\n".join(lines)
     if returncode == 0:
         return output or "工具执行完成，但没有返回业务输出。"

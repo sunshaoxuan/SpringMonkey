@@ -44,6 +44,14 @@ def test_intent_frame_timescar_month_query() -> None:
     assert frame.parameters["offset_hours"] == 0
 
 
+def test_long_task_status_uses_deterministic_frame() -> None:
+    frame = agent.infer_intent_frame("检查长任务状态", context="", registry=load_registry())
+
+    assert frame.domain == "cron"
+    assert frame.action == "status"
+    assert frame.tool_candidates[0]["tool_id"] == "openclaw.long_task.status"
+
+
 def test_intent_frame_normalizes_nested_time_range() -> None:
     frame = agent.validate_intent_frame(
         {
