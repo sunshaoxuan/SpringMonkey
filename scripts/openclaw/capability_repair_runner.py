@@ -288,6 +288,7 @@ def run_repair(
     elif gap_result.status == "planned":
         status = "planned"
     if not replay_allowed:
+        autonomous_semantic = bool(blocker and blocker.autonomy_allowed)
         toolsmith_package = generate_repair_package(
             text=text,
             reason=reason,
@@ -296,7 +297,7 @@ def run_repair(
             repo_root=repo_root,
             registry_tool=registry_tool or gap_result.registry_tool,
             apply_readonly=False,
-            semantic=semantic or deploy_readonly,
+            semantic=semantic or deploy_readonly or autonomous_semantic,
             llm_classification=classification_dict(blocker),
         )
         if toolsmith_package.status == "generated" and toolsmith_package.safety_class == "auto_safe_readonly":

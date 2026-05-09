@@ -124,11 +124,13 @@ def registry_tools(repo_root: Path) -> list[dict[str, Any]]:
 
 
 def infer_domain_actions(text: str, gap_type: str) -> tuple[str, list[str]]:
+    if re.search(r"(自演进|自進化|自身能力|内部日志|內部日志|仓库|倉庫|注册表|註冊表|远端验证|遠端驗證|重试原任务|重試原任務|权限阻断|權限阻斷|修复包|修復包)", text, re.IGNORECASE):
+        return "self", ["retry", "status"]
     if re.search(r"(小红书|小紅書|xhs|长记忆|memory|记忆|記憶)", text, re.IGNORECASE):
         return "memory", ["query"]
     if re.search(r"(天气|weather|風|风|能见度|視程|可視性)", text, re.IGNORECASE):
         return "weather", ["query"]
-    if re.search(r"(状态|狀態|自演进|自進化|能力缺口|修复包|修復包)", text, re.IGNORECASE):
+    if re.search(r"(状态|狀態|能力缺口)", text, re.IGNORECASE):
         return "self", ["status"]
     if gap_type == "entrypoint_missing":
         return "general", ["query"]

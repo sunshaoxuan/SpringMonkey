@@ -125,6 +125,52 @@ def test_toolsmith_llm_autonomy_allowed_access_blocker_can_generate_helper() -> 
     assert package.registry_patch["write_operation"] is False
 
 
+def test_toolsmith_routes_internal_autonomy_to_self_reference() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo = root / "repo"
+        write_registry(
+            repo,
+            [
+                {
+                    "intent_id": "openclaw.self_evolution.status",
+                    "tool_id": "openclaw.self_evolution.status",
+                    "entrypoint": "scripts/openclaw/self_evolution_status.py",
+                    "args_schema": {"mode": "self_evolution_status"},
+                    "permission": "owner_dm",
+                    "permission_scope": "owner_dm_readonly",
+                    "write_operation": False,
+                    "domain": "self",
+                    "actions": ["status"],
+                    "input_schema": {"type": "none"},
+                    "output_schema": {"type": "plain_text_business_result"},
+                    "invocation_log_policy": "harness_tool_invocation_jsonl",
+                    "failure_policy": "reply_failure_and_record_gap",
+                    "reply_policy": "tool_stdout",
+                    "safety": "readonly",
+                }
+            ],
+        )
+        package = runner.generate_repair_package(
+            text="请重新处理刚才那个被权限阻断的问题，修复自身能力、内部日志、仓库、工具、测试、注册表或远端验证。",
+            reason="model classified low-risk internal repair",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=repo,
+            semantic=True,
+            llm_classification={
+                "blocker_kind": "tool_binding_gap",
+                "allowed_repair_action": "autonomous_internal_repair",
+                "autonomy_allowed": True,
+            },
+        )
+
+    assert package.registry_patch["implementation_status"] == "ready"
+    assert package.registry_patch["domain"] == "self"
+    assert "retry" in package.registry_patch["actions"]
+    assert package.semantic_source == "openclaw.self_evolution.status"
+
+
 def test_toolsmith_promotes_readonly_package_after_verify() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

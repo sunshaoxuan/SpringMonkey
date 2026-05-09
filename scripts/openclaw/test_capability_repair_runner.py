@@ -130,37 +130,74 @@ def test_repair_runner_low_confidence_llm_blocks_helper_generation() -> None:
 
 def test_repair_runner_allows_llm_approved_internal_autonomy() -> None:
     with tempfile.TemporaryDirectory() as tmp:
-        result = runner.run_repair(
-            text="请修复你自己的内部绑定并重试原任务",
-            channel="discord_dm",
-            user_id="tester",
-            stage="binding",
-            reason="no registered internal repair tool",
-            kernel_root=Path(tmp) / "kernel",
-            repo_root=Path(tmp),
-            blocker_model_caller=lambda _messages: json.dumps(
+        repo = Path(tmp) / "repo"
+        (repo / "config" / "openclaw").mkdir(parents=True)
+        (repo / "scripts" / "openclaw").mkdir(parents=True)
+        (repo / "config" / "openclaw" / "intent_tools.json").write_text(
+            json.dumps(
                 {
-                    "intent_kind": "self_improvement",
-                    "blocker_kind": "access_or_approval_blocker",
-                    "safety_class": "auto_safe_readonly",
-                    "confidence": 0.94,
-                    "expected_capability_family": "self_repair",
-                    "missing_condition": "internal access path is missing but no external approval is required",
-                    "allowed_repair_action": "autonomous_internal_repair",
-                    "replay_policy": "allow_after_verified_promoted",
-                    "reasoning_summary": "Internal self-improvement repair is allowed within privacy and rights boundaries.",
-                    "autonomy_allowed": True,
-                    "autonomy_boundary": "low_risk_internal_self_improvement",
+                    "schema_version": 1,
+                    "tools": [
+                        {
+                            "tool_id": "openclaw.self_evolution.status",
+                            "intent_id": "openclaw.self_evolution.status",
+                            "entrypoint": "scripts/openclaw/self_evolution_status.py",
+                            "write_operation": False,
+                            "domain": "self",
+                            "actions": ["status"],
+                            "args_schema": {"mode": "self_evolution_status"},
+                            "input_schema": {"type": "none"},
+                            "output_schema": {"type": "plain_text_business_result"},
+                            "permission": "owner_dm",
+                            "permission_scope": "owner_dm_readonly",
+                            "safety": "readonly",
+                            "invocation_log_policy": "harness_tool_invocation_jsonl",
+                            "failure_policy": "reply_failure_and_record_gap",
+                            "reply_policy": "tool_stdout",
+                            "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_status.py",
+                        }
+                    ],
                 },
                 ensure_ascii=False,
-            ),
+            )
+            + "\n",
+            encoding="utf-8",
         )
+        with patch("toolsmith_repair_runner.run_command", return_value=(True, "ok")):
+            result = runner.run_repair(
+                text="请修复你自己的内部绑定并重试原任务",
+                channel="discord_dm",
+                user_id="tester",
+                stage="binding",
+                reason="no registered internal repair tool",
+                kernel_root=Path(tmp) / "kernel",
+                repo_root=repo,
+                blocker_model_caller=lambda _messages: json.dumps(
+                    {
+                        "intent_kind": "self_improvement",
+                        "blocker_kind": "access_or_approval_blocker",
+                        "safety_class": "auto_safe_readonly",
+                        "confidence": 0.94,
+                        "expected_capability_family": "self_repair",
+                        "missing_condition": "internal access path is missing but no external approval is required",
+                        "allowed_repair_action": "autonomous_internal_repair",
+                        "replay_policy": "allow_after_verified_promoted",
+                        "reasoning_summary": "Internal self-improvement repair is allowed within privacy and rights boundaries.",
+                        "autonomy_allowed": True,
+                        "autonomy_boundary": "low_risk_internal_self_improvement",
+                    },
+                    ensure_ascii=False,
+                ),
+            )
         events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
 
-    assert result.status in {"generated", "verified"}
+    assert result.status == "promoted"
     assert result.safety_class == "auto_safe_readonly"
-    assert result.toolsmith_package["status"] in {"generated", "promoted"}
+    assert result.replay_allowed is True
+    assert result.toolsmith_package["status"] == "promoted"
     assert result.toolsmith_package["tool_id"] != "openclaw.authorization_required"
+    assert result.toolsmith_package["registry_patch"]["implementation_status"] == "ready"
+    assert result.toolsmith_package["semantic_source"] == "openclaw.self_evolution.status"
     assert events[-1]["autonomy_allowed"] is True
     assert events[-1]["allowed_repair_action"] == "autonomous_internal_repair"
 
