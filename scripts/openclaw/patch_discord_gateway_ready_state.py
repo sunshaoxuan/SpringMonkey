@@ -14,26 +14,26 @@ DIST_ROOTS = [
 TARGET = "provider-hTInySyN.js"
 MARKER = "springmonkey gateway ready state patch"
 
-OLD = '''\t\tasync handleDispatch(payload) {
-\t\t\tif (!this.client || !payload.t) return;
-\t\t\tif (payload.t === GatewayDispatchEvents.Ready) {
-\t\t\t\tconst ready = payload.d;
-\t\t\t\tthis.sessionId = ready.session_id ?? null;
-\t\t\t\tthis.resumeGatewayUrl = ready.resume_gateway_url ?? null;
-\t\t\t\tthis.reconnectAttempts = 0;
-\t\t\t\tthis.isConnected = true;
-\t\t\t}'''
+OLD = '''\tasync handleDispatch(payload) {
+\t\tif (!this.client || !payload.t) return;
+\t\tif (payload.t === GatewayDispatchEvents.Ready) {
+\t\t\tconst ready = payload.d;
+\t\t\tthis.sessionId = ready.session_id ?? null;
+\t\t\tthis.resumeGatewayUrl = ready.resume_gateway_url ?? null;
+\t\t\tthis.reconnectAttempts = 0;
+\t\t\tthis.isConnected = true;
+\t\t}'''
 
-NEW = '''\t\tasync handleDispatch(payload) {
-\t\t\tif (!this.client || !payload.t) return;
-\t\t\tif (payload.t === GatewayDispatchEvents.Ready) {
-\t\t\t\tconst ready = payload.d;
-\t\t\t\tthis.sessionId = ready.session_id ?? null;
-\t\t\t\tthis.resumeGatewayUrl = ready.resume_gateway_url ?? null;
-\t\t\t\tthis.reconnectAttempts = 0;
-\t\t\t\tthis.isConnected = true;
-\t\t\t\tthis.emitter.emit("debug", "springmonkey gateway ready state patch: READY handled isConnected=true");
-\t\t\t}'''
+NEW = '''\tasync handleDispatch(payload) {
+\t\tif (!this.client || !payload.t) return;
+\t\tif (payload.t === GatewayDispatchEvents.Ready) {
+\t\t\tconst ready = payload.d;
+\t\t\tthis.sessionId = ready.session_id ?? null;
+\t\t\tthis.resumeGatewayUrl = ready.resume_gateway_url ?? null;
+\t\t\tthis.reconnectAttempts = 0;
+\t\t\tthis.isConnected = true;
+\t\t\tthis.emitter.emit("debug", "springmonkey gateway ready state patch: READY handled isConnected=true");
+\t\t}'''
 
 
 def patch_file(path: Path) -> bool:
