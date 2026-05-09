@@ -714,7 +714,7 @@ def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, ou
             lines = ["OpenClaw 长任务已启动并进入跟踪。", f"任务：{job_name or 'configured recurring job'}"]
             if long_task_id:
                 lines.append(f"跟踪编号：{long_task_id}")
-            lines.extend(["状态：正在进行", "后续：完成或失败后会补发结果到 owner DM。"])
+            lines.extend(["长任务状态：正在进行", "触发结果：已成功进入跟踪，不代表任务已完成。", "后续：完成或失败后会补发结果到 owner DM。"])
             return "\n".join(lines)
         if final_report:
             lines = ["OpenClaw 正式任务已完成。", f"任务：{job_name or 'configured recurring job'}"]

@@ -227,8 +227,9 @@ def format_owner_reply(envelope: ReportEnvelope) -> str:
     summary = display_summary(envelope)
     if envelope.status == "chat":
         return summary
-    lines = [summary, f"状态：{status_label(envelope.status)}"]
+    lines = [summary, f"触发状态：{status_label(envelope.status)}"]
     if envelope.write_operation and envelope.status != "ok":
         lines.append("写操作：未执行")
     lines.append("详细诊断：后台日志保留，不投递到公共频道。")
+    lines.append("---")
     return "\n".join(item for item in lines if item).strip()

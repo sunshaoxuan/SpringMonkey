@@ -774,7 +774,8 @@ def test_cron_ack_running_reports_tracking_not_completion() -> None:
     reply = router.format_reply(tool, {}, 0, output)
 
     assert "长任务已启动并进入跟踪" in reply
-    assert "状态：正在进行" in reply
+    assert "长任务状态：正在进行" in reply
+    assert "不代表任务已完成" in reply
     assert "正式任务已完成" not in reply
     assert "enqueued" not in reply
 
