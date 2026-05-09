@@ -56,9 +56,9 @@ def build_reply(task: dict[str, Any] | None, doc_url: str) -> str:
     lines.extend(
         [
             f"目标文件：{doc_url}",
-            f"来源任务：{title}",
-            "当前状态：已定位交付物；尚未证明 Google Docs 查看权限已经授予。",
             "下一步：打开该文档的共享设置，授予当前 owner 可查看权限；完成后必须报告“已授权查看”，如果无法修改权限则报告具体阻断点。",
+            "当前状态：已定位交付物；尚未证明 Google Docs 查看权限已经授予。",
+            f"来源任务：{title}",
         ]
     )
     return "\n".join(lines)
