@@ -35,6 +35,17 @@ STATE = Path("/var/lib/openclaw/.openclaw/state/discord_gateway_watchdog.json")
 COOLDOWN_SECONDS = 300
 SINCE = "10 minutes ago"
 PATTERN = "Gateway heartbeat ACK timeout"
+STARTUP_STUCK_PHASE = "phase=channels.discord.start-account"
+STARTUP_STUCK_HINT = "client initialized as"
+STARTUP_READY_HINT = "gateway ready"
+DISCORD_READY_HINTS = (
+    "Gateway Ready",
+    "gateway ready for account",
+    "connected to Discord gateway",
+    "discord gateway ready",
+    "discord client ready",
+    "provider ready",
+)
 
 
 def sh(args: list[str], *, check: bool = False) -> subprocess.CompletedProcess[str]:
@@ -70,12 +81,29 @@ def latest_timeout_line() -> str:
     return lines[-1] if lines else ""
 
 
+def recent_journal_lines() -> list[str]:
+    proc = sh(["journalctl", "-u", "openclaw.service", "--since", SINCE, "--no-pager", "-o", "short-iso"])
+    return proc.stdout.splitlines()
+
+
+def latest_startup_stuck_line(lines: list[str]) -> str:
+    if any(hint in line for line in lines for hint in DISCORD_READY_HINTS):
+        return ""
+    if not any(STARTUP_STUCK_HINT in line for line in lines):
+        return ""
+    stuck_lines = [line for line in lines if STARTUP_STUCK_PHASE in line]
+    return stuck_lines[-1] if stuck_lines else ""
+
+
 def main() -> int:
     state = load_state()
-    line = latest_timeout_line()
+    lines = recent_journal_lines()
+    timeout_line = next((line for line in reversed(lines) if PATTERN in line), "")
+    stuck_line = latest_startup_stuck_line(lines)
+    line = timeout_line or stuck_line
     now = int(time.time())
     if not line:
-        print(json.dumps({"ok": True, "action": "none", "reason": "no_recent_discord_gateway_timeout"}))
+        print(json.dumps({"ok": True, "action": "none", "reason": "no_recent_discord_gateway_timeout_or_startup_stall"}))
         return 0
 
     line_id = hashlib.sha256(line.encode("utf-8")).hexdigest()
@@ -105,7 +133,8 @@ def main() -> int:
         }
     )
     save_state(state)
-    print(json.dumps({"ok": after_health and active == "active", "action": "restart_openclaw", "active": active, "healthBefore": before_health, "healthAfter": after_health, "line": line[-300:]}, ensure_ascii=False))
+    reason = "heartbeat_timeout" if timeout_line else "discord_startup_stalled"
+    print(json.dumps({"ok": after_health and active == "active", "action": "restart_openclaw", "reason": reason, "active": active, "healthBefore": before_health, "healthAfter": after_health, "line": line[-300:]}, ensure_ascii=False))
     return 0 if active == "active" and after_health else 1
 
 
