@@ -110,16 +110,26 @@ def find_booking_for_start(reservations: list[dict], target_start: datetime) -> 
     return str(matches[0].get("bookingNumber") or "") or None
 
 
-def parse_relative_start_shift_hours(text: str) -> int | None:
+def parse_relative_shift_minutes(text: str) -> int | None:
     raw = normalize_text(text)
-    if not any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟")):
+    if not any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延")):
         return None
+    minute_match = re.search(r"(\d{1,3})\s*(?:分钟|分鐘|min|m)", text, flags=re.IGNORECASE)
+    if minute_match:
+        return int(minute_match.group(1))
     match = re.search(r"(\d{1,3})\s*(?:小时|小時|h|H)", text)
     if match:
-        return int(match.group(1))
+        return int(match.group(1)) * 60
     if any(token in raw for token in ("一天", "1天", "一日", "1日")):
-        return 24
+        return 24 * 60
     return None
+
+
+def parse_relative_start_shift_hours(text: str) -> int | None:
+    minutes = parse_relative_shift_minutes(text)
+    if minutes is None or minutes % 60 != 0:
+        return None
+    return minutes // 60
 
 
 def is_this_booking_reference(text: str) -> bool:
@@ -143,6 +153,34 @@ def interpret_relative_adjust_request(text: str, message_time: datetime) -> tupl
         raise IntentError("未来 48 小时内没有找到可调整的 TimesCar 预约")
     current_start = parse_iso_minute(str(reservation.get("start") or ""))
     return current_start, current_start + timedelta(hours=hours)
+
+
+def is_whole_window_shift_request(text: str) -> bool:
+    raw = normalize_text(text)
+    if parse_relative_shift_minutes(text) is None:
+        return False
+    has_booking_ref = is_this_booking_reference(text) or any(token in raw for token in ("马上开始", "即将开始", "最近一单", "下一单"))
+    has_window = any(token in raw for token in ("整体", "整體", "整单", "整單", "整个", "整個", "全部", "一起"))
+    has_reservation = any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "TimesCar", "timescar", "这单", "那单"))
+    return has_booking_ref and has_window and has_reservation
+
+
+def interpret_window_shift_request(text: str, message_time: datetime) -> tuple[str, datetime, datetime, datetime]:
+    minutes = parse_relative_shift_minutes(text)
+    if minutes is None:
+        raise IntentError("未识别整体平移时长")
+    if not is_whole_window_shift_request(text):
+        raise IntentError("不是明确的 TimesCar 预约整体平移指令")
+    reservation = find_next_reservation(fetch_reservations(), message_time)
+    if reservation is None:
+        raise IntentError("未来 48 小时内没有找到可整体平移的 TimesCar 预约")
+    booking = str(reservation.get("bookingNumber") or "")
+    if not booking:
+        raise IntentError("找到预约但缺少预约编号，无法整体平移")
+    current_start = parse_iso_minute(str(reservation.get("start") or ""))
+    current_return = parse_iso_minute(str(reservation.get("return") or ""))
+    shift = timedelta(minutes=minutes)
+    return booking, current_start, current_start + shift, current_return + shift
 
 
 def interpret_adjust_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
@@ -212,6 +250,8 @@ def is_adjust_request(text: str) -> bool:
     raw = text.strip()
     if is_cancel_request(raw) or is_keep_request(raw) or is_book_request(raw) or is_cancel_status_request(raw) or is_query_request(raw):
         return False
+    if is_whole_window_shift_request(raw):
+        return True
     normalized = normalize_text(raw)
     if (
         is_this_booking_reference(raw)
@@ -504,7 +544,13 @@ def format_cancel_status_result(text: str, message_time: datetime) -> str:
     )
 
 
-def run_adjuster(booking: str, current_start: datetime, new_start: datetime, force: bool) -> subprocess.CompletedProcess[str]:
+def run_adjuster(
+    booking: str,
+    current_start: datetime,
+    new_start: datetime,
+    force: bool,
+    new_return: datetime | None = None,
+) -> subprocess.CompletedProcess[str]:
     cmd = [
         "python3",
         str(Path(__file__).with_name("timescar_adjust_reservation_window.py")),
@@ -516,8 +562,45 @@ def run_adjuster(booking: str, current_start: datetime, new_start: datetime, for
         format_iso_minute(new_start),
         "--allow-already-applied",
     ]
+    if new_return is not None:
+        cmd.extend(["--new-return", format_iso_minute(new_return)])
     cmd.append("--force" if force else "--dry-run")
     return run_child_tool(cmd)
+
+
+def format_shift_window_result(text: str, message_time: datetime, force: bool) -> str:
+    booking, current_start, new_start, new_return = interpret_window_shift_request(text, message_time)
+    key = "shift_window:" + command_key(text)
+    ledger = load_ledger()
+    previous = ledger.get(key)
+    if previous and previous.get("status") == "ok":
+        return "\n".join(
+            [
+                "TimesCar 预约整体平移结果",
+                "状态：该 Discord 私信指令此前已由汤猴完成，未重复提交",
+                f"上次完成：{previous.get('completedAt')}",
+                f"预约编号：{previous.get('bookingNumber')}",
+                f"目标开始：{previous.get('newStart')}",
+                f"目标结束：{previous.get('newReturn')}",
+            ]
+        )
+
+    result = run_adjuster(booking, current_start, new_start, force, new_return=new_return)
+    output = result.stdout.strip()
+    if result.returncode != 0:
+        raise IntentError(output or f"TimesCar 整体平移执行器失败，退出码：{result.returncode}")
+
+    ledger[key] = {
+        "status": "ok",
+        "completedAt": datetime.now(TZ).isoformat(timespec="seconds"),
+        "messageTime": message_time.isoformat(timespec="seconds"),
+        "bookingNumber": booking,
+        "currentStart": format_iso_minute(current_start),
+        "newStart": format_iso_minute(new_start),
+        "newReturn": format_iso_minute(new_return),
+    }
+    save_ledger(ledger)
+    return output
 
 
 def format_adjust_result(text: str, message_time: datetime, force: bool) -> str:
@@ -586,6 +669,10 @@ def main() -> int:
         return 0
     if is_cancel_request(args.text):
         print(format_cancel_result(args.text, message_time, args.force))
+        return 0
+
+    if is_whole_window_shift_request(args.text):
+        print(format_shift_window_result(args.text, message_time, args.force))
         return 0
 
     if not is_adjust_request(args.text):

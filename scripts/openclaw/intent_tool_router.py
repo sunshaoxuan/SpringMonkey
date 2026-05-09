@@ -246,6 +246,7 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "For TimesCar: keep/保留 means record a keep decision. "
         "For TimesCar: cancel this order/取消这单/把刚刚这单取消掉/取消掉 means cancel_next, especially when context has a recent successful booking. "
         "For TimesCar: adjust_start is only for explicit start-time changes, such as moving tomorrow 09:00 to the day after tomorrow 09:00. "
+        "For TimesCar: shifting the whole reservation window later/earlier while preserving duration uses shift_window, not adjust_start. "
         "For TimesCar query ranges: '未来一个月' means duration_hours 720, offset_hours 0, relation within. "
         "For TimesCar query ranges: '未来一个月以后' or '一个月以后' means duration_hours 720, offset_hours 720, relation after. "
         "For short follow-ups such as '一个月的' or '未来2周的呢', inherit the recent query intent from context and output a complete canonical_text. "
@@ -255,7 +256,8 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "'把这单取消掉' => action cancel, tool_id timescar.dm.cancel_next. "
         "'这单取消了吗' => action status, tool_id timescar.dm.cancel_status. "
         "'请把明天开始的订车改到后天早9点' => action adjust, tool_id timescar.dm.adjust_start. "
-        "'取消明天的时间，让开始时间从后天早上9点开始' => action adjust, tool_id timescar.dm.adjust_start."
+        "'取消明天的时间，让开始时间从后天早上9点开始' => action adjust, tool_id timescar.dm.adjust_start. "
+        "'请把马上开始的那单预订往后整体延15分钟' => action adjust, tool_id timescar.dm.shift_window."
     )
     user = "\n".join(
         [

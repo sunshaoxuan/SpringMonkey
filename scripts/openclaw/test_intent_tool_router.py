@@ -292,6 +292,18 @@ def test_timescar_relative_adjust_followup_classifies_to_write_tool() -> None:
     assert result.tool and result.tool["write_operation"] is True
 
 
+def test_timescar_shift_window_classifies_to_write_tool() -> None:
+    result = router.classify(
+        "请把马上开始的那单预订帮我往后整体延15分钟。",
+        "discord_dm",
+        "999",
+        load_registry(),
+    )
+    assert result.intent_id == "timescar.reservation_shift_window"
+    assert result.tool_id == "timescar.dm.shift_window"
+    assert result.tool and result.tool["write_operation"] is True
+
+
 def test_local_intent_frame_binds_relative_timescar_adjust_followup() -> None:
     registry = load_registry()
     frame = harness_dispatcher.infer_intent_frame(
@@ -304,6 +316,20 @@ def test_local_intent_frame_binds_relative_timescar_adjust_followup() -> None:
     assert frame.action == "adjust"
     assert frame.safety == "write"
     assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.adjust_start"
+
+
+def test_local_intent_frame_binds_timescar_shift_window_followup() -> None:
+    registry = load_registry()
+    frame = harness_dispatcher.infer_intent_frame(
+        "请把马上开始的那单预订帮我往后整体延15分钟。",
+        context="",
+        registry=registry,
+    )
+    assert frame.source == "local_rule"
+    assert frame.domain == "timescar"
+    assert frame.action == "adjust"
+    assert frame.safety == "write"
+    assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.shift_window"
 
 
 def test_timescar_keep_classifies_before_adjust_tool() -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -53,6 +54,39 @@ class IntentFrame:
 
 def normalize_text(text: str) -> str:
     return "".join((text or "").split())
+
+
+def relative_timescar_shift_window_frame(text: str) -> IntentFrame | None:
+    raw = normalize_text(text)
+    has_shift = any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延"))
+    has_duration = bool(re.search(r"\d{1,3}(?:分钟|分鐘|min|m|小时|小時|h|H)", raw)) or any(
+        token in raw for token in ("一天", "1天", "一日", "1日")
+    )
+    has_booking_ref = any(token in raw for token in ("这单", "這單", "那单", "那單", "刚刚这单", "刚才这单", "订单", "马上开始", "即将开始", "下一单"))
+    has_whole_window = any(token in raw for token in ("整体", "整體", "整单", "整單", "整个", "整個", "全部", "一起"))
+    has_reservation = any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "TimesCar", "timescar", "这单", "那单"))
+    if not (has_shift and has_duration and has_booking_ref and has_whole_window and has_reservation):
+        return None
+    return IntentFrame(
+        conversation_mode="task",
+        domain="timescar",
+        action="adjust",
+        canonical_text=text.strip(),
+        context_refs=[{"type": "recent_timescar_reservation", "selector": "next_reservation_within_48h"}],
+        parameters={"relative_window_shift": True, "preserve_duration": True},
+        safety="write",
+        result_contract={"type": "timescar_shift_window", "preserve_duration": True},
+        tool_candidates=[
+            {
+                "tool_id": "timescar.dm.shift_window",
+                "confidence": 0.98,
+                "reason": "deterministic TimesCar follow-up: shift the whole reservation window by a relative duration",
+            }
+        ],
+        confidence=0.98,
+        reason="deterministic TimesCar relative whole-window shift follow-up",
+        source="local_rule",
+    )
 
 
 def relative_timescar_adjust_frame(text: str) -> IntentFrame | None:
@@ -297,6 +331,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "For liveness greetings such as '还活着吗', reply briefly, e.g. '在。'. "
         "For short follow-ups such as '未来一个月以后的呢？', inspect Recent tool invocations in context; if the last task was a TimesCar query, inherit domain=timescar action=query and produce a complete canonical_text. "
         "For TimesCar follow-ups like '把这单的开始时间往后推24小时，结束时间不变', choose domain=timescar action=adjust, safety=write, and tool candidate timescar.dm.adjust_start. "
+        "For TimesCar follow-ups like '把马上开始的那单预订往后整体延15分钟', choose domain=timescar action=adjust, safety=write, and tool candidate timescar.dm.shift_window. "
         "For recurring task status such as '检查每3天一次的小红书文章撰写任务状态', choose domain=cron action=status and tool candidate openclaw.cron.status. "
         "If model cannot safely bind a task, set conversation_mode=clarification or gap."
     )
@@ -354,7 +389,13 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
-    local_frame = relative_timescar_adjust_frame(text) or long_task_status_frame(text) or recurring_cron_run_frame(text) or cron_status_frame(text)
+    local_frame = (
+        relative_timescar_shift_window_frame(text)
+        or relative_timescar_adjust_frame(text)
+        or long_task_status_frame(text)
+        or recurring_cron_run_frame(text)
+        or cron_status_frame(text)
+    )
     if local_frame:
         append_jsonl(
             model_call_log_path(),

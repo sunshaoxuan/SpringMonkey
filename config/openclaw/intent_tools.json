@@ -479,6 +479,88 @@
       "safety": "write"
     },
     {
+      "intent_id": "timescar.reservation_shift_window",
+      "tool_id": "timescar.dm.shift_window",
+      "description": "Shift the whole TimesCar reservation window from owner DM by a relative duration, preserving reservation duration.",
+      "owner_agent": "timescarWorker",
+      "patterns": [
+        "订车",
+        "预约",
+        "预订",
+        "这单",
+        "那单",
+        "订单",
+        "马上开始",
+        "即将开始",
+        "TimesCar",
+        "timescar",
+        "整体",
+        "整单",
+        "整个",
+        "往后推",
+        "后推",
+        "推迟",
+        "延后",
+        "延迟"
+      ],
+      "required_any": [
+        "整体",
+        "整单",
+        "整个",
+        "全部",
+        "一起",
+        "15分钟",
+        "分钟",
+        "往后推",
+        "后推",
+        "推迟",
+        "延后",
+        "延迟"
+      ],
+      "entrypoint": "scripts/timescar/timescar_handle_dm_adjust_request.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": true
+      },
+      "permission": "owner_dm_write",
+      "permission_scope": "owner_dm_write",
+      "write_operation": true,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "confirm_policy": "deterministic_tool_with_confirm_page_and_postcheck",
+      "idempotency": "ledger_by_normalized_dm_text_and_booking_window",
+      "verify_command": "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py scripts/timescar/timescar_adjust_reservation_window.py && python scripts/timescar/test_timescar_dm_keep_cancel.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "timescar.reservation_shift_window",
+      "domain": "timescar",
+      "actions": [
+        "adjust"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [
+        "整体平移 TimesCar 预约窗口",
+        "整单往后延 N 分钟",
+        "马上开始的那单预订整体延后",
+        "preserve reservation duration"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "postcheck_contract": "ledger_by_normalized_dm_text_and_booking_window",
+      "safety": "write"
+    },
+    {
       "intent_id": "news.cron_run",
       "tool_id": "openclaw.cron.run.news",
       "description": "Run formal news cron jobs by name; never generate ad hoc news text.",

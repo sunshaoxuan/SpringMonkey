@@ -91,6 +91,20 @@
       "auto_repair": "authorization_required"
     },
     {
+      "id": "timescar_shift_window_relative_imminent",
+      "text": "请把马上开始的那单预订帮我往后整体延15分钟。",
+      "live_intent": true,
+      "expected": {
+        "domain": "timescar",
+        "action": "adjust",
+        "tool_id": "timescar.dm.shift_window",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
       "id": "memory_xhs_backfill",
       "text": "把之前小红书投稿相关记录回填到长记忆。",
       "expected": {

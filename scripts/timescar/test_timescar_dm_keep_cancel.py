@@ -62,8 +62,8 @@ def main() -> int:
                 ),
                 stderr="",
             )
-            def fake_adjuster(booking, current_start, new_start, force):
-                adjust_calls.append((booking, current_start, new_start, force))
+            def fake_adjuster(booking, current_start, new_start, force, new_return=None):
+                adjust_calls.append((booking, current_start, new_start, force, new_return))
                 return subprocess.CompletedProcess(
                     args=["timescar_adjust_reservation_window.py"],
                     returncode=0,
@@ -82,6 +82,7 @@ def main() -> int:
             book_any = mod.format_book_result("那就把车换成可以预订的车", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
             relative_adjust = mod.format_adjust_result("把这单的开始时间往后推24小时，结束时间不变。", message_time, force=True)
+            shift_window = mod.format_shift_window_result("请把马上开始的那单预订帮我往后整体延15分钟。", message_time, force=True)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
             cancel_followup = mod.format_cancel_result("好的，把刚刚这单取消掉吧", message_time, force=True)
             reservations.clear()
@@ -105,8 +106,17 @@ def main() -> int:
                 message_time + timedelta(hours=12),
                 message_time + timedelta(hours=36),
                 True,
+                None,
+            ),
+            (
+                "B123456",
+                message_time + timedelta(hours=12),
+                message_time + timedelta(hours=12, minutes=15),
+                True,
+                message_time + timedelta(hours=15, minutes=15),
             )
         ]
+        assert "预约变更已提交并回查确认" in shift_window
         assert "预约取消已提交并回查确认" in cancel
         assert "预约编号：B123456" in cancel
         assert "预约取消已提交并回查确认" in cancel_followup
@@ -123,6 +133,8 @@ def main() -> int:
         assert mod.is_adjust_request("请把明天开始的订车改到后天早9点")
         assert mod.is_adjust_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert mod.is_adjust_request("把这单的开始时间往后推24小时，结束时间不变。")
+        assert mod.is_whole_window_shift_request("请把马上开始的那单预订帮我往后整体延15分钟。")
+        assert mod.is_adjust_request("请把马上开始的那单预订帮我往后整体延15分钟。")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert not mod.is_adjust_request("好的，把刚刚这单取消掉吧")
         assert mod.parse_query_hours("查一下未来一周的订车记录") == 24 * 7

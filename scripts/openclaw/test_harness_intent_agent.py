@@ -52,6 +52,15 @@ def test_long_task_status_uses_deterministic_frame() -> None:
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.long_task.status"
 
 
+def test_timescar_shift_window_uses_deterministic_frame() -> None:
+    frame = agent.infer_intent_frame("请把马上开始的那单预订帮我往后整体延15分钟。", context="", registry=load_registry())
+
+    assert frame.source == "local_rule"
+    assert frame.domain == "timescar"
+    assert frame.action == "adjust"
+    assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.shift_window"
+
+
 def test_artifact_access_followup_is_model_routed_away_from_task_status() -> None:
     frame = agent.infer_intent_frame(
         "我需要查看刚才生成的 Google Docs，请给我文件查看权限。",
