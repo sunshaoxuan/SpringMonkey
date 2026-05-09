@@ -247,6 +247,24 @@ def intent_model_config() -> tuple[str, str, str]:
     return base_url, api_key, model
 
 
+def intent_model_fallback_configs() -> list[tuple[str, str, str]]:
+    """Return ordered list of (base_url, api_key, model) fallbacks for the intent agent.
+
+    Falls back to OPENCLAW_OLLAMA_BASE_URL with confirmed-available models when the
+    primary codex endpoint returns HTTP 429 (quota exhausted) or is unreachable.
+    """
+    load_runtime_env_files()
+    ollama_base = (
+        os.environ.get("OPENCLAW_OLLAMA_BASE_URL", "").strip()
+        or "http://ccnode.briconbric.com:22545"
+    ).rstrip("/") + "/v1"
+    fallback_models_raw = os.environ.get(
+        "OPENCLAW_INTENT_FALLBACK_MODELS", "qwen3:14b,qwen2.5:14b-instruct"
+    ).strip()
+    fallback_models = [m.strip() for m in fallback_models_raw.split(",") if m.strip()]
+    return [(ollama_base, "ollama-local", m) for m in fallback_models]
+
+
 def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int) -> dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
@@ -274,16 +292,38 @@ def extract_json_object(text: str) -> dict[str, Any]:
 
 
 def call_model(messages: list[dict[str, str]], *, timeout: int = 30, temperature: float = 0) -> tuple[str, dict[str, Any]]:
-    base_url, api_key, model = intent_model_config()
-    payload = {"model": model, "messages": messages, "temperature": temperature}
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-    started = time.monotonic()
-    data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
-    latency_ms = int((time.monotonic() - started) * 1000)
-    content = str(data["choices"][0]["message"]["content"]).strip()
-    return content, {"model": model, "latency_ms": latency_ms}
+    """Call the intent model with automatic fallback on quota exhaustion (HTTP 429) or errors.
+
+    Try order:
+      1. Primary: OPENCLAW_PUBLIC_MODEL_BASE_URL (ccnode:49530)
+      2. Fallbacks: OPENCLAW_OLLAMA_BASE_URL models (ccnode:22545)
+    """
+    primary = [intent_model_config()]
+    candidates = primary + intent_model_fallback_configs()
+    last_exc: Exception = RuntimeError("no intent model candidates")
+    for base_url, api_key, model in candidates:
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        payload = {"model": model, "messages": messages, "temperature": temperature}
+        started = time.monotonic()
+        try:
+            data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
+            latency_ms = int((time.monotonic() - started) * 1000)
+            content = str(data["choices"][0]["message"]["content"]).strip()
+            return content, {"model": model, "base_url": base_url, "latency_ms": latency_ms}
+        except RuntimeError as exc:
+            last_exc = exc
+            exc_str = str(exc)
+            # Retry with next candidate on quota (429) or service-unavailable (503/502)
+            if "HTTP 429" in exc_str or "HTTP 503" in exc_str or "HTTP 502" in exc_str:
+                continue
+            raise
+        except OSError:
+            # Network-level failure (connection refused, timeout) -> try next
+            last_exc = OSError(f"network error reaching {base_url}")
+            continue
+    raise last_exc
 
 
 def registry_prompt(registry: dict[str, Any]) -> str:
