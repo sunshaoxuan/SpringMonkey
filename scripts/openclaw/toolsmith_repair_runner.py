@@ -549,6 +549,28 @@ def run_command(command: str, repo_root: Path) -> tuple[bool, str]:
     return proc.returncode == 0, (proc.stdout or "").strip()
 
 
+def pytest_missing(output: str) -> bool:
+    lowered = (output or "").lower()
+    return "no module named pytest" in lowered or "pytest: command not found" in lowered
+
+
+def run_generated_helper_contract(package: ToolsmithPackage, repo_root: Path, test_rel: Path) -> tuple[bool, str]:
+    helper_rel = Path(package.entrypoint)
+    commands = [
+        f"python -m compileall -q {test_rel.as_posix()}",
+        f"python {helper_rel.as_posix()} --text \"检查自演进状态\"",
+    ]
+    output: list[str] = []
+    for command in commands:
+        ok, cmd_output = run_command(command, repo_root)
+        output.append(f"$ {command}\n{cmd_output or 'ok'}")
+        if not ok:
+            return False, "\n".join(output)
+        if command.startswith("python ") and '"status": "success"' not in (cmd_output or ""):
+            return False, "\n".join(output + ["generated helper did not return success JSON"])
+    return True, "\n".join(output)
+
+
 def apply_registry_patch(repo_root: Path, registry_patch: dict[str, Any]) -> tuple[bool, str]:
     registry_path = repo_root / "config" / "openclaw" / "intent_tools.json"
     if not registry_path.is_file():
@@ -639,10 +661,20 @@ def verify_and_promote_package(package: ToolsmithPackage, *, kernel_root: Path, 
         ok, cmd_output = run_command(command, repo_root)
         output.append(f"$ {command}\n{cmd_output or 'ok'}")
         if not ok:
-            package.status = "failed"
-            package.verify_output = "\n".join(output)
-            save_package_state(package)
-            return package
+            if pytest_missing(cmd_output):
+                fallback_ok, fallback_output = run_generated_helper_contract(package, repo_root, Path("scripts") / "openclaw" / test_source.name)
+                output.append("pytest unavailable; used generated helper contract fallback")
+                output.append(fallback_output)
+                if not fallback_ok:
+                    package.status = "failed"
+                    package.verify_output = "\n".join(output)
+                    save_package_state(package)
+                    return package
+            else:
+                package.status = "failed"
+                package.verify_output = "\n".join(output)
+                save_package_state(package)
+                return package
     command = package.verify_command or f"python -m compileall -q {package.entrypoint}"
     ok, cmd_output = run_command(command, repo_root)
     output.append(f"$ {command}\n{cmd_output or 'ok'}")

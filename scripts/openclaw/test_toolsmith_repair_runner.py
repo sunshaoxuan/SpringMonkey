@@ -171,6 +171,37 @@ def test_toolsmith_routes_internal_autonomy_to_self_reference() -> None:
     assert package.semantic_source == "openclaw.self_evolution.status"
 
 
+def test_toolsmith_verify_promote_falls_back_when_pytest_missing() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo = root / "repo"
+        write_registry(repo, [memory_reference_tool()])
+        package = runner.generate_repair_package(
+            text="请查询小红书长记忆里 Frutteto 投稿记录",
+            reason="no registered tool for readonly memory lookup",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=repo,
+            semantic=True,
+        )
+        outputs = []
+
+        def fake_run(command: str, _repo: Path) -> tuple[bool, str]:
+            outputs.append(command)
+            if "pytest" in command:
+                return False, "/usr/local/bin/python: No module named pytest"
+            if "generated_memory_generated_readonly.py" in command and command.startswith("python "):
+                return True, '{"status": "success", "result": "ok"}'
+            return True, "ok"
+
+        with patch("toolsmith_repair_runner.run_command", side_effect=fake_run):
+            promoted = runner.verify_and_promote_package(package, kernel_root=root / "kernel", repo_root=repo)
+
+    assert promoted.status == "promoted"
+    assert "pytest unavailable; used generated helper contract fallback" in promoted.verify_output
+    assert any("python scripts/openclaw/helpers/generated_memory_generated_readonly.py" in item for item in outputs)
+
+
 def test_toolsmith_promotes_readonly_package_after_verify() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
