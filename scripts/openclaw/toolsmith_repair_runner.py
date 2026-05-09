@@ -566,7 +566,7 @@ def run_generated_helper_contract(package: ToolsmithPackage, repo_root: Path, te
         output.append(f"$ {command}\n{cmd_output or 'ok'}")
         if not ok:
             return False, "\n".join(output)
-        if command.startswith("python ") and '"status": "success"' not in (cmd_output or ""):
+        if command.startswith("python ") and not command.startswith("python -m ") and '"status": "success"' not in (cmd_output or ""):
             return False, "\n".join(output + ["generated helper did not return success JSON"])
     return True, "\n".join(output)
 
