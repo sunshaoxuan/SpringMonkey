@@ -553,10 +553,42 @@ def status_text(*, state_path: Path = DEFAULT_STATE_PATH, limit: int = 10) -> st
     lines.append(f"进行中/待投递：{len(running)}")
     for index, task in enumerate(tasks, start=1):
         title = str(task.get("job_name") or task.get("job_id") or task.get("run_id") or "long task")
-        lines.append(
-            f"{index}. {title} status={task.get('status')} stage={task.get('stage')} "
-            f"delivery={task.get('delivery_state')} started={task.get('started_at')}"
+        status = str(task.get("status") or "unknown")
+        result_status = str(task.get("result_status") or "")
+        if status in ACTIVE_STATUSES:
+            conclusion = "正在进行，尚未最终收口。"
+        elif status == "delivered" and result_status != "failed":
+            conclusion = "已完成，最终结果已投递。"
+        elif status == "failed" or result_status == "failed":
+            conclusion = "已失败，失败报告已投递。"
+        elif status == "timed_out":
+            conclusion = "已超时，未检测到最终结果。"
+        else:
+            conclusion = f"状态：{status}"
+
+        lines.extend(
+            [
+                "---",
+                f"{index}. {title}",
+                f"结论：{conclusion}",
+                f"阶段：{task.get('stage') or 'unknown'}",
+                f"投递：{task.get('delivery_state') or 'unknown'}",
+                f"开始：{task.get('started_at') or 'unknown'}",
+            ]
         )
+        delivered_at = str(task.get("delivered_at") or "").strip()
+        if delivered_at:
+            lines.append(f"投递时间：{delivered_at}")
+        queue_id = str(task.get("delivery_queue_id") or "").strip()
+        if queue_id:
+            lines.append(f"投递记录：{queue_id}")
+        final_report = str(task.get("final_report") or "").strip()
+        if final_report:
+            preview = " ".join(final_report.split())
+            if len(preview) > 180:
+                preview = preview[:177].rstrip() + "..."
+            label = "失败摘要" if status == "failed" or result_status == "failed" else "结果摘要"
+            lines.append(f"{label}：{preview}")
     return "\n".join(lines)
 
 

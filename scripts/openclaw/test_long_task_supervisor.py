@@ -240,4 +240,6 @@ def test_status_text_lists_recent_tasks(tmp_path: Path) -> None:
     text = supervisor.status_text(state_path=state)
 
     assert "长任务状态" in text
-    assert "job status=running" in text
+    assert "1. job" in text
+    assert "结论：正在进行，尚未最终收口。" in text
+    assert "阶段：running" in text
