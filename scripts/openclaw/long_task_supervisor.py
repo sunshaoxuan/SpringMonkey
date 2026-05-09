@@ -254,6 +254,9 @@ def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEF
         ok, evidence = deliver_to_channel(token, preferred_channel, text)
         if ok:
             return True, evidence
+        queued, queue_evidence = enqueue_openclaw_delivery(task, text, destination=f"channel:{preferred_channel}")
+        if queued:
+            return False, f"{queue_evidence}; preferred_channel_failed={evidence}"
         channel_id, dm_evidence = create_owner_dm_channel(token)
         if not channel_id:
             queued, queue_evidence = enqueue_openclaw_delivery(task, text)
@@ -289,14 +292,19 @@ def enqueue_openclaw_delivery(
     *,
     queue_dir: Path = DEFAULT_DELIVERY_QUEUE_DIR,
     owner_user_id: str = DEFAULT_OWNER_USER_ID,
+    destination: str = "",
 ) -> tuple[bool, str]:
     queue_dir.mkdir(parents=True, exist_ok=True)
     entry_id = str(uuid.uuid4())
+    to = destination.strip()
+    if not to:
+        reply_channel_id = str(task.get("reply_channel_id") or "").strip()
+        to = f"channel:{reply_channel_id}" if reply_channel_id else f"user:{owner_user_id}"
     payload = {
         "id": entry_id,
         "enqueuedAt": int(time.time() * 1000),
         "channel": "discord",
-        "to": f"user:{owner_user_id}",
+        "to": to,
         "accountId": "default",
         "payloads": [{"text": text[:1900]}],
         "bestEffort": False,

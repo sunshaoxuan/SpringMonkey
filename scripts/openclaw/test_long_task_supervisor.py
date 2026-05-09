@@ -87,11 +87,18 @@ def test_delivery_failure_keeps_final_for_retry(tmp_path: Path) -> None:
     assert retry[0]["status"] == "delivered"
 
 
-def test_deliver_owner_dm_falls_back_to_created_dm_channel(monkeypatch) -> None:
+def test_deliver_owner_dm_queues_origin_channel_before_created_dm(monkeypatch, tmp_path: Path) -> None:
     calls: list[tuple[str, str]] = []
+    queue = tmp_path / "delivery-queue"
 
     monkeypatch.setattr(supervisor, "discord_token", lambda _config_path=supervisor.DEFAULT_CONFIG_PATH: "token")
     monkeypatch.setattr(supervisor, "create_owner_dm_channel", lambda _token: ("dm_channel", "discord_http_200"))
+    original_enqueue = supervisor.enqueue_openclaw_delivery
+    monkeypatch.setattr(
+        supervisor,
+        "enqueue_openclaw_delivery",
+        lambda task, text, **kwargs: original_enqueue(task, text, queue_dir=queue, **kwargs),
+    )
 
     def fake_deliver(_token: str, channel_id: str, text: str) -> tuple[bool, str]:
         calls.append((channel_id, text))
@@ -101,11 +108,14 @@ def test_deliver_owner_dm_falls_back_to_created_dm_channel(monkeypatch) -> None:
 
     monkeypatch.setattr(supervisor, "deliver_to_channel", fake_deliver)
 
-    ok, evidence = supervisor.deliver_owner_dm({"reply_channel_id": "stale_channel"}, "最终结果")
+    ok, evidence = supervisor.deliver_owner_dm({"reply_channel_id": "stale_channel", "run_id": "run_1"}, "最终结果")
 
-    assert ok is True
-    assert calls == [("stale_channel", "最终结果"), ("dm_channel", "最终结果")]
-    assert "retry=discord_http_200" in evidence
+    assert ok is False
+    assert calls == [("stale_channel", "最终结果")]
+    assert "preferred_channel_failed=HTTPError" in evidence
+    entry_id = evidence.split("delivery_queued:", 1)[1].split(";", 1)[0]
+    entry = json.loads((queue / f"{entry_id}.json").read_text(encoding="utf-8"))
+    assert entry["to"] == "channel:stale_channel"
 
 
 def test_delivery_queue_fallback_tracks_ack(tmp_path: Path) -> None:
@@ -131,6 +141,37 @@ def test_delivery_queue_fallback_tracks_ack(tmp_path: Path) -> None:
 
     assert delivered[0]["status"] == "delivered"
     assert delivered[0]["delivery_state"] == "delivered"
+
+
+def test_delivery_queue_uses_origin_channel_when_available(tmp_path: Path) -> None:
+    queue = tmp_path / "delivery-queue"
+    task = {"run_id": "run_1", "reply_channel_id": "origin_channel"}
+
+    _ok, evidence = supervisor.enqueue_openclaw_delivery(task, "最终结果", queue_dir=queue)
+
+    entry_id = evidence.split(":", 1)[1]
+    entry = json.loads((queue / f"{entry_id}.json").read_text(encoding="utf-8"))
+    assert entry["to"] == "channel:origin_channel"
+
+
+def test_deliver_owner_dm_queues_origin_channel_before_dm_fallback(monkeypatch, tmp_path: Path) -> None:
+    queue = tmp_path / "delivery-queue"
+    monkeypatch.setattr(supervisor, "discord_token", lambda _config_path=supervisor.DEFAULT_CONFIG_PATH: "token")
+    monkeypatch.setattr(supervisor, "deliver_to_channel", lambda _token, _channel_id, _text: (False, "HTTPError: 403"))
+    original_enqueue = supervisor.enqueue_openclaw_delivery
+    monkeypatch.setattr(
+        supervisor,
+        "enqueue_openclaw_delivery",
+        lambda task, text, **kwargs: original_enqueue(task, text, queue_dir=queue, **kwargs),
+    )
+
+    ok, evidence = supervisor.deliver_owner_dm({"reply_channel_id": "origin_channel", "run_id": "run_1"}, "最终结果")
+
+    assert ok is False
+    assert "preferred_channel_failed=HTTPError: 403" in evidence
+    entry_id = evidence.split("delivery_queued:", 1)[1].split(";", 1)[0]
+    entry = json.loads((queue / f"{entry_id}.json").read_text(encoding="utf-8"))
+    assert entry["to"] == "channel:origin_channel"
 
 
 def test_cron_failure_delivery_marks_task_failed_and_repairs_owner_target(tmp_path: Path) -> None:
