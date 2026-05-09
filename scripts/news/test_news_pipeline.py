@@ -220,22 +220,22 @@ class TestPlanAndTemplate(unittest.TestCase):
             5,
         )
 
-    def test_codex_http_endpoint_requires_key_and_does_not_use_gateway(self):
-        with patch.object(self.m, "openclaw_model_chat") as gateway:
-            with self.assertRaises(RuntimeError) as ctx:
-                self.m.chat_with_model(
-                    "openai-codex/gpt-5.5",
-                    ollama_host="http://localhost:9",
-                    openai_base_url="https://api.openai.com/v1",
-                    openai_api_key="",
-                    codex_base_url="http://ccnode.briconbric.com:49530/v1",
-                    codex_api_key="",
-                    system="s",
-                    user="u",
-                    timeout=5,
-                )
-        self.assertIn("missing NEWS_CODEX_API_KEY", str(ctx.exception))
+    def test_codex_http_endpoint_without_key_uses_qwen_fallback_not_gateway(self):
+        with patch.object(self.m, "openclaw_model_chat") as gateway, patch.object(self.m, "ollama_chat", return_value="qwen ok") as fallback:
+            result = self.m.chat_with_model(
+                "openai-codex/gpt-5.5",
+                ollama_host="http://localhost:9",
+                openai_base_url="https://api.openai.com/v1",
+                openai_api_key="",
+                codex_base_url="http://ccnode.briconbric.com:49530/v1",
+                codex_api_key="",
+                system="s",
+                user="u",
+                timeout=5,
+            )
+        self.assertEqual(result, "qwen ok")
         gateway.assert_not_called()
+        fallback.assert_called_once_with("http://localhost:9", "qwen3:14b", "s", "u", 5)
 
     def test_load_runtime_env_files_does_not_override_existing_env(self):
         with tempfile.TemporaryDirectory() as td:
@@ -984,6 +984,7 @@ class TestEnsureDailyMemory(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
+                errors="replace",
             )
             self.assertEqual(r.returncode, 0, r.stderr)
             p = root / "memory" / "2030-06-01.md"
@@ -1031,6 +1032,7 @@ class TestVerifyRuntimeReadiness(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
+                errors="replace",
             )
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn("RUNTIME_VERIFY_OK", r.stdout)
@@ -1068,6 +1070,7 @@ class TestVerifyRuntimeReadiness(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
+                errors="replace",
             )
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("RUNTIME_VERIFY_FAIL", r.stderr)

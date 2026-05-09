@@ -23,6 +23,8 @@ set -euo pipefail
 ENV_FILE="/etc/openclaw/openclaw.env"
 CODEX_BASE_URL="${OPENCLAW_PUBLIC_MODEL_BASE_URL:-${NEWS_CODEX_BASE_URL:-http://ccnode.briconbric.com:49530/v1}}"
 CODEX_KEY_FILE="${OPENCLAW_PUBLIC_MODEL_API_KEY_FILE:-${NEWS_CODEX_API_KEY_FILE:-/etc/openclaw/secrets/news_codex_api_key}}"
+QWEN_FALLBACK_BASE_URL="${OPENCLAW_MODEL_FALLBACK_BASE_URL:-${OPENCLAW_QWEN_FALLBACK_BASE_URL:-http://ccnode.briconbric.com:22545}}"
+QWEN_FALLBACK_MODEL="${OPENCLAW_MODEL_FALLBACK:-${OPENCLAW_QWEN_FALLBACK_MODEL:-qwen3:14b}}"
 
 install -d -m 755 /etc/openclaw
 if getent group openclaw >/dev/null 2>&1; then
@@ -43,6 +45,8 @@ from pathlib import Path
 path = Path("/etc/openclaw/openclaw.env")
 base_url = os.environ.get("CODEX_BASE_URL", "http://ccnode.briconbric.com:49530/v1").strip()
 key_file = os.environ.get("CODEX_KEY_FILE", "/etc/openclaw/secrets/news_codex_api_key").strip()
+qwen_fallback_base_url = os.environ.get("QWEN_FALLBACK_BASE_URL", "http://ccnode.briconbric.com:22545").strip()
+qwen_fallback_model = os.environ.get("QWEN_FALLBACK_MODEL", "qwen3:14b").strip()
 key_aliases = [
     "NEWS_CODEX_API_KEY",
     "OPENCLAW_PUBLIC_MODEL_API_KEY",
@@ -57,6 +61,14 @@ file_aliases = [
     "NEWS_CODEX_API_KEY_FILE",
     "OPENCLAW_PUBLIC_MODEL_API_KEY_FILE",
 ]
+fallback_values = {
+    "OPENCLAW_MODEL_FALLBACK_BASE_URL": qwen_fallback_base_url,
+    "OPENCLAW_QWEN_FALLBACK_BASE_URL": qwen_fallback_base_url,
+    "OLLAMA_BASE_URL": qwen_fallback_base_url,
+    "OPENCLAW_MODEL_FALLBACK": qwen_fallback_model,
+    "OPENCLAW_QWEN_FALLBACK_MODEL": qwen_fallback_model,
+    "NEWS_FALLBACK_MODEL": f"ollama/{qwen_fallback_model}" if not qwen_fallback_model.startswith("ollama/") else qwen_fallback_model,
+}
 
 lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
 values: dict[str, str] = {}
@@ -81,6 +93,10 @@ for alias in base_aliases:
         order.append(alias)
 for alias in file_aliases:
     values[alias] = key_file
+    if alias not in order:
+        order.append(alias)
+for alias, value in fallback_values.items():
+    values[alias] = value
     if alias not in order:
         order.append(alias)
 
@@ -113,6 +129,8 @@ print("PUBLIC_MODEL_ENV_UPDATED")
 print(f"NEWS_CODEX_BASE_URL={values.get('NEWS_CODEX_BASE_URL', '')}")
 print(f"OPENCLAW_PUBLIC_MODEL_BASE_URL={values.get('OPENCLAW_PUBLIC_MODEL_BASE_URL', '')}")
 print(f"NEWS_CODEX_API_KEY_FILE={values.get('NEWS_CODEX_API_KEY_FILE', '')}")
+print(f"OPENCLAW_MODEL_FALLBACK_BASE_URL={values.get('OPENCLAW_MODEL_FALLBACK_BASE_URL', '')}")
+print(f"OPENCLAW_MODEL_FALLBACK={values.get('OPENCLAW_MODEL_FALLBACK', '')}")
 print(f"NEWS_CODEX_API_KEY={'set' if values.get('NEWS_CODEX_API_KEY') else 'missing'}")
 print(f"OPENCLAW_PUBLIC_MODEL_API_KEY={'set' if values.get('OPENCLAW_PUBLIC_MODEL_API_KEY') else 'missing'}")
 PY

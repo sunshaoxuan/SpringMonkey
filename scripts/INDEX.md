@@ -29,6 +29,7 @@
 
 - `remote_install_public_model_resources.py`
   - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL` 与共享 API key 文件别名；任务脚本只能读取公共资源层，不应各自私藏模型密钥。
+  - 同时固定全局模型兜底：`OPENCLAW_MODEL_FALLBACK_BASE_URL=http://ccnode.briconbric.com:22545`、`OPENCLAW_MODEL_FALLBACK=qwen3:14b`。
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
   - 注意：Git 只保存 endpoint、变量名和 secret 文件路径，不保存密钥；共享 key 存放在宿主机 root-only secret 文件，例如 `/etc/openclaw/secrets/news_codex_api_key`。
 
@@ -237,6 +238,7 @@
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
 - `openclaw/intent_tool_router.py`：Discord owner DM Harness CLI wrapper；默认执行路径为 `harness_dispatcher -> intentAgent -> tool binder -> governance -> worker -> evaluator -> reporter`。文件内旧 `classify()` / `model_classify_intent()` / TimesCar guard 仅保留为 diagnostic-only，不作为默认语义路由。
+- `openclaw/model_fallback_client.py`：统一模型调用兜底层。Python 侧 intent、blocker、web research 等模型调用默认先走 gpt-5.5/OpenAI-compatible endpoint，失败时落到 ccnode Ollama `qwen3:14b`。
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/verify_harness_registry.py`：校验 OpenClaw Harness manifest、skill registry、tool registry 的 SubAgent/权限/输出契约字段

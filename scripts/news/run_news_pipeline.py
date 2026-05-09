@@ -289,34 +289,45 @@ def chat_with_model(
     user: str,
     timeout: int,
 ) -> str:
-    if is_openclaw_codex_model(model_id):
-        if codex_base_url:
-            if not codex_api_key:
-                raise RuntimeError(
-                    f"missing NEWS_CODEX_API_KEY for Codex HTTP endpoint {codex_base_url}; "
-                    "refusing to fall back to the busy local gateway"
+    fallback_model = os.environ.get("OPENCLAW_MODEL_FALLBACK", os.environ.get("OPENCLAW_QWEN_FALLBACK_MODEL", "qwen3:14b")).strip()
+    fallback_host = os.environ.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", os.environ.get("OPENCLAW_QWEN_FALLBACK_BASE_URL", ollama_host)).strip() or ollama_host
+
+    def call_selected() -> str:
+        if is_openclaw_codex_model(model_id):
+            if codex_base_url:
+                if not codex_api_key:
+                    raise RuntimeError(
+                        f"missing NEWS_CODEX_API_KEY for Codex HTTP endpoint {codex_base_url}; "
+                        "falling back to configured Qwen/Ollama endpoint"
+                    )
+                return openai_chat(
+                    codex_base_url,
+                    codex_api_key,
+                    provider_api_model_name(model_id),
+                    system,
+                    user,
+                    timeout,
                 )
+            return openclaw_model_chat(model_id, system, user, timeout)
+        if is_openai_model(model_id):
+            if not openai_api_key:
+                raise RuntimeError(f"missing OPENAI_API_KEY for {model_id}")
             return openai_chat(
-                codex_base_url,
-                codex_api_key,
+                openai_base_url,
+                openai_api_key,
                 provider_api_model_name(model_id),
                 system,
                 user,
                 timeout,
             )
-        return openclaw_model_chat(model_id, system, user, timeout)
-    if is_openai_model(model_id):
-        if not openai_api_key:
-            raise RuntimeError(f"missing OPENAI_API_KEY for {model_id}")
-        return openai_chat(
-            openai_base_url,
-            openai_api_key,
-            provider_api_model_name(model_id),
-            system,
-            user,
-            timeout,
-        )
-    return ollama_chat(ollama_host, ollama_api_model_name(model_id), system, user, timeout)
+        return ollama_chat(ollama_host, ollama_api_model_name(model_id), system, user, timeout)
+
+    try:
+        return call_selected()
+    except Exception:
+        if not fallback_model or ollama_api_model_name(model_id) == ollama_api_model_name(fallback_model):
+            raise
+        return ollama_chat(fallback_host, ollama_api_model_name(fallback_model), system, user, timeout)
 
 
 def save_json(path: Path, data: Any) -> None:

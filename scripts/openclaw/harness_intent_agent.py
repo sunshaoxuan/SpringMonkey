@@ -11,6 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from model_fallback_client import (
+    chat_with_fallback,
+    load_runtime_env_files,
+    resolve_primary_chat_endpoint,
+)
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 REPO = Path(__file__).resolve().parents[2]
@@ -187,64 +192,9 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         fh.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
 
 
-def load_runtime_env_files(paths: tuple[Path, ...] = RUNTIME_ENV_FILES) -> None:
-    for path in paths:
-        if not path.is_file():
-            continue
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            continue
-        for raw in lines:
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            if line.startswith("export "):
-                line = line[len("export ") :].strip()
-            key, value = line.split("=", 1)
-            key = key.strip()
-            if key and key not in os.environ:
-                os.environ[key] = value.strip().strip('"').strip("'")
-
-
-def read_secret_env(*names: str) -> str:
-    for name in names:
-        value = os.environ.get(name, "").strip()
-        if value:
-            return value
-        file_value = os.environ.get(f"{name}_FILE", "").strip()
-        if file_value:
-            try:
-                secret = Path(file_value).read_text(encoding="utf-8").strip()
-            except OSError:
-                secret = ""
-            if secret:
-                return secret
-    return ""
-
-
 def intent_model_config() -> tuple[str, str, str]:
-    load_runtime_env_files()
-    base_url = (
-        os.environ.get("OPENCLAW_INTENT_MODEL_BASE_URL", "").strip()
-        or os.environ.get("OPENCLAW_PUBLIC_MODEL_BASE_URL", "").strip()
-        or os.environ.get("NEWS_CODEX_BASE_URL", "").strip()
-    ).rstrip("/")
-    api_key = read_secret_env(
-        "OPENCLAW_INTENT_MODEL_API_KEY",
-        "OPENCLAW_PUBLIC_MODEL_API_KEY",
-        "NEWS_CODEX_API_KEY",
-        "OPENCLAW_CODEX_API_KEY",
-        "CODEX_API_KEY",
-    )
-    model = (
-        os.environ.get("OPENCLAW_INTENT_MODEL", "").strip()
-        or os.environ.get("OPENCLAW_PUBLIC_MODEL", "").strip()
-        or "gpt-5.5"
-    )
-    if not base_url:
-        raise RuntimeError("missing OPENCLAW_INTENT_MODEL_BASE_URL/OPENCLAW_PUBLIC_MODEL_BASE_URL")
-    return base_url, api_key, model
+    endpoint = resolve_primary_chat_endpoint()
+    return endpoint.base_url, endpoint.api_key, endpoint.model
 
 
 def intent_model_fallback_configs() -> list[tuple[str, str, str]]:
@@ -292,38 +242,7 @@ def extract_json_object(text: str) -> dict[str, Any]:
 
 
 def call_model(messages: list[dict[str, str]], *, timeout: int = 30, temperature: float = 0) -> tuple[str, dict[str, Any]]:
-    """Call the intent model with automatic fallback on quota exhaustion (HTTP 429) or errors.
-
-    Try order:
-      1. Primary: OPENCLAW_PUBLIC_MODEL_BASE_URL (ccnode:49530)
-      2. Fallbacks: OPENCLAW_OLLAMA_BASE_URL models (ccnode:22545)
-    """
-    primary = [intent_model_config()]
-    candidates = primary + intent_model_fallback_configs()
-    last_exc: Exception = RuntimeError("no intent model candidates")
-    for base_url, api_key, model in candidates:
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-        payload = {"model": model, "messages": messages, "temperature": temperature}
-        started = time.monotonic()
-        try:
-            data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
-            latency_ms = int((time.monotonic() - started) * 1000)
-            content = str(data["choices"][0]["message"]["content"]).strip()
-            return content, {"model": model, "base_url": base_url, "latency_ms": latency_ms}
-        except RuntimeError as exc:
-            last_exc = exc
-            exc_str = str(exc)
-            # Retry with next candidate on quota (429) or service-unavailable (503/502)
-            if "HTTP 429" in exc_str or "HTTP 503" in exc_str or "HTTP 502" in exc_str:
-                continue
-            raise
-        except OSError:
-            # Network-level failure (connection refused, timeout) -> try next
-            last_exc = OSError(f"network error reaching {base_url}")
-            continue
-    raise last_exc
+    return chat_with_fallback(messages, timeout=timeout, temperature=temperature)
 
 
 def registry_prompt(registry: dict[str, Any]) -> str:

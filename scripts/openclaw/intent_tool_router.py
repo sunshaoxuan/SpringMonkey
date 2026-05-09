@@ -33,6 +33,7 @@ from dm_capability_gap_runner import run_gap
 from harness_dispatcher import handle_event
 from harness_governance import evaluate_tool_invocation
 from harness_intent_agent import infer_intent_frame
+from model_fallback_client import chat_with_fallback, resolve_primary_chat_endpoint
 from harness_intent_audit import audit_intent, evaluate_result, resolve_correction_tool_id
 from harness_intent_completion import complete_implicit_intent
 from harness_observability import EvaluationRecord, ToolInvocationRecord, record_evaluation, record_tool_invocation
@@ -98,43 +99,6 @@ UNSAFE_TASK_PATTERN = re.compile(
 )
 
 
-def load_runtime_env_files(paths: tuple[Path, ...] = RUNTIME_ENV_FILES) -> None:
-    for path in paths:
-        if not path.is_file():
-            continue
-        try:
-            lines = path.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            continue
-        for raw in lines:
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            if line.startswith("export "):
-                line = line[len("export ") :].strip()
-            key, value = line.split("=", 1)
-            key = key.strip()
-            if not key or key in os.environ:
-                continue
-            os.environ[key] = value.strip().strip('"').strip("'")
-
-
-def read_secret_env(*names: str) -> str:
-    for name in names:
-        value = os.environ.get(name, "").strip()
-        if value:
-            return value
-        file_value = os.environ.get(f"{name}_FILE", "").strip()
-        if file_value:
-            try:
-                secret = Path(file_value).read_text(encoding="utf-8").strip()
-            except OSError:
-                secret = ""
-            if secret:
-                return secret
-    return ""
-
-
 def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int) -> dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
@@ -180,41 +144,13 @@ def local_classify_unregistered_intent(text: str) -> str:
 
 
 def intent_model_config() -> tuple[str, str, str]:
-    load_runtime_env_files()
-    base_url = (
-        os.environ.get("OPENCLAW_INTENT_MODEL_BASE_URL", "").strip()
-        or os.environ.get("OPENCLAW_PUBLIC_MODEL_BASE_URL", "").strip()
-        or os.environ.get("NEWS_CODEX_BASE_URL", "").strip()
-    ).rstrip("/")
-    api_key = read_secret_env(
-        "OPENCLAW_INTENT_MODEL_API_KEY",
-        "OPENCLAW_PUBLIC_MODEL_API_KEY",
-        "NEWS_CODEX_API_KEY",
-        "OPENCLAW_CODEX_API_KEY",
-        "CODEX_API_KEY",
-    )
-    model = (
-        os.environ.get("OPENCLAW_INTENT_MODEL", "").strip()
-        or os.environ.get("OPENCLAW_PUBLIC_MODEL", "").strip()
-        or "gpt-5.5"
-    )
-    if not base_url:
-        raise RuntimeError("missing OPENCLAW_INTENT_MODEL_BASE_URL/OPENCLAW_PUBLIC_MODEL_BASE_URL")
-    return base_url, api_key, model
+    endpoint = resolve_primary_chat_endpoint()
+    return endpoint.base_url, endpoint.api_key, endpoint.model
 
 
 def call_intent_model(messages: list[dict[str, str]], *, timeout: int, temperature: float = 0) -> str:
-    base_url, api_key, model = intent_model_config()
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": temperature,
-    }
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-    data = http_post_json(base_url + "/chat/completions", payload, headers, timeout)
-    return str(data["choices"][0]["message"]["content"]).strip()
+    content, _meta = chat_with_fallback(messages, timeout=timeout, temperature=temperature)
+    return content
 
 
 def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[str, str]:
