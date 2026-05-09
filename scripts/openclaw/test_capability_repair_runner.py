@@ -8,6 +8,23 @@ from unittest.mock import patch
 import capability_repair_runner as runner
 
 
+def blocker_response(kind: str, safety: str, confidence: float = 0.92) -> str:
+    return json.dumps(
+        {
+            "intent_kind": "task",
+            "blocker_kind": kind,
+            "safety_class": safety,
+            "confidence": confidence,
+            "expected_capability_family": "test",
+            "missing_condition": "test missing condition",
+            "allowed_repair_action": "test repair action",
+            "replay_policy": "allow_after_verified_promoted" if safety == "auto_safe_readonly" else "blocked_until_authorization",
+            "reasoning_summary": f"test {kind}",
+        },
+        ensure_ascii=False,
+    )
+
+
 def test_repair_runner_logs_verified_readonly_replay_event() -> None:
     tool = {
         "tool_id": "weather.dm.query",
@@ -26,6 +43,7 @@ def test_repair_runner_logs_verified_readonly_replay_event() -> None:
             kernel_root=root,
             repo_root=Path(tmp),
             registry_tool=tool,
+            blocker_model_caller=lambda _messages: blocker_response("readonly_tool_missing", "auto_safe_readonly"),
         )
         assert result.status == "verified"
         assert result.replay_allowed is True
@@ -52,10 +70,60 @@ def test_repair_runner_blocks_write_replay() -> None:
             kernel_root=Path(tmp) / "kernel",
             repo_root=Path(tmp),
             registry_tool=tool,
+            blocker_model_caller=lambda _messages: blocker_response("write_operation_request", "requires_confirmation_or_credentials"),
         )
     assert result.status == "blocked"
     assert result.replay_allowed is False
     assert "not a verified read-only tool" in result.replay_reason or result.safety_class == "requires_confirmation_or_credentials"
+
+
+def test_repair_runner_uses_llm_access_blocker_without_generating_readonly_helper() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_repair(
+            text="我无法打开当前材料，需要对方批准后才能继续。",
+            channel="discord_dm",
+            user_id="tester",
+            stage="binding",
+            reason="no registered tool for IntentFrame domain/action: general/gap",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+            blocker_model_caller=lambda _messages: blocker_response(
+                "access_or_approval_blocker",
+                "requires_confirmation_or_credentials",
+            ),
+        )
+        events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
+
+    assert result.status == "blocked"
+    assert result.replay_allowed is False
+    assert result.toolsmith_package["status"] == "blocked_requires_authorization"
+    assert result.toolsmith_package["tool_id"] == "openclaw.authorization_required"
+    assert result.toolsmith_package["tool_id"] != "memory.generated_readonly"
+    assert events[-1]["llm_blocker_kind"] == "access_or_approval_blocker"
+    assert events[-1]["missing_condition"] == "test missing condition"
+
+
+def test_repair_runner_low_confidence_llm_blocks_helper_generation() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_repair(
+            text="处理一下这个问题",
+            channel="discord_dm",
+            user_id="tester",
+            stage="binding",
+            reason="unclear tool binding",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+            blocker_model_caller=lambda _messages: blocker_response(
+                "readonly_tool_missing",
+                "auto_safe_readonly",
+                confidence=0.2,
+            ),
+        )
+
+    assert result.status == "blocked"
+    assert result.replay_allowed is False
+    assert result.toolsmith_package["status"] == "blocked_requires_authorization"
+    assert result.toolsmith_package["gap_type"] == "permission_missing"
 
 
 def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:

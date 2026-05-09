@@ -225,7 +225,7 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
         "Use chat for greetings, small talk, opinions, explanations, or normal conversation. "
         "Use registered_candidate when the wording appears to match an existing deterministic OpenClaw capability but was not matched by the registry. "
         "Use auto_safe_readonly_gap for public read-only information queries such as weather, holidays, public facts, or external data lookups. "
-        "Use unsafe_gap for write operations, booking changes, credentials, configuration, deployment, payment, login, or state-changing work. "
+        "Use unsafe_gap for write operations, booking changes, credentials, configuration, deployment, payment, login, access approval, missing authorization, or state-changing work. "
         "Use ambiguous_gap for tasks that are not clearly safe read-only and not clearly unsafe. "
         "Do not choose a gap kind for casual conversation."
     )
@@ -302,7 +302,7 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "Use registered_task only when one registry tool clearly matches the user's requested action. "
         "Use chat for normal conversation or explanation. "
         "Use auto_safe_readonly_gap for safe public read-only lookups not covered by a tool. "
-        "Use unsafe_gap for write operations, bookings, credentials, configuration, deployment, payment, login, or state changes not covered by a tool. "
+        "Use unsafe_gap for write operations, bookings, credentials, configuration, deployment, payment, login, access approval, missing authorization, or state changes not covered by a tool. "
         "Use ambiguous_gap when the user appears to request a task but intent/tool is unclear. "
         "For TimesCar: booking a car/reservation for tomorrow 09:00-21:00 with the habitual model is the book_window route. "
         "For TimesCar: after a booking attempt says the preferred car/window is unavailable, asking to switch to an available car is also the book_window route. "
@@ -448,8 +448,7 @@ def classify_unregistered_intent(text: str) -> tuple[str, str]:
     try:
         return model_classify_unregistered_intent(text)
     except Exception as exc:
-        route_kind = local_classify_unregistered_intent(text)
-        return route_kind, f"model_unavailable_fallback={type(exc).__name__}: {exc}"
+        return "ambiguous_gap", f"model_unavailable_conservative={type(exc).__name__}: {exc}"
 
 
 def load_registry(path: Path = DEFAULT_REGISTRY) -> dict[str, Any]:

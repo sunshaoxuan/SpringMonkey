@@ -78,6 +78,31 @@ def test_toolsmith_blocks_write_repair_package() -> None:
     assert package.replay_policy == "blocked_until_human_authorization"
 
 
+def test_toolsmith_llm_access_blocker_creates_authorization_package_not_helper() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        package = runner.generate_repair_package(
+            text="我看不到材料，需要批准后才能继续",
+            reason="model classified access blocker",
+            safety_class="requires_confirmation_or_credentials",
+            kernel_root=root / "kernel",
+            repo_root=root / "repo",
+            llm_classification={
+                "blocker_kind": "access_or_approval_blocker",
+                "missing_condition": "external approval required",
+                "allowed_repair_action": "request authorization and retry original task after access is granted",
+            },
+        )
+        auth_file = Path(package.files[0])
+        auth_payload = json.loads(auth_file.read_text(encoding="utf-8"))
+
+    assert package.status == "blocked_requires_authorization"
+    assert package.gap_type == "permission_missing"
+    assert package.tool_id == "openclaw.authorization_required"
+    assert package.files == [str(auth_file)]
+    assert auth_payload["llm_classification"]["blocker_kind"] == "access_or_approval_blocker"
+
+
 def test_toolsmith_promotes_readonly_package_after_verify() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

@@ -700,7 +700,7 @@ def test_unregistered_intent_falls_back_when_model_unavailable() -> None:
     with patch.object(router, "model_classify_unregistered_intent", side_effect=RuntimeError("offline")):
         route_kind, reason = router.classify_unregistered_intent("请帮我接入一个新的控制台能力。")
     assert route_kind == "ambiguous_gap"
-    assert "model_unavailable_fallback=RuntimeError" in reason
+    assert "model_unavailable_conservative=RuntimeError" in reason
 
 
 def test_run_tool_keeps_stderr_out_of_user_output() -> None:
@@ -762,7 +762,7 @@ def test_create_capability_falls_back_to_unsupported_task() -> None:
     with patch.object(router, "model_classify_unregistered_intent", side_effect=RuntimeError("offline")):
         route_kind, reason = router.classify_unregistered_intent("汤猴，给我发明一个现在不存在的控制台能力。")
     assert route_kind == "ambiguous_gap"
-    assert "model_unavailable_fallback=RuntimeError" in reason
+    assert "model_unavailable_conservative=RuntimeError" in reason
 
 
 def test_classify_only_does_not_execute_tool() -> None:

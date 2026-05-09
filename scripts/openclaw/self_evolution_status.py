@@ -35,6 +35,8 @@ def lifecycle(event: dict) -> str:
         if status in {"verified", "deployed"}:
             return f"regression_detected -> package_{status} -> replay_ready"
         return f"regression_detected -> {status}"
+    if event.get("llm_blocker_kind") in {"access_or_approval_blocker", "credential_missing"}:
+        return "recorded -> llm_blocker_classified -> awaiting_authorization"
     if event.get("replay_allowed"):
         if status == "deployed":
             return "recorded -> planned -> generated -> verified -> promoted -> deployed -> replay_ready"
@@ -96,6 +98,7 @@ def main() -> int:
             f"tool={event.get('tool_id') or 'none'} lifecycle={lifecycle(event)} "
             f"baseline={event.get('baseline_case_id') or 'none'} "
             f"regression={event.get('regression_type') or 'none'} "
+            f"llm_blocker={event.get('llm_blocker_kind') or 'none'} "
             f"match={event.get('match_kind') or 'none'} "
             f"resolved_by={resolved_by.get('package_id') or 'none'} "
             f"fingerprint={event.get('repair_fingerprint') or 'none'} "

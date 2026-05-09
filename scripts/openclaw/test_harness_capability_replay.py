@@ -53,9 +53,20 @@ def test_dispatcher_records_nonzero_tool_failure_and_replays_readonly_once() -> 
     def evaluate_result(_tool, _output, _contract):
         return ResultEvaluation(True, "ok", {}, {})
 
+    blocker = {
+        "intent_kind": "task",
+        "blocker_kind": "readonly_tool_missing",
+        "safety_class": "auto_safe_readonly",
+        "confidence": 0.95,
+        "expected_capability_family": "weather",
+        "missing_condition": "readonly bridge missing",
+        "allowed_repair_action": "verify existing readonly tool",
+        "replay_policy": "allow_after_verified_promoted",
+        "reasoning_summary": "readonly capability gap",
+    }
     with tempfile.TemporaryDirectory() as tmp, patch("harness_dispatcher.infer_intent_frame", return_value=frame), patch(
         "dm_capability_gap_runner.run_verify_command", return_value=(True, "ok")
-    ):
+    ), patch("capability_blocker_classifier.call_model", return_value=(json.dumps(blocker, ensure_ascii=False), {"model": "test"})):
         result = handle_event(
             text="请查询明天东京天气和风况",
             channel="discord_dm",

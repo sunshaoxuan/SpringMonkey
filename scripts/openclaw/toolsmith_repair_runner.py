@@ -70,7 +70,20 @@ def repair_fingerprint(*, text: str, reason: str, tool_id: str, entrypoint: str)
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
 
-def classify_gap(reason: str, registry_tool: dict[str, Any] | None = None) -> str:
+def classify_gap(reason: str, registry_tool: dict[str, Any] | None = None, llm_classification: dict[str, Any] | None = None) -> str:
+    blocker_kind = str((llm_classification or {}).get("blocker_kind") or "")
+    if blocker_kind in {"access_or_approval_blocker", "credential_missing"}:
+        return "permission_missing"
+    if blocker_kind == "registered_tool_regression":
+        return "registry_pattern_gap"
+    if blocker_kind == "readonly_tool_missing":
+        return "registry_missing"
+    if blocker_kind == "tool_binding_gap":
+        return "registry_missing"
+    if blocker_kind == "write_operation_request":
+        return "permission_missing"
+    if blocker_kind == "ambiguous":
+        return "permission_missing"
     lowered = reason.lower()
     if "permission" in lowered or "governance" in lowered or "denied" in lowered:
         return "permission_missing"
@@ -412,11 +425,26 @@ def generate_repair_package(
     registry_tool: dict[str, Any] | None = None,
     apply_readonly: bool = False,
     semantic: bool = False,
+    llm_classification: dict[str, Any] | None = None,
 ) -> ToolsmithPackage:
-    gap_type = classify_gap(reason, registry_tool)
-    write_like = safety_class in {"requires_confirmation_or_credentials"} or bool((registry_tool or {}).get("write_operation"))
-    tool_id = str((registry_tool or {}).get("tool_id") or infer_tool_id(text, gap_type))
-    entrypoint = str((registry_tool or {}).get("entrypoint") or f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py")
+    gap_type = classify_gap(reason, registry_tool, llm_classification)
+    blocker_kind = str((llm_classification or {}).get("blocker_kind") or "")
+    model_blocks_toolsmith = blocker_kind in {
+        "access_or_approval_blocker",
+        "credential_missing",
+        "write_operation_request",
+        "ambiguous",
+    }
+    write_like = (
+        safety_class in {"requires_confirmation_or_credentials", "unsupported_or_ambiguous"}
+        or bool((registry_tool or {}).get("write_operation"))
+        or model_blocks_toolsmith
+    )
+    if model_blocks_toolsmith:
+        tool_id = str((registry_tool or {}).get("tool_id") or "openclaw.authorization_required")
+    else:
+        tool_id = str((registry_tool or {}).get("tool_id") or infer_tool_id(text, gap_type))
+    entrypoint = str((registry_tool or {}).get("entrypoint") or ("" if model_blocks_toolsmith else f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py"))
     fingerprint = repair_fingerprint(text=text, reason=reason, tool_id=tool_id, entrypoint=entrypoint)
     package_id = f"repair_{safe_slug(tool_id)}_{fingerprint}"
     package_dir = kernel_root / "toolsmith_packages" / package_id
@@ -424,9 +452,12 @@ def generate_repair_package(
     existing = load_package_state(package_dir)
     if existing is not None:
         return existing
-    registry_patch = build_registry_patch(tool_id, entrypoint, text)
     reference_tool = find_reference_tool(repo_root, text=text, gap_type=gap_type, readonly=True, exclude_tool_id=tool_id) if semantic and not write_like else None
-    registry_patch = build_registry_patch(tool_id, entrypoint, text, reference_tool=reference_tool, semantic=semantic and not write_like)
+    registry_patch = (
+        {}
+        if write_like
+        else build_registry_patch(tool_id, entrypoint, text, reference_tool=reference_tool, semantic=semantic and not write_like)
+    )
     files: list[str] = []
     status = "blocked_requires_authorization" if write_like else "generated"
     replay_policy = "blocked_until_human_authorization" if write_like else "verify_before_replay"
@@ -458,6 +489,9 @@ def generate_repair_package(
             "reason": reason,
             "safety_class": safety_class,
             "registry_tool": registry_tool,
+            "llm_classification": llm_classification,
+            "missing_condition": str((llm_classification or {}).get("missing_condition") or ""),
+            "allowed_repair_action": str((llm_classification or {}).get("allowed_repair_action") or "record_gap_only"),
         }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         files = [str(package_dir / "authorization_required.json")]
     package = ToolsmithPackage(
@@ -652,12 +686,14 @@ def main() -> int:
     parser.add_argument("--kernel-root", type=Path, default=DEFAULT_KERNEL_ROOT)
     parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--registry-tool-json", default="")
+    parser.add_argument("--llm-classification-json", default="")
     parser.add_argument("--apply-readonly", action="store_true")
     parser.add_argument("--verify-promote", action="store_true")
     parser.add_argument("--semantic", action="store_true")
     parser.add_argument("--mark-deployed", action="store_true")
     args = parser.parse_args()
     registry_tool = json.loads(args.registry_tool_json) if args.registry_tool_json else None
+    llm_classification = json.loads(args.llm_classification_json) if args.llm_classification_json else None
     package = generate_repair_package(
         text=args.text,
         reason=args.reason,
@@ -667,6 +703,7 @@ def main() -> int:
         registry_tool=registry_tool,
         apply_readonly=args.apply_readonly,
         semantic=args.semantic,
+        llm_classification=llm_classification,
     )
     if args.verify_promote:
         package = verify_and_promote_package(package, kernel_root=args.kernel_root, repo_root=args.repo_root)

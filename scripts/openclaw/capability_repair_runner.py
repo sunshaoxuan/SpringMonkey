@@ -14,6 +14,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from dm_capability_gap_runner import GapRunnerResult, run_gap
+from capability_blocker_classifier import CapabilityBlockerClassification, classify_capability_blocker, classification_dict
 from regression_repair_runner import run_regression_repair
 from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, mark_deployed, repair_fingerprint, verify_and_promote_package
 
@@ -145,6 +146,7 @@ def run_repair(
     replay_depth: int = 0,
     semantic: bool = False,
     deploy_readonly: bool = False,
+    blocker_model_caller: Any | None = None,
 ) -> RepairRunnerResult:
     repo_root = repo_root or Path(__file__).resolve().parents[2]
     regression = run_regression_repair(
@@ -236,6 +238,24 @@ def run_repair(
             event_log=str(log_path),
             created_at=utc_now(),
         )
+    blocker: CapabilityBlockerClassification | None = None
+    if forced_safety_class is None:
+        blocker = classify_capability_blocker(
+            text=text,
+            stage=stage,
+            reason=reason,
+            execution_output=execution_output,
+            context=context,
+            repo_root=repo_root,
+            model_caller=blocker_model_caller,
+        )
+        if blocker.blocker_kind == "registered_tool_regression":
+            forced_safety_class = "unsupported_or_ambiguous"
+            forced_safety_reason = "LLM classified this as registered_tool_regression but no baseline case matched; human review required"
+        else:
+            forced_safety_class = blocker.safety_class
+            forced_safety_reason = blocker.reasoning_summary
+
     intent_reason = reason
     if execution_output:
         intent_reason = f"{intent_reason}; output={execution_output[:1200]}"
@@ -274,6 +294,7 @@ def run_repair(
             registry_tool=registry_tool or gap_result.registry_tool,
             apply_readonly=False,
             semantic=semantic or deploy_readonly,
+            llm_classification=classification_dict(blocker),
         )
         if toolsmith_package.status == "generated" and toolsmith_package.safety_class == "auto_safe_readonly":
             toolsmith_package = verify_and_promote_package(toolsmith_package, kernel_root=kernel_root, repo_root=repo_root)
@@ -320,6 +341,13 @@ def run_repair(
         "replay_allowed": replay_allowed,
         "replay_reason": replay_reason,
         "tool_id": (effective_tool or {}).get("tool_id"),
+        "llm_intent_kind": blocker.intent_kind if blocker else "",
+        "llm_blocker_kind": blocker.blocker_kind if blocker else "",
+        "llm_confidence": blocker.confidence if blocker else None,
+        "missing_condition": blocker.missing_condition if blocker else "",
+        "allowed_repair_action": blocker.allowed_repair_action if blocker else "",
+        "llm_classification_ok": blocker.ok if blocker else None,
+        "llm_classification_error": blocker.error if blocker else "",
         "plan": asdict(gap_result.plan),
         "resolved_by": None if toolsmith_package is None else {
             "package_id": toolsmith_package.package_id,
