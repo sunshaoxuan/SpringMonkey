@@ -110,6 +110,21 @@ def find_booking_for_start(reservations: list[dict], target_start: datetime) -> 
     return str(matches[0].get("bookingNumber") or "") or None
 
 
+def find_unique_reservation_start_on_date(reservations: list[dict], target_date) -> datetime | None:
+    matches: list[datetime] = []
+    for reservation in reservations:
+        try:
+            start = parse_iso_minute(str(reservation.get("start") or ""))
+        except Exception:
+            continue
+        if start.date() == target_date:
+            matches.append(start)
+    unique = sorted(set(matches))
+    if len(unique) != 1:
+        return None
+    return unique[0]
+
+
 def parse_relative_shift_minutes(text: str) -> int | None:
     raw = normalize_text(text)
     if not any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延")):
@@ -190,6 +205,15 @@ def interpret_adjust_request(text: str, message_time: datetime) -> tuple[datetim
     relative = interpret_relative_adjust_request(raw, message_time)
     if relative:
         return relative
+    normalized = normalize_text(raw)
+    minutes = parse_relative_shift_minutes(raw)
+    keeps_end = any(token in normalized for token in ("结束时间不变", "结束不变", "结束时间保持不变", "结束保持不变", "終わり不変"))
+    if "明天" in raw and minutes is not None and keeps_end:
+        target_date = (message_time + timedelta(days=1)).date()
+        current_start = find_unique_reservation_start_on_date(fetch_reservations(), target_date)
+        if current_start is None:
+            raise IntentError("未能唯一定位明天开始的 TimesCar 预约")
+        return current_start, current_start + timedelta(minutes=minutes)
     if "明天" not in raw or "后天" not in raw:
         raise IntentError("当前 TimesCar 专用执行器只接受明确包含“明天”和“后天”的改开始时间指令")
     if "开始" not in raw or ("订车" not in raw and "预约" not in raw and "TimesCar" not in raw and "timescar" not in raw):

@@ -92,17 +92,23 @@ def relative_timescar_shift_window_frame(text: str) -> IntentFrame | None:
 def relative_timescar_adjust_frame(text: str) -> IntentFrame | None:
     raw = normalize_text(text)
     has_booking_ref = any(token in raw for token in ("这单", "這單", "刚刚这单", "刚才这单", "订单", "这张", "這張"))
-    has_start_shift = "开始" in raw and any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟"))
+    has_start_shift = "开始" in raw and any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延"))
     has_24h = any(token in raw for token in ("24小时", "24小時", "一天", "1天", "一日", "1日"))
-    keeps_end = any(token in raw for token in ("结束时间不变", "结束不变", "終わり不変"))
-    if not (has_booking_ref and has_start_shift and has_24h and keeps_end):
+    keeps_end = any(token in raw for token in ("结束时间不变", "结束不变", "结束时间保持不变", "结束保持不变", "終わり不変"))
+    has_tomorrow_reservation = "明天" in raw and any(token in raw for token in ("订车", "预约", "预订", "TimesCar", "timescar"))
+    if not ((has_booking_ref or has_tomorrow_reservation) and has_start_shift and has_24h and keeps_end):
         return None
     return IntentFrame(
         conversation_mode="task",
         domain="timescar",
         action="adjust",
         canonical_text=text.strip(),
-        context_refs=[{"type": "recent_timescar_reservation", "selector": "next_reservation_within_48h"}],
+        context_refs=[
+            {
+                "type": "recent_timescar_reservation",
+                "selector": "tomorrow_reservation" if has_tomorrow_reservation and not has_booking_ref else "next_reservation_within_48h",
+            }
+        ],
         parameters={"relative_start_shift_hours": 24, "preserve_return_time": True},
         safety="write",
         result_contract={"type": "timescar_adjust_start", "preserve_return_time": True},

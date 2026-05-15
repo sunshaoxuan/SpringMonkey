@@ -91,6 +91,20 @@
       "auto_repair": "authorization_required"
     },
     {
+      "id": "timescar_adjust_tomorrow_relative_preserve_end",
+      "text": "请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。",
+      "live_intent": true,
+      "expected": {
+        "domain": "timescar",
+        "action": "adjust",
+        "tool_id": "timescar.dm.adjust_start",
+        "safety": "write",
+        "write_operation": true,
+        "governance_allowed": true
+      },
+      "auto_repair": "authorization_required"
+    },
+    {
       "id": "timescar_shift_window_relative_imminent",
       "text": "请把马上开始的那单预订帮我往后整体延15分钟。",
       "live_intent": true,

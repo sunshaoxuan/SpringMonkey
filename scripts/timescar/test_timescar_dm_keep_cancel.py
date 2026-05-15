@@ -31,7 +31,7 @@ def main() -> int:
         mod.DECISIONS_PATH = Path(tmp) / ".secure" / "timescar_user_decisions.json"
         mod.CANCEL_LEDGER_PATH = Path(tmp) / "var" / "timescar_dm_cancelled_requests.json"
         message_time = datetime(2026, 5, 4, 18, 0, tzinfo=TZ)
-        reservations = [fake_reservation(message_time + timedelta(hours=12))]
+        reservations = [fake_reservation(datetime(2026, 5, 5, 9, 0, tzinfo=TZ))]
         original_fetch = mod.fetch_reservations
         original_run_canceller = mod.run_canceller
         original_run_booker = mod.run_booker
@@ -82,6 +82,11 @@ def main() -> int:
             book_any = mod.format_book_result("那就把车换成可以预订的车", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
             relative_adjust = mod.format_adjust_result("把这单的开始时间往后推24小时，结束时间不变。", message_time, force=True)
+            tomorrow_relative_adjust = mod.format_adjust_result(
+                "请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。",
+                message_time,
+                force=True,
+            )
             shift_window = mod.format_shift_window_result("请把马上开始的那单预订帮我往后整体延15分钟。", message_time, force=True)
             cancel = mod.format_cancel_result("请取消这单订车", message_time, force=True)
             cancel_followup = mod.format_cancel_result("好的，把刚刚这单取消掉吧", message_time, force=True)
@@ -103,19 +108,27 @@ def main() -> int:
         assert adjust_calls == [
             (
                 "B123456",
-                message_time + timedelta(hours=12),
-                message_time + timedelta(hours=36),
+                datetime(2026, 5, 5, 9, 0, tzinfo=TZ),
+                datetime(2026, 5, 6, 9, 0, tzinfo=TZ),
                 True,
                 None,
             ),
             (
                 "B123456",
-                message_time + timedelta(hours=12),
-                message_time + timedelta(hours=12, minutes=15),
+                datetime(2026, 5, 5, 9, 0, tzinfo=TZ),
+                datetime(2026, 5, 6, 9, 0, tzinfo=TZ),
                 True,
-                message_time + timedelta(hours=15, minutes=15),
+                None,
+            ),
+            (
+                "B123456",
+                datetime(2026, 5, 5, 9, 0, tzinfo=TZ),
+                datetime(2026, 5, 5, 9, 15, tzinfo=TZ),
+                True,
+                datetime(2026, 5, 5, 12, 15, tzinfo=TZ),
             )
         ]
+        assert "预约变更已提交并回查确认" in tomorrow_relative_adjust
         assert "预约变更已提交并回查确认" in shift_window
         assert "预约取消已提交并回查确认" in cancel
         assert "预约编号：B123456" in cancel
@@ -133,6 +146,7 @@ def main() -> int:
         assert mod.is_adjust_request("请把明天开始的订车改到后天早9点")
         assert mod.is_adjust_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
         assert mod.is_adjust_request("把这单的开始时间往后推24小时，结束时间不变。")
+        assert mod.is_adjust_request("请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。")
         assert mod.is_whole_window_shift_request("请把马上开始的那单预订帮我往后整体延15分钟。")
         assert mod.is_adjust_request("请把马上开始的那单预订帮我往后整体延15分钟。")
         assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")

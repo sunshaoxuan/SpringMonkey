@@ -61,6 +61,19 @@ def test_timescar_shift_window_uses_deterministic_frame() -> None:
     assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.shift_window"
 
 
+def test_timescar_tomorrow_relative_adjust_uses_deterministic_frame() -> None:
+    frame = agent.infer_intent_frame(
+        "请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。",
+        context="",
+        registry=load_registry(),
+    )
+
+    assert frame.source == "local_rule"
+    assert frame.domain == "timescar"
+    assert frame.action == "adjust"
+    assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.adjust_start"
+
+
 def test_artifact_access_followup_is_model_routed_away_from_task_status() -> None:
     frame = agent.infer_intent_frame(
         "我需要查看刚才生成的 Google Docs，请给我文件查看权限。",
