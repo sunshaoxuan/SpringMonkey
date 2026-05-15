@@ -78,26 +78,6 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", "", text or "").strip()
 
 
-CHAT_ONLY_PATTERN = re.compile(
-    r"^\s*(你好|您好|hi|hello|早上好|晚上好|谢谢|thanks|ok|好的|收到|嗯|在吗|还活着吗|你还活着吗|拜拜|bye)[!！,.，。 ]*\s*$",
-    re.IGNORECASE,
-)
-
-TASK_VERB_PATTERN = re.compile(
-    r"(请|帮|麻烦|需要|处理|执行|完成|安排|调查|排查|修复|检查|查询|查看|触发|重跑|补跑|取消|修改|调整|设置|部署|重启|创建|生成|发明|新增|接入|汇报|报告|发到|转发)",
-    re.IGNORECASE,
-)
-
-AUTO_SAFE_READONLY_PATTERN = re.compile(
-    r"(天气|天気|weather|预报|予報|风况|風|能见度|視程|可視性|节假日|祝日|红日子|holiday)",
-    re.IGNORECASE,
-)
-
-UNSAFE_TASK_PATTERN = re.compile(
-    r"(取消|修改|改|调整|设置|配置|部署|重启|删除|提交|支付|付款|订车|预约|timescar|密码|token|secret|key|密钥|登录|登入)",
-    re.IGNORECASE,
-)
-
 
 def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int) -> dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
@@ -123,24 +103,6 @@ def extract_json_object(text: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("model returned non-object JSON")
     return data
-
-
-def local_classify_unregistered_intent(text: str) -> str:
-    normalized_prompt = re.sub(r"\s+", " ", text or "").strip()
-    if not normalized_prompt:
-        return "chat"
-    if CHAT_ONLY_PATTERN.fullmatch(normalized_prompt):
-        return "chat"
-    if UNSAFE_TASK_PATTERN.search(normalized_prompt):
-        return "unsafe_gap"
-    if AUTO_SAFE_READONLY_PATTERN.search(normalized_prompt):
-        return "auto_safe_readonly_gap"
-    # Short messages without an action verb are still chat, not capability gaps.
-    if len(normalize_text(normalized_prompt)) <= 12 and not TASK_VERB_PATTERN.search(normalized_prompt):
-        return "chat"
-    if TASK_VERB_PATTERN.search(normalized_prompt):
-        return "ambiguous_gap"
-    return "chat"
 
 
 def intent_model_config() -> tuple[str, str, str]:
@@ -217,11 +179,9 @@ def latest_timescar_context() -> str:
 
 def effective_context(text: str, context: str) -> str:
     raw = (context or "").strip()
-    normalized = normalize_text(text)
-    if any(token in normalized for token in ("刚刚", "刚才", "这单", "订单", "预约", "订车", "TimesCar", "timescar")):
-        recent = latest_timescar_context()
-        if recent:
-            raw = "\n".join(item for item in [raw, "Recent TimesCar task summaries:", recent] if item)
+    recent = latest_timescar_context()
+    if recent:
+        raw = "\n".join(item for item in [raw, "Recent TimesCar task summaries:", recent] if item)
     return raw
 
 
@@ -306,53 +266,6 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
 
 def _tool_by_id(registry: dict[str, Any], tool_id: str) -> dict[str, Any] | None:
     return next((item for item in registry.get("tools", []) if str(item.get("tool_id")) == tool_id), None)
-
-
-def looks_like_timescar_cancel(text: str) -> bool:
-    normalized = normalize_text(text)
-    if "取消明天的时间" in normalized and ("后天" in normalized or "開始" in normalized or "开始" in normalized):
-        return False
-    if any(token in normalized for token in ("取消了吗", "取消了么", "取消成功", "是否取消", "有没有取消", "还在吗", "还在不在", "状态")):
-        return False
-    has_target = any(token in normalized for token in ("这单", "刚刚这单", "刚才这单", "订单", "预约", "订车", "TimesCar", "timescar"))
-    has_cancel = any(token in normalized for token in ("取消这单", "这单取消", "把这单取消", "刚刚这单取消", "刚才这单取消", "取消掉", "取消订单", "取消预约", "取消订车", "cancel"))
-    return has_target and has_cancel
-
-
-def looks_like_timescar_adjust(text: str) -> bool:
-    normalized = normalize_text(text)
-    has_timescar = any(token in normalized for token in ("订车", "预约", "TimesCar", "timescar"))
-    if not has_timescar:
-        return False
-    if looks_like_timescar_cancel(normalized):
-        return False
-    return any(token in normalized for token in ("开始时间", "后天", "延迟", "延期", "变更", "改到", "改成", "结束时间不变")) and any(
-        token in normalized for token in ("后天", "开始时间", "早上9点", "早9点", "09", "结束时间不变")
-    )
-
-
-def guard_timescar_classification(text: str, registry: dict[str, Any], classification: Classification) -> Classification:
-    if looks_like_timescar_cancel(text) and classification.tool_id != "timescar.dm.cancel_next":
-        tool = _tool_by_id(registry, "timescar.dm.cancel_next")
-        if tool:
-            return Classification(
-                str(tool["intent_id"]),
-                str(tool["tool_id"]),
-                max(classification.confidence, 0.96),
-                f"guarded TimesCar cancel intent; model_tool_id={classification.tool_id}; router_reason={classification.reason}",
-                tool,
-            )
-    if classification.tool_id == "timescar.dm.adjust_start" and not looks_like_timescar_adjust(text):
-        tool = _tool_by_id(registry, "timescar.dm.cancel_next") if looks_like_timescar_cancel(text) else None
-        if tool:
-            return Classification(
-                str(tool["intent_id"]),
-                str(tool["tool_id"]),
-                max(classification.confidence, 0.96),
-                f"guarded away from adjust_start; model_tool_id={classification.tool_id}; router_reason={classification.reason}",
-                tool,
-            )
-    return classification
 
 
 def classify_intent_model_first(text: str, channel: str, user_id: str, registry: dict[str, Any], context: str = "") -> tuple[Classification, str | None]:
@@ -513,6 +426,11 @@ def apply_model_intent_frame(args: dict[str, Any], classification: Classificatio
     canonical_text = str(frame.get("canonical_text") or "").strip()
     if canonical_text and (classification.tool or {}).get("args_schema", {}).get("mode") == "dm_text_timestamp":
         updated["text"] = canonical_text
+    if (classification.tool or {}).get("args_schema", {}).get("mode") == "recurring_cron_job_from_text":
+        params = frame.get("parameters") if isinstance(frame.get("parameters"), dict) else {}
+        capability_id = str(params.get("capability_id") or "").strip()
+        if capability_id:
+            updated["capability_id"] = capability_id
     updated["_model_intent_frame"] = frame
     return updated
 
@@ -607,6 +525,9 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             cmd.append("--execute-agent")
             cmd.extend(["--agent-timeout", str(args.get("agent_timeout") or 900)])
     elif mode == "recurring_cron_job_from_text":
+        frame = args.get("_model_intent_frame") if isinstance(args.get("_model_intent_frame"), dict) else {}
+        params = frame.get("parameters") if isinstance(frame.get("parameters"), dict) else {}
+        capability_id = str(args.get("capability_id") or params.get("capability_id") or "").strip()
         cmd = [
             sys.executable,
             str(entrypoint),
@@ -615,14 +536,20 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             "--message-timestamp",
             args["message_timestamp"],
         ]
+        if capability_id:
+            cmd.extend(["--capability-id", capability_id])
         if args.get("reply_channel_id"):
             cmd.extend(["--reply-channel-id", str(args.get("reply_channel_id") or "")])
     else:
         raise ValueError(f"unsupported execution mode: {mode}")
     started = time.monotonic()
+    env = os.environ.copy()
+    if tool.get("tool_id"):
+        env["OPENCLAW_BOUND_TOOL_ID"] = str(tool.get("tool_id") or "")
     proc = subprocess.run(
         cmd,
         cwd=REPO,
+        env=env,
         text=True,
         encoding="utf-8",
         errors="replace",

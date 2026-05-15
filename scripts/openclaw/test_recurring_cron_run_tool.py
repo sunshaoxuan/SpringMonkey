@@ -54,12 +54,82 @@ def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path)
         jobs_path=jobs,
         dry_run=True,
         timeout=10,
+        capability_id="recurring.test",
     )
 
     assert code == 0
     assert payload["status"] == "dry_run"
     assert payload["job_name"] == "content-job"
     assert payload["job_id"] == "job_1"
+
+
+def test_recurring_cron_run_prefers_semantic_capability_id(tmp_path: Path) -> None:
+    capabilities = tmp_path / "capabilities.json"
+    jobs = tmp_path / "jobs.json"
+    write_json(
+        capabilities,
+        {
+            "schema_version": 1,
+            "jobs": [
+                {
+                    "capability_id": "recurring.semantic",
+                    "job_name": "semantic-job",
+                    "topic_aliases": ["不会命中文本"],
+                    "run_aliases": ["不会命中文本"],
+                    "allow_manual_run": True,
+                }
+            ],
+        },
+    )
+    write_json(jobs, {"jobs": [{"id": "job_sem", "name": "semantic-job", "enabled": True}]})
+
+    code, payload = tool.run_capability(
+        text="自然语言不需要被执行器枚举匹配",
+        capabilities_path=capabilities,
+        jobs_path=jobs,
+        dry_run=True,
+        timeout=10,
+        capability_id="recurring.semantic",
+    )
+
+    assert code == 0
+    assert payload["job_name"] == "semantic-job"
+
+
+def test_recurring_cron_run_can_use_model_contract_without_alias_match(tmp_path: Path) -> None:
+    capabilities = tmp_path / "capabilities.json"
+    jobs = tmp_path / "jobs.json"
+    write_json(
+        capabilities,
+        {
+            "schema_version": 1,
+            "jobs": [
+                {
+                    "capability_id": "recurring.model",
+                    "job_name": "model-job",
+                    "topic_aliases": ["不会命中"],
+                    "run_aliases": ["不会命中"],
+                    "allow_manual_run": True,
+                }
+            ],
+        },
+    )
+    write_json(jobs, {"jobs": [{"id": "job_model", "name": "model-job", "enabled": True}]})
+
+    code, payload = tool.run_capability(
+        text="请按语义选择正确的定时任务",
+        capabilities_path=capabilities,
+        jobs_path=jobs,
+        dry_run=True,
+        timeout=10,
+        model_caller=lambda _messages: json.dumps(
+            {"supported": True, "capability_id": "recurring.model", "confidence": 0.95, "reason": "test"},
+            ensure_ascii=False,
+        ),
+    )
+
+    assert code == 0
+    assert payload["job_id"] == "job_model"
 
 
 def test_recurring_cron_run_rejects_unconfigured_topic(tmp_path: Path) -> None:
@@ -74,6 +144,7 @@ def test_recurring_cron_run_rejects_unconfigured_topic(tmp_path: Path) -> None:
         jobs_path=jobs,
         dry_run=True,
         timeout=10,
+        capability_id="recurring.test",
     )
 
     assert code == 2
@@ -110,6 +181,7 @@ def test_recurring_cron_run_rejects_model_drift(tmp_path: Path) -> None:
         jobs_path=jobs,
         dry_run=True,
         timeout=10,
+        capability_id="recurring.test",
     )
 
     assert code == 2
@@ -160,6 +232,7 @@ def test_failed_run_keeps_stderr_tail(tmp_path: Path) -> None:
             jobs_path=jobs,
             dry_run=False,
             timeout=10,
+            capability_id="recurring.test",
         )
 
     assert code == 7
@@ -205,6 +278,7 @@ def test_successful_enqueue_registers_long_task_when_no_final_yet(tmp_path: Path
             supervisor_state=state,
             sessions_dir=sessions,
             reply_channel_id="dm_channel_1",
+            capability_id="recurring.test",
         )
 
     assert code == 0

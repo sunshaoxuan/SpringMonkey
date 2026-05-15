@@ -3,13 +3,20 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
+
+from pathlib import Path
+
+_OPENCLAW_DIR = Path(__file__).resolve().parents[1] / "openclaw"
+if str(_OPENCLAW_DIR) not in sys.path:
+    sys.path.insert(0, str(_OPENCLAW_DIR))
+
+from model_fallback_client import chat_with_fallback
 
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -67,27 +74,64 @@ def parse_message_time(raw: str) -> datetime:
     return value.astimezone(TZ)
 
 
-def target_date(text: str, message_timestamp: str) -> datetime:
+def extract_json_object(text: str) -> dict:
+    raw = (text or "").strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError(f"模型未返回天气查询 JSON 契约：{raw[:160]}")
+    data = json.loads(raw[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("模型返回的天气查询契约不是 JSON object")
+    return data
+
+
+def classify_weather_contract(text: str, message_timestamp: str, model_caller=None) -> dict:
     base = parse_message_time(message_timestamp)
-    compact = re.sub(r"\s+", "", text or "").lower()
-    if "后天" in compact or "明後日" in compact:
-        return base + timedelta(days=2)
-    if "今天" in compact or "今日" in compact:
-        return base
-    return base + timedelta(days=1)
+    system = (
+        "You are a semantic contract parser for a read-only weather executor. "
+        "Classify by meaning, not keyword matching. Return strict JSON only. "
+        "Schema: {supported:boolean, date_local:string|null, locations:[string], confidence:number, reason:string}. "
+        "date_local must be YYYY-MM-DD in Asia/Tokyo. "
+        "locations must use only registered names from: 东京, 长野. "
+        "If the request is not a concrete weather query for registered locations, supported=false."
+    )
+    user = json.dumps(
+        {
+            "message_time": base.isoformat(timespec="minutes"),
+            "user_text": text,
+            "registered_locations": sorted({loc.name for loc in KNOWN_LOCATIONS.values()}),
+        },
+        ensure_ascii=False,
+    )
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    content = model_caller(messages) if model_caller else chat_with_fallback(messages, timeout=30, temperature=0)[0]
+    contract = extract_json_object(content)
+    if not bool(contract.get("supported")):
+        raise ValueError(str(contract.get("reason") or "模型判断该指令不是受支持的天气查询契约"))
+    if float(contract.get("confidence") or 0.0) < 0.65:
+        raise ValueError("天气查询契约置信度过低")
+    names = contract.get("locations") if isinstance(contract.get("locations"), list) else []
+    if not names:
+        raise ValueError("天气查询契约缺少地点")
+    for name in names:
+        if str(name) not in {loc.name for loc in KNOWN_LOCATIONS.values()}:
+            raise ValueError(f"天气查询契约包含未注册地点：{name}")
+    if not contract.get("date_local"):
+        raise ValueError("天气查询契约缺少 date_local")
+    return contract
 
 
-def extract_locations(text: str) -> list[Location]:
-    lowered = (text or "").lower()
-    found: list[Location] = []
+def locations_from_contract(names: list[str]) -> list[Location]:
+    by_name = {loc.name: loc for loc in KNOWN_LOCATIONS.values()}
+    result: list[Location] = []
     seen: set[str] = set()
-    for key, loc in KNOWN_LOCATIONS.items():
-        if key.lower() in lowered and loc.name not in seen:
-            found.append(loc)
+    for name in names:
+        loc = by_name[str(name)]
+        if loc.name not in seen:
+            result.append(loc)
             seen.add(loc.name)
-    if found:
-        return found
-    raise ValueError("无法从指令中识别地点；当前已注册：东京、长野")
+    return result
 
 
 def fetch_json(url: str, timeout: int = 30) -> dict:
@@ -188,9 +232,10 @@ def fetch_location_weather(loc: Location, day: datetime) -> str:
     )
 
 
-def build_report(text: str, message_timestamp: str) -> str:
-    day = target_date(text, message_timestamp)
-    locations = extract_locations(text)
+def build_report(text: str, message_timestamp: str, *, model_caller=None) -> str:
+    contract = classify_weather_contract(text, message_timestamp, model_caller=model_caller)
+    day = datetime.fromisoformat(str(contract["date_local"])).replace(tzinfo=TZ)
+    locations = locations_from_contract([str(item) for item in contract["locations"]])
     lines = [f"天气查询 {day:%Y-%m-%d}（亚洲/东京）"]
     for loc in locations:
         lines.append(fetch_location_weather(loc, day))

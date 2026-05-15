@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import long_task_supervisor
+from model_fallback_client import chat_with_fallback
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -42,19 +43,62 @@ def configured_jobs(path: Path = DEFAULT_CAPABILITIES) -> list[dict[str, Any]]:
 
 
 def resolve_capability(text: str, jobs: list[dict[str, Any]]) -> dict[str, Any] | None:
-    raw = normalize(text)
-    best: tuple[int, dict[str, Any]] | None = None
+    contract = classify_recurring_capability_contract(text, jobs)
+    return resolve_capability_by_id(str(contract.get("capability_id") or ""), jobs)
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    raw = (text or "").strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError(f"model did not return JSON: {raw[:160]}")
+    data = json.loads(raw[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("model returned non-object JSON")
+    return data
+
+
+def classify_recurring_capability_contract(text: str, jobs: list[dict[str, Any]], model_caller=None) -> dict[str, Any]:
+    candidates = [
+        {
+            "capability_id": job.get("capability_id"),
+            "job_name": job.get("job_name"),
+            "description": job.get("description"),
+            "topic_aliases": job.get("topic_aliases", []),
+            "run_aliases": job.get("run_aliases", []),
+        }
+        for job in jobs
+        if bool(job.get("allow_manual_run"))
+    ]
+    system = (
+        "You are a semantic contract parser for an OpenClaw recurring-job executor. "
+        "Choose by meaning, not keyword matching. Return strict JSON only. "
+        "Schema: {supported:boolean, capability_id:string|null, confidence:number, reason:string}. "
+        "Only choose a capability_id from the provided candidates. If no candidate matches, supported=false."
+    )
+    user = json.dumps({"user_text": text, "candidates": candidates}, ensure_ascii=False)
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    content = model_caller(messages) if model_caller else chat_with_fallback(messages, timeout=30, temperature=0)[0]
+    contract = extract_json_object(content)
+    if not bool(contract.get("supported")):
+        raise ValueError(str(contract.get("reason") or "no recurring capability matched"))
+    capability_id = str(contract.get("capability_id") or "")
+    if not any(str(item.get("capability_id") or "") == capability_id for item in candidates):
+        raise ValueError(f"model selected unknown recurring capability_id: {capability_id}")
+    if float(contract.get("confidence") or 0.0) < 0.65:
+        raise ValueError("recurring capability contract confidence too low")
+    return contract
+
+
+def resolve_capability_by_id(capability_id: str, jobs: list[dict[str, Any]]) -> dict[str, Any] | None:
+    wanted = str(capability_id or "").strip()
+    if not wanted:
+        return None
     for job in jobs:
-        if not bool(job.get("allow_manual_run")):
-            continue
-        topic_hits = [alias for alias in job.get("topic_aliases", []) if normalize(str(alias)) in raw]
-        run_hits = [alias for alias in job.get("run_aliases", []) if normalize(str(alias)) in raw]
-        if not topic_hits or not run_hits:
-            continue
-        score = len(topic_hits) * 10 + len(run_hits)
-        if best is None or score > best[0]:
-            best = (score, job)
-    return None if best is None else dict(best[1])
+        if bool(job.get("allow_manual_run")) and str(job.get("capability_id") or "") == wanted:
+            return dict(job)
+    return None
 
 
 def find_cron_job(job_name: str, jobs_payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -267,8 +311,17 @@ def run_capability(
     supervisor_state: Path = long_task_supervisor.DEFAULT_STATE_PATH,
     sessions_dir: Path = DEFAULT_SESSIONS_DIR,
     reply_channel_id: str = "",
+    capability_id: str = "",
+    model_caller=None,
 ) -> tuple[int, dict[str, Any]]:
-    capability = resolve_capability(text, configured_jobs(capabilities_path))
+    configured = configured_jobs(capabilities_path)
+    capability = resolve_capability_by_id(capability_id, configured)
+    if not capability:
+        try:
+            contract = classify_recurring_capability_contract(text, configured, model_caller=model_caller)
+            capability = resolve_capability_by_id(str(contract.get("capability_id") or ""), configured)
+        except Exception:
+            capability = None
     if not capability:
         return 2, {"status": "error", "error": "no configured recurring job capability matched the request"}
     job_name = str(capability.get("job_name") or "")
@@ -359,6 +412,7 @@ def main() -> int:
     parser.add_argument("--supervisor-state", type=Path, default=long_task_supervisor.DEFAULT_STATE_PATH)
     parser.add_argument("--sessions-dir", type=Path, default=DEFAULT_SESSIONS_DIR)
     parser.add_argument("--reply-channel-id", default="")
+    parser.add_argument("--capability-id", default="")
     args = parser.parse_args()
     code, payload = run_capability(
         text=args.text,
@@ -369,6 +423,7 @@ def main() -> int:
         supervisor_state=args.supervisor_state,
         sessions_dir=args.sessions_dir,
         reply_channel_id=args.reply_channel_id,
+        capability_id=args.capability_id,
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
     return code

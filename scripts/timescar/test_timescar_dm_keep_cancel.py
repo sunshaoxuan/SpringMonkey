@@ -37,6 +37,7 @@ def main() -> int:
         original_run_booker = mod.run_booker
         original_run_adjuster = mod.run_adjuster
         original_classify_adjust_contract = mod.classify_adjust_contract
+        original_classify_book_contract = mod.classify_book_contract
         adjust_calls = []
         try:
             mod.fetch_reservations = lambda: reservations
@@ -79,6 +80,17 @@ def main() -> int:
                 )
 
             mod.run_adjuster = fake_adjuster
+            def fake_book_contract(text, message_time, *, model_caller=None):
+                return {
+                    "supported": True,
+                    "start_local": "2026-05-05T09:00",
+                    "end_local": "2026-05-05T21:00",
+                    "model_preference": "any" if "換" in text or "换" in text else "ヤリスクロス（ハイブリッド）",
+                    "confidence": 0.95,
+                    "reason": "test semantic booking contract",
+                }
+
+            mod.classify_book_contract = fake_book_contract
             def fake_adjust_contract(text, message_time, reservations, *, model_caller=None):
                 if "整体" in text:
                     return {
@@ -125,6 +137,7 @@ def main() -> int:
             mod.run_booker = original_run_booker
             mod.run_adjuster = original_run_adjuster
             mod.classify_adjust_contract = original_classify_adjust_contract
+            mod.classify_book_contract = original_classify_book_contract
         assert "预约已提交并回查确认" in book
         assert "预约开始：2026-05-05T09:00" in book
         assert "预约已提交并回查确认" in book_any
@@ -163,22 +176,12 @@ def main() -> int:
         assert "预约取消已提交并回查确认" in cancel_followup
         assert "已取消" in status
         assert "当前预约列表中已不存在该预约" in status
-        assert mod.is_keep_request("请保留明天的订车")
-        assert mod.is_book_request("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。")
-        assert mod.is_book_request("那就把车换成可以预订的车")
-        assert mod.book_model_preference("那就把车换成可以预订的车") == "any"
-        assert mod.is_cancel_request("请取消这单订车")
-        assert mod.is_cancel_request("好的，把刚刚这单取消掉吧")
-        assert mod.is_cancel_request("把这单取消掉")
-        assert mod.is_cancel_status_request("这单取消了吗？")
-        assert mod.is_adjust_request("请把明天开始的订车改到后天早9点")
-        assert mod.is_adjust_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
-        assert mod.is_adjust_request("把这单的开始时间往后推24小时，结束时间不变。")
-        assert mod.is_adjust_request("请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。")
-        assert mod.is_whole_window_shift_request("请把马上开始的那单预订帮我往后整体延15分钟。")
-        assert mod.is_adjust_request("请把马上开始的那单预订帮我往后整体延15分钟。")
-        assert not mod.is_cancel_request("请把明天开始的订车取消明天的时间，让开始时间从后天早上9点开始")
-        assert not mod.is_adjust_request("好的，把刚刚这单取消掉吧")
+        assert mod.operation_from_tool_id("timescar.dm.keep_next") == "keep_next"
+        assert mod.operation_from_tool_id("timescar.dm.book_window") == "book_window"
+        assert mod.operation_from_tool_id("timescar.dm.cancel_next") == "cancel_next"
+        assert mod.operation_from_tool_id("timescar.dm.cancel_status") == "cancel_status"
+        assert mod.operation_from_tool_id("timescar.dm.adjust_start") == "adjust_start"
+        assert mod.operation_from_tool_id("timescar.dm.shift_window") == "shift_window"
         assert mod.parse_query_hours("查一下未来一周的订车记录") == 24 * 7
         assert mod.parse_query_hours("未来一週間のTimesCar予約を確認して") == 24 * 7
         assert mod.parse_query_hours("查一下未来2周的订车记录") == 24 * 14
@@ -209,6 +212,33 @@ def main() -> int:
         )
         assert contract["operation"] == "adjust_start"
         assert contract["target"]["selector"] == "relative_day_unique_reservation"
+        book_contract = mod.classify_book_contract(
+            "请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。",
+            message_time,
+            model_caller=lambda _messages: json.dumps(
+                {
+                    "supported": True,
+                    "start_local": "2026-05-05T09:00",
+                    "end_local": "2026-05-05T21:00",
+                    "model_preference": "ヤリスクロス（ハイブリッド）",
+                    "confidence": 0.96,
+                    "reason": "semantic booking parser test",
+                },
+                ensure_ascii=False,
+            ),
+        )
+        assert book_contract["start_local"] == "2026-05-05T09:00"
+        op_contract = mod.classify_timescar_operation_contract(
+            "请保留明天的订车",
+            message_time,
+            reservations,
+            model_caller=lambda _messages: json.dumps(
+                {"supported": True, "operation": "keep_next", "confidence": 0.95, "reason": "semantic operation parser test"},
+                ensure_ascii=False,
+            ),
+        )
+        assert op_contract["operation"] == "keep_next"
+        assert mod.resolve_timescar_operation("不用猜语义", message_time, "timescar.dm.cancel_next") == "cancel_next"
         try:
             mod.classify_adjust_contract(
                 "随便处理一下这单",

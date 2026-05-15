@@ -34,6 +34,16 @@ def main() -> int:
         report = mod.build_report(
             "请查询明天东京和长野天气、风况和能见度",
             "2026-05-04T18:00:00+09:00",
+            model_caller=lambda _messages: json.dumps(
+                {
+                    "supported": True,
+                    "date_local": "2026-05-05",
+                    "locations": ["东京", "长野"],
+                    "confidence": 0.96,
+                    "reason": "test semantic weather contract",
+                },
+                ensure_ascii=False,
+            ),
         )
     assert "2026-05-05" in report
     assert "- 东京:" in report

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -201,6 +202,110 @@ def classify_adjust_contract(
     return contract
 
 
+def classify_timescar_operation_contract(
+    text: str,
+    message_time: datetime,
+    reservations: list[dict],
+    *,
+    model_caller: Callable[[list[dict[str, str]]], str] | None = None,
+) -> dict[str, Any]:
+    system = (
+        "You are a semantic operation-contract parser for a TimesCar owner-DM executor. "
+        "Classify by meaning, not keyword matching. Return strict JSON only. "
+        "Schema: {supported:boolean, operation:'query'|'book_window'|'keep_next'|'cancel_next'|'cancel_status'|'adjust_start'|'shift_window'|'unsupported', "
+        "confidence:number, reason:string}. "
+        "Use query for read-only reservation list/range checks. "
+        "Use book_window for creating a reservation. Use keep_next for recording a keep decision. "
+        "Use cancel_next for cancelling a reservation. Use cancel_status for checking whether cancellation succeeded. "
+        "Use adjust_start when only reservation start changes and return/end is preserved. "
+        "Use shift_window when start and return/end move together by the same duration. "
+        "If not a concrete TimesCar reservation operation, supported=false."
+    )
+    user = json.dumps(
+        {
+            "message_time": message_time.isoformat(timespec="minutes"),
+            "user_text": text,
+            "current_reservations": reservation_contract_context(reservations),
+        },
+        ensure_ascii=False,
+    )
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    if model_caller:
+        content = model_caller(messages)
+    else:
+        content, _meta = chat_with_fallback(messages, timeout=30, temperature=0)
+    contract = extract_json_object(content)
+    if not bool(contract.get("supported")):
+        raise IntentError(str(contract.get("reason") or "模型判断该指令不是受支持的 TimesCar 操作契约"))
+    operation = str(contract.get("operation") or "")
+    allowed = {"query", "book_window", "keep_next", "cancel_next", "cancel_status", "adjust_start", "shift_window"}
+    if operation not in allowed:
+        raise IntentError(f"模型返回了不支持的 TimesCar 操作：{operation}")
+    try:
+        confidence = float(contract.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < 0.65:
+        raise IntentError(f"TimesCar 操作契约置信度过低：{confidence}")
+    return contract
+
+
+def operation_from_tool_id(tool_id: str) -> str | None:
+    return {
+        "timescar.dm.query": "query",
+        "timescar.dm.book_window": "book_window",
+        "timescar.dm.keep_next": "keep_next",
+        "timescar.dm.cancel_next": "cancel_next",
+        "timescar.dm.cancel_status": "cancel_status",
+        "timescar.dm.adjust_start": "adjust_start",
+        "timescar.dm.shift_window": "shift_window",
+    }.get(str(tool_id or ""))
+
+
+def resolve_timescar_operation(text: str, message_time: datetime, tool_id: str = "") -> str:
+    operation = operation_from_tool_id(tool_id)
+    if operation:
+        return operation
+    contract = classify_timescar_operation_contract(text, message_time, fetch_reservations())
+    return str(contract["operation"])
+
+
+def classify_book_contract(
+    text: str,
+    message_time: datetime,
+    *,
+    model_caller: Callable[[list[dict[str, str]]], str] | None = None,
+) -> dict[str, Any]:
+    system = (
+        "You are a semantic contract parser for a TimesCar booking executor. "
+        "Classify by meaning, not keyword matching. Return strict JSON only. "
+        "Schema: {supported:boolean, start_local:string|null, end_local:string|null, model_preference:string, confidence:number, reason:string}. "
+        "start_local and end_local must be local Asia/Tokyo timestamps formatted YYYY-MM-DDTHH:MM. "
+        "model_preference should be the requested vehicle/model preference, or 'any' when the user asks to use any available car. "
+        "If the request is not a concrete TimesCar booking request, supported=false."
+    )
+    user = json.dumps({"message_time": message_time.isoformat(timespec="minutes"), "user_text": text}, ensure_ascii=False)
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    if model_caller:
+        content = model_caller(messages)
+    else:
+        content, _meta = chat_with_fallback(messages, timeout=30, temperature=0)
+    contract = extract_json_object(content)
+    if not bool(contract.get("supported")):
+        raise IntentError(str(contract.get("reason") or "模型判断该指令不是受支持的 TimesCar 预订契约"))
+    try:
+        confidence = float(contract.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < 0.65:
+        raise IntentError(f"TimesCar 预订契约置信度过低：{confidence}")
+    if not contract.get("start_local") or not contract.get("end_local"):
+        raise IntentError("TimesCar 预订契约缺少 start_local/end_local")
+    if not str(contract.get("model_preference") or "").strip():
+        contract["model_preference"] = "ヤリスクロス（ハイブリッド）"
+    return contract
+
+
 def reservation_by_contract_target(reservations: list[dict], target: dict[str, Any], message_time: datetime) -> dict:
     selector = str(target.get("selector") or "")
     if selector == "booking_number":
@@ -268,179 +373,6 @@ def interpret_adjust_contract(
     raise IntentError(f"不支持的调整契约操作：{operation}")
 
 
-def parse_relative_shift_minutes(text: str) -> int | None:
-    raw = normalize_text(text)
-    if not any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延")):
-        return None
-    minute_match = re.search(r"(\d{1,3})\s*(?:分钟|分鐘|min|m)", text, flags=re.IGNORECASE)
-    if minute_match:
-        return int(minute_match.group(1))
-    match = re.search(r"(\d{1,3})\s*(?:小时|小時|h|H)", text)
-    if match:
-        return int(match.group(1)) * 60
-    if any(token in raw for token in ("一天", "1天", "一日", "1日")):
-        return 24 * 60
-    return None
-
-
-def parse_relative_start_shift_hours(text: str) -> int | None:
-    minutes = parse_relative_shift_minutes(text)
-    if minutes is None or minutes % 60 != 0:
-        return None
-    return minutes // 60
-
-
-def is_this_booking_reference(text: str) -> bool:
-    raw = normalize_text(text)
-    return any(token in raw for token in ("这单", "這單", "刚刚这单", "刚才这单", "订单", "這張", "这张"))
-
-
-def interpret_relative_adjust_request(text: str, message_time: datetime) -> tuple[datetime, datetime] | None:
-    raw = normalize_text(text)
-    hours = parse_relative_start_shift_hours(text)
-    if hours is None:
-        return None
-    if not is_this_booking_reference(text):
-        return None
-    if "开始" not in raw:
-        return None
-    if "结束时间不变" not in raw and "结束不变" not in raw and "終わり不変" not in raw:
-        return None
-    reservation = find_next_reservation(fetch_reservations(), message_time)
-    if reservation is None:
-        raise IntentError("未来 48 小时内没有找到可调整的 TimesCar 预约")
-    current_start = parse_iso_minute(str(reservation.get("start") or ""))
-    return current_start, current_start + timedelta(hours=hours)
-
-
-def is_whole_window_shift_request(text: str) -> bool:
-    raw = normalize_text(text)
-    if parse_relative_shift_minutes(text) is None:
-        return False
-    has_booking_ref = is_this_booking_reference(text) or any(token in raw for token in ("马上开始", "即将开始", "最近一单", "下一单"))
-    has_window = any(token in raw for token in ("整体", "整體", "整单", "整單", "整个", "整個", "全部", "一起"))
-    has_reservation = any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "TimesCar", "timescar", "这单", "那单"))
-    return has_booking_ref and has_window and has_reservation
-
-
-def interpret_window_shift_request(text: str, message_time: datetime) -> tuple[str, datetime, datetime, datetime]:
-    minutes = parse_relative_shift_minutes(text)
-    if minutes is None:
-        raise IntentError("未识别整体平移时长")
-    if not is_whole_window_shift_request(text):
-        raise IntentError("不是明确的 TimesCar 预约整体平移指令")
-    reservation = find_next_reservation(fetch_reservations(), message_time)
-    if reservation is None:
-        raise IntentError("未来 48 小时内没有找到可整体平移的 TimesCar 预约")
-    booking = str(reservation.get("bookingNumber") or "")
-    if not booking:
-        raise IntentError("找到预约但缺少预约编号，无法整体平移")
-    current_start = parse_iso_minute(str(reservation.get("start") or ""))
-    current_return = parse_iso_minute(str(reservation.get("return") or ""))
-    shift = timedelta(minutes=minutes)
-    return booking, current_start, current_start + shift, current_return + shift
-
-
-def interpret_adjust_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
-    _booking, current_start, new_start, new_return = interpret_adjust_contract(text, message_time)
-    if new_return is not None:
-        raise IntentError("该指令是整体平移窗口，请走 shift_window 契约")
-    return current_start, new_start
-
-
-def interpret_adjust_request_legacy(text: str, message_time: datetime) -> tuple[datetime, datetime]:
-    raw = text.strip()
-    if not raw:
-        raise IntentError("空指令")
-    relative = interpret_relative_adjust_request(raw, message_time)
-    if relative:
-        return relative
-    normalized = normalize_text(raw)
-    minutes = parse_relative_shift_minutes(raw)
-    keeps_end = any(token in normalized for token in ("结束时间不变", "结束不变", "结束时间保持不变", "结束保持不变", "終わり不変"))
-    if "明天" in raw and minutes is not None and keeps_end:
-        target_date = (message_time + timedelta(days=1)).date()
-        current_start = find_unique_reservation_start_on_date(fetch_reservations(), target_date)
-        if current_start is None:
-            raise IntentError("未能唯一定位明天开始的 TimesCar 预约")
-        return current_start, current_start + timedelta(minutes=minutes)
-    if "明天" not in raw or "后天" not in raw:
-        raise IntentError("当前 TimesCar 专用执行器只接受明确包含“明天”和“后天”的改开始时间指令")
-    if "开始" not in raw or ("订车" not in raw and "预约" not in raw and "TimesCar" not in raw and "timescar" not in raw):
-        raise IntentError("不是明确的 TimesCar 预约开始时间变更指令")
-
-    base_day = message_time.date()
-    current_start = datetime.combine(base_day + timedelta(days=1), datetime.min.time(), tzinfo=TZ).replace(hour=9)
-    new_start = datetime.combine(base_day + timedelta(days=2), datetime.min.time(), tzinfo=TZ).replace(hour=9)
-    return current_start, new_start
-
-
-def is_query_request(text: str) -> bool:
-    raw = text.strip()
-    if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
-        return False
-    return any(token in raw for token in ("检查", "查询", "查看", "看看", "列表", "记录", "未来"))
-
-
-def is_book_request(text: str) -> bool:
-    raw = text.strip()
-    if any(token in raw for token in ("取消", "保留", "查询", "查看", "检查", "状态", "改到", "改成", "变更", "开始时间", "后天", "延期", "延迟")):
-        return False
-    if any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成")) and any(
-        token in raw for token in ("车", "车辆", "车型", "预订", "预约")
-    ):
-        return True
-    if not any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "一单", "一臺", "一台", "车辆", "车型", "TimesCar", "timescar")):
-        return False
-    return any(token in raw for token in ("预订", "預訂", "预约一单", "订一单", "再预订", "明天")) and any(
-        token in raw for token in ("9点", "九点", "09", "早9", "早上9", "21点", "到21", "惯用", "车型")
-    )
-
-
-def is_cancel_status_request(text: str) -> bool:
-    raw = text.strip()
-    if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar", "取消")):
-        return False
-    return any(token in raw for token in ("取消了吗", "取消了么", "取消成功", "是否取消", "有没有取消", "还在吗", "还在不在", "状态"))
-
-
-def is_keep_request(text: str) -> bool:
-    raw = text.strip()
-    if not any(token in raw for token in ("订车", "预约", "这单", "订单", "TimesCar", "timescar")):
-        return False
-    return any(token in raw for token in ("保留", "不要取消", "不取消", "keep"))
-
-
-def is_cancel_request(text: str) -> bool:
-    raw = text.strip()
-    if not any(token in raw for token in ("订车", "预约", "这单", "刚刚这单", "刚才这单", "订单", "TimesCar", "timescar")):
-        return False
-    if "取消明天的时间" in raw and "后天" in raw:
-        return False
-    return any(token in raw for token in ("取消这单", "这单取消", "把这单取消", "刚刚这单取消", "刚才这单取消", "取消掉", "取消订单", "取消预约", "取消订车", "cancel"))
-
-
-def is_adjust_request(text: str) -> bool:
-    raw = text.strip()
-    if is_cancel_request(raw) or is_keep_request(raw) or is_book_request(raw) or is_cancel_status_request(raw) or is_query_request(raw):
-        return False
-    if is_whole_window_shift_request(raw):
-        return True
-    normalized = normalize_text(raw)
-    if (
-        is_this_booking_reference(raw)
-        and "开始" in normalized
-        and parse_relative_start_shift_hours(raw) is not None
-        and any(token in normalized for token in ("结束时间不变", "结束不变", "終わり不変"))
-    ):
-        return True
-    if not any(token in raw for token in ("订车", "预约", "TimesCar", "timescar")):
-        return False
-    if not any(token in raw for token in ("开始时间", "后天", "延迟", "延期", "变更", "改到", "改成", "结束时间不变")):
-        return False
-    return any(token in raw for token in ("后天", "开始时间", "早上9点", "早9点", "09", "结束时间不变"))
-
-
 def parse_query_hours(text: str) -> int:
     return int(requested_range_hours(text, default=24) or 24)
 
@@ -450,21 +382,6 @@ def parse_query_window(text: str) -> tuple[int, int]:
     if spec is None:
         return 0, 24
     return spec.offset_hours, spec.duration_hours
-
-
-def interpret_book_request(text: str, message_time: datetime) -> tuple[datetime, datetime]:
-    raw = text.strip()
-    any_available_followup = any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成"))
-    if "明天" not in raw and not any_available_followup:
-        raise IntentError("当前 TimesCar 预订执行器只接受明确包含“明天”的预订指令")
-    if not any_available_followup and not any(token in raw for token in ("9点", "九点", "09", "早9", "早上9")):
-        raise IntentError("当前 TimesCar 预订执行器需要明确开始时间为 09:00")
-    if not any_available_followup and not any(token in raw for token in ("21点", "二十一点", "到21", "至21")):
-        raise IntentError("当前 TimesCar 预订执行器需要明确结束时间为 21:00")
-    base_day = message_time.astimezone(TZ).date()
-    start = datetime.combine(base_day + timedelta(days=1), datetime.min.time(), tzinfo=TZ).replace(hour=9)
-    end = start.replace(hour=21)
-    return start, end
 
 
 def format_query_result(text: str, message_time: datetime) -> str:
@@ -574,13 +491,6 @@ def run_canceller(booking: str, current_start: datetime, force: bool) -> subproc
     return run_child_tool(cmd)
 
 
-def book_model_preference(text: str) -> str:
-    raw = text.strip()
-    if any(token in raw for token in ("可以预订的车", "可预订的车", "能预订的车", "换车", "换成")):
-        return "any"
-    return "ヤリスクロス（ハイブリッド）"
-
-
 def run_booker(start: datetime, end: datetime, force: bool, model_preference: str) -> subprocess.CompletedProcess[str]:
     cmd = [
         "python3",
@@ -599,8 +509,12 @@ def run_booker(start: datetime, end: datetime, force: bool, model_preference: st
 
 
 def format_book_result(text: str, message_time: datetime, force: bool) -> str:
-    start, end = interpret_book_request(text, message_time)
-    result = run_booker(start, end, force, book_model_preference(text))
+    contract = classify_book_contract(text, message_time)
+    start = parse_iso_minute(str(contract["start_local"]))
+    end = parse_iso_minute(str(contract["end_local"]))
+    if start >= end:
+        raise IntentError("TimesCar 预订契约的开始时间必须早于结束时间")
+    result = run_booker(start, end, force, str(contract.get("model_preference") or "ヤリスクロス（ハイブリッド）"))
     output = result.stdout.strip()
     if result.returncode != 0:
         raise IntentError(output or f"TimesCar 预订执行器失败，退出码：{result.returncode}")
@@ -819,28 +733,34 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--text", required=True)
     parser.add_argument("--message-timestamp", required=True)
+    parser.add_argument("--tool-id", default=os.environ.get("OPENCLAW_BOUND_TOOL_ID", ""))
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
     message_time = parse_message_time(args.message_timestamp)
-    if is_book_request(args.text):
+    operation = resolve_timescar_operation(args.text, message_time, args.tool_id)
+    if operation == "book_window":
         print(format_book_result(args.text, message_time, args.force))
         return 0
-    if is_cancel_status_request(args.text):
+    if operation == "cancel_status":
         print(format_cancel_status_result(args.text, message_time))
         return 0
-    if is_query_request(args.text):
+    if operation == "query":
         print(format_query_result(args.text, message_time))
         return 0
-    if is_keep_request(args.text):
+    if operation == "keep_next":
         print(format_keep_result(args.text, message_time))
         return 0
-    if is_cancel_request(args.text):
+    if operation == "cancel_next":
         print(format_cancel_result(args.text, message_time, args.force))
         return 0
-
-    print(format_adjust_result(args.text, message_time, args.force))
-    return 0
+    if operation == "shift_window":
+        print(format_shift_window_result(args.text, message_time, args.force))
+        return 0
+    if operation == "adjust_start":
+        print(format_adjust_result(args.text, message_time, args.force))
+        return 0
+    raise IntentError(f"未能解析 TimesCar 操作契约：{operation}")
 
 
 if __name__ == "__main__":
