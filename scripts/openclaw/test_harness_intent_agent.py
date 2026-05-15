@@ -52,23 +52,55 @@ def test_long_task_status_uses_deterministic_frame() -> None:
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.long_task.status"
 
 
-def test_timescar_shift_window_uses_deterministic_frame() -> None:
-    frame = agent.infer_intent_frame("请把马上开始的那单预订帮我往后整体延15分钟。", context="", registry=load_registry())
+def test_timescar_shift_window_uses_semantic_model_frame() -> None:
+    frame = agent.infer_intent_frame(
+        "请把马上开始的那单预订帮我往后整体延15分钟。",
+        context="",
+        registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "timescar",
+                "action": "adjust",
+                "canonical_text": "将马上开始的 TimesCar 预约整体后移 15 分钟，开始和结束一起平移。",
+                "context_refs": [{"type": "recent_timescar_reservation", "selector": "next_reservation_within_48h"}],
+                "parameters": {"relative_window_shift": True, "preserve_duration": True},
+                "safety": "write",
+                "result_contract": {"type": "timescar_shift_window", "preserve_duration": True},
+                "tool_candidates": [{"tool_id": "timescar.dm.shift_window", "confidence": 0.98, "reason": "semantic contract"}],
+                "confidence": 0.98,
+                "reason": "semantic TimesCar whole-window shift",
+            }
+        ),
+    )
 
-    assert frame.source == "local_rule"
     assert frame.domain == "timescar"
     assert frame.action == "adjust"
     assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.shift_window"
 
 
-def test_timescar_tomorrow_relative_adjust_uses_deterministic_frame() -> None:
+def test_timescar_tomorrow_relative_adjust_uses_semantic_model_frame() -> None:
     frame = agent.infer_intent_frame(
         "请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。",
         context="",
         registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "timescar",
+                "action": "adjust",
+                "canonical_text": "将明天开始的 TimesCar 预约开始时间后移 24 小时，结束时间保持不变。",
+                "context_refs": [{"type": "recent_timescar_reservation", "selector": "tomorrow_reservation"}],
+                "parameters": {"relative_start_shift_hours": 24, "preserve_return_time": True},
+                "safety": "write",
+                "result_contract": {"type": "timescar_adjust_start", "preserve_return_time": True},
+                "tool_candidates": [{"tool_id": "timescar.dm.adjust_start", "confidence": 0.98, "reason": "semantic contract"}],
+                "confidence": 0.98,
+                "reason": "semantic TimesCar start adjustment",
+            }
+        ),
     )
 
-    assert frame.source == "local_rule"
     assert frame.domain == "timescar"
     assert frame.action == "adjust"
     assert frame.tool_candidates[0]["tool_id"] == "timescar.dm.adjust_start"

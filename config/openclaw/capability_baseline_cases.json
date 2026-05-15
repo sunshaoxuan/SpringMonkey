@@ -79,7 +79,6 @@
     {
       "id": "timescar_adjust_relative_this_booking",
       "text": "把这单的开始时间往后推24小时，结束时间不变。",
-      "live_intent": true,
       "expected": {
         "domain": "timescar",
         "action": "adjust",
@@ -93,7 +92,6 @@
     {
       "id": "timescar_adjust_tomorrow_relative_preserve_end",
       "text": "请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。",
-      "live_intent": true,
       "expected": {
         "domain": "timescar",
         "action": "adjust",
@@ -107,7 +105,6 @@
     {
       "id": "timescar_shift_window_relative_imminent",
       "text": "请把马上开始的那单预订帮我往后整体延15分钟。",
-      "live_intent": true,
       "expected": {
         "domain": "timescar",
         "action": "adjust",

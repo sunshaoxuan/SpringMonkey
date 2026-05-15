@@ -395,13 +395,7 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
-    local_frame = (
-        relative_timescar_shift_window_frame(text)
-        or relative_timescar_adjust_frame(text)
-        or long_task_status_frame(text)
-        or recurring_cron_run_frame(text)
-        or cron_status_frame(text)
-    )
+    local_frame = long_task_status_frame(text) or recurring_cron_run_frame(text) or cron_status_frame(text)
     if local_frame:
         append_jsonl(
             model_call_log_path(),

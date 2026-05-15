@@ -13,7 +13,7 @@ def test_capability_baseline_passes_static_and_local_rule_cases() -> None:
     results = baseline.verify_baseline(fail_open_model=False)
     failures = [item for item in results if not item.passed]
     assert not failures, failures
-    assert any(item.case_id == "timescar_adjust_relative_this_booking" and item.live_intent for item in results)
+    assert any(item.case_id == "timescar_adjust_relative_this_booking" and not item.live_intent for item in results)
     assert any(item.case_id == "xhs_cron_status" and item.actual_tool_id == "openclaw.cron.status" for item in results)
 
 
