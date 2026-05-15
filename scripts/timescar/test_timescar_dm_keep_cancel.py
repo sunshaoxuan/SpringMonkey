@@ -36,6 +36,7 @@ def main() -> int:
         original_run_canceller = mod.run_canceller
         original_run_booker = mod.run_booker
         original_run_adjuster = mod.run_adjuster
+        original_classify_adjust_contract = mod.classify_adjust_contract
         adjust_calls = []
         try:
             mod.fetch_reservations = lambda: reservations
@@ -78,6 +79,32 @@ def main() -> int:
                 )
 
             mod.run_adjuster = fake_adjuster
+            def fake_adjust_contract(text, message_time, reservations, *, model_caller=None):
+                if "整体" in text:
+                    return {
+                        "supported": True,
+                        "operation": "shift_window",
+                        "target": {"selector": "next_within_hours", "booking_number": None, "relative_days": None, "within_hours": 48},
+                        "start_shift_minutes": 15,
+                        "new_start_local": None,
+                        "preserve_return_time": False,
+                        "shift_return_time": True,
+                        "confidence": 0.95,
+                        "reason": "test semantic contract",
+                    }
+                return {
+                    "supported": True,
+                    "operation": "adjust_start",
+                    "target": {"selector": "relative_day_unique_reservation", "booking_number": None, "relative_days": 1, "within_hours": None},
+                    "start_shift_minutes": 24 * 60,
+                    "new_start_local": None,
+                    "preserve_return_time": True,
+                    "shift_return_time": False,
+                    "confidence": 0.95,
+                    "reason": "test semantic contract",
+                }
+
+            mod.classify_adjust_contract = fake_adjust_contract
             book = mod.format_book_result("请再预订一单明天早9点到21点的车辆，车型和我惯用的一致。", message_time, force=True)
             book_any = mod.format_book_result("那就把车换成可以预订的车", message_time, force=True)
             keep = mod.format_keep_result("请保留明天的订车", message_time)
@@ -97,6 +124,7 @@ def main() -> int:
             mod.run_canceller = original_run_canceller
             mod.run_booker = original_run_booker
             mod.run_adjuster = original_run_adjuster
+            mod.classify_adjust_contract = original_classify_adjust_contract
         assert "预约已提交并回查确认" in book
         assert "预约开始：2026-05-05T09:00" in book
         assert "预约已提交并回查确认" in book_any
@@ -160,9 +188,48 @@ def main() -> int:
         assert mod.parse_query_hours("查询 TimesCar 预约 一个月的") == 24 * 30
         assert mod.parse_query_hours("未来1ヶ月のTimesCar予約を確認して") == 24 * 30
         assert mod.parse_query_window("未来一个月以后的订车记录") == (24 * 30, 24 * 30)
+        contract = mod.classify_adjust_contract(
+            "请把明天开始的 TimesCar 订车预约的开始时间往后延 24 小时，结束时间保持不变。",
+            message_time,
+            reservations,
+            model_caller=lambda _messages: json.dumps(
+                {
+                    "supported": True,
+                    "operation": "adjust_start",
+                    "target": {"selector": "relative_day_unique_reservation", "booking_number": None, "relative_days": 1, "within_hours": None},
+                    "start_shift_minutes": 1440,
+                    "new_start_local": None,
+                    "preserve_return_time": True,
+                    "shift_return_time": False,
+                    "confidence": 0.96,
+                    "reason": "semantic parser test",
+                },
+                ensure_ascii=False,
+            ),
+        )
+        assert contract["operation"] == "adjust_start"
+        assert contract["target"]["selector"] == "relative_day_unique_reservation"
         try:
-            mod.interpret_adjust_request("随便处理一下这单", message_time)
-            raise AssertionError("ambiguous TimesCar text must not be accepted as adjust request")
+            mod.classify_adjust_contract(
+                "随便处理一下这单",
+                message_time,
+                reservations,
+                model_caller=lambda _messages: json.dumps(
+                    {
+                        "supported": False,
+                        "operation": "unsupported",
+                        "target": {"selector": "next_within_hours", "booking_number": None, "relative_days": None, "within_hours": 48},
+                        "start_shift_minutes": None,
+                        "new_start_local": None,
+                        "preserve_return_time": None,
+                        "shift_return_time": None,
+                        "confidence": 0.4,
+                        "reason": "ambiguous request",
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+            raise AssertionError("unsupported TimesCar text must not be accepted")
         except mod.IntentError:
             pass
     print("timescar_dm_keep_cancel_ok")
