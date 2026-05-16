@@ -115,10 +115,13 @@ def ensure_config(config_path: Path) -> None:
         return
     data = json.loads(config_path.read_text(encoding='utf-8'))
     discord = data.setdefault('channels', {{}}).setdefault('discord', {{}})
-    thread_bindings = discord.setdefault('threadBindings', {{}})
-    thread_bindings.pop('spawnSubagentSessions', None)
-    thread_bindings.pop('spawnAcpSessions', None)
-    thread_bindings['spawnSessions'] = True
+    thread_bindings = discord.get('threadBindings')
+    if isinstance(thread_bindings, dict):
+        thread_bindings.pop('spawnSubagentSessions', None)
+        thread_bindings.pop('spawnAcpSessions', None)
+        thread_bindings.pop('spawnSessions', None)
+        if not thread_bindings:
+            discord.pop('threadBindings', None)
     plugins = data.setdefault('plugins', {{}})
     if 'allow' in plugins and 'bundledDiscovery' not in plugins:
         plugins['bundledDiscovery'] = 'compat'
