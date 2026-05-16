@@ -3,11 +3,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
 DEFAULT_LONG_TASK_STATE = Path("/var/lib/openclaw/.openclaw/workspace/state/long_task_supervisor/tasks.json")
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 
 def read_jsonl_tail(path: Path, limit: int) -> list[dict]:
@@ -63,21 +70,62 @@ def lifecycle(event: dict) -> str:
     return f"recorded -> {status}"
 
 
+def package_state(kernel_root: Path, package_id: str) -> dict:
+    if not package_id:
+        return {}
+    state_path = kernel_root / "toolsmith_packages" / package_id / "package_state.json"
+    if not state_path.is_file():
+        return {}
+    try:
+        loaded = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def effective_event(kernel_root: Path, event: dict) -> dict:
+    resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
+    state = package_state(kernel_root, str(resolved_by.get("package_id") or ""))
+    state_status = str(state.get("status") or "")
+    if state_status != "superseded":
+        return event
+    updated = dict(event)
+    updated["runner_status"] = "superseded"
+    updated["replay_allowed"] = False
+    updated_resolved = dict(resolved_by)
+    updated_resolved["status"] = "superseded"
+    updated_resolved["deployment_status"] = str(state.get("deployment_status") or "superseded")
+    updated["resolved_by"] = updated_resolved
+    return updated
+
+
+def helper_count_from_registry(registry_path: Path) -> int:
+    if not registry_path.is_file():
+        return 0
+    try:
+        loaded = json.loads(registry_path.read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    if isinstance(loaded, dict):
+        helpers = loaded.get("promoted_helpers")
+        if isinstance(helpers, list):
+            return len(helpers)
+        return len(loaded)
+    if isinstance(loaded, list):
+        return len(loaded)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Report current Agent Society self-evolution status.")
     parser.add_argument("--kernel-root", type=Path, default=DEFAULT_KERNEL_ROOT)
     parser.add_argument("--limit", type=int, default=5)
     args = parser.parse_args()
-    events = read_jsonl_tail(args.kernel_root / "capability_gap_events.jsonl", args.limit)
+    events = [effective_event(args.kernel_root, event) for event in read_jsonl_tail(args.kernel_root / "capability_gap_events.jsonl", args.limit)]
     regressions = read_jsonl_tail(args.kernel_root / "regression_repair_packages.jsonl", args.limit)
     plans = read_jsonl_tail(args.kernel_root / "dm_capability_plans.jsonl", args.limit)
     registry = args.kernel_root / "helper_registry.json"
-    helper_count = 0
-    if registry.is_file():
-        try:
-            helper_count = len(json.loads(registry.read_text(encoding="utf-8")).get("promoted_helpers", []))
-        except Exception:
-            helper_count = 0
+    helper_count = helper_count_from_registry(registry)
     long_tasks: list[dict] = []
     if DEFAULT_LONG_TASK_STATE.is_file():
         try:
@@ -99,7 +147,7 @@ def main() -> int:
     unresolved = [
         event
         for event in events
-        if str(event.get("runner_status") or "") not in {"promoted", "verified", "deployed", "replayed"}
+        if str(event.get("runner_status") or "") not in {"promoted", "verified", "deployed", "replayed", "superseded"}
         and not bool(event.get("replay_allowed"))
     ]
     if unresolved:
