@@ -138,12 +138,16 @@ def start_implementation(
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     model: str | None = None,
     thinking: str | None = None,
+    force: bool = False,
     dry_run: bool = False,
 ) -> DomainImplementationRun:
     package = load_package(package_state)
     package_id = str(package.get("package_id") or package_state.parent.name)
-    run_id = stable_run_id(package_id, str(package.get("fingerprint") or ""))
-    prior = existing_run(run_id, state_path=state_path)
+    base_run_id = stable_run_id(package_id, str(package.get("fingerprint") or ""))
+    run_id = base_run_id
+    if force:
+        run_id = f"{base_run_id}_r{datetime.now(timezone.utc).strftime('%H%M%S')}"
+    prior = None if force else existing_run(run_id, state_path=state_path)
     if prior and str(prior.get("status") or "") in ACTIVE_STATUSES | {"delivered", "failed", "timed_out"}:
         return DomainImplementationRun(
             run_id=run_id,
@@ -271,6 +275,7 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--model", default="")
     parser.add_argument("--thinking", default="")
+    parser.add_argument("--force", action="store_true", help="Start a new attempt even if this package already has a tracked run.")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     try:
@@ -285,6 +290,7 @@ def main() -> int:
             timeout_seconds=args.timeout_seconds,
             model=args.model or None,
             thinking=args.thinking or None,
+            force=args.force,
             dry_run=args.dry_run,
         )
     except Exception as exc:
