@@ -147,6 +147,7 @@ def run_repair(
     semantic: bool = False,
     deploy_readonly: bool = False,
     blocker_model_caller: Any | None = None,
+    write_intent: bool = False,
 ) -> RepairRunnerResult:
     repo_root = repo_root or Path(__file__).resolve().parents[2]
     regression = run_regression_repair(
@@ -258,6 +259,18 @@ def run_repair(
         else:
             forced_safety_class = blocker.safety_class
             forced_safety_reason = blocker.reasoning_summary
+        if write_intent and blocker.autonomy_allowed and blocker.blocker_kind not in {
+            "access_or_approval_blocker",
+            "credential_missing",
+            "ambiguous",
+            "write_operation_request",
+        }:
+            blocker.blocker_kind = "write_operation_request"
+            blocker.replay_policy = "blocked_until_human_review"
+            blocker.reasoning_summary = (
+                f"{blocker.reasoning_summary} IntentFrame safety=write; route as an implementation plan, "
+                "not as a generic read-only helper."
+            )
 
     intent_reason = reason
     if execution_output:

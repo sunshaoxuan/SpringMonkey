@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from harness_dispatcher import handle_event
@@ -104,6 +105,52 @@ def test_dispatcher_records_unified_trial_lifecycle() -> None:
     assert rows[-1]["task_id"].startswith("task_")
     assert rows[-1]["status"] == "chat"
     assert rows[-1]["outcome"] == "completed"
+
+
+def test_dispatcher_does_not_claim_replay_fixed_when_replay_still_fails() -> None:
+    frame = {
+        "conversation_mode": "gap",
+        "domain": "config",
+        "action": "update",
+        "canonical_text": "升级已有工作流",
+        "context_refs": [],
+        "parameters": {},
+        "safety": "write",
+        "result_contract": {},
+        "tool_candidates": [],
+        "confidence": 0.9,
+        "reason": "no tool can update this workflow",
+    }
+
+    with tempfile.TemporaryDirectory() as tmp, patch(
+        "harness_dispatcher.run_repair",
+        return_value=SimpleNamespace(
+            replay_allowed=True,
+            registry_tool={"tool_id": "fake.generated", "entrypoint": "scripts/fake.py", "write_operation": False},
+            gap_ref="gap_ref=test",
+            status="promoted",
+        ),
+    ):
+        result = handle_event(
+            text="升级已有工作流",
+            channel="discord_dm",
+            user_id="999666719356354610",
+            message_timestamp="2026-05-05T00:00:00+09:00",
+            registry={"tools": []},
+            context="",
+            kernel_root=Path(tmp) / "kernel",
+            timeout_seconds=10,
+            extract_args=lambda _tool, _text, _ts: {},
+            run_tool=lambda _tool, _args, _timeout: (0, ""),
+            format_reply=lambda _tool, _args, _code, output: output,
+            audit_intent=lambda **_kwargs: None,
+            evaluate_result=lambda _tool, _output, _contract: None,
+            model_caller=lambda _messages: json.dumps(frame, ensure_ascii=False),
+        )
+
+    assert result.status == "unsupported"
+    assert "自演进：已尝试重放，但原任务仍未完成。" in result.reply
+    assert "自演进：已修复并重试。" not in result.reply
 
 
 def test_governance_public_write_denial_sets_owner_dm_visibility() -> None:

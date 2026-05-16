@@ -207,6 +207,7 @@ def handle_event(
             kernel_root=kernel_root,
             context=context,
             replay_depth=replay_depth,
+            write_intent=frame.safety == "write",
         )
         if repair.replay_allowed and repair.registry_tool and replay_depth < 1:
             replay_registry = json.loads(json.dumps(registry, ensure_ascii=False))
@@ -229,7 +230,10 @@ def handle_event(
                 model_caller=model_caller,
                 replay_depth=replay_depth + 1,
             )
-            replayed.reply = "\n".join([replayed.reply, "自演进：已修复并重试。"])
+            if replayed.status == "ok":
+                replayed.reply = "\n".join([replayed.reply, "自演进：已修复并重试。"])
+            else:
+                replayed.reply = "\n".join([replayed.reply, "自演进：已尝试重放，但原任务仍未完成。"])
             return replayed
         return finish(
             "unsupported",

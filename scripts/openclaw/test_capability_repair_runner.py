@@ -273,6 +273,44 @@ def test_repair_runner_does_not_bind_llm_classified_new_gap_to_legacy_weather_to
     assert result.replay_allowed is False
 
 
+def test_repair_runner_write_intent_overrides_autonomous_tool_binding_gap() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_repair(
+            text="升级一个已有工作流，先私聊测试，批准后再替换公共任务。",
+            channel="discord_dm",
+            user_id="tester",
+            stage="binding",
+            reason="no registered tool for workflow upgrade",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+            write_intent=True,
+            blocker_model_caller=lambda _messages: json.dumps(
+                {
+                    "intent_kind": "workflow_upgrade",
+                    "blocker_kind": "tool_binding_gap",
+                    "safety_class": "auto_safe_readonly",
+                    "confidence": 0.88,
+                    "expected_capability_family": "workflow.upgrade",
+                    "missing_condition": "missing workflow implementation",
+                    "allowed_repair_action": "autonomous_internal_repair",
+                    "replay_policy": "allow_after_verified_promoted",
+                    "reasoning_summary": "Internal repair is allowed.",
+                    "autonomy_allowed": True,
+                    "autonomy_boundary": "private_test_only",
+                },
+                ensure_ascii=False,
+            ),
+        )
+        events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
+
+    assert result.status == "planned"
+    assert result.replay_allowed is False
+    assert result.toolsmith_package["status"] == "planned"
+    assert result.toolsmith_package["registry_patch"] == {}
+    assert result.toolsmith_package["tool_id"].startswith("openclaw.repair_plan.")
+    assert events[-1]["llm_blocker_kind"] == "write_operation_request"
+
+
 def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         result = runner.run_repair(
