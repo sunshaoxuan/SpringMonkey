@@ -262,14 +262,29 @@ def test_repair_runner_does_not_bind_llm_classified_new_gap_to_legacy_weather_to
                     },
                     ensure_ascii=False,
                 ),
+                implementation_starter=lambda **_kwargs: runner.DomainImplementationRun(
+                    run_id="impl_test",
+                    package_id="repair_test",
+                    status="running",
+                    stage="implementation_agent_running",
+                    job_name="自增益实现",
+                    started_at="2026-05-16T00:00:00+00:00",
+                    pid=123,
+                    prompt_file="prompt.txt",
+                    stdout_file="stdout.log",
+                    stderr_file="stderr.log",
+                    long_task_id="long_test",
+                    evidence="test_started",
+                ),
             )
 
     assert result.registry_tool is None or result.registry_tool.get("tool_id") != "weather.dm.query"
-    assert result.status == "planned"
+    assert result.status == "repair_started"
     assert result.toolsmith_package["status"] == "planned"
     assert result.toolsmith_package["tool_id"] != "weather.dm.query"
     assert result.toolsmith_package["tool_id"].startswith("openclaw.repair_plan.")
     assert result.toolsmith_package["registry_patch"] == {}
+    assert result.implementation_run["run_id"] == "impl_test"
     assert result.replay_allowed is False
 
 
@@ -300,15 +315,30 @@ def test_repair_runner_write_intent_overrides_autonomous_tool_binding_gap() -> N
                 },
                 ensure_ascii=False,
             ),
+            implementation_starter=lambda **_kwargs: runner.DomainImplementationRun(
+                run_id="impl_write_intent",
+                package_id="repair_test",
+                status="running",
+                stage="implementation_agent_running",
+                job_name="自增益实现",
+                started_at="2026-05-16T00:00:00+00:00",
+                pid=123,
+                prompt_file="prompt.txt",
+                stdout_file="stdout.log",
+                stderr_file="stderr.log",
+                long_task_id="long_test",
+                evidence="test_started",
+            ),
         )
         events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
 
-    assert result.status == "planned"
+    assert result.status == "repair_started"
     assert result.replay_allowed is False
     assert result.toolsmith_package["status"] == "planned"
     assert result.toolsmith_package["registry_patch"] == {}
     assert result.toolsmith_package["tool_id"].startswith("openclaw.repair_plan.")
     assert events[-1]["llm_blocker_kind"] == "write_operation_request"
+    assert events[-1]["resolved_by"]["implementation_run"]["run_id"] == "impl_write_intent"
 
 
 def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:

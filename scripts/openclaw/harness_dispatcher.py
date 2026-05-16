@@ -58,6 +58,8 @@ def frame_reply(frame: IntentFrame) -> str:
 
 
 def capability_gap_user_summary(repair_status: str) -> str:
+    if repair_status == "repair_started":
+        return "已启动内部能力补齐并进入跟踪；完成验证前不会重试原任务。"
     if repair_status == "planned":
         return "未执行：已识别为需要补齐的能力，汤猴已生成实现路线，但还没有通过验证并提升为可执行能力。"
     if repair_status in {"generated", "verified"}:

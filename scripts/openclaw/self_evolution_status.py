@@ -44,6 +44,8 @@ def lifecycle(event: dict) -> str:
             return f"regression_detected -> package_{status} -> replay_ready"
         return f"regression_detected -> {status}"
     if event.get("autonomy_allowed"):
+        if status == "repair_started":
+            return "recorded -> llm_autonomy_allowed -> package_planned -> implementation_started"
         return f"recorded -> llm_autonomy_allowed -> {status}"
     if event.get("llm_blocker_kind") in {"access_or_approval_blocker", "credential_missing"}:
         return "recorded -> llm_blocker_classified -> awaiting_authorization"
@@ -171,6 +173,7 @@ def main() -> int:
             f"autonomy={event.get('autonomy_allowed') if event.get('autonomy_allowed') is not None else 'none'} "
             f"match={event.get('match_kind') or 'none'} "
             f"resolved_by={resolved_by.get('package_id') or 'none'} "
+            f"implementation={((resolved_by.get('implementation_run') or {}) if isinstance(resolved_by.get('implementation_run'), dict) else {}).get('run_id') or 'none'} "
             f"fingerprint={event.get('repair_fingerprint') or 'none'} "
             f"verify={str(resolved_by.get('verify_output_tail') or '')[:120]}"
         )

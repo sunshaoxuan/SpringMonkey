@@ -15,8 +15,9 @@ if str(_HERE) not in sys.path:
 
 from dm_capability_gap_runner import GapRunnerResult, run_gap
 from capability_blocker_classifier import CapabilityBlockerClassification, classify_capability_blocker, classification_dict
+from domain_implementation_runner import DomainImplementationRun, start_implementation as start_domain_implementation
 from regression_repair_runner import run_regression_repair
-from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, mark_deployed, repair_fingerprint, verify_and_promote_package
+from toolsmith_repair_runner import ToolsmithPackage, append_package_log, generate_repair_package, mark_deployed, repair_fingerprint, save_package_state, verify_and_promote_package
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
@@ -45,6 +46,7 @@ class RepairRunnerResult:
     plan: dict[str, Any]
     registry_tool: dict[str, Any] | None = None
     toolsmith_package: dict[str, Any] | None = None
+    implementation_run: dict[str, Any] | None = None
     event_log: str = ""
     created_at: str = ""
 
@@ -148,6 +150,7 @@ def run_repair(
     deploy_readonly: bool = False,
     blocker_model_caller: Any | None = None,
     write_intent: bool = False,
+    implementation_starter: Any | None = None,
 ) -> RepairRunnerResult:
     repo_root = repo_root or Path(__file__).resolve().parents[2]
     regression = run_regression_repair(
@@ -294,6 +297,7 @@ def run_repair(
     )
     status = gap_result.status
     toolsmith_package: ToolsmithPackage | None = None
+    implementation_run: DomainImplementationRun | None = None
     if replay_allowed:
         status = "verified"
     elif gap_result.status == "blocked":
@@ -331,6 +335,40 @@ def run_repair(
             replay_allowed = True
             replay_reason = package_replay_reason
             status = toolsmith_package.status
+        elif (
+            toolsmith_package.status == "planned"
+            and toolsmith_package.replay_policy == "blocked_until_domain_implementation"
+            and blocker
+            and blocker.autonomy_allowed
+        ):
+            starter = implementation_starter or start_domain_implementation
+            try:
+                implementation_run = starter(
+                    package_state=Path(toolsmith_package.package_dir) / "package_state.json",
+                    text=text,
+                    reason=reason,
+                    repo_root=repo_root,
+                    kernel_root=kernel_root,
+                )
+                toolsmith_package.deployment_status = (
+                    "implementation_started"
+                    if implementation_run.status == "running"
+                    else f"implementation_{implementation_run.status}"
+                )
+                toolsmith_package.verify_output = (
+                    f"domain implementation run {implementation_run.run_id}: "
+                    f"{implementation_run.status}/{implementation_run.stage}; {implementation_run.evidence}"
+                )
+                save_package_state(toolsmith_package)
+                status = "repair_started" if implementation_run.status == "running" else "failed"
+                replay_reason = (
+                    f"已启动内部能力实现 run={implementation_run.run_id}，完成验证前不重放原任务"
+                    if status == "repair_started"
+                    else f"内部能力实现启动失败：{implementation_run.evidence}"
+                )
+            except Exception as exc:
+                status = "failed"
+                replay_reason = f"内部能力实现启动异常：{type(exc).__name__}: {exc}"
         elif toolsmith_package.status in {"planned", "generated", "verified", "promoted", "deployed", "failed"}:
             status = toolsmith_package.status
         elif toolsmith_package.status == "blocked_requires_authorization":
@@ -380,6 +418,7 @@ def run_repair(
             "verify_output_tail": toolsmith_package.verify_output[-2000:],
             "promoted_at": toolsmith_package.promoted_at,
             "deployment_status": toolsmith_package.deployment_status,
+            "implementation_run": None if implementation_run is None else asdict(implementation_run),
         },
     }
     log_path = upsert_event(kernel_root, event, fingerprint)
@@ -389,6 +428,7 @@ def run_repair(
             f"自演进状态：{status}",
             f"重放判定：{'允许' if replay_allowed else '不允许'}，{replay_reason}",
             f"工具匠：{toolsmith_package.status if toolsmith_package else 'not_needed'}",
+            f"实现任务：{implementation_run.run_id if implementation_run else 'not_started'}",
             f"事件日志：{log_path}",
         ]
     )
@@ -403,6 +443,7 @@ def run_repair(
         plan=asdict(gap_result.plan),
         registry_tool=effective_tool,
         toolsmith_package=None if toolsmith_package is None else asdict(toolsmith_package),
+        implementation_run=None if implementation_run is None else asdict(implementation_run),
         event_log=str(log_path),
         created_at=event["created_at"],
     )
@@ -439,7 +480,7 @@ def main() -> int:
         deploy_readonly=args.deploy_readonly,
     )
     print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
-    return 0 if result.status in {"recorded", "planned", "generated", "verified", "promoted", "deployed", "replayed", "blocked"} else 1
+    return 0 if result.status in {"recorded", "planned", "generated", "verified", "promoted", "deployed", "replayed", "blocked", "repair_started"} else 1
 
 
 if __name__ == "__main__":

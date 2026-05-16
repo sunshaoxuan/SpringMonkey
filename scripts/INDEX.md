@@ -135,6 +135,10 @@
   - 用途：从 `config/openclaw/intent_tools.json` 派生语义 `ToolContract` / `IntentContract`，供 intentAgent 按能力契约选工具，而不是按 `patterns` / `required_any` 做业务关键词匹配。
   - 典型验证：`python -m pytest -q scripts/openclaw/test_harness_contracts.py`
 
+- `scripts/openclaw/domain_implementation_runner.py`
+  - 用途：当自增益已生成 `blocked_until_domain_implementation` 的规划包且模型判定可内部修复时，注册可追踪实现 run，并启动内部 agent 写代码、补测试、验证和收口；不执行外部生产写入。
+  - 典型用法：`python scripts/openclaw/domain_implementation_runner.py start --package-state <package_state.json> --text "<原始请求>" --reason "<失败原因>"`
+
 - `remote_verify_long_task_supervisor.py`
   - 用途：只读验收长任务闭环 supervisor；远端临时注册任务、伪造 final session、轮询确认进入 `final_detected`。
   - 典型用法：`python SpringMonkey/scripts/remote_verify_long_task_supervisor.py`
