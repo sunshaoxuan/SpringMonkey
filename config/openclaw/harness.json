@@ -15,8 +15,8 @@
     },
     {
       "id": "tool_layer",
-      "components": ["tool_registry", "tool_binder", "tool_permission", "tool_invocation_log"],
-      "primary_entrypoints": ["config/openclaw/intent_tools.json", "scripts/openclaw/harness_tool_binder.py", "scripts/openclaw/intent_tool_router.py"]
+      "components": ["semantic_tool_contracts", "tool_registry", "tool_binder", "tool_permission", "tool_invocation_log"],
+      "primary_entrypoints": ["config/openclaw/intent_tools.json", "scripts/openclaw/harness_contracts.py", "scripts/openclaw/harness_tool_binder.py", "scripts/openclaw/intent_tool_router.py"]
     },
     {
       "id": "context_layer",
@@ -30,8 +30,8 @@
     },
     {
       "id": "observability_layer",
-      "components": ["trace_id", "model_call_log", "token_cost", "latency", "intent_audit", "semantic_review", "result_evaluation"],
-      "primary_entrypoints": ["scripts/openclaw/harness_observability.py", "scripts/openclaw/harness_intent_agent.py", "scripts/openclaw/harness_semantic_reviewer.py", "scripts/openclaw/harness_intent_audit.py"]
+      "components": ["trace_id", "trial_lifecycle_log", "model_call_log", "token_cost", "latency", "intent_audit", "semantic_review", "result_evaluation", "harness_eval_suite"],
+      "primary_entrypoints": ["scripts/openclaw/harness_observability.py", "scripts/openclaw/harness_eval_suite.py", "scripts/openclaw/harness_intent_agent.py", "scripts/openclaw/harness_semantic_reviewer.py", "scripts/openclaw/harness_intent_audit.py"]
     }
   ],
   "subagents": [
@@ -98,7 +98,7 @@
   ],
   "dispatcher_policy": {
     "gateway_responsibilities": ["normalize_event", "build_context", "request_intent_frame", "bind_tool", "check_permission", "dispatch_worker", "send_typing_ack", "deliver_result"],
-    "gateway_forbidden": ["keyword_primary_intent_routing", "long_running_business_execution", "unregistered_write_operation", "silent_failure"],
+    "gateway_forbidden": ["keyword_primary_intent_routing", "pattern_primary_intent_routing", "long_running_business_execution", "unregistered_write_operation", "silent_failure"],
     "long_task_requires_runtime_session": true
   },
   "trace_policy": {

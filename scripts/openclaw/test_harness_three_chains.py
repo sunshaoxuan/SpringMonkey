@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from harness_dispatcher import handle_event
 from harness_governance import evaluate_tool_invocation
@@ -53,6 +55,55 @@ def test_dispatcher_builds_context_before_intent_model() -> None:
     assert "DM context:" in seen["prompt"]
     assert "Referenced message: previous tool result" in seen["prompt"]
     assert "Registry summary:" in seen["prompt"]
+
+
+def test_dispatcher_records_unified_trial_lifecycle() -> None:
+    with tempfile.TemporaryDirectory() as tmp, patch.dict(
+        os.environ,
+        {
+            "OPENCLAW_HARNESS_TRIAL_LOG": str(Path(tmp) / "trials.jsonl"),
+            "OPENCLAW_HARNESS_REPORT_LOG": str(Path(tmp) / "reports.jsonl"),
+            "OPENCLAW_HARNESS_MODEL_CALL_LOG": str(Path(tmp) / "models.jsonl"),
+        },
+    ):
+        result = handle_event(
+            text="你好",
+            channel="discord_dm",
+            user_id="999666719356354610",
+            message_timestamp="2026-05-05T00:00:00+09:00",
+            registry={"tools": []},
+            context="",
+            kernel_root=Path(tmp) / "kernel",
+            timeout_seconds=10,
+            extract_args=lambda _tool, _text, _ts: {},
+            run_tool=lambda _tool, _args, _timeout: (0, ""),
+            format_reply=lambda _tool, _args, _code, output: output,
+            audit_intent=lambda **_kwargs: None,
+            evaluate_result=lambda _tool, _output, _contract: None,
+            model_caller=lambda _messages: json.dumps(
+                {
+                    "conversation_mode": "chat",
+                    "domain": "general",
+                    "action": "chat",
+                    "canonical_text": "你好，我在。",
+                    "context_refs": [],
+                    "parameters": {},
+                    "safety": "readonly",
+                    "result_contract": {},
+                    "tool_candidates": [],
+                    "confidence": 0.99,
+                    "reason": "greeting",
+                },
+                ensure_ascii=False,
+            ),
+        )
+        rows = [json.loads(line) for line in (Path(tmp) / "trials.jsonl").read_text(encoding="utf-8").splitlines()]
+
+    assert result.status == "chat"
+    assert rows[-1]["trace_id"].startswith("trace_")
+    assert rows[-1]["task_id"].startswith("task_")
+    assert rows[-1]["status"] == "chat"
+    assert rows[-1]["outcome"] == "completed"
 
 
 def test_governance_public_write_denial_sets_owner_dm_visibility() -> None:

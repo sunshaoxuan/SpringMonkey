@@ -144,19 +144,9 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
 
 
 def registry_prompt(registry: dict[str, Any]) -> str:
-    tools = []
-    for tool in registry.get("tools", []):
-        tools.append(
-            {
-                "intent_id": tool.get("intent_id"),
-                "tool_id": tool.get("tool_id"),
-                "description": tool.get("description"),
-                "patterns": tool.get("patterns", []),
-                "required_any": tool.get("required_any", []),
-                "write_operation": bool(tool.get("write_operation")),
-            }
-        )
-    return json.dumps(tools, ensure_ascii=False)
+    from harness_contracts import contract_prompt
+
+    return contract_prompt(registry)
 
 
 def latest_timescar_context() -> str:
@@ -318,6 +308,8 @@ def classify(text: str, channel: str, user_id: str, registry: dict[str, Any] | N
     Tool Binder. This helper remains for registry smoke tests and historical
     diagnostics, not for semantic routing.
     """
+    if os.environ.get("OPENCLAW_DISABLE_LEGACY_PATTERN_CLASSIFY", "").strip() == "1":
+        return Classification(None, None, 0.0, "legacy pattern classifier disabled; use Harness intentAgent contracts")
     registry = registry or load_registry()
     normalized = normalize_text(text)
     best: tuple[float, str, dict[str, Any], list[str]] | None = None
@@ -575,7 +567,17 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             result_contract=json.dumps(args.get("_result_contract") or {}, ensure_ascii=False, sort_keys=True),
         )
     )
-    return proc.returncode, (proc.stdout or "").strip()
+    if proc.returncode == 0:
+        return proc.returncode, (proc.stdout or "").strip()
+    failure = {
+        "status": "error",
+        "error_code": "TOOL_NONZERO_EXIT",
+        "recoverability": "record_gap_and_repair_or_retry_after_fix",
+        "suggested_next_action": "Inspect diagnostics, classify the failure, and continue through capability_repair_runner.",
+        "stdout": (proc.stdout or "").strip()[-1200:],
+        "stderr": (proc.stderr or "").strip()[-1200:],
+    }
+    return proc.returncode, json.dumps(failure, ensure_ascii=False)
 
 
 def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, output: str) -> str:

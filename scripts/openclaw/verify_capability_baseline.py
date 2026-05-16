@@ -157,7 +157,7 @@ def verify_case(
     expected_tool_id = str(expected.get("tool_id") or "")
     channel = str(case.get("channel") or defaults.get("channel") or "discord_dm")
     user_id = str(case.get("user_id") or defaults.get("user_id") or "unknown")
-    use_live = live_intent or bool(case.get("live_intent"))
+    use_live = live_intent
     try:
         if use_live:
             frame = infer_intent_frame(text, context="", registry=registry)

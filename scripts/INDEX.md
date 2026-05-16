@@ -126,6 +126,15 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_capability_baseline.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py capability-baseline`
 
+- `scripts/openclaw/harness_eval_suite.py`
+  - 用途：本地 Harness 评测入口；同时检查能力 baseline 和 `harness_trials.jsonl` 中的 transcript/outcome 生命周期，避免只看回复文本而漏掉实际状态退化。
+  - 典型用法：`python scripts/openclaw/harness_eval_suite.py --json`
+  - 强门禁用法：`python scripts/openclaw/harness_eval_suite.py --require-trials --trial-log <path>`
+
+- `scripts/openclaw/harness_contracts.py`
+  - 用途：从 `config/openclaw/intent_tools.json` 派生语义 `ToolContract` / `IntentContract`，供 intentAgent 按能力契约选工具，而不是按 `patterns` / `required_any` 做业务关键词匹配。
+  - 典型验证：`python -m pytest -q scripts/openclaw/test_harness_contracts.py`
+
 - `remote_verify_long_task_supervisor.py`
   - 用途：只读验收长任务闭环 supervisor；远端临时注册任务、伪造 final session、轮询确认进入 `final_detected`。
   - 典型用法：`python SpringMonkey/scripts/remote_verify_long_task_supervisor.py`

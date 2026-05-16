@@ -44,12 +44,32 @@ def test_intent_frame_timescar_month_query() -> None:
     assert frame.parameters["offset_hours"] == 0
 
 
-def test_long_task_status_uses_deterministic_frame() -> None:
-    frame = agent.infer_intent_frame("检查长任务状态", context="", registry=load_registry())
+def test_long_task_status_uses_semantic_contract_frame() -> None:
+    frame = agent.infer_intent_frame(
+        "检查长任务状态",
+        context="",
+        registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "cron",
+                "action": "status",
+                "canonical_text": "检查最近长任务生命周期状态。",
+                "context_refs": [],
+                "parameters": {"subject": "long_task"},
+                "safety": "readonly",
+                "result_contract": {"type": "long_task_status"},
+                "tool_candidates": [{"tool_id": "openclaw.long_task.status", "confidence": 0.98, "reason": "semantic ToolContract match"}],
+                "confidence": 0.98,
+                "reason": "long task status request",
+            }
+        ),
+    )
 
     assert frame.domain == "cron"
     assert frame.action == "status"
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.long_task.status"
+    assert frame.source == "model"
 
 
 def test_timescar_shift_window_uses_semantic_model_frame() -> None:
@@ -233,7 +253,8 @@ def test_intent_frame_web_research() -> None:
 def test_prompt_makes_model_choose_capability_not_business_keyword() -> None:
     messages = agent.build_prompt("我订的车可以提前多久订？", "", load_registry())
     system = messages[0]["content"]
-    assert "Choose the tool by the capability required to answer" in system
+    assert "Choose by semantic fit to ToolContract" in system
+    assert "Never choose by business keyword matching" in system
     assert "public rules, policy" in system
     assert "not timescar gap" in system
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import time
 import urllib.error
 import urllib.request
@@ -17,10 +16,10 @@ from model_fallback_client import (
     load_runtime_env_files,
     resolve_primary_chat_endpoint,
 )
+from harness_contracts import contract_prompt, intent_contract_prompt
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 REPO = Path(__file__).resolve().parents[2]
-RECURRING_JOB_CAPABILITIES = REPO / "config" / "openclaw" / "recurring_job_capabilities.json"
 RUNTIME_ENV_FILES = (
     Path("/etc/openclaw/openclaw.env"),
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
@@ -50,175 +49,6 @@ class IntentFrame:
     reason: str
     source: str = "model"
     created_at: str = field(default_factory=utc_now)
-
-
-def normalize_text(text: str) -> str:
-    return "".join((text or "").split())
-
-
-def relative_timescar_shift_window_frame(text: str) -> IntentFrame | None:
-    raw = normalize_text(text)
-    has_shift = any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延"))
-    has_duration = bool(re.search(r"\d{1,3}(?:分钟|分鐘|min|m|小时|小時|h|H)", raw)) or any(
-        token in raw for token in ("一天", "1天", "一日", "1日")
-    )
-    has_booking_ref = any(token in raw for token in ("这单", "這單", "那单", "那單", "刚刚这单", "刚才这单", "订单", "马上开始", "即将开始", "下一单"))
-    has_whole_window = any(token in raw for token in ("整体", "整體", "整单", "整單", "整个", "整個", "全部", "一起"))
-    has_reservation = any(token in raw for token in ("预订", "預訂", "预约", "訂車", "订车", "TimesCar", "timescar", "这单", "那单"))
-    if not (has_shift and has_duration and has_booking_ref and has_whole_window and has_reservation):
-        return None
-    return IntentFrame(
-        conversation_mode="task",
-        domain="timescar",
-        action="adjust",
-        canonical_text=text.strip(),
-        context_refs=[{"type": "recent_timescar_reservation", "selector": "next_reservation_within_48h"}],
-        parameters={"relative_window_shift": True, "preserve_duration": True},
-        safety="write",
-        result_contract={"type": "timescar_shift_window", "preserve_duration": True},
-        tool_candidates=[
-            {
-                "tool_id": "timescar.dm.shift_window",
-                "confidence": 0.98,
-                "reason": "deterministic TimesCar follow-up: shift the whole reservation window by a relative duration",
-            }
-        ],
-        confidence=0.98,
-        reason="deterministic TimesCar relative whole-window shift follow-up",
-        source="local_rule",
-    )
-
-
-def relative_timescar_adjust_frame(text: str) -> IntentFrame | None:
-    raw = normalize_text(text)
-    has_booking_ref = any(token in raw for token in ("这单", "這單", "刚刚这单", "刚才这单", "订单", "这张", "這張"))
-    has_start_shift = "开始" in raw and any(token in raw for token in ("往后推", "后推", "推迟", "延后", "延迟", "延"))
-    has_24h = any(token in raw for token in ("24小时", "24小時", "一天", "1天", "一日", "1日"))
-    keeps_end = any(token in raw for token in ("结束时间不变", "结束不变", "结束时间保持不变", "结束保持不变", "終わり不変"))
-    has_tomorrow_reservation = "明天" in raw and any(token in raw for token in ("订车", "预约", "预订", "TimesCar", "timescar"))
-    if not ((has_booking_ref or has_tomorrow_reservation) and has_start_shift and has_24h and keeps_end):
-        return None
-    return IntentFrame(
-        conversation_mode="task",
-        domain="timescar",
-        action="adjust",
-        canonical_text=text.strip(),
-        context_refs=[
-            {
-                "type": "recent_timescar_reservation",
-                "selector": "tomorrow_reservation" if has_tomorrow_reservation and not has_booking_ref else "next_reservation_within_48h",
-            }
-        ],
-        parameters={"relative_start_shift_hours": 24, "preserve_return_time": True},
-        safety="write",
-        result_contract={"type": "timescar_adjust_start", "preserve_return_time": True},
-        tool_candidates=[
-            {
-                "tool_id": "timescar.dm.adjust_start",
-                "confidence": 0.98,
-                "reason": "deterministic TimesCar follow-up: move this booking start later while preserving end time",
-            }
-        ],
-        confidence=0.98,
-        reason="deterministic TimesCar relative start adjustment follow-up",
-        source="local_rule",
-    )
-
-
-def cron_status_frame(text: str) -> IntentFrame | None:
-    raw = normalize_text(text)
-    has_cron_subject = any(token in raw for token in ("定时任务", "定期任务", "cron", "任务状态", "任务在哪", "任务"))
-    has_xhs = any(token in raw for token in ("小红书", "小紅書", "xhs", "XHS"))
-    has_status = any(token in raw for token in ("检查", "查看", "查询", "状态", "在哪", "没看到", "列出"))
-    if not (has_cron_subject and has_xhs and has_status):
-        return None
-    return IntentFrame(
-        conversation_mode="task",
-        domain="cron",
-        action="status",
-        canonical_text=text.strip(),
-        context_refs=[],
-        parameters={"topic": "xhs"},
-        safety="readonly",
-        result_contract={"type": "cron_status", "topic": "xhs"},
-        tool_candidates=[
-            {
-                "tool_id": "openclaw.cron.status",
-                "confidence": 0.97,
-                "reason": "deterministic cron status lookup for XHS recurring task",
-            }
-        ],
-        confidence=0.97,
-        reason="deterministic XHS cron status lookup",
-        source="local_rule",
-    )
-
-
-def long_task_status_frame(text: str) -> IntentFrame | None:
-    raw = normalize_text(text)
-    has_long_task = any(token in raw for token in ("长任务", "長任務", "进行中的任务", "正在进行的任务", "最近失败的长任务"))
-    has_status = any(token in raw for token in ("检查", "查看", "查询", "状态", "列出", "重试", "失败"))
-    if not (has_long_task and has_status):
-        return None
-    return IntentFrame(
-        conversation_mode="task",
-        domain="cron",
-        action="status",
-        canonical_text=text.strip(),
-        context_refs=[],
-        parameters={"subject": "long_task"},
-        safety="readonly",
-        result_contract={"type": "long_task_status"},
-        tool_candidates=[
-            {
-                "tool_id": "openclaw.long_task.status",
-                "confidence": 0.98,
-                "reason": "deterministic long task lifecycle status lookup",
-            }
-        ],
-        confidence=0.98,
-        reason="deterministic long task lifecycle status lookup",
-        source="local_rule",
-    )
-
-
-def recurring_cron_run_frame(text: str) -> IntentFrame | None:
-    raw = normalize_text(text)
-    run_tokens = ("开始执行", "执行", "触发", "运行", "启动", "跑一轮", "重试", "补跑")
-    if not any(token in raw for token in run_tokens):
-        return None
-    try:
-        data = json.loads(RECURRING_JOB_CAPABILITIES.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    jobs = data.get("jobs") if isinstance(data.get("jobs"), list) else []
-    for job in jobs:
-        if not isinstance(job, dict) or not bool(job.get("allow_manual_run")):
-            continue
-        aliases = [str(item) for item in job.get("topic_aliases", [])]
-        if not any(normalize_text(alias) in raw for alias in aliases):
-            continue
-        return IntentFrame(
-            conversation_mode="task",
-            domain="cron",
-            action="run",
-            canonical_text=text.strip(),
-            context_refs=[],
-            parameters={"capability_id": str(job.get("capability_id") or "")},
-            safety="write" if bool(job.get("write_operation")) else "readonly",
-            result_contract={"type": "recurring_cron_run", "capability_id": str(job.get("capability_id") or "")},
-            tool_candidates=[
-                {
-                    "tool_id": "openclaw.cron.run.recurring_job",
-                    "confidence": 0.97,
-                    "reason": "deterministic configured recurring job run request",
-                }
-            ],
-            confidence=0.97,
-            reason="deterministic configured recurring job run request",
-            source="local_rule",
-        )
-    return None
 
 
 def model_call_log_path() -> Path:
@@ -286,20 +116,7 @@ def call_model(messages: list[dict[str, str]], *, timeout: int = 30, temperature
 
 
 def registry_prompt(registry: dict[str, Any]) -> str:
-    tools = []
-    for tool in registry.get("tools", []):
-        tools.append(
-            {
-                "capability_id": tool.get("capability_id") or tool.get("intent_id"),
-                "tool_id": tool.get("tool_id"),
-                "domain": tool.get("domain"),
-                "actions": tool.get("actions", []),
-                "description": tool.get("description"),
-                "safety": "write" if bool(tool.get("write_operation")) else "readonly",
-                "prompt_hints": tool.get("prompt_hints", tool.get("patterns", [])),
-            }
-        )
-    return json.dumps(tools, ensure_ascii=False)
+    return contract_prompt(registry)
 
 
 def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict[str, str]]:
@@ -311,8 +128,9 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "domain: timescar|weather|news|cron|config|web|memory|self|artifact|general|unknown. "
         "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|access|share|update|edit|chat|gap. "
         "safety: readonly|write|credential|destructive|ambiguous. "
-        "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from the registry. "
-        "Choose the tool by the capability required to answer, not by a business keyword in the message. "
+        "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from ToolContracts. "
+        "Choose by semantic fit to ToolContract.goal/use_when/do_not_use_when/input_contract/output_contract/safety. "
+        "Never choose by business keyword matching, pattern hits, or topic words alone. "
         "If the user asks for public rules, policy, pricing, opening hours, current status, latest facts, or external knowledge about any business domain, choose domain=web action=research with openclaw.web.research unless a more specific registered read-only tool can answer directly. "
         "Use gap only when no registered tool can plausibly answer or the request is unsafe/ambiguous; do not use gap merely because the topic name belongs to another domain. "
         "Operational tools such as TimesCar query/book/cancel/adjust are for concrete reservations, not public policy knowledge. "
@@ -343,7 +161,9 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
     )
     user = "\n".join(
         [
-            "Registered tool capabilities:",
+            "Intent capability families:",
+            intent_contract_prompt(registry),
+            "Registered ToolContracts:",
             registry_prompt(registry),
             "Context:",
             context or "(none)",
@@ -395,21 +215,6 @@ def infer_intent_frame(
     timeout: int = 30,
     model_caller: Callable[[list[dict[str, str]]], str] | None = None,
 ) -> IntentFrame:
-    local_frame = long_task_status_frame(text) or recurring_cron_run_frame(text) or cron_status_frame(text)
-    if local_frame:
-        append_jsonl(
-            model_call_log_path(),
-            {
-                "created_at": utc_now(),
-                "kind": "intent_frame",
-                "ok": True,
-                "model": "local_rule",
-                "latency_ms": 0,
-                "text": text,
-                "frame": asdict(local_frame),
-            },
-        )
-        return local_frame
     messages = build_prompt(text, context, registry)
     meta: dict[str, Any] = {}
     try:

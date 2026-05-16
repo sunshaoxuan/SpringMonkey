@@ -154,6 +154,10 @@ def structured_tool_summary(text: str) -> str:
     result = str(payload.get("result") or payload.get("final_report") or "").strip()
     tool_id = str(payload.get("tool_id") or "")
     status = str(payload.get("status") or "").strip()
+    if status == "error":
+        code = str(payload.get("error_code") or "TOOL_ERROR")
+        action = str(payload.get("suggested_next_action") or "请稍后重试或查看后台诊断。")
+        return f"工具执行失败：{code}\n下一步：{action}"
     if tool_id.startswith("openclaw.generated.") or "自演进状态" in result:
         return summarize_self_evolution_result(result, tool_status=status)
     return result or text

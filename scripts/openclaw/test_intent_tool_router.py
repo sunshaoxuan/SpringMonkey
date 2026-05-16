@@ -447,8 +447,24 @@ def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:
         "检查每3天一次的小红书文章撰写任务状态。",
         context="",
         registry=registry,
+        model_caller=lambda _messages: json.dumps(
+            {
+                "conversation_mode": "task",
+                "domain": "cron",
+                "action": "status",
+                "canonical_text": "检查每3天一次的小红书文章撰写任务状态。",
+                "context_refs": [],
+                "parameters": {"topic": "xhs"},
+                "safety": "readonly",
+                "result_contract": {"type": "cron_status", "topic": "xhs"},
+                "tool_candidates": [{"tool_id": "openclaw.cron.status", "confidence": 0.98, "reason": "semantic contract"}],
+                "confidence": 0.98,
+                "reason": "recurring task status",
+            },
+            ensure_ascii=False,
+        ),
     )
-    assert frame.source == "local_rule"
+    assert frame.source == "model"
     assert frame.domain == "cron"
     assert frame.action == "status"
     result = router.classify("检查每3天一次的小红书文章撰写任务状态。", "discord_dm", "999", registry)
@@ -459,7 +475,27 @@ def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:
 
 def test_configured_recurring_job_run_binds_to_generic_cron_tool() -> None:
     registry = router.load_registry()
-    frame = infer_intent_frame("接下来，请你开始执行每3天一次的小红书撰稿计划。", context="", registry=registry)
+    frame = infer_intent_frame(
+        "接下来，请你开始执行每3天一次的小红书撰稿计划。",
+        context="",
+        registry=registry,
+        model_caller=lambda _messages: json.dumps(
+            {
+                "conversation_mode": "task",
+                "domain": "cron",
+                "action": "run",
+                "canonical_text": "接下来，请你开始执行每3天一次的小红书撰稿计划。",
+                "context_refs": [],
+                "parameters": {"capability_id": "recurring.content_writing.every_3_days"},
+                "safety": "write",
+                "result_contract": {"type": "recurring_cron_run", "capability_id": "recurring.content_writing.every_3_days"},
+                "tool_candidates": [{"tool_id": "openclaw.cron.run.recurring_job", "confidence": 0.98, "reason": "semantic contract"}],
+                "confidence": 0.98,
+                "reason": "manual run for configured recurring job",
+            },
+            ensure_ascii=False,
+        ),
+    )
     assert frame.domain == "cron"
     assert frame.action == "run"
     assert frame.safety == "write"

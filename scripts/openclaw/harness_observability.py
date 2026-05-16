@@ -43,6 +43,23 @@ class EvaluationRecord:
     created_at: str = field(default_factory=utc_now)
 
 
+@dataclass
+class HarnessTrialRecord:
+    trace_id: str
+    task_id: str
+    source_channel: str
+    user_id: str
+    input_summary: str
+    status: str
+    stage: str
+    route_kind: str
+    tool_id: str = ""
+    outcome: str = ""
+    failure_type: str = ""
+    delivery_state: str = "not_applicable"
+    created_at: str = field(default_factory=utc_now)
+
+
 def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
@@ -57,5 +74,11 @@ def record_tool_invocation(record: ToolInvocationRecord, path: Path | None = Non
 
 def record_evaluation(record: EvaluationRecord, path: Path | None = None) -> Path:
     target = path or Path(os.environ.get("OPENCLAW_HARNESS_EVALUATION_LOG", "")) if os.environ.get("OPENCLAW_HARNESS_EVALUATION_LOG") else path or (WORKSPACE / "var" / "harness_evaluations.jsonl")
+    append_jsonl(target, asdict(record))
+    return target
+
+
+def record_trial(record: HarnessTrialRecord, path: Path | None = None) -> Path:
+    target = path or Path(os.environ.get("OPENCLAW_HARNESS_TRIAL_LOG", "")) if os.environ.get("OPENCLAW_HARNESS_TRIAL_LOG") else path or (WORKSPACE / "var" / "harness_trials.jsonl")
     append_jsonl(target, asdict(record))
     return target

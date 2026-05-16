@@ -10,7 +10,7 @@ from capability_repair_runner import run_repair
 from harness_context import build_context_bundle, context_to_prompt
 from harness_governance import evaluate_tool_invocation
 from harness_intent_agent import IntentFrame, infer_intent_frame
-from harness_observability import EvaluationRecord, record_evaluation
+from harness_observability import EvaluationRecord, HarnessTrialRecord, record_evaluation, record_trial
 from harness_reporter import ReportEnvelope, append_report, build_report, format_owner_reply
 from harness_runtime import make_id
 from harness_semantic_reviewer import SemanticReview, review_intent_frame
@@ -111,6 +111,24 @@ def handle_event(
         failure_type: str = "",
         public_payload: str = "",
     ) -> DispatchResult:
+        tool_id = str((tool or {}).get("tool_id") or "")
+        outcome = "completed" if status in {"ok", "chat"} else ("blocked" if status == "unsupported" else "failed")
+        record_trial(
+            HarnessTrialRecord(
+                trace_id=trace_id,
+                task_id=task_id,
+                source_channel=channel,
+                user_id=user_id,
+                input_summary=text[:700],
+                status=status,
+                stage=stage,
+                route_kind=route_kind,
+                tool_id=tool_id,
+                outcome=outcome,
+                failure_type=failure_type,
+                delivery_state="owner_reply_built",
+            )
+        )
         report = build_report(
             task_id=task_id,
             trace_id=trace_id,

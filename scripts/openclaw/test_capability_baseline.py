@@ -9,7 +9,11 @@ from harness_intent_agent import infer_intent_frame
 from intent_tool_router import extract_args
 
 
-def test_capability_baseline_passes_static_and_local_rule_cases() -> None:
+def model_reply(payload: dict) -> str:
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def test_capability_baseline_passes_static_contract_cases() -> None:
     results = baseline.verify_baseline(fail_open_model=False)
     failures = [item for item in results if not item.passed]
     assert not failures, failures
@@ -23,10 +27,29 @@ def test_find_case_matches_exact_normalized_text() -> None:
     assert case["id"] == "timescar_adjust_relative_this_booking"
 
 
-def test_xhs_cron_status_local_rule_and_args() -> None:
+def test_xhs_cron_status_semantic_contract_and_args() -> None:
     registry = baseline.load_json(baseline.DEFAULT_REGISTRY)
-    frame = infer_intent_frame("检查每3天一次的小红书文章撰写任务状态。", context="", registry=registry)
-    assert frame.source == "local_rule"
+    frame = infer_intent_frame(
+        "检查每3天一次的小红书文章撰写任务状态。",
+        context="",
+        registry=registry,
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "cron",
+                "action": "status",
+                "canonical_text": "检查每3天一次的小红书文章撰写任务状态。",
+                "context_refs": [],
+                "parameters": {"topic": "xhs"},
+                "safety": "readonly",
+                "result_contract": {"type": "cron_status", "topic": "xhs"},
+                "tool_candidates": [{"tool_id": "openclaw.cron.status", "confidence": 0.98, "reason": "semantic ToolContract match"}],
+                "confidence": 0.98,
+                "reason": "recurring task status",
+            }
+        ),
+    )
+    assert frame.source == "model"
     assert frame.domain == "cron"
     assert frame.action == "status"
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.cron.status"
@@ -35,9 +58,28 @@ def test_xhs_cron_status_local_rule_and_args() -> None:
     assert args["topic"] == "xhs"
 
 
-def test_recurring_cron_run_local_rule_and_args() -> None:
+def test_recurring_cron_run_semantic_contract_and_args() -> None:
     registry = baseline.load_json(baseline.DEFAULT_REGISTRY)
-    frame = infer_intent_frame("接下来，请你开始执行每3天一次的小红书撰稿计划。", context="", registry=registry)
+    frame = infer_intent_frame(
+        "接下来，请你开始执行每3天一次的小红书撰稿计划。",
+        context="",
+        registry=registry,
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "cron",
+                "action": "run",
+                "canonical_text": "接下来，请你开始执行每3天一次的小红书撰稿计划。",
+                "context_refs": [],
+                "parameters": {"capability_id": "recurring.content_writing.every_3_days"},
+                "safety": "write",
+                "result_contract": {"type": "recurring_cron_run", "capability_id": "recurring.content_writing.every_3_days"},
+                "tool_candidates": [{"tool_id": "openclaw.cron.run.recurring_job", "confidence": 0.98, "reason": "semantic ToolContract match"}],
+                "confidence": 0.98,
+                "reason": "manual run for configured recurring job",
+            }
+        ),
+    )
     assert frame.domain == "cron"
     assert frame.action == "run"
     assert frame.safety == "write"
