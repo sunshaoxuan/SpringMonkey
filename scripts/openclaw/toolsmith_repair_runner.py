@@ -123,6 +123,12 @@ def registry_tools(repo_root: Path) -> list[dict[str, Any]]:
     return tools if isinstance(tools, list) else []
 
 
+def registered_tool_by_id(repo_root: Path, tool_id: str) -> dict[str, Any] | None:
+    if not tool_id:
+        return None
+    return next((tool for tool in registry_tools(repo_root) if str(tool.get("tool_id") or "") == tool_id), None)
+
+
 def infer_domain_actions(text: str, gap_type: str) -> tuple[str, list[str]]:
     if re.search(r"(自演进|自進化|自身能力|内部日志|內部日志|仓库|倉庫|注册表|註冊表|远端验证|遠端驗證|重试原任务|重試原任務|权限阻断|權限阻斷|修复包|修復包)", text, re.IGNORECASE):
         return "self", ["retry", "status"]
@@ -580,6 +586,8 @@ def apply_registry_patch(repo_root: Path, registry_patch: dict[str, Any]) -> tup
     tool_id = str(registry_patch.get("tool_id") or "")
     existing = next((item for item in tools if str(item.get("tool_id")) == tool_id), None)
     if existing:
+        if not bool(registry_patch.get("replaces_existing_tool")):
+            return False, f"refusing to overwrite existing registered tool without explicit replacement approval: {tool_id}"
         existing.update(registry_patch)
     else:
         tools.append(registry_patch)
@@ -635,6 +643,15 @@ def verify_and_promote_package(package: ToolsmithPackage, *, kernel_root: Path, 
     if str(package.registry_patch.get("implementation_status") or "") != "ready":
         package.status = "generated"
         package.verify_output = "promotion deferred: generated helper is a candidate draft and is not semantically ready"
+        save_package_state(package)
+        return package
+    existing_tool = registered_tool_by_id(repo_root, package.tool_id)
+    if existing_tool and not bool(package.registry_patch.get("replaces_existing_tool")):
+        package.status = "generated"
+        package.verify_output = (
+            "promotion deferred: repair package would overwrite an existing registered tool "
+            f"({package.tool_id}); create a distinct capability or require explicit replacement approval"
+        )
         save_package_state(package)
         return package
     registry_path = repo_root / "config" / "openclaw" / "intent_tools.json"

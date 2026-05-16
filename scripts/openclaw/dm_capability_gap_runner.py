@@ -236,9 +236,13 @@ def run_gap(
         observation=observation,
         kernel_root=kernel_root,
     )
+    # If the harness/LLM has already classified the gap, do not use the
+    # legacy sample promoted-tool matcher. That matcher is intentionally broad
+    # and can bind a new capability request to an existing tool by topic word.
+    legacy_sample_allowed = forced_safety_class is None
     registry_tool = registry_tool or (
         promoted_tool_for_text(text)
-        if safety_class == "auto_safe_readonly"
+        if safety_class == "auto_safe_readonly" and legacy_sample_allowed
         else planned_tool_for_unsafe_text(text, intent_reason)
     )
     plan = build_plan(

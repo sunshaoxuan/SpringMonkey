@@ -232,6 +232,48 @@ def test_toolsmith_promotes_readonly_package_after_verify() -> None:
     assert helper_registry_exists
 
 
+def test_toolsmith_refuses_to_overwrite_existing_registered_tool_without_explicit_replacement() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo = root / "repo"
+        write_registry(
+            repo,
+            [
+                {
+                    "intent_id": "weather.dm.query",
+                    "tool_id": "weather.dm.query",
+                    "entrypoint": "scripts/weather/handle_dm_weather_query.py",
+                    "write_operation": False,
+                    "domain": "weather",
+                    "actions": ["query"],
+                    "input_schema": {"type": "dm_text_timestamp"},
+                    "output_schema": {"type": "plain_text_business_result"},
+                    "permission": "owner_dm",
+                    "permission_scope": "owner_dm",
+                    "safety": "readonly",
+                }
+            ],
+        )
+        package = runner.generate_repair_package(
+            text="修改天气预报能力",
+            reason="new weather image cron capability missing",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=repo,
+            registry_tool={
+                "tool_id": "weather.dm.query",
+                "entrypoint": "scripts/weather/handle_dm_weather_query.py",
+                "write_operation": False,
+            },
+            semantic=True,
+        )
+        package.registry_patch["implementation_status"] = "ready"
+        promoted = runner.verify_and_promote_package(package, kernel_root=root / "kernel", repo_root=repo)
+
+    assert promoted.status == "generated"
+    assert "would overwrite an existing registered tool" in promoted.verify_output
+
+
 def test_toolsmith_defers_promotion_without_formal_registry() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

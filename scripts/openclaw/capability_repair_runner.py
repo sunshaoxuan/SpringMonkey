@@ -311,6 +311,9 @@ def run_repair(
             replay_depth=replay_depth,
             require_deployed=deploy_readonly,
         )
+        if blocker and blocker.blocker_kind == "write_operation_request":
+            package_replay_allowed = False
+            package_replay_reason = "write-operation requests may use autonomous internal repair, but original-task replay requires an explicit policy-approved follow-up"
         if package_replay_allowed:
             replay_allowed = True
             replay_reason = package_replay_reason

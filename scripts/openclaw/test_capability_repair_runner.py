@@ -202,6 +202,73 @@ def test_repair_runner_allows_llm_approved_internal_autonomy() -> None:
     assert events[-1]["allowed_repair_action"] == "autonomous_internal_repair"
 
 
+def test_repair_runner_does_not_bind_llm_classified_new_gap_to_legacy_weather_tool() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        (repo / "config" / "openclaw").mkdir(parents=True)
+        (repo / "scripts" / "openclaw").mkdir(parents=True)
+        (repo / "config" / "openclaw" / "intent_tools.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "tools": [
+                        {
+                            "tool_id": "weather.dm.query",
+                            "intent_id": "weather.dm.query",
+                            "entrypoint": "scripts/weather/handle_dm_weather_query.py",
+                            "write_operation": False,
+                            "domain": "weather",
+                            "actions": ["query"],
+                            "args_schema": {"mode": "dm_text_timestamp"},
+                            "input_schema": {"type": "dm_text_timestamp"},
+                            "output_schema": {"type": "plain_text_business_result"},
+                            "permission": "owner_dm",
+                            "permission_scope": "owner_dm",
+                            "safety": "readonly",
+                            "invocation_log_policy": "harness_tool_invocation_jsonl",
+                            "failure_policy": "reply_failure_and_record_gap",
+                            "reply_policy": "tool_stdout",
+                            "verify_command": "python -m compileall -q scripts/weather/handle_dm_weather_query.py",
+                        }
+                    ],
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        with patch("toolsmith_repair_runner.run_command", return_value=(True, "ok")):
+            result = runner.run_repair(
+                text="修改每日公共频道天气预报为图片形式，先在私聊测试，批准后再替换公共任务。",
+                channel="discord_dm",
+                user_id="tester",
+                stage="binding",
+                reason="no registered tool for weather image cron rollout",
+                kernel_root=Path(tmp) / "kernel",
+                repo_root=repo,
+                blocker_model_caller=lambda _messages: json.dumps(
+                    {
+                        "intent_kind": "weather_image_cron_self_improvement",
+                        "blocker_kind": "write_operation_request",
+                        "safety_class": "auto_safe_readonly",
+                        "confidence": 0.92,
+                        "expected_capability_family": "weather.image_cron.rollout",
+                        "missing_condition": "new image weather cron capability, DM test only before approval",
+                        "allowed_repair_action": "autonomous_internal_repair",
+                        "replay_policy": "allow_after_verified_promoted",
+                        "reasoning_summary": "Internal implementation is allowed, public posting remains approval gated.",
+                        "autonomy_allowed": True,
+                        "autonomy_boundary": "dm_test_only_until_owner_approval",
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+
+    assert result.registry_tool is None or result.registry_tool.get("tool_id") != "weather.dm.query"
+    assert result.toolsmith_package["tool_id"] != "weather.dm.query"
+    assert result.replay_allowed is False
+
+
 def test_repair_runner_records_toolsmith_package_for_unverified_gap() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         result = runner.run_repair(
