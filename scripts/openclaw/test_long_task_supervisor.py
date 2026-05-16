@@ -239,7 +239,7 @@ def test_domain_implementation_process_output_becomes_final_report(monkeypatch, 
     sessions.mkdir()
     stdout = tmp_path / "impl.out"
     stderr = tmp_path / "impl.err"
-    stdout.write_text("实现完成，验证通过。", encoding="utf-8")
+    stdout.write_text("implementation_run_id=impl_1\npython -m pytest -q scripts/openclaw\n验证通过。", encoding="utf-8")
     stderr.write_text("", encoding="utf-8")
     task = supervisor.register_task(
         source="domain_implementation",
@@ -257,6 +257,35 @@ def test_domain_implementation_process_output_becomes_final_report(monkeypatch, 
     assert tasks[0]["status"] == "final_detected"
     assert tasks[0]["result_status"] == "success"
     assert "验证通过" in tasks[0]["final_report"]
+
+
+def test_domain_implementation_generic_file_written_report_fails_validation(monkeypatch, tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    stdout = tmp_path / "impl.out"
+    stderr = tmp_path / "impl.err"
+    stdout.write_text(
+        json.dumps({"result": {"payloads": [{"text": "The file has been successfully written. Let me know if you need anything else."}]}}),
+        encoding="utf-8",
+    )
+    stderr.write_text("", encoding="utf-8")
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task.update({"pid": 12345, "stdout_file": str(stdout), "stderr_file": str(stderr)})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
+
+    tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
+
+    assert tasks[0]["status"] == "final_detected"
+    assert tasks[0]["result_status"] == "failed"
+    assert "未通过验收" in tasks[0]["final_report"]
 
 
 def test_status_text_lists_recent_tasks(tmp_path: Path) -> None:

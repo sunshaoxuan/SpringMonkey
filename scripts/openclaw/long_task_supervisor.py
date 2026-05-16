@@ -420,6 +420,57 @@ def read_text_tail(path_value: str, limit: int = 4000) -> str:
     return text[-limit:] if len(text) > limit else text
 
 
+def domain_implementation_visible_text(stdout: str) -> str:
+    if not stdout.strip():
+        return ""
+    try:
+        data = json.loads(stdout)
+    except Exception:
+        return stdout.strip()
+    result = data.get("result") if isinstance(data, dict) else None
+    result = result if isinstance(result, dict) else data
+    payloads = result.get("payloads") if isinstance(result, dict) else None
+    if isinstance(payloads, list):
+        parts = [str(item.get("text") or "").strip() for item in payloads if isinstance(item, dict) and str(item.get("text") or "").strip()]
+        if parts:
+            return "\n".join(parts).strip()
+    meta = result.get("meta") if isinstance(result, dict) else None
+    if isinstance(meta, dict):
+        text = str(meta.get("finalAssistantVisibleText") or meta.get("finalAssistantRawText") or "").strip()
+        if text:
+            return text
+    return stdout.strip()
+
+
+def domain_implementation_report_status(stdout: str) -> tuple[str, str]:
+    visible = domain_implementation_visible_text(stdout)
+    lowered = visible.lower()
+    has_run_id = "implementation_run_id" in visible or "impl_" in visible
+    has_verification = any(
+        marker in visible
+        for marker in (
+            "pytest",
+            "verify_intent_tool_registry",
+            "verify_harness_registry",
+            "verify_capability_baseline",
+            "验证通过",
+            "测试通过",
+        )
+    )
+    generic_completion = any(
+        marker in lowered
+        for marker in (
+            "let me know if",
+            "successfully written",
+            "file has been successfully written",
+        )
+    )
+    if generic_completion or not has_run_id or not has_verification:
+        evidence = visible or "no visible implementation report"
+        return "failed", "内部能力实现未通过验收：缺少实现 run id 或验证证据。\n" + evidence
+    return "success", visible
+
+
 def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
     if str(task.get("source") or "") != "domain_implementation":
         return {"found": False}
@@ -429,7 +480,8 @@ def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
     stdout = read_text_tail(str(task.get("stdout_file") or ""))
     stderr = read_text_tail(str(task.get("stderr_file") or ""))
     if stdout:
-        return {"found": True, "result_status": "success", "text": stdout}
+        result_status, text = domain_implementation_report_status(stdout)
+        return {"found": True, "result_status": result_status, "text": text}
     if stderr:
         return {"found": True, "result_status": "failed", "text": f"内部能力实现失败：\n{stderr}"}
     if pid > 0:
