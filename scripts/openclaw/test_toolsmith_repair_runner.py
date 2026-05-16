@@ -223,6 +223,7 @@ def test_toolsmith_routes_internal_autonomy_to_self_reference() -> None:
                 "blocker_kind": "tool_binding_gap",
                 "allowed_repair_action": "autonomous_internal_repair",
                 "autonomy_allowed": True,
+                "expected_capability_family": "self.status.retry",
             },
         )
 
@@ -244,6 +245,10 @@ def test_toolsmith_verify_promote_falls_back_when_pytest_missing() -> None:
             kernel_root=root / "kernel",
             repo_root=repo,
             semantic=True,
+            llm_classification={
+                "blocker_kind": "readonly_tool_missing",
+                "expected_capability_family": "memory.query",
+            },
         )
         outputs = []
 
@@ -251,7 +256,7 @@ def test_toolsmith_verify_promote_falls_back_when_pytest_missing() -> None:
             outputs.append(command)
             if "pytest" in command:
                 return False, "/usr/local/bin/python: No module named pytest"
-            if "generated_memory_generated_readonly.py" in command and command.startswith("python "):
+            if "generated_openclaw_generated_memory_query.py" in command and command.startswith("python "):
                 return True, '{"status": "success", "result": "ok"}'
             return True, "ok"
 
@@ -260,7 +265,7 @@ def test_toolsmith_verify_promote_falls_back_when_pytest_missing() -> None:
 
     assert promoted.status == "promoted"
     assert "pytest unavailable; used generated helper contract fallback" in promoted.verify_output
-    assert any("python scripts/openclaw/helpers/generated_memory_generated_readonly.py" in item for item in outputs)
+    assert any("python scripts/openclaw/helpers/generated_openclaw_generated_memory_query.py" in item for item in outputs)
 
 
 def test_toolsmith_promotes_readonly_package_after_verify() -> None:
@@ -357,9 +362,9 @@ def test_toolsmith_selects_reference_tool_from_registry() -> None:
         write_registry(repo, [memory_reference_tool()])
         reference = runner.find_reference_tool(
             repo,
-            text="请查询小红书长记忆里 Frutteto 投稿记录",
             gap_type="registry_missing",
             readonly=True,
+            llm_classification={"expected_capability_family": "memory.query"},
         )
 
     assert reference
@@ -378,6 +383,10 @@ def test_toolsmith_generates_semantic_ready_helper_not_draft() -> None:
             kernel_root=root / "kernel",
             repo_root=repo,
             semantic=True,
+            llm_classification={
+                "blocker_kind": "readonly_tool_missing",
+                "expected_capability_family": "memory.query",
+            },
         )
         helper = Path(package.files[0])
         proc = subprocess.run(

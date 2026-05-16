@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -51,91 +50,19 @@ class GapRunnerResult:
     registry_tool: dict[str, Any] | None = None
 
 
-AUTO_SAFE_READONLY_RE = re.compile(
-    r"(天气|天気|weather|预报|予報|风况|風|能见度|視程|可視性|节假日|祝日|红日子|赤い日|holiday|小红书|小紅書|xhs|长记忆|長記憶|memory|Frutteto|Costco|投稿)",
-    re.IGNORECASE,
-)
-
-UNSAFE_RE = re.compile(
-    r"(取消|修改|改|调整|设置|配置|部署|重启|删除|提交|支付|付款|订车|预约|timescar|密码|token|secret|key|密钥|登录|登入)",
-    re.IGNORECASE,
-)
-
-
-WEATHER_DM_QUERY_TOOL = {
-    "intent_id": "weather.dm.query",
-    "tool_id": "weather.dm.query",
-    "description": "Answer owner DM ad hoc weather queries with forecast, wind, and visibility.",
-    "patterns": ["天气", "天気", "weather", "风", "風", "能见度", "視程", "可視性"],
-    "required_any": ["明天", "后天", "今天", "预报", "查询", "看看", "东京", "東京", "长野", "長野"],
-    "entrypoint": "scripts/weather/handle_dm_weather_query.py",
-    "args_schema": {"mode": "dm_text_timestamp", "force": False},
-    "permission": "owner_dm",
-    "write_operation": False,
-    "verify_command": "python -m compileall -q scripts/weather/handle_dm_weather_query.py && python scripts/weather/test_handle_dm_weather_query.py",
-    "failure_policy": "reply_failure_and_record_gap",
-    "reply_policy": "tool_stdout",
-    "promotion": {
-        "source": "agent_society_dm_gap_runner",
-        "safety_class": "auto_safe_readonly",
-        "status": "promoted_sample",
-    },
-}
-
-
-TIMESCAR_CANCEL_PROMOTION_TOOL = {
-    "intent_id": "timescar.reservation_cancel",
-    "tool_id": "timescar.dm.cancel_next",
-    "description": "Cancel the next TimesCar reservation from owner DM through a verified deterministic browser submitter.",
-    "patterns": ["订车", "预约", "这单", "订单", "TimesCar", "timescar"],
-    "required_any": ["取消这单", "取消订单", "取消预约", "取消订车", "cancel"],
-    "entrypoint": "scripts/timescar/timescar_cancel_reservation.py",
-    "args_schema": {"mode": "dm_text_timestamp", "force": True},
-    "permission": "owner_dm_write",
-    "write_operation": True,
-    "confirm_policy": "deterministic_tool_with_confirm_page_and_postcheck",
-    "idempotency": "target_booking_absent_after_success",
-    "verify_command": (
-        "python -m compileall -q scripts/timescar/timescar_handle_dm_adjust_request.py "
-        "scripts/timescar/timescar_cancel_reservation.py && "
-        "python scripts/timescar/test_timescar_dm_keep_cancel.py && "
-        "python scripts/timescar/test_timescar_cancel_reservation.py"
-    ),
-    "failure_policy": "reply_failure_and_record_gap",
-    "reply_policy": "tool_stdout",
-    "promotion": {
-        "source": "agent_society_dm_gap_runner",
-        "safety_class": "requires_confirmation_or_credentials",
-        "status": "requires_verified_git_delivery_before_replay",
-    },
-}
-
-
 def normalize(value: str) -> str:
-    return re.sub(r"\s+", " ", value or "").strip()
+    return " ".join((value or "").split())
 
 
 def classify_safety(text: str, intent_reason: str = "") -> tuple[str, str]:
-    combined = normalize(f"{text} {intent_reason}")
-    if UNSAFE_RE.search(combined):
-        return "requires_confirmation_or_credentials", "contains write, credential, booking, or configuration wording"
-    if AUTO_SAFE_READONLY_RE.search(combined):
-        return "auto_safe_readonly", "public read-only query wording"
-    return "unsupported_or_ambiguous", "no registered safe auto-promotion pattern"
+    return "unsupported_or_ambiguous", "semantic classifier did not provide an explicit safety class"
 
 
 def promoted_tool_for_text(text: str) -> dict[str, Any] | None:
-    if re.search(r"(天气|天気|weather|风况|風|能见度|視程|可視性)", text, re.IGNORECASE):
-        return dict(WEATHER_DM_QUERY_TOOL)
     return None
 
 
 def planned_tool_for_unsafe_text(text: str, intent_reason: str = "") -> dict[str, Any] | None:
-    combined = f"{text} {intent_reason}"
-    if re.search(r"(TimesCar|timescar|订车|预约|订单|这单)", combined, re.IGNORECASE) and re.search(
-        r"(取消这单|取消订单|取消预约|取消订车|cancel)", combined, re.IGNORECASE
-    ):
-        return dict(TIMESCAR_CANCEL_PROMOTION_TOOL)
     return None
 
 

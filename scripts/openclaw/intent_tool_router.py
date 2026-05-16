@@ -122,7 +122,7 @@ def model_classify_unregistered_intent(text: str, *, timeout: int = 8) -> tuple[
         '{"route_kind":"chat|registered_candidate|auto_safe_readonly_gap|unsafe_gap|ambiguous_gap","confidence":0.0,"reason":"short reason"}. '
         "Use chat for greetings, small talk, opinions, explanations, or normal conversation. "
         "Use registered_candidate when the wording appears to match an existing deterministic OpenClaw capability but was not matched by the registry. "
-        "Use auto_safe_readonly_gap for public read-only information queries such as weather, holidays, public facts, or external data lookups. "
+        "Use auto_safe_readonly_gap for public read-only information or external data lookups not covered by a registered capability. "
         "Use unsafe_gap for write operations, booking changes, credentials, configuration, deployment, payment, login, access approval, missing authorization, or state-changing work. "
         "Use ambiguous_gap for tasks that are not clearly safe read-only and not clearly unsafe. "
         "Do not choose a gap kind for casual conversation."
@@ -190,24 +190,8 @@ def model_classify_intent(text: str, registry: dict[str, Any], *, context: str =
         "Use auto_safe_readonly_gap for safe public read-only lookups not covered by a tool. "
         "Use unsafe_gap for write operations, bookings, credentials, configuration, deployment, payment, login, access approval, missing authorization, or state changes not covered by a tool. "
         "Use ambiguous_gap when the user appears to request a task but intent/tool is unclear. "
-        "For TimesCar: booking a car/reservation for tomorrow 09:00-21:00 with the habitual model is the book_window route. "
-        "For TimesCar: after a booking attempt says the preferred car/window is unavailable, asking to switch to an available car is also the book_window route. "
-        "For TimesCar: asking whether an order was cancelled, whether cancel succeeded, or whether the order still exists is a read-only cancel_status route. "
-        "For TimesCar: keep/保留 means record a keep decision. "
-        "For TimesCar: cancel this order/取消这单/把刚刚这单取消掉/取消掉 means cancel_next, especially when context has a recent successful booking. "
-        "For TimesCar: adjust_start is only for explicit start-time changes, such as moving tomorrow 09:00 to the day after tomorrow 09:00. "
-        "For TimesCar: shifting the whole reservation window later/earlier while preserving duration uses shift_window, not adjust_start. "
-        "For TimesCar query ranges: '未来一个月' means duration_hours 720, offset_hours 0, relation within. "
-        "For TimesCar query ranges: '未来一个月以后' or '一个月以后' means duration_hours 720, offset_hours 720, relation after. "
-        "For short follow-ups such as '一个月的' or '未来2周的呢', inherit the recent query intent from context and output a complete canonical_text. "
-        "Do not select adjust_start merely because the word 取消 appears; '取消明天的时间，让开始时间从后天...' is adjust_start, but '把这单取消掉' is cancel_next. "
-        "Examples: "
-        "'好的，把刚刚这单取消掉吧' => action cancel, tool_id timescar.dm.cancel_next. "
-        "'把这单取消掉' => action cancel, tool_id timescar.dm.cancel_next. "
-        "'这单取消了吗' => action status, tool_id timescar.dm.cancel_status. "
-        "'请把明天开始的订车改到后天早9点' => action adjust, tool_id timescar.dm.adjust_start. "
-        "'取消明天的时间，让开始时间从后天早上9点开始' => action adjust, tool_id timescar.dm.adjust_start. "
-        "'请把马上开始的那单预订往后整体延15分钟' => action adjust, tool_id timescar.dm.shift_window."
+        "Resolve short follow-ups by using recent context, but still select only by semantic fit to the registered ToolContracts. "
+        "Do not use business keyword hits, examples, or topic words as the primary decision; the registry contracts are the source of capability semantics."
     )
     user = "\n".join(
         [
@@ -308,8 +292,8 @@ def classify(text: str, channel: str, user_id: str, registry: dict[str, Any] | N
     Tool Binder. This helper remains for registry smoke tests and historical
     diagnostics, not for semantic routing.
     """
-    if os.environ.get("OPENCLAW_DISABLE_LEGACY_PATTERN_CLASSIFY", "").strip() == "1":
-        return Classification(None, None, 0.0, "legacy pattern classifier disabled; use Harness intentAgent contracts")
+    if os.environ.get("OPENCLAW_ENABLE_LEGACY_PATTERN_CLASSIFY", "").strip() != "1":
+        return Classification(None, None, 0.0, "legacy pattern classifier disabled by default; use Harness intentAgent contracts")
     registry = registry or load_registry()
     normalized = normalize_text(text)
     best: tuple[float, str, dict[str, Any], list[str]] | None = None

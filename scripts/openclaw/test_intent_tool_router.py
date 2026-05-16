@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,12 +12,27 @@ import harness_dispatcher
 import harness_intent_audit
 import harness_intent_completion
 import nl_time_range
-from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult, WEATHER_DM_QUERY_TOOL
+from dm_capability_gap_runner import CapabilityPlan, GapRunnerResult
 from harness_intent_agent import IntentFrame, infer_intent_frame
+
+
+os.environ.setdefault("OPENCLAW_ENABLE_LEGACY_PATTERN_CLASSIFY", "1")
 
 
 def load_registry() -> dict:
     return router.load_registry()
+
+
+def test_legacy_pattern_classifier_is_disabled_by_default() -> None:
+    with patch.dict(os.environ, {}, clear=True):
+        result = router.classify("请查询明天东京天气", "discord_dm", "999", load_registry())
+    assert result.tool_id is None
+    assert "disabled by default" in result.reason
+
+
+def registry_tool(tool_id: str) -> dict:
+    registry = load_registry()
+    return next(tool for tool in registry["tools"] if tool["tool_id"] == tool_id)
 
 
 def intent_frame(
@@ -795,7 +811,7 @@ def test_unregistered_safe_readonly_gap_promotes_and_replays() -> None:
             status="promoted",
             gap_ref="kernel_session=session_test gap_id=gap_test",
             replay_allowed=True,
-            registry_tool=WEATHER_DM_QUERY_TOOL,
+            registry_tool=registry_tool("weather.dm.query"),
         )
         with patch.object(
             harness_dispatcher,

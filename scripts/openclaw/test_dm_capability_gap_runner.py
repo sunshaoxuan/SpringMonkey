@@ -7,21 +7,45 @@ from unittest.mock import patch
 import dm_capability_gap_runner as runner
 
 
-def test_safe_readonly_weather_gap_promotes_registry_tool() -> None:
+def test_unclassified_gap_does_not_promote_by_business_keywords() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        result = runner.run_gap(
+            text="请查询明天东京和长野天气、风况和能见度",
+            channel="discord_dm",
+            user_id="999",
+            intent_reason="weather lookup",
+            kernel_root=Path(tmp) / "kernel",
+            repo_root=Path(tmp),
+        )
+    assert result.status == "blocked"
+    assert result.safety_class == "unsupported_or_ambiguous"
+    assert result.registry_tool is None
+    assert result.plan.status == "blocked_requires_human_or_registered_tool"
+
+
+def test_forced_readonly_gap_can_promote_explicit_registry_tool() -> None:
+    registry_tool = {
+        "tool_id": "weather.dm.query",
+        "entrypoint": "scripts/weather/handle_dm_weather_query.py",
+        "verify_command": "python -m compileall -q scripts/weather/handle_dm_weather_query.py",
+        "write_operation": False,
+    }
     with tempfile.TemporaryDirectory() as tmp:
         with patch.object(runner, "run_verify_command", return_value=(True, "ok")):
             result = runner.run_gap(
                 text="请查询明天东京和长野天气、风况和能见度",
                 channel="discord_dm",
                 user_id="999",
-                intent_reason="weather lookup",
+                intent_reason="semantic classifier selected weather query",
                 kernel_root=Path(tmp) / "kernel",
                 repo_root=Path(tmp),
+                forced_safety_class="auto_safe_readonly",
+                forced_safety_reason="model selected safe read-only capability",
+                registry_tool=registry_tool,
             )
     assert result.status == "promoted"
     assert result.safety_class == "auto_safe_readonly"
-    assert result.registry_tool
-    assert result.registry_tool["tool_id"] == "weather.dm.query"
+    assert result.registry_tool == registry_tool
     assert result.plan.status == "promoted_replay_ready"
 
 
@@ -34,14 +58,14 @@ def test_write_gap_records_plan_without_promoting_tool() -> None:
             intent_reason="write operation",
             kernel_root=Path(tmp) / "kernel",
             repo_root=Path(tmp),
-        )
+    )
     assert result.status == "blocked"
-    assert result.safety_class == "requires_confirmation_or_credentials"
+    assert result.safety_class == "unsupported_or_ambiguous"
     assert result.registry_tool is None
     assert "不能自动执行" in result.reply
 
 
-def test_timescar_cancel_gap_generates_verified_tool_plan_without_replay() -> None:
+def test_timescar_cancel_gap_does_not_generate_tool_plan_from_keywords() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         result = runner.run_gap(
             text="请取消这单订车",
@@ -50,10 +74,8 @@ def test_timescar_cancel_gap_generates_verified_tool_plan_without_replay() -> No
             intent_reason="registered tool reported missing verified cancel submitter",
             kernel_root=Path(tmp) / "kernel",
             repo_root=Path(tmp),
-        )
+    )
     assert result.status == "blocked"
-    assert result.safety_class == "requires_confirmation_or_credentials"
-    assert result.registry_tool
-    assert result.registry_tool["tool_id"] == "timescar.dm.cancel_next"
-    assert result.plan.entrypoint == "scripts/timescar/timescar_cancel_reservation.py"
-    assert "候选工具：timescar.dm.cancel_next" in result.reply
+    assert result.safety_class == "unsupported_or_ambiguous"
+    assert result.registry_tool is None
+    assert result.plan.entrypoint is None

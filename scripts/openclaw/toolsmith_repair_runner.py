@@ -108,11 +108,17 @@ def classify_gap(reason: str, registry_tool: dict[str, Any] | None = None, llm_c
     return "registry_missing"
 
 
-def infer_tool_id(text: str, gap_type: str) -> str:
-    if re.search(r"(天气|weather|風|风|能见度)", text, re.IGNORECASE):
-        return "weather.dm.generated_readonly"
-    if re.search(r"(小红书|小紅書|xhs|长记忆|memory)", text, re.IGNORECASE):
-        return "memory.generated_readonly"
+def family_parts(llm_classification: dict[str, Any] | None) -> list[str]:
+    family = str((llm_classification or {}).get("expected_capability_family") or "").strip()
+    if not family or family == "unknown":
+        return []
+    return [part for part in re.split(r"[^A-Za-z0-9]+", family.lower()) if part]
+
+
+def infer_tool_id(gap_type: str, llm_classification: dict[str, Any] | None = None) -> str:
+    parts = family_parts(llm_classification)
+    if parts:
+        return f"openclaw.generated.{safe_slug('.'.join(parts[:4]))}"
     return f"openclaw.generated.{safe_slug(gap_type)}"
 
 
@@ -134,15 +140,12 @@ def registered_tool_by_id(repo_root: Path, tool_id: str) -> dict[str, Any] | Non
     return next((tool for tool in registry_tools(repo_root) if str(tool.get("tool_id") or "") == tool_id), None)
 
 
-def infer_domain_actions(text: str, gap_type: str) -> tuple[str, list[str]]:
-    if re.search(r"(自演进|自進化|自身能力|内部日志|內部日志|仓库|倉庫|注册表|註冊表|远端验证|遠端驗證|重试原任务|重試原任務|权限阻断|權限阻斷|修复包|修復包)", text, re.IGNORECASE):
-        return "self", ["retry", "status"]
-    if re.search(r"(小红书|小紅書|xhs|长记忆|memory|记忆|記憶)", text, re.IGNORECASE):
-        return "memory", ["query"]
-    if re.search(r"(天气|weather|風|风|能见度|視程|可視性)", text, re.IGNORECASE):
-        return "weather", ["query"]
-    if re.search(r"(状态|狀態|能力缺口)", text, re.IGNORECASE):
-        return "self", ["status"]
+def infer_domain_actions(gap_type: str, llm_classification: dict[str, Any] | None = None) -> tuple[str, list[str]]:
+    parts = family_parts(llm_classification)
+    if parts:
+        domain = parts[0]
+        actions = [part for part in parts[1:4] if part not in {"capability", "tool", "workflow"}]
+        return domain, actions or ["query"]
     if gap_type == "entrypoint_missing":
         return "general", ["query"]
     return "general", ["query"]
@@ -171,8 +174,15 @@ def score_reference_tool(tool: dict[str, Any], *, domain: str, actions: list[str
     return score
 
 
-def find_reference_tool(repo_root: Path, *, text: str, gap_type: str, readonly: bool = True, exclude_tool_id: str = "") -> dict[str, Any] | None:
-    domain, actions = infer_domain_actions(text, gap_type)
+def find_reference_tool(
+    repo_root: Path,
+    *,
+    gap_type: str,
+    readonly: bool = True,
+    exclude_tool_id: str = "",
+    llm_classification: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    domain, actions = infer_domain_actions(gap_type, llm_classification)
     input_type = "dm_text_timestamp"
     candidates = [
         tool
@@ -185,7 +195,8 @@ def find_reference_tool(repo_root: Path, *, text: str, gap_type: str, readonly: 
         key=lambda tool: score_reference_tool(tool, domain=domain, actions=actions, readonly=readonly, input_type=input_type),
         reverse=True,
     )
-    if ranked and score_reference_tool(ranked[0], domain=domain, actions=actions, readonly=readonly, input_type=input_type) > 0:
+    threshold = 8 if domain == "general" else 1
+    if ranked and score_reference_tool(ranked[0], domain=domain, actions=actions, readonly=readonly, input_type=input_type) >= threshold:
         return dict(ranked[0])
     return None
 
@@ -218,7 +229,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -279,12 +289,11 @@ def config_check() -> str:
 
 
 def answer(text: str) -> str:
-    combined = f"{{text}} {{DOMAIN}}"
-    if DOMAIN == "memory" or re.search(r"长记忆|記憶|memory|小红书|xhs", combined, re.I):
+    if DOMAIN == "memory":
         return memory_query(text)
-    if DOMAIN == "self" or re.search(r"自演进|自進化|能力缺口|修复包|修復包|状态|狀態", combined, re.I):
+    if DOMAIN == "self":
         return self_status()
-    if re.search(r"配置|注册|registry|工具", combined, re.I):
+    if DOMAIN in {{"config", "registry", "tooling"}}:
         return config_check()
     return f"只读语义 helper 已处理请求：{{text or '未提供文本'}}"
 
@@ -372,9 +381,10 @@ def build_registry_patch(
     *,
     reference_tool: dict[str, Any] | None = None,
     semantic: bool = False,
+    llm_classification: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     prompt = text[:40] or "generated"
-    domain, actions = infer_domain_actions(text, "registry_missing")
+    domain, actions = infer_domain_actions("registry_missing", llm_classification)
     reference_actions = list((reference_tool or {}).get("actions") or [])
     merged_actions = list(dict.fromkeys(reference_actions + actions))
     args_schema = dict((reference_tool or {}).get("args_schema") or {"mode": "dm_text_timestamp", "force": False})
@@ -467,7 +477,7 @@ def generate_repair_package(
     elif model_blocks_toolsmith:
         tool_id = str((registry_tool or {}).get("tool_id") or "openclaw.authorization_required")
     else:
-        tool_id = str((registry_tool or {}).get("tool_id") or infer_tool_id(text, gap_type))
+        tool_id = str((registry_tool or {}).get("tool_id") or infer_tool_id(gap_type, llm_classification))
     entrypoint = str((registry_tool or {}).get("entrypoint") or ("" if (model_blocks_toolsmith or internal_write_repair_plan) else f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py"))
     fingerprint = repair_fingerprint(text=text, reason=reason, tool_id=tool_id, entrypoint=entrypoint)
     package_id = f"repair_{safe_slug(tool_id)}_{fingerprint}"
@@ -476,11 +486,28 @@ def generate_repair_package(
     existing = load_package_state(package_dir)
     if existing is not None:
         return existing
-    reference_tool = find_reference_tool(repo_root, text=text, gap_type=gap_type, readonly=True, exclude_tool_id=tool_id) if semantic and not write_like else None
+    reference_tool = (
+        find_reference_tool(
+            repo_root,
+            gap_type=gap_type,
+            readonly=True,
+            exclude_tool_id=tool_id,
+            llm_classification=llm_classification,
+        )
+        if semantic and not write_like
+        else None
+    )
     registry_patch = (
         {}
         if write_like
-        else build_registry_patch(tool_id, entrypoint, text, reference_tool=reference_tool, semantic=semantic and not write_like)
+        else build_registry_patch(
+            tool_id,
+            entrypoint,
+            text,
+            reference_tool=reference_tool,
+            semantic=semantic and not write_like,
+            llm_classification=llm_classification,
+        )
     )
     files: list[str] = []
     status = "planned" if internal_write_repair_plan else ("blocked_requires_authorization" if write_like else "generated")
@@ -488,7 +515,7 @@ def generate_repair_package(
     if not write_like:
         helper_rel = Path(entrypoint)
         test_rel = Path("scripts/openclaw") / f"test_generated_{safe_slug(tool_id)}.py"
-        domain = str(registry_patch.get("domain") or infer_domain_actions(text, gap_type)[0])
+        domain = str(registry_patch.get("domain") or infer_domain_actions(gap_type, llm_classification)[0])
         helper_text = (
             render_semantic_helper(tool_id, domain, str((reference_tool or {}).get("tool_id") or "none"))
             if semantic
