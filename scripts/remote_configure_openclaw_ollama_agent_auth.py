@@ -88,6 +88,8 @@ def ensure_auth(agent_dir: Path) -> None:
 
 def ensure_config() -> None:
     data = json.loads(config_path.read_text(encoding='utf-8'))
+    discord = data.setdefault('channels', {{}}).setdefault('discord', {{}})
+    discord.setdefault('threadBindings', {{}})['spawnSubagentSessions'] = True
     models = data.setdefault('models', {{}})
     providers = models.setdefault('providers', {{}})
     ollama = providers.setdefault('ollama', {{}})
