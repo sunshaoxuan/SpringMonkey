@@ -22,7 +22,9 @@ from long_task_supervisor import ACTIVE_STATUSES, DEFAULT_STATE_PATH, read_state
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
 DEFAULT_RUN_DIR = Path("/var/lib/openclaw/.openclaw/workspace/state/domain_implementation_runs")
 DEFAULT_TIMEOUT_SECONDS = 7200
-DEFAULT_MODEL = "ollama/qwen3:14b"
+DEFAULT_MODEL = "openai-codex/gpt-5.5"
+SERVICE_STATE_DIR = Path("/var/lib/openclaw/.openclaw")
+SERVICE_CONFIG_PATH = SERVICE_STATE_DIR / "openclaw.json"
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -212,6 +214,8 @@ def start_implementation(
         ]
         env = dict(os.environ)
         env.setdefault("PYTHONIOENCODING", "utf-8")
+        env.setdefault("OPENCLAW_STATE_DIR", str(SERVICE_STATE_DIR))
+        env.setdefault("OPENCLAW_CONFIG_PATH", str(SERVICE_CONFIG_PATH))
         try:
             with stdout_file.open("ab") as out, stderr_file.open("ab") as err:
                 proc = subprocess.Popen(

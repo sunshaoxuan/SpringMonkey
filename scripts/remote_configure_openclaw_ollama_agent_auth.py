@@ -18,6 +18,7 @@ USER = "root"
 DEFAULT_REPO = "/var/lib/openclaw/repos/SpringMonkey"
 DEFAULT_BASE_URL = "http://ccnode.briconbric.com:22545"
 DEFAULT_MODEL = "qwen3:14b"
+DEFAULT_PRIMARY = "openai-codex/gpt-5.5"
 PLACEHOLDER_KEY = "ccnode-ollama-local"
 
 
@@ -35,6 +36,7 @@ def main() -> int:
     repo = os.environ.get("SPRINGMONKEY_REPO_PATH", DEFAULT_REPO).strip() or DEFAULT_REPO
     base_url = os.environ.get("OPENCLAW_OLLAMA_BASE_URL", DEFAULT_BASE_URL).strip() or DEFAULT_BASE_URL
     model = os.environ.get("OPENCLAW_QWEN_FALLBACK_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+    primary = os.environ.get("OPENCLAW_PRIMARY_MODEL", DEFAULT_PRIMARY).strip() or DEFAULT_PRIMARY
     remote = f"""
 set -e
 cd "{repo}"
@@ -46,8 +48,12 @@ from pathlib import Path
 
 base_url = {base_url!r}
 model = {model!r}
+primary = {primary!r}
 key = {PLACEHOLDER_KEY!r}
-config_path = Path('/var/lib/openclaw/.openclaw/openclaw.json')
+config_paths = [
+    Path('/var/lib/openclaw/.openclaw/openclaw.json'),
+    Path('/root/.openclaw/openclaw.json'),
+]
 agent_dirs = [
     Path('/var/lib/openclaw/.openclaw/agents/main/agent'),
     Path('/root/.openclaw/agents/main/agent'),
@@ -86,7 +92,9 @@ def ensure_auth(agent_dir: Path) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + '\\n', encoding='utf-8')
     path.chmod(0o600)
 
-def ensure_config() -> None:
+def ensure_config(config_path: Path) -> None:
+    if not config_path.exists():
+        return
     data = json.loads(config_path.read_text(encoding='utf-8'))
     discord = data.setdefault('channels', {{}}).setdefault('discord', {{}})
     discord.setdefault('threadBindings', {{}})['spawnSubagentSessions'] = True
@@ -110,8 +118,7 @@ def ensure_config() -> None:
         }})
     defaults = data.setdefault('agents', {{}}).setdefault('defaults', {{}})
     model_cfg = defaults.setdefault('model', {{}})
-    if not str(model_cfg.get('primary') or '').strip():
-        model_cfg['primary'] = f'ollama/{{model}}'
+    model_cfg['primary'] = primary
     fallbacks = model_cfg.setdefault('fallbacks', [])
     fallback_id = f'ollama/{{model}}'
     if fallback_id not in fallbacks and model_cfg.get('primary') != fallback_id:
@@ -120,16 +127,17 @@ def ensure_config() -> None:
     backup(config_path)
     config_path.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + '\\n', encoding='utf-8')
 
-ensure_config()
+for config_path in config_paths:
+    ensure_config(config_path)
 for agent_dir in agent_dirs:
     ensure_auth(agent_dir)
 print('ollama_agent_auth_configured')
-print(f'base_url={{base_url}} model={{model}} key_marker={{key}}')
+print(f'primary={{primary}} fallback=ollama/{{model}} base_url={{base_url}} key_marker={{key}}')
 PY
 systemctl restart openclaw.service
 sleep 2
 systemctl is-active openclaw.service
-openclaw --no-color agent --agent main --model "ollama/{model}" --message "只回答 ok" --timeout 60 --thinking off --json >/tmp/openclaw-ollama-auth-smoke.json
+OPENCLAW_STATE_DIR=/var/lib/openclaw/.openclaw OPENCLAW_CONFIG_PATH=/var/lib/openclaw/.openclaw/openclaw.json openclaw --no-color agent --agent main --model "ollama/{model}" --message "只回答 ok" --timeout 60 --thinking off --json >/tmp/openclaw-ollama-auth-smoke.json
 python - <<'PY'
 from pathlib import Path
 text = Path('/tmp/openclaw-ollama-auth-smoke.json').read_text(encoding='utf-8', errors='replace')
