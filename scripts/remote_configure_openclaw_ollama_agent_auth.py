@@ -115,7 +115,13 @@ def ensure_config(config_path: Path) -> None:
         return
     data = json.loads(config_path.read_text(encoding='utf-8'))
     discord = data.setdefault('channels', {{}}).setdefault('discord', {{}})
-    discord.setdefault('threadBindings', {{}})['spawnSubagentSessions'] = True
+    thread_bindings = discord.setdefault('threadBindings', {{}})
+    thread_bindings.pop('spawnSubagentSessions', None)
+    thread_bindings.pop('spawnAcpSessions', None)
+    thread_bindings['spawnSessions'] = True
+    plugins = data.setdefault('plugins', {{}})
+    if 'allow' in plugins and 'bundledDiscovery' not in plugins:
+        plugins['bundledDiscovery'] = 'compat'
     models = data.setdefault('models', {{}})
     providers = models.setdefault('providers', {{}})
     openai = providers.setdefault('openai', {{}})
@@ -123,16 +129,22 @@ def ensure_config(config_path: Path) -> None:
     if codex_key:
         openai['apiKey'] = codex_key
     openai_known = openai.setdefault('models', [])
-    if not any(isinstance(item, dict) and item.get('id') == 'gpt-5.5' for item in openai_known):
-        openai_known.insert(0, {{
-            'id': 'gpt-5.5',
-            'name': 'GPT-5.5 via ccnode',
-            'reasoning': True,
-            'input': ['text'],
-            'contextWindow': 196000,
-            'maxTokens': 32768,
-            'api': 'chat_completions',
-        }})
+    openai_model = None
+    for item in openai_known:
+        if isinstance(item, dict) and item.get('id') == 'gpt-5.5':
+            openai_model = item
+            break
+    if openai_model is None:
+        openai_model = {{'id': 'gpt-5.5'}}
+        openai_known.insert(0, openai_model)
+    openai_model.update({{
+        'name': 'GPT-5.5 via ccnode',
+        'reasoning': True,
+        'input': ['text'],
+        'contextWindow': 196000,
+        'maxTokens': 32768,
+        'api': 'openai-completions',
+    }})
     ollama = providers.setdefault('ollama', {{}})
     ollama['baseUrl'] = base_url
     ollama['apiKey'] = key
