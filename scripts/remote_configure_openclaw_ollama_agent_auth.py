@@ -56,7 +56,7 @@ agent_dirs = [
 def backup(path: Path) -> None:
     if path.exists():
         stamp = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
-        shutil.copy2(path, path.with_suffix(path.suffix + f'.bak-{stamp}'))
+        shutil.copy2(path, path.with_suffix(path.suffix + f'.bak-{{stamp}}'))
 
 def ensure_auth(agent_dir: Path) -> None:
     agent_dir.mkdir(parents=True, exist_ok=True)
