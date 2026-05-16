@@ -76,7 +76,7 @@ def test_repair_runner_blocks_write_replay() -> None:
         )
     assert result.status == "blocked"
     assert result.replay_allowed is False
-    assert "not a verified read-only tool" in result.replay_reason or result.safety_class == "requires_confirmation_or_credentials"
+    assert "不是已验证的只读工具" in result.replay_reason or result.safety_class == "requires_confirmation_or_credentials"
 
 
 def test_repair_runner_uses_llm_access_blocker_without_generating_readonly_helper() -> None:
@@ -268,6 +268,7 @@ def test_repair_runner_does_not_bind_llm_classified_new_gap_to_legacy_weather_to
     assert result.status == "planned"
     assert result.toolsmith_package["status"] == "planned"
     assert result.toolsmith_package["tool_id"] != "weather.dm.query"
+    assert result.toolsmith_package["tool_id"].startswith("openclaw.repair_plan.")
     assert result.toolsmith_package["registry_patch"] == {}
     assert result.replay_allowed is False
 

@@ -102,31 +102,31 @@ def replay_decision(
     registry_tool: dict[str, Any] | None,
 ) -> tuple[bool, str]:
     if replay_depth > 0:
-        return False, "bounded replay already attempted"
+        return False, "已经尝试过一次受控重放"
     if stage not in REPLAYABLE_STAGES:
-        return False, f"stage {stage} is not replayable"
+        return False, f"当前阶段 {stage} 不允许自动重放"
     if gap_result.status != "promoted":
-        return False, f"repair status is {gap_result.status}, not promoted"
+        return False, f"修复状态为 {gap_result.status}，尚未提升为可重放能力"
     tool = registry_tool or gap_result.registry_tool
     if not is_tool_readonly(tool):
-        return False, "candidate repair is not a verified read-only tool"
-    return True, "verified read-only repair can be replayed once"
+        return False, "候选修复不是已验证的只读工具"
+    return True, "已验证的只读修复可重放一次"
 
 
 def package_replay_decision(*, stage: str, package: ToolsmithPackage | None, replay_depth: int, require_deployed: bool = False) -> tuple[bool, str]:
     if replay_depth > 0:
-        return False, "bounded replay already attempted"
+        return False, "已经尝试过一次受控重放"
     if stage not in REPLAYABLE_STAGES:
-        return False, f"stage {stage} is not replayable"
+        return False, f"当前阶段 {stage} 不允许自动重放"
     if package is None:
-        return False, "no promoted repair package"
+        return False, "没有可提升的修复包"
     if package.status not in {"promoted", "deployed"}:
-        return False, f"repair package status is {package.status}, not promoted"
+        return False, f"修复包状态为 {package.status}，尚未提升"
     if require_deployed and package.status != "deployed":
-        return False, "repair package is promoted but not marked deployed"
+        return False, "修复包已提升但尚未标记为已部署"
     if package.write_operation:
-        return False, "repair package is write-scoped"
-    return True, "promoted read-only repair package can be replayed once"
+        return False, "修复包属于写入范围"
+    return True, "已提升的只读修复包可重放一次"
 
 
 def run_repair(
@@ -160,9 +160,9 @@ def run_repair(
     if regression.matched:
         replay_allowed = regression.status == "verified" and not regression.write_operation and replay_depth == 0
         replay_reason = (
-            "verified read-only baseline regression can be replayed once"
+            "已验证的只读基线回归可重放一次"
             if replay_allowed
-            else ("write-scoped baseline regression requires explicit authorization" if regression.write_operation else f"regression status is {regression.status}")
+            else ("写入范围的基线回归需要明确授权" if regression.write_operation else f"回归修复状态为 {regression.status}")
         )
         event = {
             "created_at": utc_now(),
@@ -313,7 +313,7 @@ def run_repair(
         )
         if blocker and blocker.blocker_kind == "write_operation_request":
             package_replay_allowed = False
-            package_replay_reason = "write-operation requests may use autonomous internal repair, but original-task replay requires an explicit policy-approved follow-up"
+            package_replay_reason = "写入型请求可以先生成内部修复路线，但原任务重放需要通过策略批准"
         if package_replay_allowed:
             replay_allowed = True
             replay_reason = package_replay_reason

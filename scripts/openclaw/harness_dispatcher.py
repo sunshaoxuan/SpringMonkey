@@ -57,6 +57,18 @@ def frame_reply(frame: IntentFrame) -> str:
     return f"未执行：{frame.reason}"
 
 
+def capability_gap_user_summary(repair_status: str) -> str:
+    if repair_status == "planned":
+        return "未执行：已识别为需要补齐的能力，汤猴已生成实现路线，但还没有通过验证并提升为可执行能力。"
+    if repair_status in {"generated", "verified"}:
+        return "未执行：已生成修复包，仍需验证通过后才能重试原任务。"
+    if repair_status in {"promoted", "deployed"}:
+        return "未执行：修复包已提升，等待安全策略允许后再重试原任务。"
+    if repair_status == "blocked":
+        return "未执行：该请求触及授权、凭据、外部写入或条件不明的边界，已记录为需要明确条件后继续。"
+    return "未执行：当前没有可安全调用的已注册工具，已进入能力缺口处理。"
+
+
 def handle_event(
     *,
     text: str,
@@ -221,7 +233,7 @@ def handle_event(
             return replayed
         return finish(
             "unsupported",
-            "\n".join([frame_reply(frame), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
+            "\n".join([capability_gap_user_summary(repair.status), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,
             None,

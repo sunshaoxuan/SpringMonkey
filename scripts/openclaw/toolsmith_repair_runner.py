@@ -75,6 +75,11 @@ def repair_fingerprint(*, text: str, reason: str, tool_id: str, entrypoint: str)
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
 
+def plan_tool_id(llm_classification: dict[str, Any] | None, gap_type: str) -> str:
+    family = str((llm_classification or {}).get("expected_capability_family") or gap_type or "capability")
+    return f"openclaw.repair_plan.{safe_slug(family)}"
+
+
 def classify_gap(reason: str, registry_tool: dict[str, Any] | None = None, llm_classification: dict[str, Any] | None = None) -> str:
     blocker_kind = str((llm_classification or {}).get("blocker_kind") or "")
     if bool((llm_classification or {}).get("autonomy_allowed")) or str((llm_classification or {}).get("allowed_repair_action") or "") in AUTONOMOUS_REPAIR_ACTIONS:
@@ -457,11 +462,13 @@ def generate_repair_package(
         or model_blocks_toolsmith
         or internal_write_repair_plan
     )
-    if model_blocks_toolsmith:
+    if internal_write_repair_plan:
+        tool_id = plan_tool_id(llm_classification, gap_type)
+    elif model_blocks_toolsmith:
         tool_id = str((registry_tool or {}).get("tool_id") or "openclaw.authorization_required")
     else:
         tool_id = str((registry_tool or {}).get("tool_id") or infer_tool_id(text, gap_type))
-    entrypoint = str((registry_tool or {}).get("entrypoint") or ("" if model_blocks_toolsmith else f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py"))
+    entrypoint = str((registry_tool or {}).get("entrypoint") or ("" if (model_blocks_toolsmith or internal_write_repair_plan) else f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py"))
     fingerprint = repair_fingerprint(text=text, reason=reason, tool_id=tool_id, entrypoint=entrypoint)
     package_id = f"repair_{safe_slug(tool_id)}_{fingerprint}"
     package_dir = kernel_root / "toolsmith_packages" / package_id
