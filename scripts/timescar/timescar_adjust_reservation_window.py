@@ -165,6 +165,16 @@ def assert_confirm_page(body: str, new_start: datetime, new_return: datetime) ->
         raise AdjustError("确认页结束时间不匹配")
 
 
+def is_recoverable_browser_closed_error(exc: Exception) -> bool:
+    lowered = str(exc).lower()
+    return (
+        "target page, context or browser has been closed" in lowered
+        or "browser has been closed" in lowered
+        or "context has been closed" in lowered
+        or "target closed" in lowered
+    )
+
+
 def format_report(booking: str, old_start: datetime, old_return: datetime, new_start: datetime, new_return: datetime, dry_run: bool) -> str:
     status = "dry-run 校验成功，未提交" if dry_run else "预约变更已提交并回查确认"
     return "\n".join(
@@ -245,52 +255,69 @@ def main() -> int:
         p1, p2, password = load_credentials()
         runtime.record_step(step="load-credentials", status="ok", tool="timescar_secret.sh", detail="credentials loaded")
 
-        with sync_playwright() as p:
-            browser = p.chromium.connect_over_cdp("http://127.0.0.1:18800")
-            ctx = browser.contexts[0]
-            page = ctx.new_page()
-            page.set_default_timeout(45000)
-            phase = "open-reservation-list"
-            page.goto(RESERVE_LIST_URL, wait_until="domcontentloaded", timeout=60000)
-            login_if_needed(page, p1, p2, password)
-            if page.url != RESERVE_LIST_URL:
-                page.goto(RESERVE_LIST_URL, wait_until="domcontentloaded", timeout=60000)
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="opened reservation list")
+        browser_completed = False
+        for attempt in range(2):
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.connect_over_cdp("http://127.0.0.1:18800")
+                    ctx = browser.contexts[0]
+                    page = ctx.new_page()
+                    page.set_default_timeout(45000)
+                    phase = "open-reservation-list"
+                    page.goto(RESERVE_LIST_URL, wait_until="domcontentloaded", timeout=60000)
+                    login_if_needed(page, p1, p2, password)
+                    if page.url != RESERVE_LIST_URL:
+                        page.goto(RESERVE_LIST_URL, wait_until="domcontentloaded", timeout=60000)
+                    runtime.record_step(step=phase, status="ok", tool="browser", detail="opened reservation list")
 
-            rid = locate_change_rid(page, booking)
-            runtime.record_step(step="locate-change-entry", status="ok", tool="browser", detail=f"rid={rid}")
+                    rid = locate_change_rid(page, booking)
+                    runtime.record_step(step="locate-change-entry", status="ok", tool="browser", detail=f"rid={rid}")
 
-            phase = "prepare-change"
-            page.goto(f"https://share.timescar.jp/view/reserve/change.jsp?rid={rid}", wait_until="domcontentloaded", timeout=60000)
-            select_datetime(page, "Start", new_start)
-            select_datetime(page, "End", new_return)
-            page.locator("#doCheck").click()
-            page.wait_for_load_state("domcontentloaded")
-            body = page.locator("body").inner_text()
-            assert_confirm_page(body, new_start, new_return)
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="confirm page verified")
+                    phase = "prepare-change"
+                    page.goto(f"https://share.timescar.jp/view/reserve/change.jsp?rid={rid}", wait_until="domcontentloaded", timeout=60000)
+                    select_datetime(page, "Start", new_start)
+                    select_datetime(page, "End", new_return)
+                    page.locator("#doCheck").click()
+                    page.wait_for_load_state("domcontentloaded")
+                    body = page.locator("body").inner_text()
+                    assert_confirm_page(body, new_start, new_return)
+                    runtime.record_step(step=phase, status="ok", tool="browser", detail="confirm page verified")
 
-            if args.dry_run or not args.force:
-                message = format_report(booking, current_start, old_return, new_start, new_return, dry_run=True)
-                runtime.finish("ok", "dry-run", final_message=message)
-                print(message)
-                return 0
+                    if args.dry_run or not args.force:
+                        message = format_report(booking, current_start, old_return, new_start, new_return, dry_run=True)
+                        runtime.finish("ok", "dry-run", final_message=message)
+                        print(message)
+                        return 0
 
-            phase = "submit-change"
-            page.locator("#doOnceRegist").click(force=True)
-            page.wait_for_load_state("domcontentloaded")
-            body = page.locator("body").inner_text()
-            if "ご注意ください！" in body and page.locator("text=了解").count():
-                page.locator("text=了解").click(force=True)
-                page.wait_for_load_state("domcontentloaded")
-                body = page.locator("body").inner_text()
-                if "予約変更を受付けました。" not in body and page.locator("#doOnceRegist").count():
+                    phase = "submit-change"
                     page.locator("#doOnceRegist").click(force=True)
                     page.wait_for_load_state("domcontentloaded")
                     body = page.locator("body").inner_text()
-            if "予約変更を受付けました。" not in body:
-                raise AdjustError("提交后未看到预约变更完成提示")
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted change")
+                    if "ご注意ください！" in body and page.locator("text=了解").count():
+                        page.locator("text=了解").click(force=True)
+                        page.wait_for_load_state("domcontentloaded")
+                        body = page.locator("body").inner_text()
+                        if "予約変更を受付けました。" not in body and page.locator("#doOnceRegist").count():
+                            page.locator("#doOnceRegist").click(force=True)
+                            page.wait_for_load_state("domcontentloaded")
+                            body = page.locator("body").inner_text()
+                    if "予約変更を受付けました。" not in body:
+                        raise AdjustError("提交后未看到预约变更完成提示")
+                    runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted change")
+                    browser_completed = True
+                    break
+            except Exception as exc:
+                if attempt == 0 and phase != "submit-change" and is_recoverable_browser_closed_error(exc):
+                    runtime.record_step(
+                        step=phase,
+                        status="retrying",
+                        tool="browser",
+                        detail="browser context closed before submit; reconnecting once",
+                    )
+                    continue
+                raise
+        if not browser_completed:
+            raise AdjustError("浏览器流程未完成")
 
         refreshed = [item for item in fetch_reservations() if str(item.get("bookingNumber") or "") == booking]
         if not refreshed:

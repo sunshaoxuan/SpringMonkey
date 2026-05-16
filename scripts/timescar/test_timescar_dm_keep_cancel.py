@@ -9,6 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import timescar_handle_dm_adjust_request as mod
+import timescar_adjust_reservation_window as adjust_mod
 
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -25,6 +26,10 @@ def fake_reservation(start: datetime) -> dict:
 
 
 def main() -> int:
+    assert adjust_mod.is_recoverable_browser_closed_error(
+        RuntimeError("Locator.evaluate_all: Target page, context or browser has been closed")
+    )
+    assert not adjust_mod.is_recoverable_browser_closed_error(RuntimeError("提交后未看到预约变更完成提示"))
     with tempfile.TemporaryDirectory(prefix="timescar_dm_keep_cancel_") as tmp:
         mod.WORKSPACE = Path(tmp)
         mod.LEDGER_PATH = Path(tmp) / "var" / "timescar_dm_completed_requests.json"
