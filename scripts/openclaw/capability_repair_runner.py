@@ -318,7 +318,7 @@ def run_repair(
             replay_allowed = True
             replay_reason = package_replay_reason
             status = toolsmith_package.status
-        elif toolsmith_package.status in {"generated", "verified", "promoted", "deployed", "failed"}:
+        elif toolsmith_package.status in {"planned", "generated", "verified", "promoted", "deployed", "failed"}:
             status = toolsmith_package.status
         elif toolsmith_package.status == "blocked_requires_authorization":
             status = "blocked"

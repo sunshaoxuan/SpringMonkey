@@ -125,6 +125,32 @@ def test_toolsmith_llm_autonomy_allowed_access_blocker_can_generate_helper() -> 
     assert package.registry_patch["write_operation"] is False
 
 
+def test_toolsmith_write_request_internal_autonomy_creates_plan_not_generic_helper() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        package = runner.generate_repair_package(
+            text="修改每日公共频道天气预报为图片形式，先在私聊测试，批准后再替换公共任务。",
+            reason="missing image weather cron rollout capability",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=root / "repo",
+            semantic=True,
+            llm_classification={
+                "blocker_kind": "write_operation_request",
+                "allowed_repair_action": "autonomous_internal_repair",
+                "autonomy_allowed": True,
+                "missing_condition": "new image cron rollout implementation",
+            },
+        )
+        plan = json.loads(Path(package.files[0]).read_text(encoding="utf-8"))
+
+    assert package.status == "planned"
+    assert package.registry_patch == {}
+    assert package.files[0].endswith("domain_implementation_required.json")
+    assert plan["implementation_required"] is True
+    assert "do not promote a generic helper" in plan["next_step"]
+
+
 def test_toolsmith_routes_internal_autonomy_to_self_reference() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

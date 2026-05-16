@@ -265,7 +265,10 @@ def test_repair_runner_does_not_bind_llm_classified_new_gap_to_legacy_weather_to
             )
 
     assert result.registry_tool is None or result.registry_tool.get("tool_id") != "weather.dm.query"
+    assert result.status == "planned"
+    assert result.toolsmith_package["status"] == "planned"
     assert result.toolsmith_package["tool_id"] != "weather.dm.query"
+    assert result.toolsmith_package["registry_patch"] == {}
     assert result.replay_allowed is False
 
 

@@ -448,13 +448,14 @@ def generate_repair_package(
     model_blocks_toolsmith = blocker_kind in {
         "access_or_approval_blocker",
         "credential_missing",
-        "write_operation_request",
         "ambiguous",
     } and not autonomy_allowed
+    internal_write_repair_plan = blocker_kind == "write_operation_request" and autonomy_allowed
     write_like = (
         (safety_class in {"requires_confirmation_or_credentials", "unsupported_or_ambiguous"} and not autonomy_allowed)
         or bool((registry_tool or {}).get("write_operation"))
         or model_blocks_toolsmith
+        or internal_write_repair_plan
     )
     if model_blocks_toolsmith:
         tool_id = str((registry_tool or {}).get("tool_id") or "openclaw.authorization_required")
@@ -475,8 +476,8 @@ def generate_repair_package(
         else build_registry_patch(tool_id, entrypoint, text, reference_tool=reference_tool, semantic=semantic and not write_like)
     )
     files: list[str] = []
-    status = "blocked_requires_authorization" if write_like else "generated"
-    replay_policy = "blocked_until_human_authorization" if write_like else "verify_before_replay"
+    status = "planned" if internal_write_repair_plan else ("blocked_requires_authorization" if write_like else "generated")
+    replay_policy = "blocked_until_domain_implementation" if internal_write_repair_plan else ("blocked_until_human_authorization" if write_like else "verify_before_replay")
     if not write_like:
         helper_rel = Path(entrypoint)
         test_rel = Path("scripts/openclaw") / f"test_generated_{safe_slug(tool_id)}.py"
@@ -500,7 +501,8 @@ def generate_repair_package(
             files.extend([str(target_helper), str(target_test)])
             status = "generated_applied"
     else:
-        (package_dir / "authorization_required.json").write_text(json.dumps({
+        plan_name = "domain_implementation_required.json" if internal_write_repair_plan else "authorization_required.json"
+        (package_dir / plan_name).write_text(json.dumps({
             "tool_id": tool_id,
             "reason": reason,
             "safety_class": safety_class,
@@ -508,8 +510,15 @@ def generate_repair_package(
             "llm_classification": llm_classification,
             "missing_condition": str((llm_classification or {}).get("missing_condition") or ""),
             "allowed_repair_action": str((llm_classification or {}).get("allowed_repair_action") or "record_gap_only"),
+            "implementation_required": internal_write_repair_plan,
+            "next_step": (
+                "Generate a domain-specific implementation plan, tests, and approval-gated rollout package; "
+                "do not promote a generic helper or replay the original write request."
+                if internal_write_repair_plan
+                else "Request authorization before proceeding."
+            ),
         }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        files = [str(package_dir / "authorization_required.json")]
+        files = [str(package_dir / plan_name)]
     package = ToolsmithPackage(
         package_id=package_id,
         status=status,
