@@ -121,6 +121,47 @@ def find_already_applied_reservation(
     return None
 
 
+def same_vehicle_context(before: dict, after: dict) -> bool:
+    station_before = str(before.get("station") or "").strip()
+    station_after = str(after.get("station") or "").strip()
+    vehicle_before = str(before.get("vehicle") or "").strip()
+    vehicle_after = str(after.get("vehicle") or "").strip()
+    if station_before and station_after and station_before != station_after:
+        return False
+    if vehicle_before and vehicle_after and vehicle_before != vehicle_after:
+        return False
+    return True
+
+
+def find_postchange_reservation(
+    reservations: list[dict],
+    *,
+    original: dict,
+    old_booking: str,
+    new_start: datetime,
+    new_return: datetime,
+) -> dict | None:
+    same_booking_matches: list[dict] = []
+    same_window_matches: list[dict] = []
+    for reservation in reservations:
+        try:
+            start = parse_iso_minute(str(reservation.get("start") or ""))
+            return_at = parse_iso_minute(str(reservation.get("return") or ""))
+        except Exception:
+            continue
+        if start != new_start or return_at != new_return:
+            continue
+        if str(reservation.get("bookingNumber") or "") == old_booking:
+            same_booking_matches.append(reservation)
+        elif same_vehicle_context(original, reservation):
+            same_window_matches.append(reservation)
+    matches = same_booking_matches or same_window_matches
+    if not matches:
+        return None
+    matches.sort(key=lambda item: str(item.get("acceptedAt") or ""))
+    return matches[-1]
+
+
 def is_login(page) -> bool:
     return bool(page.locator("#cardNo1").count() and page.locator("#tpPassword").count())
 
@@ -319,10 +360,15 @@ def main() -> int:
         if not browser_completed:
             raise AdjustError("浏览器流程未完成")
 
-        refreshed = [item for item in fetch_reservations() if str(item.get("bookingNumber") or "") == booking]
-        if not refreshed:
+        result = find_postchange_reservation(
+            fetch_reservations(),
+            original=target,
+            old_booking=booking,
+            new_start=new_start,
+            new_return=new_return,
+        )
+        if not result:
             raise AdjustError("提交后回查未找到目标预约")
-        result = refreshed[0]
         verified_start = parse_iso_minute(str(result.get("start") or ""))
         verified_return = parse_iso_minute(str(result.get("return") or ""))
         if verified_start != new_start or verified_return != new_return:

@@ -30,6 +30,20 @@ def main() -> int:
         RuntimeError("Locator.evaluate_all: Target page, context or browser has been closed")
     )
     assert not adjust_mod.is_recoverable_browser_closed_error(RuntimeError("提交后未看到预约变更完成提示"))
+    original = fake_reservation(datetime(2026, 5, 5, 9, 0, tzinfo=TZ))
+    changed = {
+        **original,
+        "bookingNumber": "B999999",
+        "start": datetime(2026, 5, 5, 9, 15, tzinfo=TZ).isoformat(timespec="minutes"),
+        "return": datetime(2026, 5, 5, 12, 15, tzinfo=TZ).isoformat(timespec="minutes"),
+    }
+    assert adjust_mod.find_postchange_reservation(
+        [changed],
+        original=original,
+        old_booking="B123456",
+        new_start=datetime(2026, 5, 5, 9, 15, tzinfo=TZ),
+        new_return=datetime(2026, 5, 5, 12, 15, tzinfo=TZ),
+    ) == changed
     with tempfile.TemporaryDirectory(prefix="timescar_dm_keep_cancel_") as tmp:
         mod.WORKSPACE = Path(tmp)
         mod.LEDGER_PATH = Path(tmp) / "var" / "timescar_dm_completed_requests.json"
