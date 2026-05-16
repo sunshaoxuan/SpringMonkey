@@ -42,6 +42,6 @@ def test_self_evolution_status_honors_superseded_package_state() -> None:
             check=True,
         )
 
-    assert "status=superseded" in proc.stdout
-    assert "replay=False" in proc.stdout
+    assert "status=superseded" not in proc.stdout
+    assert "能力缺口事件：0 条最近有效记录" in proc.stdout
     assert "未解决缺口" not in proc.stdout

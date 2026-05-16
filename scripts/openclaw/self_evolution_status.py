@@ -122,6 +122,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=5)
     args = parser.parse_args()
     events = [effective_event(args.kernel_root, event) for event in read_jsonl_tail(args.kernel_root / "capability_gap_events.jsonl", args.limit)]
+    display_events = [event for event in events if str(event.get("runner_status") or "") != "superseded"]
     regressions = read_jsonl_tail(args.kernel_root / "regression_repair_packages.jsonl", args.limit)
     plans = read_jsonl_tail(args.kernel_root / "dm_capability_plans.jsonl", args.limit)
     registry = args.kernel_root / "helper_registry.json"
@@ -135,7 +136,7 @@ def main() -> int:
             long_tasks = []
     lines = [
         "自演进状态",
-        f"能力缺口事件：{len(events)} 条最近记录",
+        f"能力缺口事件：{len(display_events)} 条最近有效记录",
         f"补强计划：{len(plans)} 条最近记录",
         f"回归收紧包：{len(regressions)} 条最近记录",
         f"已推广 helper：{helper_count}",
@@ -146,7 +147,7 @@ def main() -> int:
         lines.append(f"长任务待收口：{len(active_long_tasks)}")
     unresolved = [
         event
-        for event in events
+        for event in display_events
         if str(event.get("runner_status") or "") not in {"promoted", "verified", "deployed", "replayed", "superseded"}
         and not bool(event.get("replay_allowed"))
     ]
@@ -158,7 +159,7 @@ def main() -> int:
             f"long-task {index}. {title} status={task.get('status')} "
             f"stage={task.get('stage')} delivery={task.get('delivery_state')}"
         )
-    for index, event in enumerate(reversed(events), start=1):
+    for index, event in enumerate(reversed(display_events), start=1):
         resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
         lines.append(
             f"{index}. stage={event.get('stage')} status={event.get('runner_status')} "
