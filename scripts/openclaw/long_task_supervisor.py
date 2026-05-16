@@ -420,6 +420,16 @@ def read_text_tail(path_value: str, limit: int = 4000) -> str:
     return text[-limit:] if len(text) > limit else text
 
 
+def read_text_limited(path_value: str, limit: int = 200000) -> str:
+    if not path_value:
+        return ""
+    path = Path(path_value)
+    if not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace").strip()
+    return text[-limit:] if len(text) > limit else text
+
+
 def domain_implementation_visible_text(stdout: str) -> str:
     if not stdout.strip():
         return ""
@@ -445,7 +455,7 @@ def domain_implementation_visible_text(stdout: str) -> str:
 def domain_implementation_report_status(stdout: str) -> tuple[str, str]:
     visible = domain_implementation_visible_text(stdout)
     lowered = visible.lower()
-    has_run_id = "implementation_run_id" in visible or "impl_" in visible
+    has_run_id = "implementation_run_id" in visible
     has_verification = any(
         marker in visible
         for marker in (
@@ -463,11 +473,18 @@ def domain_implementation_report_status(stdout: str) -> tuple[str, str]:
             "let me know if",
             "successfully written",
             "file has been successfully written",
+            "issue creating or binding",
+            "session mode is unavailable",
+            "subagent spawns are disabled",
         )
     )
+    failed_tool = '"failures": 1' in stdout or '"replayInvalid": true' in stdout
     if generic_completion or not has_run_id or not has_verification:
         evidence = visible or "no visible implementation report"
         return "failed", "内部能力实现未通过验收：缺少实现 run id 或验证证据。\n" + evidence
+    if failed_tool:
+        evidence = visible or "tool failure without verified implementation report"
+        return "failed", "内部能力实现未通过验收：执行器工具失败或 replay invalid。\n" + evidence
     return "success", visible
 
 
@@ -477,7 +494,7 @@ def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
     pid = int(task.get("pid") or 0)
     if pid > 0 and process_running(pid):
         return {"found": False, "reason": "implementation process still running"}
-    stdout = read_text_tail(str(task.get("stdout_file") or ""))
+    stdout = read_text_limited(str(task.get("stdout_file") or ""))
     stderr = read_text_tail(str(task.get("stderr_file") or ""))
     if stdout:
         result_status, text = domain_implementation_report_status(stdout)
