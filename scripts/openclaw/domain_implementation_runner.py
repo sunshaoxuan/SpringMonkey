@@ -22,6 +22,7 @@ from long_task_supervisor import ACTIVE_STATUSES, DEFAULT_STATE_PATH, read_state
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
 DEFAULT_RUN_DIR = Path("/var/lib/openclaw/.openclaw/workspace/state/domain_implementation_runs")
 DEFAULT_TIMEOUT_SECONDS = 7200
+DEFAULT_MODEL = "ollama/qwen3:14b"
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -135,6 +136,8 @@ def start_implementation(
     state_path: Path = DEFAULT_STATE_PATH,
     run_dir: Path = DEFAULT_RUN_DIR,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
+    model: str | None = None,
+    thinking: str | None = None,
     dry_run: bool = False,
 ) -> DomainImplementationRun:
     package = load_package(package_state)
@@ -180,18 +183,26 @@ def start_implementation(
     status = "running"
     stage = "implementation_agent_running"
     if not dry_run:
+        selected_model = (model or os.environ.get("OPENCLAW_DOMAIN_IMPLEMENTATION_MODEL") or DEFAULT_MODEL).strip()
+        selected_thinking = (
+            thinking
+            or os.environ.get("OPENCLAW_DOMAIN_IMPLEMENTATION_THINKING")
+            or ("off" if selected_model.startswith("ollama/") else "medium")
+        ).strip()
         command = [
             "openclaw",
             "--no-color",
             "agent",
             "--agent",
             "main",
+            "--model",
+            selected_model,
             "--message",
             prompt,
             "--timeout",
             str(timeout_seconds),
             "--thinking",
-            "medium",
+            selected_thinking,
             "--json",
         ]
         env = dict(os.environ)
@@ -258,6 +269,8 @@ def main() -> int:
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
     parser.add_argument("--run-dir", type=Path, default=DEFAULT_RUN_DIR)
     parser.add_argument("--timeout-seconds", type=int, default=DEFAULT_TIMEOUT_SECONDS)
+    parser.add_argument("--model", default="")
+    parser.add_argument("--thinking", default="")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     try:
@@ -270,6 +283,8 @@ def main() -> int:
             state_path=args.state,
             run_dir=args.run_dir,
             timeout_seconds=args.timeout_seconds,
+            model=args.model or None,
+            thinking=args.thinking or None,
             dry_run=args.dry_run,
         )
     except Exception as exc:

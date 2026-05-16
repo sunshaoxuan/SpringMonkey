@@ -33,6 +33,10 @@
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
   - 注意：Git 只保存 endpoint、变量名和 secret 文件路径，不保存密钥；共享 key 存放在宿主机 root-only secret 文件，例如 `/etc/openclaw/secrets/news_codex_api_key`。
 
+- `remote_configure_openclaw_ollama_agent_auth.py`
+  - 用途：为 OpenClaw main agent 和本地 CLI agent 写入 `ollama` auth profile，并把 `models.providers.ollama.apiKey` 从本地标记值修正为可用于 ccnode 非本机端点的占位 key，确保 `ollama/qwen3:14b` 可作为 agent 兜底模型。
+  - 典型用法：`python scripts/remote_configure_openclaw_ollama_agent_auth.py`
+
 - `remote_springmonkey_git_pull.py`
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。
