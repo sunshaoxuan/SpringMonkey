@@ -398,6 +398,45 @@ def find_cron_failure_delivery(
     return {"found": False}
 
 
+def process_running(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def read_text_tail(path_value: str, limit: int = 4000) -> str:
+    if not path_value:
+        return ""
+    path = Path(path_value)
+    if not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace").strip()
+    return text[-limit:] if len(text) > limit else text
+
+
+def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
+    if str(task.get("source") or "") != "domain_implementation":
+        return {"found": False}
+    pid = int(task.get("pid") or 0)
+    if pid > 0 and process_running(pid):
+        return {"found": False, "reason": "implementation process still running"}
+    stdout = read_text_tail(str(task.get("stdout_file") or ""))
+    stderr = read_text_tail(str(task.get("stderr_file") or ""))
+    if stdout:
+        return {"found": True, "result_status": "success", "text": stdout}
+    if stderr:
+        return {"found": True, "result_status": "failed", "text": f"内部能力实现失败：\n{stderr}"}
+    if pid > 0:
+        return {"found": True, "result_status": "failed", "text": "内部能力实现进程已退出，但没有产生最终输出。"}
+    return {"found": False, "reason": "implementation run registered but no process output yet"}
+
+
 def final_delivery_text(task: dict[str, Any]) -> str:
     title = str(task.get("job_name") or task.get("job_id") or "long task")
     heading = "长任务失败" if str(task.get("result_status") or "") == "failed" else "长任务完成"
@@ -473,6 +512,25 @@ def poll_tasks(
             results.append(dict(task))
             continue
         if not task.get("final_report") and task.get("status") == "running":
+            implementation_result = find_domain_implementation_result(task)
+            if implementation_result.get("found"):
+                task["status"] = "final_detected"
+                task["stage"] = "final_detected"
+                task["result_status"] = str(implementation_result.get("result_status") or "success")
+                task["final_report"] = str(implementation_result.get("text") or "").strip()
+                task["delivery_state"] = "pending"
+                append_event(
+                    {
+                        "event": "domain_implementation_final_detected",
+                        "task_id": task.get("task_id"),
+                        "run_id": task.get("run_id"),
+                        "result_status": task.get("result_status"),
+                    }
+                )
+                changed = True
+            if task.get("final_report"):
+                results.append(dict(task))
+                continue
             cron_failure = find_cron_failure_delivery(task, queue_dir=queue_dir)
             if cron_failure.get("found"):
                 task["status"] = "delivery_queued"
