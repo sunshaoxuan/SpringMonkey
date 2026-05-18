@@ -37,9 +37,11 @@ def main() -> int:
                 return {"current": {"us_aqi": 42}}
             mod.fetch_json = fake_fetch_json
             result = mod.fetch_weather(mod.Location("测试地点", "测试区", 35.0, 139.0))
+            text_report = mod.build_text_report(datetime(2026, 5, 7, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo")))
         finally:
             mod.fetch_json = original_fetch_json
         assert "测试地点" in result
+        assert "天气预报 2026-05-07" in text_report
 
         original_load_holidays = mod.load_holidays
         try:

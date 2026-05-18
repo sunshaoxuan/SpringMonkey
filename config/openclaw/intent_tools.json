@@ -631,7 +631,7 @@
     {
       "intent_id": "weather.cron_run",
       "tool_id": "openclaw.cron.run.weather",
-      "description": "Run formal weather cron job by name.",
+      "description": "Run the formal weather cron image forecast job by name; the job emits a MEDIA attachment plus concise weather summary, while public delivery remains approval-gated by the configured cron workflow.",
       "owner_agent": "toolWorker",
       "patterns": [
         "天气",
@@ -656,14 +656,16 @@
         "type": "fixed_cron_job"
       },
       "output_schema": {
-        "type": "cron_ack",
-        "requires_trace": true
+        "type": "weather_image_media_result",
+        "requires_trace": true,
+        "requires_media_directive": true,
+        "source": "Open-Meteo"
       },
       "invocation_log_policy": "harness_tool_invocation_jsonl",
-      "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py",
+      "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py scripts/weather/weather_image_forecast.py scripts/weather/test_weather_image_forecast.py scripts/openclaw/run_job_by_name.py && python scripts/weather/test_discord_weather_report.py && python scripts/weather/test_weather_image_forecast.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "cron_ack",
-      "capability_id": "weather.cron_run",
+      "capability_id": "weather.cron_image_run",
       "domain": "weather",
       "actions": [
         "run"
@@ -676,14 +678,20 @@
         "重跑",
         "跑一轮",
         "补跑",
-        "执行"
+        "执行",
+        "3D微缩景观天气图片",
+        "城市地标天气预报图",
+        "weather image forecast",
+        "MEDIA weather forecast"
       ],
       "input_contract": {
         "type": "fixed_cron_job"
       },
       "output_contract": {
-        "type": "cron_ack",
-        "requires_trace": true
+        "type": "weather_image_media_result",
+        "requires_trace": true,
+        "requires_media_directive": true,
+        "approval_gated_public_delivery": true
       },
       "safety": "readonly"
     },
@@ -1328,7 +1336,7 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "confirm_policy": "owner_controlled_internal_repo_write_only_public_release_approval_gated",
       "idempotency": "implementation_run_id_package_id_git_commit",
-      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py scripts/openclaw/intent_tool_router.py && python scripts/openclaw/test_self_evolution_internal_repair.py && python scripts/openclaw/test_self_evolution_internal_repair_registry.py && python scripts/openclaw/test_self_evolution_internal_repair_router.py && python scripts/openclaw/verify_intent_tool_registry.py && python scripts/openclaw/verify_harness_registry.py && python scripts/openclaw/verify_capability_baseline.py",
+      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py scripts/openclaw/intent_tool_router.py && python scripts/openclaw/test_self_evolution_internal_repair.py && python scripts/openclaw/test_self_evolution_internal_repair_registry.py && python scripts/openclaw/test_self_evolution_internal_repair_router.py && python scripts/openclaw/verify_intent_tool_registry.py && python scripts/openclaw/verify_harness_registry.py && python scripts/openclaw/verify_capability_baseline.py && python scripts/weather/test_weather_image_forecast.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout",
       "capability_id": "openclaw.self_evolution.internal_repair",

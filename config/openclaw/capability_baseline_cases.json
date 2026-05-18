@@ -234,6 +234,19 @@
       "auto_repair": "readonly"
     },
     {
+      "id": "weather_cron_image_run",
+      "text": "触发一轮天气预报图片任务，生成两地城市地标风格的3D微缩景观天气图。",
+      "expected": {
+        "domain": "weather",
+        "action": "run",
+        "tool_id": "openclaw.cron.run.weather",
+        "safety": "readonly",
+        "write_operation": false,
+        "governance_allowed": true
+      },
+      "auto_repair": "readonly"
+    },
+    {
       "id": "recurring_job_run_content_writing",
       "text": "接下来，请你开始执行每3天一次的小红书撰稿计划。",
       "live_intent": true,

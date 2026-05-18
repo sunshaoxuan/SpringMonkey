@@ -15,7 +15,7 @@ JOBS_PATH = Path(os.environ.get("OPENCLAW_CRON_JOBS_PATH", "/var/lib/openclaw/.o
 DIRECT_SCRIPT_JOBS: dict[str, list[str]] = {
     "weather-report-jst-0700": [
         "python3",
-        str(REPO / "scripts" / "weather" / "discord_weather_report.py"),
+        str(REPO / "scripts" / "weather" / "weather_image_forecast.py"),
     ],
     "news-digest-jst-0900": [
         "bash",

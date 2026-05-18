@@ -229,22 +229,29 @@ def fetch_weather(location: Location) -> str:
     )
 
 
-def main() -> int:
-    trace = StagedTaskTrace("weather-report-jst-0700", "weather")
-    trace.start("decide-day-kind")
-    now = datetime.now(TZ)
+def build_text_report(now: datetime | None = None) -> str:
+    now = now or datetime.now(TZ)
     locations, rest_day, day_kind = locations_for_day(now)
-    trace.step("decide-day-kind", "ok", detail=f"{'rest-day' if rest_day else 'workday'} / {day_kind}", tool="calendar")
-
     lines = [f"天气预报 {now:%Y-%m-%d} {('休息日' if rest_day else '工作日')}（{day_kind}）"]
     for loc in locations:
-        trace.step("fetch-weather", "running", detail=loc.label, tool="open-meteo")
         lines.append(fetch_weather(loc))
-    message = "\n".join(lines)
-    trace.artifact("locations", [loc.label for loc in locations])
-    trace.finish("ok", "report-ready", final_message=message)
-    print(message)
-    return 0
+    return "\n".join(lines)
+
+
+def main() -> int:
+    trace = StagedTaskTrace("weather-report-jst-0700", "weather")
+    trace.start("generate-image-forecast")
+    try:
+        from weather_image_forecast import generate_weather_image_reply
+        message = generate_weather_image_reply()
+        trace.step("generate-image-forecast", "ok", detail="weather image media reply ready", tool="open-meteo+svg-renderer")
+        trace.artifact("output_kind", "weather_image_media")
+        trace.finish("ok", "image-report-ready", final_message=message)
+        print(message)
+        return 0
+    except Exception as exc:
+        trace.step("generate-image-forecast", "failed", detail=f"{type(exc).__name__}: {exc}", tool="open-meteo+svg-renderer")
+        raise
 
 
 if __name__ == "__main__":
