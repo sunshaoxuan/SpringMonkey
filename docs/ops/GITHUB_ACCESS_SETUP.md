@@ -45,3 +45,26 @@ runuser -u openclaw -- ssh -i /var/lib/openclaw/.ssh/id_ed25519_github_springmon
 ```
 
 Then the repository can be cloned or attached with SSH for autonomous updates by `汤猴`.
+
+## Repair Remote Checkout
+
+If autonomous push starts failing with:
+
+```text
+fatal: could not read Username for 'https://github.com': No such device or address
+```
+
+the remote checkout is likely using plain HTTPS instead of the prepared deploy
+key. Re-apply the SSH remote configuration from this repository:
+
+```bash
+python scripts/remote_configure_springmonkey_git_push.py
+```
+
+Expected remote settings:
+
+```bash
+git remote set-url origin git@github-springmonkey:sunshaoxuan/SpringMonkey.git
+git config core.sshCommand 'ssh -F /var/lib/openclaw/.ssh/config'
+git push --dry-run origin main
+```

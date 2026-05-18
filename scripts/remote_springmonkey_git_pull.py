@@ -27,6 +27,8 @@ HOST = "ccnode.briconbric.com"
 PORT = 8822
 USER = "root"
 DEFAULT_REPO = "/var/lib/openclaw/repos/SpringMonkey"
+SSH_REMOTE = "git@github-springmonkey:sunshaoxuan/SpringMonkey.git"
+SSH_CONFIG = "/var/lib/openclaw/.ssh/config"
 
 
 def main() -> int:
@@ -63,6 +65,10 @@ set -e
 REPO="{repo}"
 echo "=== git fetch/merge in $REPO ==="
 cd "$REPO"
+if [ -f "{SSH_CONFIG}" ]; then
+  git remote set-url origin "{SSH_REMOTE}"
+  git config core.sshCommand "ssh -F {SSH_CONFIG}"
+fi
 git status -sb || true
 if [ -n "$(git status --porcelain)" ]; then
   STASH_NAME="autostash-before-origin-main-merge-$(date +%Y%m%d-%H%M%S)"
