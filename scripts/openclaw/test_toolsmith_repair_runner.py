@@ -186,6 +186,34 @@ def test_toolsmith_write_request_internal_plan_does_not_reuse_stale_generated_pa
     assert planned.registry_patch == {}
 
 
+def test_toolsmith_registered_tool_regression_internal_autonomy_creates_plan_not_helper() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        package = runner.generate_repair_package(
+            text="继续补齐内部自增益能力并验证",
+            reason="intent model unavailable or invalid: ValueError: invalid action: repair",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=root / "repo",
+            semantic=True,
+            llm_classification={
+                "blocker_kind": "registered_tool_regression",
+                "allowed_repair_action": "autonomous_internal_repair",
+                "autonomy_allowed": True,
+                "expected_capability_family": "openclaw.self_evolution.internal_repair",
+            },
+        )
+        plan = json.loads(Path(package.files[0]).read_text(encoding="utf-8"))
+
+    assert package.status == "planned"
+    assert package.replay_policy == "blocked_until_domain_implementation"
+    assert package.write_operation is True
+    assert package.entrypoint == ""
+    assert package.registry_patch == {}
+    assert not any("generated_" in item for item in package.files)
+    assert plan["implementation_required"] is True
+
+
 def test_toolsmith_routes_internal_autonomy_to_self_reference() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

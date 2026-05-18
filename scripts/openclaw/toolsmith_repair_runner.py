@@ -465,7 +465,11 @@ def generate_repair_package(
         "credential_missing",
         "ambiguous",
     } and not autonomy_allowed
-    internal_write_repair_plan = blocker_kind == "write_operation_request" and autonomy_allowed
+    allowed_action = str((llm_classification or {}).get("allowed_repair_action") or "")
+    internal_write_repair_plan = autonomy_allowed and (
+        blocker_kind == "write_operation_request"
+        or (blocker_kind == "registered_tool_regression" and allowed_action == "autonomous_internal_repair")
+    )
     write_like = (
         (safety_class in {"requires_confirmation_or_credentials", "unsupported_or_ambiguous"} and not autonomy_allowed)
         or bool((registry_tool or {}).get("write_operation"))

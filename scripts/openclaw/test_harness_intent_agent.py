@@ -86,6 +86,47 @@ def test_intent_prompt_requires_boundary_split_for_self_improvement_public_relea
     assert "Do not reject the whole request as boundary-unclear" in system
 
 
+def test_self_evolution_repair_action_is_valid_and_binds_contract() -> None:
+    frame = agent.infer_intent_frame(
+        "继续补齐刚才失败的内部自增益能力，真实修改仓库并验证。",
+        context="",
+        registry=load_registry(),
+        model_caller=lambda _messages: model_reply(
+            {
+                "conversation_mode": "task",
+                "domain": "self",
+                "action": "repair",
+                "canonical_text": "继续执行内部自增益修复，修改仓库、运行验证并保持公共发布审批门。",
+                "context_refs": [],
+                "parameters": {"approval_gate": "public_release"},
+                "safety": "write",
+                "result_contract": {"type": "self_evolution_repair_result"},
+                "tool_candidates": [
+                    {
+                        "tool_id": "openclaw.self_evolution.internal_repair",
+                        "confidence": 0.98,
+                        "reason": "semantic self-evolution repair contract",
+                    }
+                ],
+                "confidence": 0.98,
+                "reason": "owner-controlled internal repair",
+            }
+        ),
+    )
+
+    assert frame.domain == "self"
+    assert frame.action == "repair"
+    assert frame.tool_candidates[0]["tool_id"] == "openclaw.self_evolution.internal_repair"
+
+
+def test_intent_prompt_lists_self_evolution_repair_actions() -> None:
+    messages = agent.build_prompt("继续补齐内部自增益能力", context="", registry=load_registry())
+    system = messages[0]["content"]
+
+    assert "repair|implement|verify|push" in system
+    assert "openclaw.self_evolution.internal_repair" in system
+
+
 def test_timescar_shift_window_uses_semantic_model_frame() -> None:
     frame = agent.infer_intent_frame(
         "请把马上开始的那单预订帮我往后整体延15分钟。",

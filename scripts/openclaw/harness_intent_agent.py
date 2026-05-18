@@ -26,7 +26,30 @@ RUNTIME_ENV_FILES = (
 )
 CONVERSATION_MODES = {"chat", "task", "clarification", "gap"}
 DOMAINS = {"timescar", "weather", "news", "cron", "config", "web", "memory", "self", "artifact", "general", "unknown"}
-ACTIONS = {"query", "book", "cancel", "status", "adjust", "run", "research", "backfill", "quality", "clean", "list", "retry", "access", "share", "update", "edit", "chat", "gap"}
+ACTIONS = {
+    "query",
+    "book",
+    "cancel",
+    "status",
+    "adjust",
+    "run",
+    "research",
+    "backfill",
+    "quality",
+    "clean",
+    "list",
+    "retry",
+    "access",
+    "share",
+    "update",
+    "edit",
+    "repair",
+    "implement",
+    "verify",
+    "push",
+    "chat",
+    "gap",
+}
 SAFETY_CLASSES = {"readonly", "write", "credential", "destructive", "ambiguous"}
 
 
@@ -126,7 +149,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Schema: {conversation_mode, domain, action, canonical_text, context_refs, parameters, safety, result_contract, tool_candidates, confidence, reason}. "
         "conversation_mode: chat|task|clarification|gap. "
         "domain: timescar|weather|news|cron|config|web|memory|self|artifact|general|unknown. "
-        "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|access|share|update|edit|chat|gap. "
+        "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|access|share|update|edit|repair|implement|verify|push|chat|gap. "
         "safety: readonly|write|credential|destructive|ambiguous. "
         "tool_candidates is an ordered list of {tool_id, confidence, reason}; only use registered tools from ToolContracts. "
         "Choose by semantic fit to ToolContract.goal/use_when/do_not_use_when/input_contract/output_contract/safety. "
@@ -147,6 +170,8 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "Example: 检查长记忆质量 means domain=memory action=quality and tool candidate memory.curator.xhs. "
         "Example: 清理小红书长记忆噪声 means domain=memory action=clean and tool candidate memory.curator.xhs. "
         "Example: 检查自演进状态 means domain=self action=status and tool candidate openclaw.self_evolution.status. "
+        "Example: 继续补齐刚才失败的内部自增益能力 means domain=self action=repair and tool candidate openclaw.self_evolution.internal_repair. "
+        "Example: 执行通用能力补齐 run 并验证后推仓库 means domain=self action=repair or action=implement and tool candidate openclaw.self_evolution.internal_repair. "
         "Example: 我打不开刚才生成的 Google Docs，请给我查看权限 means domain=artifact action=access and tool candidate openclaw.artifact.access_followup; do not answer with task status. "
         "Example: 给刚才那个文档开查看权限 means domain=artifact action=share and tool candidate openclaw.artifact.access_followup. "
         "Example: 给刚才那个文档补充三张图片并更新内容 means domain=artifact action=update and tool candidate openclaw.artifact.update_followup; do not create a missing-tool gap. "
