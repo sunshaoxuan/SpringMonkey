@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import html
 import json
+import math
+import struct
 import urllib.parse
+import zlib
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -98,11 +101,130 @@ def render_svg(cards: list[WeatherCard], now: datetime) -> str:
     source_note = "Data source: Open-Meteo weather and air-quality APIs. Visual: deterministic 3D miniature cityscape, no logos or brand marks."
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-label="3D miniature weather forecast"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef7ff"/><stop offset="1" stop-color="#f8efe4"/></linearGradient><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#34415f" flood-opacity="0.25"/></filter></defs><rect width="1280" height="900" fill="url(#bg)"/><text x="640" y="72" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="900" fill="#1c2942">天气预报 3D 微缩景观</text><text x="640" y="112" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="23" fill="#53627d">{now:%Y-%m-%d %H:%M JST} · 两地城市地标风格 · 私有工作流生成</text><g filter="url(#shadow)">{_scene_svg(cards[0], x=90, theme='green')}{_scene_svg(cards[1], x=670, theme='blue')}</g><rect x="90" y="805" width="1100" height="54" rx="18" fill="#ffffff" opacity="0.82"/><text x="112" y="840" font-family="Inter, system-ui, sans-serif" font-size="18" fill="#53627d">{_esc(source_note)}</text></svg>\n'''
 
+
+def _rgb(hex_color: str) -> tuple[int, int, int]:
+    value = hex_color.lstrip("#")
+    return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
+
+
+class Raster:
+    def __init__(self, width: int, height: int) -> None:
+        self.width = width
+        self.height = height
+        self.pixels = bytearray(width * height * 3)
+
+    def set(self, x: int, y: int, color: tuple[int, int, int]) -> None:
+        if 0 <= x < self.width and 0 <= y < self.height:
+            i = (y * self.width + x) * 3
+            self.pixels[i : i + 3] = bytes(color)
+
+    def rect(self, x: int, y: int, w: int, h: int, color: tuple[int, int, int]) -> None:
+        for yy in range(max(0, y), min(self.height, y + h)):
+            start = max(0, x)
+            end = min(self.width, x + w)
+            if start >= end:
+                continue
+            row = (yy * self.width + start) * 3
+            self.pixels[row : row + (end - start) * 3] = bytes(color) * (end - start)
+
+    def circle(self, cx: int, cy: int, r: int, color: tuple[int, int, int]) -> None:
+        rr = r * r
+        for y in range(cy - r, cy + r + 1):
+            for x in range(cx - r, cx + r + 1):
+                if (x - cx) * (x - cx) + (y - cy) * (y - cy) <= rr:
+                    self.set(x, y, color)
+
+    def ellipse(self, cx: int, cy: int, rx: int, ry: int, color: tuple[int, int, int]) -> None:
+        for y in range(cy - ry, cy + ry + 1):
+            for x in range(cx - rx, cx + rx + 1):
+                if ((x - cx) * (x - cx)) / max(1, rx * rx) + ((y - cy) * (y - cy)) / max(1, ry * ry) <= 1:
+                    self.set(x, y, color)
+
+    def polygon(self, points: list[tuple[int, int]], color: tuple[int, int, int]) -> None:
+        min_x = max(0, min(x for x, _y in points))
+        max_x = min(self.width - 1, max(x for x, _y in points))
+        min_y = max(0, min(y for _x, y in points))
+        max_y = min(self.height - 1, max(y for _x, y in points))
+        for y in range(min_y, max_y + 1):
+            inside = False
+            j = len(points) - 1
+            nodes: list[int] = []
+            for i, (xi, yi) in enumerate(points):
+                xj, yj = points[j]
+                if (yi < y <= yj) or (yj < y <= yi):
+                    nodes.append(int(xi + (y - yi) / (yj - yi) * (xj - xi)))
+                j = i
+            nodes.sort()
+            for a, b in zip(nodes[::2], nodes[1::2]):
+                for x in range(max(min_x, a), min(max_x, b) + 1):
+                    self.set(x, y, color)
+
+
+def _png_bytes(width: int, height: int, pixels: bytearray) -> bytes:
+    raw = b"".join(b"\x00" + pixels[y * width * 3 : (y + 1) * width * 3] for y in range(height))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw, 6))
+        + chunk(b"IEND", b"")
+    )
+
+
+def _draw_card(r: Raster, card: WeatherCard, x: int, y: int, theme: str) -> None:
+    sky = _rgb("#ffe6a7") if card.weather_code in {0, 1, 2} else _rgb("#dbe7f5")
+    ground = _rgb("#9bd18b") if theme == "green" else _rgb("#91c7d9")
+    tower = _rgb("#ef8354") if card.city == "Tokyo" else _rgb("#6d8ccf")
+    r.rect(x + 8, y + 12, 504, 504, _rgb("#d2d7e4"))
+    r.rect(x, y, 504, 504, sky)
+    r.circle(x + 410, y + 82, 42, _rgb("#fff1a1"))
+    r.ellipse(x + 252, y + 370, 190, 70, ground)
+    r.polygon([(x + 112, y + 360), (x + 252, y + 290), (x + 392, y + 360), (x + 252, y + 440)], _rgb("#c8f0b6"))
+    r.polygon([(x + 82, y + 408), (x + 180, y + 382), (x + 270, y + 420), (x + 420, y + 398), (x + 450, y + 428), (x + 275, y + 458), (x + 150, y + 430)], _rgb("#67a7df"))
+    for bx, by, bw, bh, color in [
+        (150, 270, 55, 128, "#7da0d6"),
+        (238, 230, 74, 168, "#8fb3e7"),
+        (328, 300, 58, 98, "#7593c7"),
+    ]:
+        r.polygon([(x + bx, y + by), (x + bx + bw, y + by - 18), (x + bx + bw, y + by + bh - 18), (x + bx, y + by + bh)], _rgb(color))
+        r.polygon([(x + bx + bw, y + by - 18), (x + bx + bw + 24, y + by - 5), (x + bx + bw + 24, y + by + bh + 12), (x + bx + bw, y + by + bh - 18)], _rgb("#647695"))
+    r.polygon([(x + 238, y + 270), (x + 276, y + 104), (x + 318, y + 270)], tower)
+    r.rect(x + 218, y + 408, 96, 24, _rgb("#67748f"))
+    temp_bar = max(20, min(180, int((card.temperature_c or 20) * 5)))
+    r.rect(x + 54, y + 48, temp_bar, 18, _rgb("#21304f"))
+    rain_bar = max(12, min(180, int((card.precipitation_probability or 0) * 1.8)))
+    r.rect(x + 54, y + 82, rain_bar, 14, _rgb("#2f80ed"))
+
+
+def render_png(cards: list[WeatherCard], now: datetime) -> bytes:
+    cards = cards[:2] or []
+    while len(cards) < 2:
+        cards.append(cards[0])
+    width, height = 1280, 760
+    r = Raster(width, height)
+    for y in range(height):
+        mix = y / height
+        c = (
+            int(238 * (1 - mix) + 248 * mix),
+            int(247 * (1 - mix) + 239 * mix),
+            int(255 * (1 - mix) + 228 * mix),
+        )
+        r.rect(0, y, width, 1, c)
+    r.rect(80, 48, 1120, 68, _rgb("#ffffff"))
+    r.rect(90, 58, 1100, 48, _rgb("#f7fbff"))
+    _draw_card(r, cards[0], 100, 150, "green")
+    _draw_card(r, cards[1], 676, 150, "blue")
+    return _png_bytes(width, height, r.pixels)
+
+
 def write_weather_image(cards: list[WeatherCard], now: datetime | None = None, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Path:
     now = now or datetime.now(TZ)
     output_dir.mkdir(parents=True, exist_ok=True)
-    path = output_dir / f"weather_miniature_{now:%Y%m%d_%H%M%S}.svg"
-    path.write_text(render_svg(cards, now), encoding="utf-8")
+    path = output_dir / f"weather_miniature_{now:%Y%m%d_%H%M%S}.png"
+    path.write_bytes(render_png(cards, now))
     return path
 
 def build_cards(now: datetime | None = None, *, fetch_json=report.fetch_json) -> tuple[list[WeatherCard], bool, str]:

@@ -62,4 +62,4 @@ def test_manual_media_job_sends_attachment_to_reply_channel(monkeypatch, tmp_pat
     assert sent["channel_id"] == "dm_channel"
     assert sent["content"].startswith("MEDIA:")
     assert payload["delivery"] == "manual_media_sent"
-    assert payload["final_report"] == "天气预报图片已发送。"
+    assert payload["final_report"] == ""

@@ -554,6 +554,23 @@ def test_cron_ack_renders_direct_script_final_report() -> None:
     assert "No running or recent sessions" not in reply
 
 
+def test_cron_ack_media_already_sent_returns_short_success() -> None:
+    output = json.dumps(
+        {
+            "status": "success",
+            "job_name": "weather-report-jst-0700",
+            "delivery": "manual_media_sent",
+            "final_report": "",
+            "media_delivery": "media:/tmp/weather.png",
+        },
+        ensure_ascii=False,
+    )
+
+    reply = router.format_reply({"reply_policy": "cron_ack"}, {"job_name": "weather-report-jst-0700"}, 0, output)
+
+    assert reply == "触发状态：成功"
+
+
 def test_weather_query_maps_to_registered_tool() -> None:
     result = router.classify("请查询明天东京和长野天气、风况和能见度", "discord_dm", "999", load_registry())
     assert result.intent_id == "weather.dm.query"

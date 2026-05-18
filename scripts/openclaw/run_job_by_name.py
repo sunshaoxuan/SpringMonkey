@@ -82,7 +82,7 @@ def run_direct_script_job(name: str) -> int:
         if reply_channel and parse_media_reply(final_report):
             _chunks, media_delivery = send_discord_message(reply_channel, final_report)
             delivery = "manual_media_sent"
-            final_report = "天气预报图片已发送。"
+            final_report = ""
         print(
             json.dumps(
                 {

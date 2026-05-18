@@ -21,11 +21,8 @@ def main() -> int:
         assert {card.area for card in cards} == {"杉並区", "川口市"}
         path = mod.write_weather_image(cards, now, Path(tmp))
         assert path.is_file()
-        svg = path.read_text(encoding="utf-8")
-        assert "天气预报 3D 微缩景观" in svg
-        assert "杉並区" in svg and "川口市" in svg
-        assert "Data source: Open-Meteo" in svg
-        assert "brand marks" in svg
+        assert path.suffix == ".png"
+        assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
         reply = mod.build_media_reply(path, cards, now, day_kind)
         assert reply.startswith("MEDIA:")
         assert str(path) in reply
