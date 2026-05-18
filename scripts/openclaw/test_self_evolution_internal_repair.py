@@ -70,6 +70,26 @@ def test_execute_run_can_reach_verified_without_push():
     assert result.retry_allowed is True
 
 
+
+def test_package_guardrail_text_does_not_create_false_external_block():
+    package_state = {
+        "llm_classification": {
+            "autonomy_allowed": True,
+            "autonomy_boundary": "Must not use credentials or perform external production side effects.",
+            "missing_condition": "no public release or external production side effect was requested",
+        },
+        "allowed_repair_action": "autonomous_internal_repair",
+    }
+    decision = repair.decide_boundary(
+        "完善增强能力并在私人频道测试",
+        "registered tool returned non-zero exit code 2",
+        package_state,
+    )
+    assert decision.internal_write_allowed is True
+    assert decision.external_effect_requires_approval is False
+    assert decision.public_release_requires_approval is False
+
+
 def test_public_release_text_is_not_hardcoded_business_rule():
     source = Path(repair.__file__).read_text(encoding="utf-8")
     assert "天气预报文" not in source

@@ -81,13 +81,20 @@ def package_id_from_state(package_state: dict[str, Any]) -> str:
 
 
 def decide_boundary(text: str, reason: str = "", package_state: dict[str, Any] | None = None) -> BoundaryDecision:
-    haystack = "\n".join([text or "", reason or "", json.dumps(package_state or {}, ensure_ascii=False)])
+    package_json = json.dumps(package_state or {}, ensure_ascii=False)
+    # Internal-repair evidence may come from the repair package, but public/external
+    # side-effect detection must be based on the requested work itself. Repair
+    # packages often contain policy prose such as "must not use credentials" or
+    # "no external production side effect was requested"; treating those guardrail
+    # sentences as requested effects caused valid private verification runs to exit 2.
+    internal_haystack = "\n".join([text or "", reason or "", package_json])
+    requested_effect_haystack = "\n".join([text or "", reason or ""])
     internal_markers = ["自增益", "自演进", "self", "internal", "能力补齐", "仓库", "repo", "测试", "验证", "verify"]
     public_markers = ["公共频道", "公开", "public", "发布", "release", "announce"]
     external_markers = ["预约", "支付", "删除", "凭据", "credential", "login", "第三方", "外部生产"]
-    internal = any(marker.lower() in haystack.lower() for marker in internal_markers)
-    public = any(marker.lower() in haystack.lower() for marker in public_markers)
-    external = any(marker.lower() in haystack.lower() for marker in external_markers)
+    internal = any(marker.lower() in internal_haystack.lower() for marker in internal_markers)
+    public = any(marker.lower() in requested_effect_haystack.lower() for marker in public_markers)
+    external = any(marker.lower() in requested_effect_haystack.lower() for marker in external_markers)
     reasons: list[str] = []
     if internal:
         reasons.append("owner-controlled internal implementation/verification detected")
