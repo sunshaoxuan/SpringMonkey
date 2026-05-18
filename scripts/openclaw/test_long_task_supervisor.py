@@ -233,6 +233,70 @@ def test_timeout_marks_task_and_records_no_fake_success(tmp_path: Path) -> None:
     assert not tasks[0].get("final_report")
 
 
+def test_inconsistent_delivered_without_final_report_is_recovered_and_delivered(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task.update(
+        {
+            "status": "delivered",
+            "stage": "verified",
+            "delivery_state": "ready_for_reply",
+            "final_report": "",
+            "result_summary": "verify registry -> 0; verify baseline -> 0",
+        }
+    )
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    delivered: list[str] = []
+
+    tasks = supervisor.poll_tasks(
+        state_path=state,
+        sessions_dir=sessions,
+        deliver=True,
+        repair=False,
+        deliverer=lambda _task, body: (delivered.append(body) is None, "sent"),
+    )
+
+    assert tasks[0]["status"] == "delivered"
+    assert tasks[0]["delivery_state"] == "delivered"
+    assert "此前投递状态未收口" in tasks[0]["final_report"]
+    assert "verify baseline" in delivered[0]
+
+
+def test_inconsistent_delivered_without_any_report_becomes_failure_report(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task.update({"status": "delivered", "stage": "verified", "delivery_state": "ready_for_reply", "final_report": ""})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+
+    tasks = supervisor.poll_tasks(
+        state_path=state,
+        sessions_dir=sessions,
+        deliver=True,
+        repair=False,
+        deliverer=lambda _task, _body: (True, "sent"),
+    )
+
+    assert tasks[0]["status"] == "failed"
+    assert tasks[0]["delivery_state"] == "delivered"
+    assert "没有可投递的最终报告" in tasks[0]["final_report"]
+
+
 def test_domain_implementation_process_output_becomes_final_report(monkeypatch, tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     sessions = tmp_path / "sessions"

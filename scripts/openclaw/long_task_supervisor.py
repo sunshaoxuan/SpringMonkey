@@ -614,7 +614,32 @@ def poll_tasks(
     changed = False
     results: list[dict[str, Any]] = []
     for task in data.get("tasks", []):
-        if not isinstance(task, dict) or str(task.get("status") or "") not in ACTIVE_STATUSES:
+        if not isinstance(task, dict):
+            continue
+        status = str(task.get("status") or "")
+        delivery_state = str(task.get("delivery_state") or "")
+        final_report = str(task.get("final_report") or "").strip()
+        result_summary = str(task.get("result_summary") or "").strip()
+        if status == "delivered" and delivery_state != "delivered":
+            task["status"] = "final_detected"
+            task["stage"] = "final_detected"
+            task["delivery_state"] = "pending"
+            if result_summary and not final_report:
+                task["final_report"] = "长任务已完成内部验证，但此前投递状态未收口。\n\n验证摘要：\n" + result_summary
+            elif not final_report:
+                task["result_status"] = "failed"
+                task["final_report"] = "长任务状态不一致：任务被标记为已完成，但没有可投递的最终报告。已阻止假成功并要求重新收口。"
+            append_event(
+                {
+                    "event": "inconsistent_delivered_state_recovered",
+                    "task_id": task.get("task_id"),
+                    "run_id": task.get("run_id"),
+                    "previous_delivery_state": delivery_state,
+                    "had_result_summary": bool(result_summary),
+                }
+            )
+            changed = True
+        if str(task.get("status") or "") not in ACTIVE_STATUSES:
             continue
         task["last_seen"] = utc_now()
         if task.get("status") == "delivery_queued":
@@ -703,8 +728,9 @@ def poll_tasks(
             ok, evidence = send(task, final_delivery_text(task))
             task["delivery_evidence"] = evidence
             if ok:
-                task["status"] = "delivered"
-                task["stage"] = "delivered"
+                result_status = str(task.get("result_status") or "success")
+                task["status"] = "failed" if result_status == "failed" else "delivered"
+                task["stage"] = "long_task_failed_delivered" if result_status == "failed" else "delivered"
                 task["delivery_state"] = "delivered"
                 task["delivered_at"] = utc_now()
                 append_event({"event": "delivered", "task_id": task.get("task_id"), "run_id": task.get("run_id")})
