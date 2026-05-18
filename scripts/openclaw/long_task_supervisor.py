@@ -15,6 +15,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+try:
+    import grp
+    import pwd
+except ImportError:  # Windows test environment.
+    grp = None
+    pwd = None
+
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
 DEFAULT_STATE_PATH = WORKSPACE / "state" / "long_task_supervisor" / "tasks.json"
@@ -320,8 +327,14 @@ def enqueue_openclaw_delivery(
     path = queue_dir / f"{entry_id}.json"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     try:
-        path.chmod(0o600)
+        path.chmod(0o660)
+        if pwd is not None and grp is not None and hasattr(os, "chown"):
+            uid = pwd.getpwnam("openclaw").pw_uid
+            gid = grp.getgrnam("openclaw").gr_gid
+            os.chown(path, uid, gid)
     except OSError:
+        pass
+    except KeyError:
         pass
     return True, f"delivery_queued:{entry_id}"
 
