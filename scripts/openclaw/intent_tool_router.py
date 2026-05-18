@@ -610,15 +610,16 @@ def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, ou
         final_report = ""
         status = ""
         long_task_id = ""
-        if not job_name and output:
+        if output:
             try:
                 parsed = json.loads(output)
-                job_name = parsed.get("job_name")
+                job_name = job_name or parsed.get("job_name")
                 final_report = str(parsed.get("final_report") or "")
                 status = str(parsed.get("status") or "")
                 long_task_id = str(parsed.get("long_task_id") or "")
             except json.JSONDecodeError:
-                job_name = None
+                if not job_name:
+                    job_name = None
         if status == "running" and not final_report:
             lines = ["OpenClaw 长任务已启动并进入跟踪。", f"任务：{job_name or 'configured recurring job'}"]
             if long_task_id:

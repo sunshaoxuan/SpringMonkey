@@ -531,6 +531,29 @@ def test_recurring_cron_args_include_reply_channel_id(monkeypatch) -> None:
     assert args["reply_channel_id"] == "dm_channel_1"
 
 
+def test_cron_ack_renders_direct_script_final_report() -> None:
+    output = json.dumps(
+        {
+            "status": "success",
+            "job_name": "weather-report-jst-0700",
+            "delivery": "manual_owner_reply",
+            "final_report": "天气预报\n- 原人自宅：晴朗",
+        },
+        ensure_ascii=False,
+    )
+
+    reply = router.format_reply(
+        {"reply_policy": "cron_ack"},
+        {"job_name": "weather-report-jst-0700"},
+        0,
+        output,
+    )
+
+    assert "OpenClaw 正式任务已完成。" in reply
+    assert "天气预报" in reply
+    assert "No running or recent sessions" not in reply
+
+
 def test_weather_query_maps_to_registered_tool() -> None:
     result = router.classify("请查询明天东京和长野天气、风况和能见度", "discord_dm", "999", load_registry())
     assert result.intent_id == "weather.dm.query"
