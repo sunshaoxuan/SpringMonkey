@@ -245,6 +245,7 @@ def start_implementation(
             "stdout_file": str(stdout_file),
             "stderr_file": str(stderr_file),
             "kernel_root": str(kernel_root),
+            "repo_root": str(repo_root),
             "delivery_state": "pending" if status == "running" else "not_applicable",
             "implementation_package_id": package_id,
             "implementation_evidence": evidence,

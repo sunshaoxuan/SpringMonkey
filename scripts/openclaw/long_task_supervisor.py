@@ -5,6 +5,8 @@ import argparse
 import hashlib
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 import urllib.request
@@ -23,6 +25,7 @@ DEFAULT_DELIVERY_QUEUE_DIR = Path("/var/lib/openclaw/.openclaw/delivery-queue")
 DEFAULT_OWNER_DM_CHANNEL = "1497009159940608020"
 DEFAULT_OWNER_USER_ID = "999666719356354610"
 DEFAULT_TIMEOUT_SECONDS = 3600
+DEFAULT_REPO_ROOT = Path("/var/lib/openclaw/repos/SpringMonkey")
 
 ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
 OWNER_QUEUE_TARGET = f"user:{DEFAULT_OWNER_USER_ID}"
@@ -452,7 +455,49 @@ def domain_implementation_visible_text(stdout: str) -> str:
     return stdout.strip()
 
 
-def domain_implementation_report_status(stdout: str) -> tuple[str, str]:
+def domain_report_claims_repo_change(visible: str) -> bool:
+    if not visible.strip():
+        return False
+    markers = (
+        "修改内容",
+        "新增",
+        "更新",
+        "注册",
+        "改动",
+        "代码改动",
+        "changed",
+        "created",
+        "updated",
+        "registered",
+    )
+    if any(marker in visible for marker in markers):
+        return True
+    return bool(re.search(r"(scripts|config|packages)/[A-Za-z0-9_./-]+\.(py|json|md|toml|js|ts)", visible))
+
+
+def git_has_worktree_changes(repo_root: Path) -> tuple[bool, str]:
+    if not repo_root.is_dir():
+        return False, f"repo root not found: {repo_root}"
+    try:
+        proc = subprocess.run(
+            ["git", "status", "--short"],
+            cwd=repo_root,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=20,
+        )
+    except Exception as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+    output = (proc.stdout or "").strip()
+    if proc.returncode != 0:
+        return False, output or f"git status failed: {proc.returncode}"
+    return bool(output), output
+
+
+def domain_implementation_report_status(stdout: str, *, repo_root: Path | None = None) -> tuple[str, str]:
     visible = domain_implementation_visible_text(stdout)
     lowered = visible.lower()
     has_run_id = "implementation_run_id" in visible
@@ -485,6 +530,16 @@ def domain_implementation_report_status(stdout: str) -> tuple[str, str]:
     if failed_tool:
         evidence = visible or "tool failure without verified implementation report"
         return "failed", "内部能力实现未通过验收：执行器工具失败或 replay invalid。\n" + evidence
+    if domain_report_claims_repo_change(visible):
+        has_changes, git_evidence = git_has_worktree_changes(repo_root or DEFAULT_REPO_ROOT)
+        if not has_changes:
+            evidence = git_evidence or "git status --short returned no changes"
+            return (
+                "failed",
+                "内部能力实现未通过验收：报告声称修改了仓库/注册表/测试，但真实 Git 工作树没有对应变更。\n"
+                f"Git 证据：{evidence}\n"
+                + visible,
+            )
     return "success", visible
 
 
@@ -497,7 +552,8 @@ def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
     stdout = read_text_limited(str(task.get("stdout_file") or ""))
     stderr = read_text_tail(str(task.get("stderr_file") or ""))
     if stdout:
-        result_status, text = domain_implementation_report_status(stdout)
+        repo_root = Path(str(task.get("repo_root") or DEFAULT_REPO_ROOT))
+        result_status, text = domain_implementation_report_status(stdout, repo_root=repo_root)
         return {"found": True, "result_status": result_status, "text": text}
     if stderr:
         return {"found": True, "result_status": "failed", "text": f"内部能力实现失败：\n{stderr}"}
