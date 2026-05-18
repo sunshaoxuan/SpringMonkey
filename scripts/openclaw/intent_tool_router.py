@@ -373,6 +373,19 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
         }
     if mode == "self_evolution_status":
         return {"limit": int(schema.get("limit") or 5)}
+    if mode == "self_evolution_internal_repair":
+        run_match = re.search(r"implementation_run_id\s*[:：]\s*([A-Za-z0-9_.-]+)", text)
+        repo_match = re.search(r"repo_root\s*[:：]\s*(\S+)", text)
+        package_match = re.search(r'"files"\s*:\s*\[\s*"([^"]+)"', text)
+        return {
+            "text": text,
+            "reason": "owner requested generic self-evolution internal repair",
+            "implementation_run_id": run_match.group(1) if run_match else "",
+            "repo_root": repo_match.group(1) if repo_match else str(REPO),
+            "package_state": package_match.group(1) if package_match else "",
+            "push": bool(schema.get("push", False)),
+            "dry_run": bool(schema.get("dry_run", False)),
+        }
     if mode == "cron_status":
         topic = str(schema.get("topic") or "xhs")
         return {"text": text, "message_timestamp": message_timestamp, "topic": topic}
@@ -475,6 +488,26 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
         ]
     elif mode == "self_evolution_status":
         cmd = [sys.executable, str(entrypoint), "--limit", str(args.get("limit") or 5)]
+    elif mode == "self_evolution_internal_repair":
+        cmd = [
+            sys.executable,
+            str(entrypoint),
+            "--text",
+            args["text"],
+            "--reason",
+            str(args.get("reason") or ""),
+            "--repo-root",
+            str(args.get("repo_root") or REPO),
+            "--json",
+        ]
+        if args.get("implementation_run_id"):
+            cmd.extend(["--implementation-run-id", str(args.get("implementation_run_id"))])
+        if args.get("package_state"):
+            cmd.extend(["--package-state", str(args.get("package_state"))])
+        if args.get("push"):
+            cmd.append("--push")
+        if args.get("dry_run"):
+            cmd.append("--dry-run")
     elif mode == "cron_status":
         cmd = [
             sys.executable,
