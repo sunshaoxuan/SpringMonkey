@@ -4,7 +4,9 @@ from __future__ import annotations
 import html
 import json
 import math
+import os
 import struct
+import subprocess
 import urllib.parse
 import zlib
 from dataclasses import dataclass
@@ -16,6 +18,7 @@ import discord_weather_report as report
 
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
+DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
 
 @dataclass(frozen=True)
 class WeatherCard:
@@ -227,6 +230,106 @@ def write_weather_image(cards: list[WeatherCard], now: datetime | None = None, o
     path.write_bytes(render_png(cards, now))
     return path
 
+
+def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
+    summaries = []
+    for card in cards[:2]:
+        summaries.append(
+            f"{card.area}: {report.weather_label(card.weather_code)}, {_fmt(card.temperature_c, '°C')}, "
+            f"high {_fmt(card.temp_max_c, '°C')}, low {_fmt(card.temp_min_c, '°C')}, "
+            f"rain probability {_fmt(card.precipitation_probability, '%')}, wind {_fmt(card.wind_kmh, 'km/h')}"
+        )
+    return (
+        "Create a premium 3D miniature weather forecast image for a Discord morning report. "
+        "Scene: two polished isometric diorama panels side by side, one inspired by Tokyo Suginami "
+        "neighborhood streets and skyline, one inspired by Kawaguchi river bridge, compact station plaza, "
+        "and foundry-town atmosphere. Use tasteful editorial illustration, toy-like architectural models, "
+        "clean lighting, soft shadows, atmospheric depth, high-quality materials, and weather cues that match "
+        f"this forecast for {now:%Y-%m-%d} ({day_kind}): {'; '.join(summaries)}. "
+        "No brand logos, no watermarks, no copyrighted characters, no unreadable UI clutter. "
+        "Avoid large text blocks; tiny decorative numerals are acceptable but the image should work without text. "
+        "Aspect ratio 3:2, polished and visually rich."
+    )
+
+
+def generate_model_image(
+    cards: list[WeatherCard],
+    now: datetime,
+    day_kind: str,
+    output_dir: Path,
+    *,
+    model: str = DEFAULT_IMAGE_MODEL,
+    command_runner=subprocess.run,
+) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / f"weather_miniature_{now:%Y%m%d_%H%M%S}_image2.png"
+    cmd = [
+        "openclaw",
+        "infer",
+        "image",
+        "generate",
+        "--model",
+        model,
+        "--prompt",
+        build_image_prompt(cards, now, day_kind),
+        "--size",
+        "1536x1024",
+        "--output-format",
+        "png",
+        "--output",
+        str(path),
+        "--timeout-ms",
+        "180000",
+        "--json",
+    ]
+    env = os.environ.copy()
+    env.setdefault("HOME", "/var/lib/openclaw")
+    proc = command_runner(
+        cmd,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=240,
+        env=env,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError((proc.stderr or proc.stdout or f"image generation failed: {proc.returncode}")[-1000:])
+    try:
+        payload = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"image generation returned invalid JSON: {exc}") from exc
+    outputs = payload.get("outputs") if isinstance(payload, dict) else None
+    first = outputs[0] if isinstance(outputs, list) and outputs else {}
+    generated = Path(str(first.get("path") or path))
+    if not generated.is_file():
+        raise RuntimeError(f"image generation did not create output file: {generated}")
+    if generated.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
+        raise RuntimeError(f"image generation output is not PNG: {generated}")
+    return generated
+
+
+def write_weather_image_with_model(
+    cards: list[WeatherCard],
+    now: datetime | None = None,
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+    *,
+    day_kind: str = "",
+    model: str | None = None,
+    command_runner=subprocess.run,
+) -> Path:
+    now = now or datetime.now(TZ)
+    selected_model = model if model is not None else os.environ.get("OPENCLAW_WEATHER_IMAGE_MODEL", DEFAULT_IMAGE_MODEL)
+    if selected_model and selected_model.lower() not in {"off", "none", "fallback"}:
+        try:
+            return generate_model_image(cards, now, day_kind or "平日", output_dir, model=selected_model, command_runner=command_runner)
+        except Exception:
+            # Deterministic fallback keeps the cron from failing, but the normal
+            # path must be the configured image model.
+            pass
+    return write_weather_image(cards, now, output_dir)
+
 def build_cards(now: datetime | None = None, *, fetch_json=report.fetch_json) -> tuple[list[WeatherCard], bool, str]:
     now = now or datetime.now(TZ)
     locations, rest_day, day_kind = report.locations_for_day(now)
@@ -239,7 +342,8 @@ def build_media_reply(path: Path, cards: list[WeatherCard], now: datetime, day_k
 def generate_weather_image_reply(now: datetime | None = None, *, fetch_json=report.fetch_json, output_dir: Path = DEFAULT_OUTPUT_DIR) -> str:
     now = now or datetime.now(TZ)
     cards, _rest_day, day_kind = build_cards(now, fetch_json=fetch_json)
-    return build_media_reply(write_weather_image(cards, now, output_dir), cards, now, day_kind)
+    path = write_weather_image_with_model(cards, now, output_dir, day_kind=day_kind)
+    return build_media_reply(path, cards, now, day_kind)
 
 def main() -> int:
     print(generate_weather_image_reply())

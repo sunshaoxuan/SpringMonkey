@@ -5,6 +5,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+import json
+import subprocess
 
 import weather_image_forecast as mod
 
@@ -30,6 +32,38 @@ def main() -> int:
         assert "Open-Meteo" in reply
     print("test_weather_image_forecast.py: ok")
     return 0
+
+
+def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    expected = tmp_path / "model.png"
+    expected.write_bytes(b"\x89PNG\r\n\x1a\nmodel")
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"outputs": [{"path": str(expected)}]}), stderr="")
+
+    path = mod.write_weather_image_with_model(cards, now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+
+    assert path == expected
+    assert calls
+    assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
+    assert "openai/gpt-image-2" in calls[0]
+
+
+def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="image model unavailable")
+
+    path = mod.write_weather_image_with_model(cards, now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+
+    assert path.suffix == ".png"
+    assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 
 if __name__ == "__main__":
     raise SystemExit(main())
