@@ -139,6 +139,8 @@ def build_blocker_prompt(
         "set blocker_kind=write_operation_request, autonomy_allowed=true, safety_class=auto_safe_readonly, "
         "allowed_repair_action=autonomous_internal_repair, replay_policy=allow_after_verified_promoted. "
         "This internal repair route may implement and privately verify the capability, but it must keep any real external side effect approval-gated if the user requested that. "
+        "If a request mixes internal implementation/test/git-push with later public release, do boundary splitting: allow the internal implementation/test/git-push autonomously, "
+        "and record the public release as a held approval gate. Do not classify the entire request as ambiguous merely because it mentions a later public release. "
         "Do not block merely because the text mentions access or approval if the missing access can be resolved with already authorized internal tools, "
         "owner-owned workspace state, generated artifacts, or existing service credentials. "
         "Choose access_or_approval_blocker with requires_confirmation_or_credentials and blocked_until_authorization only when external approval is actually missing, "

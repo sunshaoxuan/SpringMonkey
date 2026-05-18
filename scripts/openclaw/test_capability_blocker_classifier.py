@@ -65,6 +65,22 @@ def test_llm_blocker_classifier_allows_low_risk_internal_autonomy() -> None:
     assert result.allowed_repair_action == "autonomous_internal_repair"
 
 
+def test_blocker_prompt_requires_boundary_splitting_for_internal_repair_and_public_release() -> None:
+    messages = classifier.build_blocker_prompt(
+        text="检查能力增强进度，没做完就做完，落实能力后推仓库，在私人频道测试通过后再发布到公共频道。",
+        stage="binding",
+        reason="no registered tool",
+        execution_output="",
+        context="",
+        registry={"tools": []},
+    )
+    system = messages[0]["content"]
+
+    assert "boundary splitting" in system
+    assert "internal implementation/test/git-push" in system
+    assert "public release as a held approval gate" in system
+
+
 def test_llm_blocker_classifier_low_confidence_is_conservative() -> None:
     result = classifier.classify_capability_blocker(
         text="处理一下",

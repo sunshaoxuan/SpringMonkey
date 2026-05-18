@@ -72,6 +72,20 @@ def test_long_task_status_uses_semantic_contract_frame() -> None:
     assert frame.source == "model"
 
 
+def test_intent_prompt_requires_boundary_split_for_self_improvement_public_release() -> None:
+    messages = agent.build_prompt(
+        "检查能力增强进度，没做完就做完，落实能力后推仓库，在私人频道测试通过后再发布到公共频道。",
+        context="",
+        registry=load_registry(),
+    )
+    system = messages[0]["content"]
+
+    assert "split the boundary semantically" in system
+    assert "git push" in system
+    assert "public-channel replacement" in system
+    assert "Do not reject the whole request as boundary-unclear" in system
+
+
 def test_timescar_shift_window_uses_semantic_model_frame() -> None:
     frame = agent.infer_intent_frame(
         "请把马上开始的那单预订帮我往后整体延15分钟。",
