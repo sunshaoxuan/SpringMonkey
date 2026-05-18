@@ -57,9 +57,26 @@ def frame_reply(frame: IntentFrame) -> str:
     return f"未执行：{frame.reason}"
 
 
-def capability_gap_user_summary(repair_status: str) -> str:
+def capability_gap_user_summary(repair_status: str, repair: Any | None = None) -> str:
     if repair_status == "repair_started":
-        return "已启动内部能力补齐并进入跟踪；完成验证前不会重试原任务。"
+        implementation = getattr(repair, "implementation_run", None) or {}
+        long_task_id = str(implementation.get("long_task_id") or "").strip() if isinstance(implementation, dict) else ""
+        run_id = str(implementation.get("run_id") or "").strip() if isinstance(implementation, dict) else ""
+        lines = [
+            "已启动内部能力补齐并进入跟踪。",
+            "当前状态：后台实现运行中，完成验证前不会重试原任务。",
+        ]
+        if long_task_id:
+            lines.append(f"跟踪编号：{long_task_id}")
+        if run_id:
+            lines.append(f"实现编号：{run_id}")
+        lines.extend(
+            [
+                "结果投递：完成、失败或超时后会补发到当前私聊/owner DM。",
+                "你可以发送：检查长任务状态",
+            ]
+        )
+        return "\n".join(lines)
     if repair_status == "planned":
         return "未执行：已识别为需要补齐的能力，汤猴已生成实现路线，但还没有通过验证并提升为可执行能力。"
     if repair_status in {"generated", "verified"}:
@@ -239,7 +256,7 @@ def handle_event(
             return replayed
         return finish(
             "unsupported",
-            "\n".join([capability_gap_user_summary(repair.status), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
+            "\n".join([capability_gap_user_summary(repair.status, repair), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,
             None,

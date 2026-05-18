@@ -777,7 +777,13 @@ def status_text(*, state_path: Path = DEFAULT_STATE_PATH, limit: int = 10) -> st
         title = str(task.get("job_name") or task.get("job_id") or task.get("run_id") or "long task")
         status = str(task.get("status") or "unknown")
         result_status = str(task.get("result_status") or "")
-        if status in ACTIVE_STATUSES:
+        if status == "delivery_queued":
+            conclusion = "最终结果已进入投递队列，等待 Discord/OpenClaw 投递确认。"
+        elif status == "delivery_failed":
+            conclusion = "最终结果投递失败，后续会重试或报告投递故障。"
+        elif status == "final_detected":
+            conclusion = "已检测到最终结果，等待投递。"
+        elif status == "running":
             conclusion = "正在进行，尚未最终收口。"
         elif status == "delivered" and result_status != "failed":
             conclusion = "已完成，最终结果已投递。"

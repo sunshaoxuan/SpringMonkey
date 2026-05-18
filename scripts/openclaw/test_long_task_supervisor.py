@@ -402,3 +402,15 @@ def test_status_text_lists_recent_tasks(tmp_path: Path) -> None:
     assert "1. job" in text
     assert "结论：正在进行，尚未最终收口。" in text
     assert "阶段：running" in text
+
+
+def test_status_text_distinguishes_delivery_queue_from_running(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    task = supervisor.register_task(source="cron", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
+    task.update({"status": "delivery_queued", "stage": "delivery_queued", "delivery_state": "queued", "delivery_queue_id": "queue_1"})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+
+    text = supervisor.status_text(state_path=state)
+
+    assert "结论：最终结果已进入投递队列" in text
+    assert "结论：正在进行，尚未最终收口。" not in text

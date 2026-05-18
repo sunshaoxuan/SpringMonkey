@@ -271,6 +271,23 @@ def test_reporter_hides_self_repair_diagnostics_from_owner_reply() -> None:
     assert "详细诊断：后台日志保留" in reply
 
 
+def test_repair_started_summary_includes_tracking_identifiers() -> None:
+    import harness_dispatcher
+
+    class Repair:
+        implementation_run = {
+            "long_task_id": "long_abc",
+            "run_id": "impl_abc",
+        }
+
+    summary = harness_dispatcher.capability_gap_user_summary("repair_started", Repair())
+
+    assert "跟踪编号：long_abc" in summary
+    assert "实现编号：impl_abc" in summary
+    assert "检查长任务状态" in summary
+    assert "结果投递" in summary
+
+
 def test_reporter_summarizes_generated_helper_json_reply() -> None:
     envelope = ReportEnvelope(
         task_id="task_self",
