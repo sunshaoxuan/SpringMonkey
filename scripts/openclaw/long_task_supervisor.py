@@ -488,6 +488,24 @@ def domain_report_claims_repo_change(visible: str) -> bool:
     return bool(re.search(r"(scripts|config|packages)/[A-Za-z0-9_./-]+\.(py|json|md|toml|js|ts)", visible))
 
 
+def domain_report_claims_committed_changes(visible: str) -> bool:
+    if not visible.strip():
+        return False
+    has_commit = bool(re.search(r"\b[0-9a-f]{7,40}\b", visible, re.IGNORECASE))
+    commit_markers = (
+        "commit:",
+        "已成功 push",
+        "已成功推送",
+        "已推送",
+        "pushed",
+        "origin/main",
+        "工作区干净",
+        "工作树干净",
+        "worktree clean",
+    )
+    return has_commit and any(marker in visible for marker in commit_markers)
+
+
 def git_has_worktree_changes(repo_root: Path) -> tuple[bool, str]:
     if not repo_root.is_dir():
         return False, f"repo root not found: {repo_root}"
@@ -525,6 +543,18 @@ def domain_implementation_report_status(stdout: str, *, repo_root: Path | None =
             "测试通过",
         )
     )
+    has_explicit_verified_success = has_run_id and has_verification and any(
+        marker in visible
+        for marker in (
+            "self-evolution run：`passed`",
+            "self-evolution run：passed",
+            "stage：`verified`",
+            "stage：verified",
+            "验证已运行",
+            "验证通过",
+            "可以重试",
+        )
+    )
     generic_completion = any(
         marker in lowered
         for marker in (
@@ -536,7 +566,7 @@ def domain_implementation_report_status(stdout: str, *, repo_root: Path | None =
             "subagent spawns are disabled",
         )
     )
-    failed_tool = '"failures": 1' in stdout or '"replayInvalid": true' in stdout
+    failed_tool = ('"failures": 1' in stdout or '"replayInvalid": true' in stdout) and not has_explicit_verified_success
     if generic_completion or not has_run_id or not has_verification:
         evidence = visible or "no visible implementation report"
         return "failed", "内部能力实现未通过验收：缺少实现 run id 或验证证据。\n" + evidence
@@ -545,7 +575,7 @@ def domain_implementation_report_status(stdout: str, *, repo_root: Path | None =
         return "failed", "内部能力实现未通过验收：执行器工具失败或 replay invalid。\n" + evidence
     if domain_report_claims_repo_change(visible):
         has_changes, git_evidence = git_has_worktree_changes(repo_root or DEFAULT_REPO_ROOT)
-        if not has_changes:
+        if not has_changes and not domain_report_claims_committed_changes(visible):
             evidence = git_evidence or "git status --short returned no changes"
             return (
                 "failed",

@@ -392,6 +392,69 @@ def test_domain_implementation_claimed_repo_changes_require_git_diff(monkeypatch
     assert "真实 Git 工作树没有对应变更" in tasks[0]["final_report"]
 
 
+def test_domain_implementation_committed_verified_run_is_success_despite_replay_invalid(monkeypatch, tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    stdout = tmp_path / "impl.out"
+    stderr = tmp_path / "impl.err"
+    visible = "\n".join(
+        [
+            "implementation_run_id: `impl_1`",
+            "修改内容",
+            "- 新增 scripts/weather/weather_image_forecast.py",
+            "验证已运行",
+            "- python scripts/openclaw/verify_intent_tool_registry.py：通过",
+            "- python scripts/openclaw/verify_harness_registry.py：通过",
+            "- python scripts/openclaw/verify_capability_baseline.py：通过",
+            "状态",
+            "- self-evolution run：`passed`",
+            "- stage：`verified`",
+            "提交与推送",
+            "- commit: `74f2e051b8b994ebf7d56b62926a83e5f0fd0b89`",
+            "- 已成功 push 到 `origin/main`",
+            "- 当前状态：工作区干净",
+            "原任务是否可以重试",
+            "- 可以重试。",
+        ]
+    )
+    stdout.write_text(
+        json.dumps(
+            {
+                "result": {
+                    "meta": {
+                        "finalAssistantVisibleText": visible,
+                        "replayInvalid": True,
+                        "toolSummary": {"failures": 0},
+                    }
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    stderr.write_text("", encoding="utf-8")
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task.update({"pid": 12345, "stdout_file": str(stdout), "stderr_file": str(stderr), "repo_root": str(repo)})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
+    monkeypatch.setattr(supervisor, "git_has_worktree_changes", lambda _repo: (False, ""))
+
+    tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
+
+    assert tasks[0]["status"] == "final_detected"
+    assert tasks[0]["result_status"] == "success"
+    assert "可以重试" in tasks[0]["final_report"]
+
+
 def test_status_text_lists_recent_tasks(tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     supervisor.register_task(source="cron", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
