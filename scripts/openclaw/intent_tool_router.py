@@ -377,13 +377,19 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
         run_match = re.search(r"implementation_run_id\s*[:：]\s*([A-Za-z0-9_.-]+)", text)
         repo_match = re.search(r"repo_root\s*[:：]\s*(\S+)", text)
         package_match = re.search(r'"files"\s*:\s*\[\s*"([^"]+)"', text)
+        reason_match = re.search(
+            r"(?:失败原因|failure reason|reason)\s*[:：]\s*(.+?)(?:\n\s*(?:repair package|必须遵守|建议验证|$))",
+            text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        wants_push = bool(re.search(r"(推仓库|推送|push(?:\s+the)?\s+(?:repo|repository)|git\s+push)", text, re.IGNORECASE))
         return {
             "text": text,
-            "reason": "owner requested generic self-evolution internal repair",
+            "reason": reason_match.group(1).strip() if reason_match else "owner requested generic self-evolution internal repair",
             "implementation_run_id": run_match.group(1) if run_match else "",
             "repo_root": repo_match.group(1) if repo_match else str(REPO),
             "package_state": package_match.group(1) if package_match else "",
-            "push": bool(schema.get("push", False)),
+            "push": bool(schema.get("push", False)) or wants_push,
             "dry_run": bool(schema.get("dry_run", False)),
         }
     if mode == "cron_status":

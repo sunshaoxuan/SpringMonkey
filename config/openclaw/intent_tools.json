@@ -1285,7 +1285,7 @@
     {
       "intent_id": "openclaw.self_evolution.internal_repair",
       "tool_id": "openclaw.self_evolution.internal_repair",
-      "description": "Run a generic owner-controlled self-evolution implementation loop: repository changes, tests, optional git push, and approval-gated public/external release hold.",
+      "description": "Run a generic owner-controlled self-evolution implementation loop: repository changes, tool contract/registry/router updates, tests, optional git push, and approval-gated public/external release hold.",
       "owner_agent": "toolWorker",
       "patterns": [
         "自增益",
@@ -1328,7 +1328,7 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "confirm_policy": "owner_controlled_internal_repo_write_only_public_release_approval_gated",
       "idempotency": "implementation_run_id_package_id_git_commit",
-      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py scripts/openclaw/intent_tool_router.py && python scripts/openclaw/test_self_evolution_internal_repair.py && python scripts/openclaw/test_self_evolution_internal_repair_registry.py && python scripts/openclaw/verify_intent_tool_registry.py && python scripts/openclaw/verify_harness_registry.py && python scripts/openclaw/verify_capability_baseline.py",
+      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py scripts/openclaw/intent_tool_router.py && python scripts/openclaw/test_self_evolution_internal_repair.py && python scripts/openclaw/test_self_evolution_internal_repair_registry.py && python scripts/openclaw/test_self_evolution_internal_repair_router.py && python scripts/openclaw/verify_intent_tool_registry.py && python scripts/openclaw/verify_harness_registry.py && python scripts/openclaw/verify_capability_baseline.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout",
       "capability_id": "openclaw.self_evolution.internal_repair",
@@ -1345,7 +1345,9 @@
         "内部自增益实现",
         "仓库修改并验证",
         "私人频道测试后公共发布需要审批",
-        "implementation_run_id"
+        "implementation_run_id",
+        "继续补齐失败的内部自增益能力",
+        "运行验证并推仓库"
       ],
       "input_contract": {
         "type": "self_evolution_repair_request",
@@ -1357,7 +1359,7 @@
         "reports_verify_commands": true,
         "reports_approval_gate": true
       },
-      "goal": "Complete owner-controlled internal self-evolution implementation, verification, and optional repository push without performing public/external side effects.",
+      "goal": "Complete owner-controlled internal self-evolution implementation, verification, router/contract registration, and optional repository push without performing public/external side effects; routes explicit owner push requests to the executor instead of dropping them.",
       "use_when": "Use when the owner asks to repair or implement missing internal OpenClaw capabilities, update this repository, run private verification, and optionally push the owner-controlled repo.",
       "do_not_use_when": "Do not use to publish to public channels, change third-party state, handle credentials, delete data, make bookings/payments, or hard-code a business request as a router keyword branch; those actions require an approval package or a domain-specific tool.",
       "examples": [

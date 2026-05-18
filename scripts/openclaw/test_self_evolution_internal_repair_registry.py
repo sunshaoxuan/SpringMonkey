@@ -23,6 +23,7 @@ def test_registry_contains_generic_self_evolution_internal_repair_tool():
     assert tool["permission"] == "owner_dm_write"
     assert tool["permission_scope"] == "owner_dm_write"
     assert tool["write_operation"] is True
+    assert "test_self_evolution_internal_repair_router.py" in tool["verify_command"]
     assert tool["domain"] == "self"
     assert set(tool["actions"]) >= {"repair", "implement", "verify", "push"}
     encoded = json.dumps(tool, ensure_ascii=False).lower()
