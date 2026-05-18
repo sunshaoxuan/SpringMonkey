@@ -10,6 +10,11 @@ from pathlib import Path
 
 REPO = Path(os.environ.get("SPRINGMONKEY_REPO", Path(__file__).resolve().parents[2]))
 JOBS_PATH = Path(os.environ.get("OPENCLAW_CRON_JOBS_PATH", "/var/lib/openclaw/.openclaw/cron/jobs.json"))
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+
+from discord_media_delivery import parse_media_reply, send_discord_message
 
 
 DIRECT_SCRIPT_JOBS: dict[str, list[str]] = {
@@ -70,13 +75,22 @@ def run_direct_script_job(name: str) -> int:
         timeout=int(os.environ.get("OPENCLAW_RUN_JOB_TIMEOUT", "5400")),
     )
     if proc.returncode == 0:
+        final_report = (proc.stdout or "").strip()
+        delivery = "manual_owner_reply"
+        reply_channel = os.environ.get("OPENCLAW_REPLY_CHANNEL_ID", "").strip()
+        media_delivery = ""
+        if reply_channel and parse_media_reply(final_report):
+            _chunks, media_delivery = send_discord_message(reply_channel, final_report)
+            delivery = "manual_media_sent"
+            final_report = "天气预报图片已发送。"
         print(
             json.dumps(
                 {
                     "status": "success",
                     "job_name": name,
-                    "delivery": "manual_owner_reply",
-                    "final_report": (proc.stdout or "").strip(),
+                    "delivery": delivery,
+                    "final_report": final_report,
+                    "media_delivery": media_delivery,
                     "stderr_hidden": bool((proc.stderr or "").strip()),
                 },
                 ensure_ascii=False,

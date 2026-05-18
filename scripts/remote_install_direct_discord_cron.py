@@ -49,6 +49,7 @@ OPENCLAW_SCRIPTS = REPO / "scripts" / "openclaw"
 if str(OPENCLAW_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(OPENCLAW_SCRIPTS))
 
+from discord_media_delivery import send_discord_message
 from harness_reporter import append_report, build_report, format_owner_reply
 
 CONFIG = OPENCLAW_HOME / "openclaw.json"
@@ -116,30 +117,8 @@ def mark_published_after_delivery(name: str, stdout: str, command: list[str]) ->
 
 
 def send_discord(channel_id: str, content: str) -> int:
-    token = discord_token()
-    chunks = []
-    text = content or ""
-    while text:
-        chunks.append(text[:1900])
-        text = text[1900:]
-    if not chunks:
-        chunks = [""]
-    for index, chunk in enumerate(chunks, 1):
-        if len(chunks) > 1:
-            chunk = f"[{index}/{len(chunks)}]\n{chunk}"
-        req = urllib.request.Request(
-            f"https://discord.com/api/v10/channels/{channel_id}/messages",
-            data=json.dumps({"content": chunk}).encode("utf-8"),
-            headers={
-                "Authorization": f"Bot {token}",
-                "Content-Type": "application/json",
-                "User-Agent": "DiscordBot (openclaw-direct-cron, 1.0)",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            resp.read()
-    return len(chunks)
+    chunks, _kind = send_discord_message(channel_id, content)
+    return chunks
 
 
 def public_failure_message(name: str, returncode: int | str, stdout: str, stderr: str) -> str:
