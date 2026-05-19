@@ -415,6 +415,58 @@ def test_toolsmith_refuses_to_overwrite_existing_registered_tool_without_explici
     assert "would overwrite an existing registered tool" in promoted.verify_output
 
 
+
+def test_toolsmith_weather_formal_cron_public_rollout_routes_to_self_evolution_repair() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo = root / "repo"
+        write_registry(
+            repo,
+            [
+                {
+                    "intent_id": "openclaw.self_evolution.internal_repair",
+                    "tool_id": "openclaw.self_evolution.internal_repair",
+                    "entrypoint": "scripts/openclaw/self_evolution_internal_repair.py",
+                    "write_operation": True,
+                    "permission_scope": "owner_dm_write",
+                    "capability_id": "openclaw.self_evolution.internal_repair",
+                    "domain": "self",
+                    "actions": ["repair", "implement", "verify"],
+                },
+                {
+                    "intent_id": "weather.cron_run",
+                    "tool_id": "openclaw.cron.run.weather",
+                    "entrypoint": "scripts/openclaw/run_job_by_name.py",
+                    "write_operation": False,
+                    "permission_scope": "owner_dm",
+                    "domain": "weather",
+                    "actions": ["run"],
+                },
+            ],
+        )
+        package = runner.generate_repair_package(
+            text="替换掉正式的每日7点的天气预报任务，投放给公共频道",
+            reason="registered weather run tool cannot modify the formal cron workflow; public delivery must remain gated",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=repo,
+            semantic=True,
+            llm_classification={
+                "intent_kind": "update_formal_weather_cron_and_request_public_delivery",
+                "blocker_kind": "write_operation_request",
+                "expected_capability_family": "openclaw.self_evolution.internal_repair",
+                "allowed_repair_action": "autonomous_internal_repair",
+                "autonomy_allowed": True,
+            },
+        )
+        state = json.loads(Path(package.files[0]).read_text(encoding="utf-8"))
+
+    assert package.status == "planned"
+    assert package.tool_id == "openclaw.repair_plan.openclaw_self_evolution_internal_repair"
+    assert state["registry_tool"]["tool_id"] == "openclaw.self_evolution.internal_repair"
+    assert state["implementation_required"] is True
+
+
 def test_toolsmith_defers_promotion_without_formal_registry() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

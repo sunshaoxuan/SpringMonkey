@@ -28,6 +28,12 @@ DEFAULT_INTERNAL_REPAIR_PREFIXES = (
 DEFAULT_INTERNAL_REPAIR_FILES = {
     "scripts/INDEX.md",
 }
+DOMAIN_REPAIR_PREFIXES_BY_FAMILY = {
+    "weather": ("scripts/weather/",),
+}
+DOMAIN_REPAIR_FILES_BY_FAMILY = {
+    "weather": {"scripts/remote_install_direct_discord_cron.py"},
+}
 
 
 @dataclass
@@ -108,6 +114,27 @@ def package_declared_files(package_state: dict[str, Any]) -> set[str]:
     return declared
 
 
+def repair_capability_family(package_state: dict[str, Any] | None) -> str:
+    state = package_state or {}
+    classification = state.get("llm_classification")
+    values = [state.get("capability_family"), state.get("domain")]
+    if isinstance(classification, dict):
+        values.extend([
+            classification.get("expected_capability_family"),
+            classification.get("intent_kind"),
+            classification.get("missing_condition"),
+        ])
+    haystack = "\n".join(str(value or "").lower() for value in values)
+    if "weather" in haystack:
+        return "weather"
+    return ""
+
+
+def domain_change_scope(package_state: dict[str, Any]) -> tuple[tuple[str, ...], set[str]]:
+    family = repair_capability_family(package_state)
+    return DOMAIN_REPAIR_PREFIXES_BY_FAMILY.get(family, ()), set(DOMAIN_REPAIR_FILES_BY_FAMILY.get(family, set()))
+
+
 def change_scope_violations(changed_files: list[str], package_state: dict[str, Any]) -> list[str]:
     declared = package_declared_files(package_state)
     violations: list[str] = []
@@ -120,6 +147,11 @@ def change_scope_violations(changed_files: list[str], package_state: dict[str, A
         if path in DEFAULT_INTERNAL_REPAIR_FILES:
             continue
         if any(path.startswith(prefix) for prefix in DEFAULT_INTERNAL_REPAIR_PREFIXES):
+            continue
+        domain_prefixes, domain_files = domain_change_scope(package_state)
+        if path in domain_files:
+            continue
+        if any(path.startswith(prefix) for prefix in domain_prefixes):
             continue
         violations.append(path)
     return violations

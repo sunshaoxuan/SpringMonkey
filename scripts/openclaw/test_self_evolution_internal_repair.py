@@ -262,6 +262,40 @@ def test_registered_self_evolution_repair_package_action_allows_internal_repair(
     assert decision.external_effect_requires_approval is False
     assert decision.public_release_requires_approval is False
 
+
+def test_weather_rollout_package_allows_declared_domain_files_without_public_release_execution():
+    package_state = {
+        "tool_id": "openclaw.repair_plan.openclaw_self_evolution_internal_repair",
+        "allowed_repair_action": "autonomous_internal_repair",
+        "llm_classification": {
+            "intent_kind": "update_formal_weather_cron_and_request_public_delivery",
+            "autonomy_allowed": True,
+            "expected_capability_family": "openclaw.self_evolution.internal_repair",
+            "missing_condition": "formal weather cron workflow needs internal promotion while public release stays gated",
+            "autonomy_boundary": "public-channel delivery requires approval",
+        },
+    }
+    decision = repair.decide_boundary(
+        "替换掉正式的每日7点的天气预报任务，投放给公共频道",
+        "internal workflow update allowed; public delivery is scheduled/approval gated",
+        package_state,
+    )
+    violations = repair.change_scope_violations(
+        [
+            "scripts/weather/weather_image_forecast.py",
+            "scripts/remote_install_direct_discord_cron.py",
+            "config/openclaw/intent_tools.json",
+        ],
+        package_state,
+    )
+
+    assert decision.internal_write_allowed is True
+    assert decision.private_verification_allowed is True
+    assert decision.public_release_requires_approval is True
+    assert decision.external_effect_requires_approval is False
+    assert violations == []
+
+
 def test_public_release_text_is_not_hardcoded_business_rule():
     source = Path(repair.__file__).read_text(encoding="utf-8")
     assert "天气预报文" not in source

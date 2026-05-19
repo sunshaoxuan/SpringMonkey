@@ -631,7 +631,7 @@
     {
       "intent_id": "weather.cron_run",
       "tool_id": "openclaw.cron.run.weather",
-      "description": "Run the formal weather cron image forecast job by name; the job emits image-only MEDIA attachments for the configured city forecast set. Same-city people are merged into one city forecast scene; distinct cities get separate city images. Public delivery remains approval-gated by the configured cron workflow.",
+      "description": "Run the formal daily 07:00 weather cron image forecast job by name; the job emits image-only MEDIA attachments for the configured city forecast set. Same-city people are merged into one city forecast scene; distinct cities get separate city images. Public delivery remains approval-gated by the configured cron workflow; internal promotion updates may change the owner-controlled formal workflow, but actual public publication is held to the scheduled/approved delivery path.",
       "owner_agent": "toolWorker",
       "patterns": [
         "天气",
@@ -661,8 +661,8 @@
         "requires_media_directive": true,
         "source": "Open-Meteo",
         "image_only": true,
-        "aspect_ratio": "1:1",
-        "image_size": "1024x1024",
+        "aspect_ratio": "3:4",
+        "image_size": "1024x1536",
         "city_grouping": "one_image_per_configured_distinct_city",
         "visual_style": "clear_45_degree_isometric_simple_cute_3d_chibi_pbr_city_landmark_weather_diorama",
         "configured_cities": [
@@ -694,8 +694,8 @@
         "城市地标天气预报图",
         "同城合并",
         "只发图",
-        "1:1方图",
-        "1024x1024",
+        "3:4竖图",
+        "1024x1536",
         "45度俯视",
         "简洁Q版3D城市地标",
         "PBR质感",
@@ -715,8 +715,8 @@
         "requires_media_directive": true,
         "image_only": true,
         "city_grouping": "one_image_per_configured_distinct_city",
-        "aspect_ratio": "1:1",
-        "image_size": "1024x1024",
+        "aspect_ratio": "3:4",
+        "image_size": "1024x1536",
         "approval_gated_public_delivery": true,
         "configured_cities": [
           "東京",
@@ -1387,7 +1387,11 @@
         "私人频道测试后公共发布需要审批",
         "implementation_run_id",
         "继续补齐失败的内部自增益能力",
-        "运行验证并推仓库"
+        "运行验证并推仓库",
+        "正式任务替换",
+        "公共发布审批",
+        "approval-gated public rollout",
+        "formal workflow promotion"
       ],
       "input_contract": {
         "type": "self_evolution_repair_request",
@@ -1399,12 +1403,13 @@
         "reports_verify_commands": true,
         "reports_approval_gate": true
       },
-      "goal": "Complete owner-controlled internal self-evolution implementation, verification, router/contract registration, and optional repository push without performing public/external side effects; routes explicit owner push requests to the executor instead of dropping them.",
-      "use_when": "Use when the owner asks to repair or implement missing internal OpenClaw capabilities, update this repository, run private verification, and optionally push the owner-controlled repo.",
+      "goal": "Complete owner-controlled internal self-evolution implementation, verification, router/contract registration, optional repository push, and approval-gated rollout packages without performing immediate public/external side effects; routes explicit owner workflow-promotion requests to the executor instead of dropping them.",
+      "use_when": "Use when the owner asks to repair or implement missing internal OpenClaw capabilities, update this repository, promote a verified internal workflow/config, run private verification, prepare approval-gated public rollout, and optionally push the owner-controlled repo.",
       "do_not_use_when": "Do not use to publish to public channels, change third-party state, handle credentials, delete data, make bookings/payments, or hard-code a business request as a router keyword branch; those actions require an approval package or a domain-specific tool.",
       "examples": [
         "执行一个通用能力补齐 run，并验证后推仓库。",
-        "修复内部自演进能力，私人频道测试通过后再申请公共发布。"
+        "修复内部自演进能力，私人频道测试通过后再申请公共发布。",
+        "把已验证的新形态替换到正式每日任务；内部更新和测试可执行，公共频道发布必须审批。"
       ],
       "counterexamples": [
         "现在直接发到公共频道。",

@@ -32,7 +32,7 @@ def main() -> int:
             assert data.startswith(b"\x89PNG\r\n\x1a\n")
             import struct
 
-            assert struct.unpack(">II", data[16:24]) == (1024, 1024)
+            assert struct.unpack(">II", data[16:24]) == (1024, 1536)
         reply = mod.build_media_reply(paths, cards, now, day_kind)
         assert reply == "\n".join(f"MEDIA:{path}" for path in paths)
     print("test_weather_image_forecast.py: ok")
@@ -43,7 +43,7 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
     expected = tmp_path / "model.png"
-    expected.write_bytes(mod._png_bytes(1024, 1024, bytearray(os.urandom(1024 * 1024 * 3))))
+    expected.write_bytes(mod._png_bytes(1024, 1536, bytearray(os.urandom(1024 * 1536 * 3))))
     calls = []
 
     def fake_run(cmd, **kwargs):
@@ -56,7 +56,7 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert calls
     assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
     assert "openai/gpt-image-2" in calls[0]
-    assert "1024x1024" in calls[0]
+    assert "1024x1536" in calls[0]
 
 
 def test_weather_image_locations_are_three_city_forecast_spec() -> None:
@@ -87,7 +87,7 @@ def test_prompt_matches_square_single_city_image_contract() -> None:
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
     prompt = mod.build_image_prompt([cards[0]], now, day_kind)
 
-    assert "square 1:1 1024x1024" in prompt
+    assert "vertical 3:4 1024x1536" in prompt
     assert "one city scene" in prompt
     assert "45-degree top-down isometric" in prompt
     assert "cute 3D chibi miniature city landmark diorama" in prompt
@@ -103,32 +103,32 @@ def test_prompt_matches_square_single_city_image_contract() -> None:
     assert "東京" in prompt
 
 
-def test_model_output_is_normalized_to_square(tmp_path: Path) -> None:
+def test_model_output_is_normalized_to_formal_vertical_aspect(tmp_path: Path) -> None:
     try:
         from PIL import Image
     except Exception:
         return
     path = tmp_path / "model.png"
-    Image.new("RGB", (1024, 1536), (240, 244, 250)).save(path)
+    Image.new("RGB", (1024, 1024), (240, 244, 250)).save(path)
 
     mod.normalize_png_aspect(path)
 
     with Image.open(path) as image:
-        assert image.size == (1024, 1024)
+        assert image.size == (1024, 1536)
 
 
 def test_stdlib_png_normalizer_crops_truecolor_png(tmp_path: Path) -> None:
     path = tmp_path / "stdlib.png"
-    pixels = bytearray([240, 244, 250] * (1024 * 1536))
-    path.write_bytes(mod._png_bytes(1024, 1536, pixels))
+    pixels = bytearray([240, 244, 250] * (1024 * 2048))
+    path.write_bytes(mod._png_bytes(1024, 2048, pixels))
 
-    mod._normalize_png_aspect_stdlib(path, target_width=1024, target_height=1024)
+    mod._normalize_png_aspect_stdlib(path, target_width=1024, target_height=1536)
 
     data = path.read_bytes()
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
     import struct
 
-    assert struct.unpack(">II", data[16:24]) == (1024, 1024)
+    assert struct.unpack(">II", data[16:24]) == (1024, 1536)
 
 
 def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) -> None:
@@ -196,7 +196,7 @@ def test_model_image_generation_retries_timeout(tmp_path: Path, monkeypatch) -> 
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
     generated = tmp_path / "retry.png"
-    generated.write_bytes(mod._png_bytes(1024, 1024, bytearray(os.urandom(1024 * 1024 * 3))))
+    generated.write_bytes(mod._png_bytes(1024, 1536, bytearray(os.urandom(1024 * 1536 * 3))))
     calls = []
     monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_RETRIES", "2")
 
