@@ -275,13 +275,17 @@ def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEF
             return False, f"{evidence}; create_dm_failed={dm_evidence}"
         retry_ok, retry_evidence = deliver_to_channel(token, channel_id, text)
         if not retry_ok:
-            queued, queue_evidence = enqueue_openclaw_delivery(task, text)
-            if queued:
-                return False, queue_evidence
+                queued, queue_evidence = enqueue_openclaw_delivery(task, text)
+                if queued:
+                    return False, queue_evidence
         return retry_ok, f"{evidence}; create_dm={dm_evidence}; retry={retry_evidence}"
+    fallback_channel = os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL
+    if fallback_channel:
+        ok, evidence = deliver_to_channel(token, fallback_channel, text)
+        if ok:
+            return True, f"owner_channel={evidence}"
     channel_id, dm_evidence = create_owner_dm_channel(token)
     if not channel_id:
-        fallback_channel = os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL
         ok, evidence = deliver_to_channel(token, fallback_channel, text)
         if not ok:
             queued, queue_evidence = enqueue_openclaw_delivery(task, text)
@@ -309,7 +313,8 @@ def enqueue_openclaw_delivery(
     to = destination.strip()
     if not to:
         reply_channel_id = str(task.get("reply_channel_id") or "").strip()
-        to = f"channel:{reply_channel_id}" if reply_channel_id else f"user:{owner_user_id}"
+        fallback_channel = os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL
+        to = f"channel:{reply_channel_id or fallback_channel}" if (reply_channel_id or fallback_channel) else f"user:{owner_user_id}"
     payload = {
         "id": entry_id,
         "enqueuedAt": int(time.time() * 1000),
