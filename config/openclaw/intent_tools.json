@@ -631,7 +631,7 @@
     {
       "intent_id": "weather.cron_run",
       "tool_id": "openclaw.cron.run.weather",
-      "description": "Run the formal weather cron image forecast job by name; the job emits an image-only MEDIA attachment. Same-city people are merged into one city forecast scene; distinct cities get separate scenes. Public delivery remains approval-gated by the configured cron workflow.",
+      "description": "Run the formal weather cron image forecast job by name; the job emits image-only MEDIA attachments for the configured city forecast set. Same-city people are merged into one city forecast scene; distinct cities get separate city images. Public delivery remains approval-gated by the configured cron workflow.",
       "owner_agent": "toolWorker",
       "patterns": [
         "天气",
@@ -661,9 +661,10 @@
         "requires_media_directive": true,
         "source": "Open-Meteo",
         "image_only": true,
-        "aspect_ratio": "3:4",
-        "city_grouping": "one_scene_per_distinct_city",
-        "visual_style": "clear_45_degree_isometric_cute_3d_chibi_pbr_city_landmark_weather_diorama"
+        "aspect_ratio": "1:1",
+        "image_size": "1024x1024",
+        "city_grouping": "one_image_per_configured_distinct_city",
+        "visual_style": "clear_45_degree_isometric_simple_cute_3d_chibi_pbr_city_landmark_weather_diorama"
       },
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py scripts/weather/weather_image_forecast.py scripts/weather/test_weather_image_forecast.py scripts/openclaw/run_job_by_name.py && python scripts/weather/test_discord_weather_report.py && python scripts/weather/test_weather_image_forecast.py",
@@ -687,9 +688,10 @@
         "城市地标天气预报图",
         "同城合并",
         "只发图",
-        "3:4竖版",
+        "1:1方图",
+        "1024x1024",
         "45度俯视",
-        "Q版3D城市地标",
+        "简洁Q版3D城市地标",
         "PBR质感",
         "weather image forecast",
         "MEDIA weather forecast"
@@ -702,8 +704,9 @@
         "requires_trace": true,
         "requires_media_directive": true,
         "image_only": true,
-        "city_grouping": "one_scene_per_distinct_city",
-        "aspect_ratio": "3:4",
+        "city_grouping": "one_image_per_configured_distinct_city",
+        "aspect_ratio": "1:1",
+        "image_size": "1024x1024",
         "approval_gated_public_delivery": true
       },
       "safety": "readonly"

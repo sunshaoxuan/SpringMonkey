@@ -154,6 +154,35 @@ def test_delivery_queue_uses_origin_channel_when_available(tmp_path: Path) -> No
     assert entry["to"] == "channel:origin_channel"
 
 
+def test_delivery_queue_without_origin_channel_uses_owner_channel(tmp_path: Path) -> None:
+    queue = tmp_path / "delivery-queue"
+    task = {"run_id": "run_1"}
+
+    _ok, evidence = supervisor.enqueue_openclaw_delivery(task, "最终结果", queue_dir=queue, owner_user_id="owner")
+
+    entry_id = evidence.split(":", 1)[1]
+    entry = json.loads((queue / f"{entry_id}.json").read_text(encoding="utf-8"))
+    assert entry["to"] == f"channel:{supervisor.DEFAULT_OWNER_DM_CHANNEL}"
+
+
+def test_deliver_owner_dm_uses_owner_channel_before_create_dm(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(supervisor, "discord_token", lambda _config_path=supervisor.DEFAULT_CONFIG_PATH: "token")
+
+    def fake_deliver(_token: str, channel_id: str, _text: str) -> tuple[bool, str]:
+        calls.append(channel_id)
+        return True, "discord_http_200"
+
+    monkeypatch.setattr(supervisor, "deliver_to_channel", fake_deliver)
+    monkeypatch.setattr(supervisor, "create_owner_dm_channel", lambda _token: (_ for _ in ()).throw(AssertionError("should not create DM first")))
+
+    ok, evidence = supervisor.deliver_owner_dm({"run_id": "run_1"}, "最终结果")
+
+    assert ok is True
+    assert calls == [supervisor.DEFAULT_OWNER_DM_CHANNEL]
+    assert "owner_channel=discord_http_200" in evidence
+
+
 def test_deliver_owner_dm_queues_origin_channel_before_dm_fallback(monkeypatch, tmp_path: Path) -> None:
     queue = tmp_path / "delivery-queue"
     monkeypatch.setattr(supervisor, "discord_token", lambda _config_path=supervisor.DEFAULT_CONFIG_PATH: "token")
