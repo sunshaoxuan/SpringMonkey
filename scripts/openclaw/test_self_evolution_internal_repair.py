@@ -192,6 +192,52 @@ def test_package_guardrail_text_does_not_create_false_external_block():
     assert decision.public_release_requires_approval is False
 
 
+
+def test_owner_private_test_package_allows_vague_original_request():
+    package_state = {
+        "allowed_repair_action": "autonomous_internal_repair",
+        "permission_scope": "owner_dm_write",
+        "llm_classification": {
+            "intent_kind": "internal_self_evolution_private_test",
+            "autonomy_allowed": True,
+            "missing_condition": "private verification should proceed while public release stays gated",
+        },
+        "registry_tool": {
+            "tool_id": "openclaw.self_evolution.internal_repair",
+            "capability_id": "openclaw.self_evolution.internal_repair",
+            "permission_scope": "owner_dm_write",
+        },
+    }
+    decision = repair.decide_boundary(
+        "那就在这里做一轮测试吧",
+        "registered tool returned non-zero exit code 2",
+        package_state,
+    )
+    assert decision.internal_write_allowed is True
+    assert decision.private_verification_allowed is True
+    assert decision.external_effect_requires_approval is False
+    assert decision.public_release_requires_approval is False
+
+
+def test_package_guardrail_text_keeps_public_release_approval_gated_without_blocking_private_verification():
+    package_state = {
+        "allowed_repair_action": "autonomous_internal_repair",
+        "llm_classification": {
+            "intent_kind": "internal_self_evolution_private_test",
+            "autonomy_allowed": True,
+            "autonomy_boundary": "Private verification allowed; public/channel release requires approval.",
+        },
+    }
+    decision = repair.decide_boundary(
+        "那就在这里做一轮测试吧",
+        "registered tool returned non-zero exit code 2",
+        package_state,
+    )
+    assert decision.internal_write_allowed is True
+    assert decision.private_verification_allowed is True
+    assert decision.public_release_requires_approval is False
+    assert decision.external_effect_requires_approval is False
+
 def test_public_release_text_is_not_hardcoded_business_rule():
     source = Path(repair.__file__).read_text(encoding="utf-8")
     assert "天气预报文" not in source

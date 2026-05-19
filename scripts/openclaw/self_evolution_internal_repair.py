@@ -125,6 +125,28 @@ def change_scope_violations(changed_files: list[str], package_state: dict[str, A
     return violations
 
 
+def package_allows_internal_repair(package_state: dict[str, Any] | None) -> bool:
+    state = package_state or {}
+    if state.get("allowed_repair_action") == "autonomous_internal_repair":
+        return True
+    classification = state.get("llm_classification")
+    if isinstance(classification, dict):
+        if classification.get("autonomy_allowed") is True and classification.get("intent_kind") in {
+            "internal_self_evolution_private_test",
+            "internal_self_evolution",
+        }:
+            return True
+        if classification.get("allowed_repair_action") == "autonomous_internal_repair":
+            return True
+    registry_tool = state.get("registry_tool")
+    if isinstance(registry_tool, dict):
+        capability = str(registry_tool.get("capability_id") or registry_tool.get("tool_id") or "")
+        permission = str(registry_tool.get("permission_scope") or registry_tool.get("permission") or "")
+        if capability.startswith("openclaw.self_evolution") and permission == "owner_dm_write":
+            return True
+    return False
+
+
 def decide_boundary(text: str, reason: str = "", package_state: dict[str, Any] | None = None) -> BoundaryDecision:
     package_json = json.dumps(package_state or {}, ensure_ascii=False)
     # Internal-repair evidence may come from the repair package, but public/external
@@ -137,7 +159,7 @@ def decide_boundary(text: str, reason: str = "", package_state: dict[str, Any] |
     internal_markers = ["自增益", "自演进", "self", "internal", "能力补齐", "仓库", "repo", "测试", "验证", "verify"]
     public_markers = ["公共频道", "公开", "public", "发布", "release", "announce"]
     external_markers = ["预约", "支付", "删除", "凭据", "credential", "login", "第三方", "外部生产"]
-    internal = any(marker.lower() in internal_haystack.lower() for marker in internal_markers)
+    internal = package_allows_internal_repair(package_state) or any(marker.lower() in internal_haystack.lower() for marker in internal_markers)
     public = any(marker.lower() in requested_effect_haystack.lower() for marker in public_markers)
     external = any(marker.lower() in requested_effect_haystack.lower() for marker in external_markers)
     reasons: list[str] = []
