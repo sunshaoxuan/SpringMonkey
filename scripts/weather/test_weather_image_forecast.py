@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+import os
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -42,11 +43,7 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
     expected = tmp_path / "model.png"
-    try:
-        from PIL import Image
-        Image.new("RGB", (1024, 1536), (240, 244, 250)).save(expected)
-    except Exception:
-        expected.write_bytes(mod.render_png([cards[0]], now))
+    expected.write_bytes(mod._png_bytes(1024, 1024, bytearray(os.urandom(1024 * 1024 * 3))))
     calls = []
 
     def fake_run(cmd, **kwargs):
@@ -141,10 +138,59 @@ def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) 
     def fake_run(cmd, **kwargs):
         return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="image model unavailable")
 
-    path = mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+    try:
+        mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+    except RuntimeError as exc:
+        assert "image model unavailable" in str(exc)
+    else:
+        raise AssertionError("model generation failure must not silently fall back")
+
+
+def test_deterministic_fallback_requires_explicit_model_mode(tmp_path: Path) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+
+    path = mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, model="fallback")
 
     assert path.suffix == ".png"
     assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_batch_model_generation_refuses_partial_delivery(tmp_path: Path) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    generated = tmp_path / "ok.png"
+    generated.write_bytes(mod.render_png([cards[0]], now) + b"0" * mod.MIN_MODEL_IMAGE_BYTES)
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if len(calls) == 1:
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"outputs": [{"path": str(generated)}]}), stderr="")
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="model timeout")
+
+    try:
+        mod.write_weather_images_with_model(cards, now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+    except RuntimeError as exc:
+        assert "refusing partial delivery" in str(exc)
+        assert "北京" in str(exc)
+        assert "大连" in str(exc)
+    else:
+        raise AssertionError("partial weather image generation must fail")
+
+
+def test_build_media_reply_rejects_suspicious_model_placeholder(tmp_path: Path) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    placeholder = tmp_path / "weather_miniature_大连_20260519_070000_image2.png"
+    placeholder.write_bytes(mod.render_png([cards[0]], now))
+
+    try:
+        mod.build_media_reply([placeholder], [cards[0]], now, day_kind)
+    except RuntimeError as exc:
+        assert "suspiciously small" in str(exc)
+    else:
+        raise AssertionError("small model image placeholders must not be delivered")
 
 if __name__ == "__main__":
     raise SystemExit(main())
