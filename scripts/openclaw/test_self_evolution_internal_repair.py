@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -54,7 +55,7 @@ def test_execute_run_can_reach_verified_without_push():
         repo = Path(tmp) / "repo"
         repo.mkdir()
         command_result = repair.CommandResult(command="verify", returncode=0, stdout_tail="ok", stderr_tail="")
-        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=["x.py"]):
+        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=[]):
             result = repair.execute_self_evolution_run(
                 implementation_run_id="impl_ok",
                 text="执行通用内部能力补齐并私人验证",
@@ -95,6 +96,87 @@ def test_public_release_text_is_not_hardcoded_business_rule():
     assert "天气预报文" not in source
     assert "小红书" not in source
 
+
+def test_verified_changed_run_commits_even_when_push_not_requested():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        calls: list[str] = []
+
+        def fake_run(command: str, repo_root: Path) -> repair.CommandResult:
+            calls.append(command)
+            if command == "verify":
+                return repair.CommandResult(command=command, returncode=0, stdout_tail="ok", stderr_tail="")
+            if command == "git add -A":
+                return repair.CommandResult(command=command, returncode=0, stdout_tail="", stderr_tail="")
+            if command.startswith("git commit -m"):
+                return repair.CommandResult(command=command, returncode=0, stdout_tail="committed", stderr_tail="")
+            raise AssertionError(f"unexpected command: {command}")
+
+        changed_calls = {"count": 0}
+
+        def fake_changed(_repo_root: Path) -> list[str]:
+            changed_calls["count"] += 1
+            return ["scripts/weather/weather_image_forecast.py"] if changed_calls["count"] == 1 else []
+
+        rev = subprocess.CompletedProcess(["git", "rev-parse", "HEAD"], 0, stdout="abc1234\n", stderr="")
+        with (
+            patch.object(repair, "run_command", side_effect=fake_run),
+            patch.object(repair, "git_changed_files", side_effect=fake_changed),
+            patch.object(repair.subprocess, "run", return_value=rev),
+        ):
+            result = repair.execute_self_evolution_run(
+                implementation_run_id="impl_commit",
+                text="执行通用内部能力补齐并私人验证",
+                reason="internal repair",
+                repo_root=repo,
+                package_state_path=None,
+                run_dir=Path(tmp) / "runs",
+                verify_commands=["verify"],
+                push=False,
+            )
+
+    assert result.status == "passed"
+    assert result.stage == "committed"
+    assert result.commit == "abc1234"
+    assert result.retry_allowed is True
+    assert "git add -A" in calls
+    assert any(command.startswith("git commit -m") for command in calls)
+
+
+def test_verified_changed_run_fails_without_commit_evidence():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+
+        def fake_run(command: str, repo_root: Path) -> repair.CommandResult:
+            if command == "verify":
+                return repair.CommandResult(command=command, returncode=0, stdout_tail="ok", stderr_tail="")
+            if command == "git add -A":
+                return repair.CommandResult(command=command, returncode=0, stdout_tail="", stderr_tail="")
+            if command.startswith("git commit -m"):
+                return repair.CommandResult(command=command, returncode=1, stdout_tail="", stderr_tail="nothing to commit")
+            raise AssertionError(f"unexpected command: {command}")
+
+        with (
+            patch.object(repair, "run_command", side_effect=fake_run),
+            patch.object(repair, "git_changed_files", return_value=["scripts/openclaw/x.py"]),
+        ):
+            result = repair.execute_self_evolution_run(
+                implementation_run_id="impl_no_commit",
+                text="执行通用内部能力补齐并私人验证",
+                reason="internal repair",
+                repo_root=repo,
+                package_state_path=None,
+                run_dir=Path(tmp) / "runs",
+                verify_commands=["verify"],
+                push=False,
+            )
+
+    assert result.status == "failed"
+    assert result.stage == "commit_failed"
+    assert result.retry_allowed is False
+    assert "uncommitted changes remain" in result.evidence
 
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
