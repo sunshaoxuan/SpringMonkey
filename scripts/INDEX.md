@@ -160,6 +160,15 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_long_task_supervisor.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-verify`
 
+- `scripts/openclaw/verify_self_evolution_closure.py`
+  - 用途：验收自增益端到端闭环硬条件：本地 HEAD 与 `origin/main` 一致、工作树干净、没有悬挂长任务、没有投递失败、没有“可重算为成功却被记录为失败”的 domain implementation run。
+  - 典型用法：`python scripts/openclaw/verify_self_evolution_closure.py --fetch`
+
+- `remote_verify_self_evolution_closure.py`
+  - 用途：远端只读验收自增益闭环，组合运行 Git 真源同步、长任务收口、registry/harness/baseline 检查和状态摘要。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_self_evolution_closure.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py self-evolution-closure`
+
 - `remote_install_long_task_supervisor.py`
   - 用途：安装 `openclaw-long-task-supervisor.timer`，每分钟执行一次 `long_task_supervisor.py poll --deliver`，负责长任务最终结果补发和超时收口。
   - 典型用法：`python SpringMonkey/scripts/remote_install_long_task_supervisor.py`
