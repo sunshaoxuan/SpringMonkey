@@ -295,7 +295,7 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Direct Discord delivery for script-like jobs. These bypass OpenClaw model turns.
-0 7 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name weather-report-jst-0700 --channel-id 1483636573235843072 --timeout 900 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL=openai/gpt-image-2 OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 /var/lib/openclaw/repos/SpringMonkey/scripts/weather/discord_weather_report.py
+0 7 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name weather-report-jst-0700 --channel-id 1483636573235843072 --timeout 1800 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL=openai/gpt-image-2 OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 /var/lib/openclaw/repos/SpringMonkey/scripts/weather/weather_image_forecast.py
 
 0 9 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-0900 --channel-id 1483636573235843072 --timeout 5400 --command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/scripts/news/jobs/news_digest_jst_0900.py); DIR=$(printf "%s\n" "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
 0 17 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-1700 --channel-id 1483636573235843072 --timeout 5400 --command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/scripts/news/jobs/news_digest_jst_1700.py); DIR=$(printf "%s\n" "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
@@ -313,7 +313,7 @@ EOF
 chmod 644 "${CRON_FILE}"
 
 if [ "${RUN_DIRECT_DISCORD_SMOKE:-0}" = "1" ]; then
-  python3 "${HELPER}" --name weather-report-jst-0700-smoke --channel-id "${PUBLIC_CHANNEL}" --timeout 900 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL=openai/gpt-image-2 OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 "${REPO}/scripts/weather/discord_weather_report.py"
+  python3 "${HELPER}" --name weather-report-jst-0700-smoke --channel-id "${PUBLIC_CHANNEL}" --timeout 1800 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL=openai/gpt-image-2 OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 "${REPO}/scripts/weather/weather_image_forecast.py"
 fi
 
 echo "=== cron file ==="

@@ -29,6 +29,19 @@ def test_news_cron_preserves_command_substitution_for_helper() -> None:
         assert "${REPO}" not in line
 
 
+def test_weather_cron_uses_image_forecast_with_long_timeout() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+    weather_lines = [line for line in remote.splitlines() if "--name weather-report-jst-0700 " in line]
+
+    assert weather_lines
+    for line in weather_lines:
+        assert "--timeout 1800" in line
+        assert "scripts/weather/weather_image_forecast.py" in line
+        assert "scripts/weather/discord_weather_report.py" not in line
+
+
 if __name__ == "__main__":
     test_news_cron_preserves_command_substitution_for_helper()
+    test_weather_cron_uses_image_forecast_with_long_timeout()
     print("OK")
