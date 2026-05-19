@@ -19,17 +19,15 @@ def main() -> int:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     with tempfile.TemporaryDirectory(prefix="weather_image_forecast_") as tmp:
         cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
-        assert len(cards) == 2
-        assert {card.area for card in cards} == {"杉並区", "川口市"}
+        assert len(cards) == 1
+        assert cards[0].city == "東京"
+        assert cards[0].area == "杉並区、川口市、品川区"
         path = mod.write_weather_image(cards, now, Path(tmp))
         assert path.is_file()
         assert path.suffix == ".png"
         assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
         reply = mod.build_media_reply(path, cards, now, day_kind)
-        assert reply.startswith("MEDIA:")
-        assert str(path) in reply
-        assert "3D 微缩景观" in reply
-        assert "Open-Meteo" in reply
+        assert reply == f"MEDIA:{path}"
     print("test_weather_image_forecast.py: ok")
     return 0
 
@@ -51,6 +49,37 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert calls
     assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
     assert "openai/gpt-image-2" in calls[0]
+    assert "1024x1365" in calls[0]
+
+
+def test_same_city_locations_merge_before_image_generation() -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, _day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+
+    assert len(cards) == 1
+    assert cards[0].label == "東京"
+    assert cards[0].city == "東京"
+    assert "杉並区" in cards[0].area
+    assert "川口市" in cards[0].area
+    assert "品川区" in cards[0].area
+
+
+def test_prompt_matches_vertical_single_city_image_contract() -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    prompt = mod.build_image_prompt(cards, now, day_kind)
+
+    assert "vertical 3:4" in prompt
+    assert "one city scene" in prompt
+    assert "45-degree top-down isometric" in prompt
+    assert "cute 3D chibi miniature city landmark diorama" in prompt
+    assert "PBR materials" in prompt
+    assert "minimal pure-color soft background" in prompt
+    assert "no panels, no cards, no text boxes" in prompt
+    assert "large city name" in prompt
+    assert "date in very small type" in prompt
+    assert "temperature range in medium type" in prompt
+    assert "東京" in prompt
 
 
 def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) -> None:

@@ -42,10 +42,8 @@ def _fmt(value: float | int | None, suffix: str = "", digits: int = 0) -> str:
     return f"{float(value):.{digits}f}{suffix}" if digits else f"{int(round(float(value)))}{suffix}"
 
 def _city_for_area(area: str) -> tuple[str, str]:
-    if "杉並" in area or "東京" in area or "品川" in area:
-        return "Tokyo", "tower skyline and neighborhood streets"
-    if "川口" in area or "埼玉" in area:
-        return "Kawaguchi", "river bridge, foundry town skyline, and compact station plaza"
+    if "杉並" in area or "東京" in area or "品川" in area or "川口" in area or "埼玉" in area:
+        return "東京", "Tokyo landmark skyline, compact neighborhood streets, riverside bridges, and station plaza"
     return area, "local skyline and compact streets"
 
 def fetch_weather_card(location: report.Location, *, fetch_json=report.fetch_json) -> WeatherCard:
@@ -204,9 +202,9 @@ def _draw_card(r: Raster, card: WeatherCard, x: int, y: int, theme: str) -> None
 
 def render_png(cards: list[WeatherCard], now: datetime) -> bytes:
     cards = cards[:2] or []
-    while len(cards) < 2:
-        cards.append(cards[0])
-    width, height = 1280, 760
+    if not cards:
+        raise ValueError("at least one weather card is required")
+    width, height = 1024, 1365
     r = Raster(width, height)
     for y in range(height):
         mix = y / height
@@ -216,10 +214,11 @@ def render_png(cards: list[WeatherCard], now: datetime) -> bytes:
             int(255 * (1 - mix) + 228 * mix),
         )
         r.rect(0, y, width, 1, c)
-    r.rect(80, 48, 1120, 68, _rgb("#ffffff"))
-    r.rect(90, 58, 1100, 48, _rgb("#f7fbff"))
-    _draw_card(r, cards[0], 100, 150, "green")
-    _draw_card(r, cards[1], 676, 150, "blue")
+    if len(cards) == 1:
+        _draw_card(r, cards[0], 260, 420, "green")
+    else:
+        _draw_card(r, cards[0], 84, 420, "green")
+        _draw_card(r, cards[1], 516, 420, "blue")
     return _png_bytes(width, height, r.pixels)
 
 
@@ -233,22 +232,28 @@ def write_weather_image(cards: list[WeatherCard], now: datetime | None = None, o
 
 def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
     summaries = []
-    for card in cards[:2]:
+    for card in cards:
         summaries.append(
-            f"{card.area}: {report.weather_label(card.weather_code)}, {_fmt(card.temperature_c, '°C')}, "
+            f"{card.city}: {report.weather_label(card.weather_code)}, {_fmt(card.temperature_c, '°C')}, "
             f"high {_fmt(card.temp_max_c, '°C')}, low {_fmt(card.temp_min_c, '°C')}, "
-            f"rain probability {_fmt(card.precipitation_probability, '%')}, wind {_fmt(card.wind_kmh, 'km/h')}"
+            f"rain probability {_fmt(card.precipitation_probability, '%')}, wind {_fmt(card.wind_kmh, 'km/h')}; "
+            f"landmark reference: {card.landmark_hint}"
         )
+    scene_count = "one city scene" if len(cards) == 1 else f"{len(cards)} separate city scenes"
     return (
-        "Create a premium 3D miniature weather forecast image for a Discord morning report. "
-        "Scene: two polished isometric diorama panels side by side, one inspired by Tokyo Suginami "
-        "neighborhood streets and skyline, one inspired by Kawaguchi river bridge, compact station plaza, "
-        "and foundry-town atmosphere. Use tasteful editorial illustration, toy-like architectural models, "
-        "clean lighting, soft shadows, atmospheric depth, high-quality materials, and weather cues that match "
-        f"this forecast for {now:%Y-%m-%d} ({day_kind}): {'; '.join(summaries)}. "
-        "No brand logos, no watermarks, no copyrighted characters, no unreadable UI clutter. "
-        "Avoid large text blocks; tiny decorative numerals are acceptable but the image should work without text. "
-        "Aspect ratio 3:2, polished and visually rich."
+        "Create a premium weather forecast image as a single finished picture, not a UI mockup. "
+        f"Use a vertical 3:4 centered composition with {scene_count}. "
+        "If multiple people are in the same city, merge them into one city forecast scene; only add another scene when a distinct city exists. "
+        "Camera and scene: clear 45-degree top-down isometric view, cute 3D chibi miniature city landmark diorama, "
+        "main building centered, precise toy-like architectural details, warm tactile PBR materials, soft realistic lighting and shadows. "
+        "Composition: clean, unified, fresh, comfortable, minimal pure-color soft background, no panels, no cards, no text boxes. "
+        "Weather integration: weather effects must be integrated into the city architecture and interact with the scene, "
+        "for example sun, clouds, rain, wind, mist, puddles, reflections, or atmospheric particles around the buildings. "
+        "Typography inside the image: at the very top show a large city name in the same written language as the city name; "
+        "directly below or near it show a prominent weather icon; under the icon show the date in very small type and the temperature range in medium type. "
+        "Weather text has no background and may overlap or blend with the buildings naturally. "
+        f"Forecast date: {now:%Y-%m-%d} ({day_kind}). Forecast data: {'; '.join(summaries)}. "
+        "No extra caption outside the image, no brand logos, no watermarks, no copyrighted characters, no unreadable clutter."
     )
 
 
@@ -273,7 +278,7 @@ def generate_model_image(
         "--prompt",
         build_image_prompt(cards, now, day_kind),
         "--size",
-        "1536x1024",
+        "1024x1365",
         "--output-format",
         "png",
         "--output",
@@ -330,14 +335,79 @@ def write_weather_image_with_model(
             pass
     return write_weather_image(cards, now, output_dir)
 
+
+def _avg(values: list[float | int | None], *, digits: int = 1) -> float | None:
+    numeric = [float(value) for value in values if value is not None]
+    if not numeric:
+        return None
+    return round(sum(numeric) / len(numeric), digits)
+
+
+def _max(values: list[float | int | None]) -> float | None:
+    numeric = [float(value) for value in values if value is not None]
+    return max(numeric) if numeric else None
+
+
+def _min(values: list[float | int | None]) -> float | None:
+    numeric = [float(value) for value in values if value is not None]
+    return min(numeric) if numeric else None
+
+
+def _representative_weather_code(cards: list[WeatherCard]) -> int | None:
+    if not cards:
+        return None
+    rainy = {51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99}
+    snowy = {71, 73, 75, 77, 85, 86}
+    for group in (rainy, snowy):
+        for card in cards:
+            if card.weather_code in group:
+                return card.weather_code
+    return cards[0].weather_code
+
+
+def group_cards_by_city(cards: list[WeatherCard]) -> dict[str, list[WeatherCard]]:
+    grouped: dict[str, list[WeatherCard]] = {}
+    for card in cards:
+        grouped.setdefault(card.city, []).append(card)
+    return grouped
+
+
+def merge_same_city_cards(cards: list[WeatherCard]) -> list[WeatherCard]:
+    merged: list[WeatherCard] = []
+    for city, group in group_cards_by_city(cards).items():
+        if len(group) == 1:
+            merged.append(group[0])
+            continue
+        areas = "、".join(dict.fromkeys(card.area for card in group))
+        hints = "; ".join(dict.fromkeys(card.landmark_hint for card in group))
+        merged.append(
+            WeatherCard(
+                label=city,
+                area=areas,
+                city=city,
+                landmark_hint=hints,
+                temperature_c=_avg([card.temperature_c for card in group]),
+                weather_code=_representative_weather_code(group),
+                precipitation_probability=_max([card.precipitation_probability for card in group]),
+                wind_kmh=_avg([card.wind_kmh for card in group]),
+                uv_index=_max([card.uv_index for card in group]),
+                aqi=_max([card.aqi for card in group]),
+                temp_max_c=_max([card.temp_max_c for card in group]),
+                temp_min_c=_min([card.temp_min_c for card in group]),
+                advice=" / ".join(dict.fromkeys(card.advice for card in group if card.advice)),
+            )
+        )
+    return merged
+
+
 def build_cards(now: datetime | None = None, *, fetch_json=report.fetch_json) -> tuple[list[WeatherCard], bool, str]:
     now = now or datetime.now(TZ)
     locations, rest_day, day_kind = report.locations_for_day(now)
-    return [fetch_weather_card(loc, fetch_json=fetch_json) for loc in locations[:2]], rest_day, day_kind
+    cards = [fetch_weather_card(loc, fetch_json=fetch_json) for loc in locations]
+    return merge_same_city_cards(cards), rest_day, day_kind
 
 def build_media_reply(path: Path, cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
-    summary = " / ".join(f"{card.area}{_fmt(card.temperature_c, '°C')} {report.weather_label(card.weather_code)}" for card in cards[:2])
-    return "\n".join([f"MEDIA:{path}", f"天气预报图片 {now:%Y-%m-%d}（{day_kind}）：{summary}", "数据源：Open-Meteo；视觉为无品牌、无水印的 3D 微缩景观式天气卡。"])
+    return f"MEDIA:{path}"
 
 def generate_weather_image_reply(now: datetime | None = None, *, fetch_json=report.fetch_json, output_dir: Path = DEFAULT_OUTPUT_DIR) -> str:
     now = now or datetime.now(TZ)
