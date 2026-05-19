@@ -39,7 +39,9 @@ fi
 cd "$REPO"
 
 if [ -x /usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh ]; then
-  /usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh
+  if ! /usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh; then
+    echo "[springmonkey-upgrade-guard] memory guard could not apply; continuing to inventory because newer OpenClaw may provide memory-lancedb as an external plugin" >&2
+  fi
 fi
 
 if [ -x /usr/local/lib/openclaw/ensure_agent_society_runtime_guard.sh ]; then

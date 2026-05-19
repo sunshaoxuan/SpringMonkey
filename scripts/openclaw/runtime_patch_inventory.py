@@ -113,6 +113,20 @@ def score_candidate(path: Path, markers: tuple[str, ...]) -> tuple[int, int]:
 def inspect_patch(spec: PatchSpec, *, dist: Path, repo: Path) -> dict[str, Any]:
     candidates = candidate_paths(spec, dist=dist, repo=repo)
     if not candidates:
+        if spec.patch_id == "memory_lancedb_raw_embeddings":
+            plugin_inspect = run_text(["openclaw", "plugins", "inspect", "memory-lancedb"], timeout=15)
+            if "loaded" in plugin_inspect.lower():
+                return {
+                    "patch_id": spec.patch_id,
+                    "description": spec.description,
+                    "status": "ok_external_plugin",
+                    "required": spec.required,
+                    "installer": spec.installer,
+                    "selected": "openclaw plugin: memory-lancedb",
+                    "missing_markers": [],
+                    "candidates": [],
+                    "note": "No bundled dist artifact found; memory-lancedb is loaded as an external OpenClaw plugin.",
+                }
         return {
             "patch_id": spec.patch_id,
             "description": spec.description,
@@ -192,7 +206,7 @@ def build_inventory(args: argparse.Namespace) -> dict[str, Any]:
     failures = [
         item["patch_id"]
         for item in patches
-        if item.get("required") and item.get("status") != "ok"
+        if item.get("required") and item.get("status") not in ("ok", "ok_external_plugin")
     ]
     failures.extend(item["capability"] for item in repo_caps if item["status"] != "ok")
     if queue["status"] == "bad_owner_channel_target":

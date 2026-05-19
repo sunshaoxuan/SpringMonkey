@@ -105,3 +105,29 @@ def test_inventory_fails_on_legacy_owner_channel_queue_target(tmp_path: Path, mo
 
     assert result["status"] == "failed"
     assert "delivery_queue_owner_target" in result["failures"]
+
+
+def test_memory_lancedb_external_plugin_counts_as_ok_when_dist_artifact_is_absent(tmp_path: Path, monkeypatch) -> None:
+    def fake_run(command: list[str], timeout: int = 8) -> str:
+        if command[:3] == ["openclaw", "plugins", "inspect"]:
+            return "Status: loaded"
+        return "test-version"
+
+    monkeypatch.setattr(inventory, "run_text", fake_run)
+    dist = tmp_path / "dist"
+    repo = tmp_path / "repo"
+    seed_required_repo(repo)
+    write(
+        dist / "agent-runner.runtime-test.js",
+        "[runtime-goal-intent-task-agent-society-protocol]\nshouldApplyAgentSocietyProtocol\nextract all relevant intents\ncreate or refine a helper tool\n[runtime-self-improvement-toolsmith-protocol]\nclassify the failure into a capability gap\n[runtime-kernel-session]\nensure-session\n",
+    )
+    write(
+        dist / "selection-test.js",
+        'const proactiveThresholdTokens = Math.max(1, Math.floor(promptBudgetBeforeReserve * .9));\nconst proactiveMessageThreshold = 48;\n',
+    )
+
+    result = inventory.build_inventory(args(tmp_path))
+
+    assert result["status"] == "ok"
+    memory = next(item for item in result["patches"] if item["patch_id"] == "memory_lancedb_raw_embeddings")
+    assert memory["status"] == "ok_external_plugin"
