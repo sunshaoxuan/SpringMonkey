@@ -19,6 +19,12 @@ class MediaReply:
     caption: str
 
 
+@dataclass(frozen=True)
+class MultiMediaReply:
+    media_paths: list[Path]
+    caption: str
+
+
 def discord_token(config_path: Path = DEFAULT_CONFIG_PATH) -> str:
     token = os.environ.get("OPENCLAW_DISCORD_TOKEN", "").strip()
     if token:
@@ -32,17 +38,31 @@ def discord_token(config_path: Path = DEFAULT_CONFIG_PATH) -> str:
 
 
 def parse_media_reply(content: str) -> MediaReply | None:
+    parsed = parse_media_replies(content)
+    if not parsed:
+        return None
+    return MediaReply(parsed.media_paths[0], parsed.caption)
+
+
+def parse_media_replies(content: str) -> MultiMediaReply | None:
     lines = (content or "").splitlines()
     if not lines:
         return None
-    first = lines[0].strip()
-    if not first.startswith("MEDIA:"):
+    media_paths: list[Path] = []
+    caption_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("MEDIA:"):
+            path = Path(stripped.split(":", 1)[1].strip())
+            if not path.is_file():
+                return None
+            media_paths.append(path)
+        elif stripped:
+            caption_lines.append(line)
+    if not media_paths:
         return None
-    path = Path(first.split(":", 1)[1].strip())
-    if not path.is_file():
-        return None
-    caption = "\n".join(line for line in lines[1:] if line.strip()).strip()
-    return MediaReply(path, caption)
+    caption = "\n".join(caption_lines).strip()
+    return MultiMediaReply(media_paths, caption)
 
 
 def _multipart_body(*, payload: dict, file_path: Path, boundary: str) -> bytes:
@@ -118,11 +138,20 @@ def send_discord_media(token: str, channel_id: str, media: MediaReply) -> int:
     return 1
 
 
+def send_discord_media_batch(token: str, channel_id: str, media: MultiMediaReply) -> int:
+    sent = 0
+    for index, path in enumerate(media.media_paths):
+        caption = media.caption if index == 0 else ""
+        sent += send_discord_media(token, channel_id, MediaReply(path, caption))
+    return sent
+
+
 def send_discord_message(channel_id: str, content: str, *, config_path: Path = DEFAULT_CONFIG_PATH) -> tuple[int, str]:
     token = discord_token(config_path)
     if not token:
         raise RuntimeError("missing channels.discord.token")
-    media = parse_media_reply(content)
+    media = parse_media_replies(content)
     if media:
-        return send_discord_media(token, channel_id, media), f"media:{media.media_path}"
+        count = send_discord_media_batch(token, channel_id, media)
+        return count, "media:" + ",".join(str(path) for path in media.media_paths)
     return send_discord_text(token, channel_id, content), "text"

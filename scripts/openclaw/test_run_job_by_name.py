@@ -63,3 +63,27 @@ def test_manual_media_job_sends_attachment_to_reply_channel(monkeypatch, tmp_pat
     assert sent["content"].startswith("MEDIA:")
     assert payload["delivery"] == "manual_media_sent"
     assert payload["final_report"] == ""
+
+
+def test_manual_media_job_preserves_multiple_media_delivery_evidence(monkeypatch, tmp_path, capsys) -> None:
+    first = tmp_path / "tokyo.png"
+    second = tmp_path / "beijing.png"
+    first.write_bytes(b"png1")
+    second.write_bytes(b"png2")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(command, 0, stdout=f"MEDIA:{first}\nMEDIA:{second}", stderr="")
+
+    def fake_send(channel_id, content):
+        return 2, f"media:{first},{second}"
+
+    monkeypatch.setenv("OPENCLAW_REPLY_CHANNEL_ID", "dm_channel")
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner, "send_discord_message", fake_send)
+
+    assert runner.run_direct_script_job("weather-report-jst-0700") == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["delivery"] == "manual_media_sent"
+    assert str(first) in payload["media_delivery"]
+    assert str(second) in payload["media_delivery"]
