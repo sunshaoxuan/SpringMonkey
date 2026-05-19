@@ -20,13 +20,7 @@ TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
 DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
 TARGET_IMAGE_WIDTH = 1024
-TARGET_IMAGE_HEIGHT = 1024
-
-WEATHER_IMAGE_LOCATIONS = [
-    report.Location("東京", "東京", 35.6762, 139.6503),
-    report.Location("北京", "北京", 39.9042, 116.4074),
-    report.Location("大连", "大连", 38.9140, 121.6147),
-]
+TARGET_IMAGE_HEIGHT = 1365
 
 @dataclass(frozen=True)
 class WeatherCard:
@@ -50,13 +44,9 @@ def _fmt(value: float | int | None, suffix: str = "", digits: int = 0) -> str:
     return f"{float(value):.{digits}f}{suffix}" if digits else f"{int(round(float(value)))}{suffix}"
 
 def _city_for_area(area: str) -> tuple[str, str]:
-    if "北京" in area:
-        return "北京", "one simple Beijing landmark such as the Temple of Heaven or Tiananmen-inspired red city gate, compact toy-city setting"
-    if "大连" in area or "大連" in area:
-        return "大连", "one simple Dalian coastal landmark such as Xinghai Square, seaside promenade, or modern bay bridge, compact toy-city setting"
     if "杉並" in area or "東京" in area or "品川" in area or "川口" in area or "埼玉" in area:
-        return "東京", "one simple Tokyo landmark such as Tokyo Tower, Skytree, or a compact station plaza, compact toy-city setting"
-    return area, "one simple local landmark and compact streets"
+        return "東京", "Tokyo landmark skyline, compact neighborhood streets, riverside bridges, and station plaza"
+    return area, "local skyline and compact streets"
 
 def fetch_weather_card(location: report.Location, *, fetch_json=report.fetch_json) -> WeatherCard:
     forecast_url = "https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode({
@@ -213,10 +203,10 @@ def _draw_card(r: Raster, card: WeatherCard, x: int, y: int, theme: str) -> None
 
 
 def render_png(cards: list[WeatherCard], now: datetime) -> bytes:
-    cards = cards[:1] or []
+    cards = cards[:2] or []
     if not cards:
         raise ValueError("at least one weather card is required")
-    width, height = TARGET_IMAGE_WIDTH, TARGET_IMAGE_HEIGHT
+    width, height = 1024, 1365
     r = Raster(width, height)
     for y in range(height):
         mix = y / height
@@ -226,22 +216,20 @@ def render_png(cards: list[WeatherCard], now: datetime) -> bytes:
             int(255 * (1 - mix) + 228 * mix),
         )
         r.rect(0, y, width, 1, c)
-    _draw_card(r, cards[0], 260, 300, "green")
+    if len(cards) == 1:
+        _draw_card(r, cards[0], 260, 420, "green")
+    else:
+        _draw_card(r, cards[0], 84, 420, "green")
+        _draw_card(r, cards[1], 516, 420, "blue")
     return _png_bytes(width, height, r.pixels)
 
 
 def write_weather_image(cards: list[WeatherCard], now: datetime | None = None, output_dir: Path = DEFAULT_OUTPUT_DIR) -> Path:
     now = now or datetime.now(TZ)
     output_dir.mkdir(parents=True, exist_ok=True)
-    city = cards[0].city if cards else "weather"
-    path = output_dir / f"weather_miniature_{city}_{now:%Y%m%d_%H%M%S}.png"
+    path = output_dir / f"weather_miniature_{now:%Y%m%d_%H%M%S}.png"
     path.write_bytes(render_png(cards, now))
     return path
-
-
-def write_weather_images(cards: list[WeatherCard], now: datetime | None = None, output_dir: Path = DEFAULT_OUTPUT_DIR) -> list[Path]:
-    now = now or datetime.now(TZ)
-    return [write_weather_image([card], now, output_dir) for card in cards]
 
 
 def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
@@ -256,18 +244,16 @@ def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -
     scene_count = "one city scene" if len(cards) == 1 else f"{len(cards)} separate city scenes"
     return (
         "Create a premium weather forecast image as a single finished picture, not a UI mockup. "
-        f"Use a square 1:1 1024x1024 centered composition with {scene_count}. "
+        f"Use a vertical 3:4 centered composition with {scene_count}. "
         "If multiple people are in the same city, merge them into one city forecast scene; only add another scene when a distinct city exists. "
         "Camera and scene: clear 45-degree top-down isometric view, cute 3D chibi miniature city landmark diorama, "
-        "choose exactly one recognizable landmark per city, keep the model simple, bright, clean, and cheerful, "
-        "with rounded toy-like forms inspired by classic Japanese children's cartoon warmth but without any copyrighted characters. "
-        "Main landmark centered, precise but uncluttered architectural details, warm tactile PBR materials, soft realistic lighting and shadows. "
+        "main building centered, precise toy-like architectural details, warm tactile PBR materials, soft realistic lighting and shadows. "
         "Composition: clean, unified, fresh, comfortable, minimal pure-color soft background, no panels, no cards, no text boxes. "
         "Weather integration: weather effects must be integrated into the city architecture and interact with the scene, "
-        "for example sun, clouds, rain, wind, mist, puddles, reflections, or atmospheric particles around the landmark. "
+        "for example sun, clouds, rain, wind, mist, puddles, reflections, or atmospheric particles around the buildings. "
         "Typography inside the image: at the very top show a large city name in the same written language as the city name; "
         "directly below or near it show a prominent weather icon; under the icon show the date in very small type and the temperature range in medium type. "
-        "Weather text has no background and may overlap or blend with the building naturally. "
+        "Weather text has no background and may overlap or blend with the buildings naturally. "
         f"Forecast date: {now:%Y-%m-%d} ({day_kind}). Forecast data: {'; '.join(summaries)}. "
         "No extra caption outside the image, no brand logos, no watermarks, no copyrighted characters, no unreadable clutter."
     )
@@ -283,8 +269,7 @@ def generate_model_image(
     command_runner=subprocess.run,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
-    city = cards[0].city if cards else "weather"
-    path = output_dir / f"weather_miniature_{city}_{now:%Y%m%d_%H%M%S}_image2.png"
+    path = output_dir / f"weather_miniature_{now:%Y%m%d_%H%M%S}_image2.png"
     cmd = [
         "openclaw",
         "infer",
@@ -295,7 +280,7 @@ def generate_model_image(
         "--prompt",
         build_image_prompt(cards, now, day_kind),
         "--size",
-        "1024x1024",
+        "1024x1365",
         "--output-format",
         "png",
         "--output",
@@ -347,7 +332,7 @@ def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, 
             image = image.resize((target_width, new_height))
         if image.height > target_height:
             # Keep the top typography and city landmark focal area; trim excess
-            # from the bottom when an image API coerces the requested square.
+            # from the bottom when the image API coerces 3:4 to 1024x1536.
             image = image.crop((0, 0, target_width, target_height))
         elif image.height < target_height:
             canvas = Image.new("RGB", (target_width, target_height), image.getpixel((0, image.height - 1)) if image.height else (248, 247, 244))
@@ -469,7 +454,7 @@ def write_weather_image_with_model(
             # Deterministic fallback keeps the cron from failing, but the normal
             # path must be the configured image model.
             pass
-    return write_weather_image(cards[:1], now, output_dir)
+    return write_weather_image(cards, now, output_dir)
 
 
 def _avg(values: list[float | int | None], *, digits: int = 1) -> float | None:
@@ -538,37 +523,18 @@ def merge_same_city_cards(cards: list[WeatherCard]) -> list[WeatherCard]:
 
 def build_cards(now: datetime | None = None, *, fetch_json=report.fetch_json) -> tuple[list[WeatherCard], bool, str]:
     now = now or datetime.now(TZ)
-    _day_locations, rest_day, day_kind = report.locations_for_day(now)
-    cards = [fetch_weather_card(loc, fetch_json=fetch_json) for loc in WEATHER_IMAGE_LOCATIONS]
+    locations, rest_day, day_kind = report.locations_for_day(now)
+    cards = [fetch_weather_card(loc, fetch_json=fetch_json) for loc in locations]
     return merge_same_city_cards(cards), rest_day, day_kind
 
-def build_media_reply(paths: Path | list[Path], cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
-    if isinstance(paths, Path):
-        paths = [paths]
-    return "\n".join(f"MEDIA:{path}" for path in paths)
-
-
-def write_weather_images_with_model(
-    cards: list[WeatherCard],
-    now: datetime | None = None,
-    output_dir: Path = DEFAULT_OUTPUT_DIR,
-    *,
-    day_kind: str = "",
-    model: str | None = None,
-    command_runner=subprocess.run,
-) -> list[Path]:
-    now = now or datetime.now(TZ)
-    return [
-        write_weather_image_with_model([card], now, output_dir, day_kind=day_kind, model=model, command_runner=command_runner)
-        for card in cards
-    ]
-
+def build_media_reply(path: Path, cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
+    return f"MEDIA:{path}"
 
 def generate_weather_image_reply(now: datetime | None = None, *, fetch_json=report.fetch_json, output_dir: Path = DEFAULT_OUTPUT_DIR) -> str:
     now = now or datetime.now(TZ)
     cards, _rest_day, day_kind = build_cards(now, fetch_json=fetch_json)
-    paths = write_weather_images_with_model(cards, now, output_dir, day_kind=day_kind)
-    return build_media_reply(paths, cards, now, day_kind)
+    path = write_weather_image_with_model(cards, now, output_dir, day_kind=day_kind)
+    return build_media_reply(path, cards, now, day_kind)
 
 def main() -> int:
     print(generate_weather_image_reply())
