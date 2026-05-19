@@ -142,6 +142,37 @@ def test_verified_changed_run_fails_without_commit_evidence():
     assert "git evidence failed" in result.retry_reason
 
 
+def test_verified_changed_run_blocks_undeclared_business_file_changes():
+    package_state = {
+        "package_id": "openclaw.repair_plan.openclaw_self_evolution_internal_repair",
+        "files": {
+            "runner": "scripts/openclaw/self_evolution_internal_repair.py",
+            "test": "scripts/openclaw/test_self_evolution_internal_repair.py",
+        },
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        package_path = Path(tmp) / "package.json"
+        package_path.write_text(json.dumps(package_state), encoding="utf-8")
+        command_result = repair.CommandResult(command="verify", returncode=0, stdout_tail="ok", stderr_tail="")
+        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=["scripts/weather/weather_image_forecast.py"]):
+            result = repair.execute_self_evolution_run(
+                implementation_run_id="impl_scope",
+                text="执行通用内部能力补齐并私人验证",
+                reason="internal repair",
+                repo_root=repo,
+                package_state_path=package_path,
+                run_dir=Path(tmp) / "runs",
+                verify_commands=["verify"],
+                push=False,
+            )
+    assert result.status == "failed"
+    assert result.stage == "change_scope_failed"
+    assert result.retry_allowed is False
+    assert "change scope violation" in result.evidence
+
+
 def test_package_guardrail_text_does_not_create_false_external_block():
     package_state = {
         "llm_classification": {

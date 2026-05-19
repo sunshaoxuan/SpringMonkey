@@ -20,6 +20,14 @@ DEFAULT_VERIFY_COMMANDS = [
     "python scripts/openclaw/verify_harness_registry.py",
     "python scripts/openclaw/verify_capability_baseline.py",
 ]
+DEFAULT_INTERNAL_REPAIR_PREFIXES = (
+    "config/openclaw/",
+    "docs/",
+    "scripts/openclaw/",
+)
+DEFAULT_INTERNAL_REPAIR_FILES = {
+    "scripts/INDEX.md",
+}
 
 
 @dataclass
@@ -78,6 +86,43 @@ def read_package(path: Path | None) -> dict[str, Any]:
 
 def package_id_from_state(package_state: dict[str, Any]) -> str:
     return str(package_state.get("package_id") or package_state.get("tool_id") or "")
+
+
+def package_declared_files(package_state: dict[str, Any]) -> set[str]:
+    declared: set[str] = set()
+    raw_files = package_state.get("files")
+    if isinstance(raw_files, dict):
+        values = raw_files.values()
+    elif isinstance(raw_files, list):
+        values = raw_files
+    else:
+        values = []
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            declared.add(value.strip().replace("\\", "/"))
+        elif isinstance(value, dict):
+            for key in ("path", "file", "entrypoint", "test"):
+                item = value.get(key)
+                if isinstance(item, str) and item.strip():
+                    declared.add(item.strip().replace("\\", "/"))
+    return declared
+
+
+def change_scope_violations(changed_files: list[str], package_state: dict[str, Any]) -> list[str]:
+    declared = package_declared_files(package_state)
+    violations: list[str] = []
+    for raw in changed_files:
+        path = raw.strip().replace("\\", "/")
+        if not path:
+            continue
+        if path in declared:
+            continue
+        if path in DEFAULT_INTERNAL_REPAIR_FILES:
+            continue
+        if any(path.startswith(prefix) for prefix in DEFAULT_INTERNAL_REPAIR_PREFIXES):
+            continue
+        violations.append(path)
+    return violations
 
 
 def decide_boundary(text: str, reason: str = "", package_state: dict[str, Any] | None = None) -> BoundaryDecision:
@@ -267,7 +312,11 @@ def execute_self_evolution_run(
     commit = ""
     git_evidence = ""
     git_evidence_ok = not changed
-    if verify_ok and changed:
+    violations = change_scope_violations(changed, package_state) if verify_ok else []
+    if verify_ok and violations:
+        git_evidence_ok = False
+        git_evidence = f"change scope violation: {', '.join(violations)}"
+    elif verify_ok and changed:
         committed, commit, git_evidence = commit_changes(repo_root, implementation_run_id, changed)
         remaining = git_changed_files(repo_root)
         git_evidence_ok = bool(committed and commit and not remaining)
@@ -283,7 +332,9 @@ def execute_self_evolution_run(
         status = "planned"
         stage = "dry_run"
     elif verify_ok and changed:
-        if push:
+        if violations:
+            stage = "change_scope_failed"
+        elif push:
             stage = "pushed" if pushed else "push_failed"
         else:
             stage = "committed" if git_evidence_ok else "commit_failed"
