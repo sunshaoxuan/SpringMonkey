@@ -664,7 +664,13 @@
         "aspect_ratio": "1:1",
         "image_size": "1024x1024",
         "city_grouping": "one_image_per_configured_distinct_city",
-        "visual_style": "clear_45_degree_isometric_simple_cute_3d_chibi_pbr_city_landmark_weather_diorama"
+        "visual_style": "clear_45_degree_isometric_simple_cute_3d_chibi_pbr_city_landmark_weather_diorama",
+        "configured_cities": [
+          "東京",
+          "北京",
+          "大连"
+        ],
+        "images_per_run": 3
       },
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "verify_command": "python -m compileall -q scripts/weather/discord_weather_report.py scripts/weather/weather_image_forecast.py scripts/weather/test_weather_image_forecast.py scripts/openclaw/run_job_by_name.py && python scripts/weather/test_discord_weather_report.py && python scripts/weather/test_weather_image_forecast.py",
@@ -694,7 +700,11 @@
         "简洁Q版3D城市地标",
         "PBR质感",
         "weather image forecast",
-        "MEDIA weather forecast"
+        "MEDIA weather forecast",
+        "東京",
+        "北京",
+        "大连",
+        "三城天气预报图"
       ],
       "input_contract": {
         "type": "fixed_cron_job"
@@ -707,7 +717,13 @@
         "city_grouping": "one_image_per_configured_distinct_city",
         "aspect_ratio": "1:1",
         "image_size": "1024x1024",
-        "approval_gated_public_delivery": true
+        "approval_gated_public_delivery": true,
+        "configured_cities": [
+          "東京",
+          "北京",
+          "大连"
+        ],
+        "images_per_run": 3
       },
       "safety": "readonly"
     },
