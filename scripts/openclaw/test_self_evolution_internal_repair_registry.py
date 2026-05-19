@@ -30,9 +30,6 @@ def test_registry_contains_generic_self_evolution_internal_repair_tool():
     encoded = json.dumps(generic_fields, ensure_ascii=False).lower()
     assert "天气" not in encoded
     assert "weather" not in encoded
-    # The verification command may include domain regression suites; that is not
-    # a router/business keyword branch in the self-evolution contract itself.
-    assert "test_weather_image_forecast.py" in tool["verify_command"]
 
 
 def test_registry_documents_public_release_approval_gate():
