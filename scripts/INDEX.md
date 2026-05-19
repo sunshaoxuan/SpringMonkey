@@ -49,6 +49,18 @@
   - 用途：从宿主机打包当前 OpenClaw 恢复包到本地，包含 `openclaw.json`、`cron/jobs.json`、workspace、state、sessions、memory、systemd drop-in、`/usr/local/lib/openclaw` 与 manifest。
   - 典型用法：`python SpringMonkey/scripts/remote_create_openclaw_recovery_bundle.py`
 
+- `openclaw/runtime_patch_inventory.py`
+  - 用途：盘点当前宿主机 OpenClaw runtime 中仍依赖的 SpringMonkey runtime marker；升级/重装 OpenClaw 后必须通过，避免 dist 覆盖导致自增能力静默丢失。
+  - 典型用法：`python3 scripts/openclaw/runtime_patch_inventory.py --fail-on-missing`
+
+- `remote_install_upgrade_resilience_guard.py`
+  - 用途：安装总升级护栏 `/usr/local/lib/openclaw/ensure_springmonkey_upgrade_resilience.sh`，在 `openclaw.service` 启动前重放已安装的 runtime guard、检查 marker、修正关键 workspace/queue/media 权限。
+  - 典型用法：`python SpringMonkey/scripts/remote_install_upgrade_resilience_guard.py`
+
+- `remote_verify_upgrade_resilience.py`
+  - 用途：远端验收升级韧性；检查 OpenClaw 版本、service、healthz、runtime patch inventory、startup guards、long-task timer、registry/harness/baseline。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_upgrade_resilience.py`
+
 - `remote_install_openclaw_recovery_timer.py`
   - 用途：在宿主机安装每日 recovery bundle 定时备份与自动清理，默认每日生成恢复包，并保留近 7 日、近 8 周、近 6 月的关键备份。
   - 典型用法：`python SpringMonkey/scripts/remote_install_openclaw_recovery_timer.py`

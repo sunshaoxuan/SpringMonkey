@@ -42,6 +42,8 @@ TOOLS: dict[str, str] = {
     "long-task-verify": "remote_verify_long_task_supervisor.py",
     "long-task-supervisor": "remote_install_long_task_supervisor.py",
     "toolsmith-deploy": "remote_deploy_toolsmith_semantic.py",
+    "upgrade-guard": "remote_install_upgrade_resilience_guard.py",
+    "upgrade-verify": "remote_verify_upgrade_resilience.py",
     "agent-society-runtime": "remote_install_agent_society_runtime_guard.py",
     "agent-society-guard": "remote_install_agent_society_startup_guard.py",
     "intl-channels": "remote_enable_international_channels.py",
