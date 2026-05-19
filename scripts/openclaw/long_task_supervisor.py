@@ -551,6 +551,7 @@ def domain_report_claims_committed_changes(visible: str, *, repo_root: Path | No
     if not visible.strip():
         return False, "empty report"
     commits = extract_claimed_commit_hashes(visible)
+    lowered = visible.lower()
     commit_markers = (
         "commit:",
         "已成功 push",
@@ -562,7 +563,7 @@ def domain_report_claims_committed_changes(visible: str, *, repo_root: Path | No
         "工作树干净",
         "worktree clean",
     )
-    if not any(marker in visible for marker in commit_markers):
+    if not any(marker in lowered for marker in commit_markers):
         return False, "report has no commit/push marker"
     if not commits:
         return False, "report mentions commit/push but includes no commit hash"
@@ -662,13 +663,16 @@ def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
     if str(task.get("source") or "") != "domain_implementation":
         return {"found": False}
     pid = int(task.get("pid") or 0)
-    if pid > 0 and process_running(pid):
-        return {"found": False, "reason": "implementation process still running"}
     stdout = read_text_limited(str(task.get("stdout_file") or ""))
-    stderr = read_text_tail(str(task.get("stderr_file") or ""))
     if stdout:
         repo_root = Path(str(task.get("repo_root") or DEFAULT_REPO_ROOT))
         result_status, text = domain_implementation_report_status(stdout, repo_root=repo_root)
+        if result_status == "success":
+            return {"found": True, "result_status": result_status, "text": text}
+    if pid > 0 and process_running(pid):
+        return {"found": False, "reason": "implementation process still running"}
+    stderr = read_text_tail(str(task.get("stderr_file") or ""))
+    if stdout:
         return {"found": True, "result_status": result_status, "text": text}
     if stderr:
         return {"found": True, "result_status": "failed", "text": f"内部能力实现失败：\n{stderr}"}
