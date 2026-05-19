@@ -127,16 +127,27 @@ def change_scope_violations(changed_files: list[str], package_state: dict[str, A
 
 def package_allows_internal_repair(package_state: dict[str, Any] | None) -> bool:
     state = package_state or {}
-    if state.get("allowed_repair_action") == "autonomous_internal_repair":
+    allowed_action = str(state.get("allowed_repair_action") or "")
+    if allowed_action == "autonomous_internal_repair" or allowed_action.startswith("repair_binding_or_route_to_registered_tool_openclaw.self_evolution"):
         return True
+    tool_id = str(state.get("tool_id") or "")
+    if tool_id.startswith("openclaw.repair_plan.openclaw_self_evolution_internal_repair"):
+        classification = state.get("llm_classification")
+        if isinstance(classification, dict) and classification.get("autonomy_allowed") is True:
+            return True
     classification = state.get("llm_classification")
     if isinstance(classification, dict):
+        class_action = str(classification.get("allowed_repair_action") or "")
+        expected_family = str(classification.get("expected_capability_family") or "")
         if classification.get("autonomy_allowed") is True and classification.get("intent_kind") in {
             "internal_self_evolution_private_test",
             "internal_self_evolution",
+            "internal_self_evolution_repair",
         }:
             return True
-        if classification.get("allowed_repair_action") == "autonomous_internal_repair":
+        if class_action == "autonomous_internal_repair" or class_action.startswith("repair_binding_or_route_to_registered_tool_openclaw.self_evolution"):
+            return True
+        if classification.get("autonomy_allowed") is True and expected_family.startswith("openclaw.self_evolution"):
             return True
     registry_tool = state.get("registry_tool")
     if isinstance(registry_tool, dict):

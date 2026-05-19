@@ -77,6 +77,9 @@ def repair_fingerprint(*, text: str, reason: str, tool_id: str, entrypoint: str)
 
 def plan_tool_id(llm_classification: dict[str, Any] | None, gap_type: str) -> str:
     family = str((llm_classification or {}).get("expected_capability_family") or gap_type or "capability")
+    allowed_action = str((llm_classification or {}).get("allowed_repair_action") or "")
+    if family.startswith("openclaw.self_evolution") or allowed_action.startswith("repair_binding_or_route_to_registered_tool_openclaw.self_evolution"):
+        return "openclaw.repair_plan.openclaw_self_evolution_internal_repair"
     return f"openclaw.repair_plan.{safe_slug(family)}"
 
 
@@ -138,6 +141,15 @@ def registered_tool_by_id(repo_root: Path, tool_id: str) -> dict[str, Any] | Non
     if not tool_id:
         return None
     return next((tool for tool in registry_tools(repo_root) if str(tool.get("tool_id") or "") == tool_id), None)
+
+
+def semantic_registered_tool_for_repair(repo_root: Path, llm_classification: dict[str, Any] | None) -> dict[str, Any] | None:
+    classification = llm_classification or {}
+    family = str(classification.get("expected_capability_family") or "")
+    allowed_action = str(classification.get("allowed_repair_action") or "")
+    if family.startswith("openclaw.self_evolution") or allowed_action.startswith("repair_binding_or_route_to_registered_tool_openclaw.self_evolution"):
+        return registered_tool_by_id(repo_root, "openclaw.self_evolution.internal_repair")
+    return None
 
 
 def infer_domain_actions(gap_type: str, llm_classification: dict[str, Any] | None = None) -> tuple[str, list[str]]:
@@ -457,7 +469,8 @@ def generate_repair_package(
     semantic: bool = False,
     llm_classification: dict[str, Any] | None = None,
 ) -> ToolsmithPackage:
-    gap_type = classify_gap(reason, registry_tool, llm_classification)
+    semantic_registry_tool = registry_tool or semantic_registered_tool_for_repair(repo_root, llm_classification)
+    gap_type = classify_gap(reason, semantic_registry_tool, llm_classification)
     blocker_kind = str((llm_classification or {}).get("blocker_kind") or "")
     autonomy_allowed = bool((llm_classification or {}).get("autonomy_allowed")) or str((llm_classification or {}).get("allowed_repair_action") or "") in AUTONOMOUS_REPAIR_ACTIONS
     model_blocks_toolsmith = blocker_kind in {
@@ -472,17 +485,17 @@ def generate_repair_package(
     )
     write_like = (
         (safety_class in {"requires_confirmation_or_credentials", "unsupported_or_ambiguous"} and not autonomy_allowed)
-        or bool((registry_tool or {}).get("write_operation"))
+        or bool((semantic_registry_tool or {}).get("write_operation"))
         or model_blocks_toolsmith
         or internal_write_repair_plan
     )
     if internal_write_repair_plan:
         tool_id = plan_tool_id(llm_classification, gap_type)
     elif model_blocks_toolsmith:
-        tool_id = str((registry_tool or {}).get("tool_id") or "openclaw.authorization_required")
+        tool_id = str((semantic_registry_tool or {}).get("tool_id") or "openclaw.authorization_required")
     else:
-        tool_id = str((registry_tool or {}).get("tool_id") or infer_tool_id(gap_type, llm_classification))
-    entrypoint = str((registry_tool or {}).get("entrypoint") or ("" if (model_blocks_toolsmith or internal_write_repair_plan) else f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py"))
+        tool_id = str((semantic_registry_tool or {}).get("tool_id") or infer_tool_id(gap_type, llm_classification))
+    entrypoint = str((semantic_registry_tool or {}).get("entrypoint") or ("" if (model_blocks_toolsmith or internal_write_repair_plan) else f"scripts/openclaw/helpers/generated_{safe_slug(tool_id)}.py"))
     fingerprint = repair_fingerprint(text=text, reason=reason, tool_id=tool_id, entrypoint=entrypoint)
     package_id = f"repair_{safe_slug(tool_id)}_{fingerprint}"
     package_dir = kernel_root / "toolsmith_packages" / package_id
@@ -544,7 +557,7 @@ def generate_repair_package(
             "tool_id": tool_id,
             "reason": reason,
             "safety_class": safety_class,
-            "registry_tool": registry_tool,
+            "registry_tool": semantic_registry_tool,
             "llm_classification": llm_classification,
             "missing_condition": str((llm_classification or {}).get("missing_condition") or ""),
             "allowed_repair_action": str((llm_classification or {}).get("allowed_repair_action") or "record_gap_only"),
@@ -564,7 +577,7 @@ def generate_repair_package(
         safety_class=safety_class,
         tool_id=tool_id,
         entrypoint=entrypoint,
-        permission_scope="owner_dm_readonly" if not write_like else str((registry_tool or {}).get("permission_scope") or "requires_authorization"),
+        permission_scope="owner_dm_readonly" if not write_like else str((semantic_registry_tool or {}).get("permission_scope") or "requires_authorization"),
         write_operation=write_like,
         verify_command=str(registry_patch.get("verify_command") or ""),
         replay_policy=replay_policy,

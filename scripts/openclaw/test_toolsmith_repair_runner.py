@@ -261,6 +261,53 @@ def test_toolsmith_routes_internal_autonomy_to_self_reference() -> None:
     assert package.semantic_source == "openclaw.self_evolution.status"
 
 
+
+def test_toolsmith_self_evolution_binding_regression_resolves_existing_registered_tool() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        repo = root / "repo"
+        write_registry(
+            repo,
+            [
+                {
+                    "intent_id": "openclaw.self_evolution.internal_repair",
+                    "tool_id": "openclaw.self_evolution.internal_repair",
+                    "entrypoint": "scripts/openclaw/self_evolution_internal_repair.py",
+                    "permission_scope": "owner_dm_write",
+                    "write_operation": True,
+                    "domain": "self",
+                    "actions": ["repair", "implement", "verify", "push"],
+                    "capability_id": "openclaw.self_evolution.internal_repair",
+                }
+            ],
+        )
+        package = runner.generate_repair_package(
+            text="那你检查一下能力代码是不是有什么问题，请你修好它。",
+            reason="Registered self repair tool semantically matches code inspection, repair, private verification, and verifiable completion requirements.",
+            safety_class="auto_safe_readonly",
+            kernel_root=root / "kernel",
+            repo_root=repo,
+            semantic=True,
+            llm_classification={
+                "intent_kind": "internal_self_evolution_repair",
+                "blocker_kind": "write_operation_request",
+                "autonomy_allowed": True,
+                "expected_capability_family": "openclaw.self_evolution.internal_repair",
+                "allowed_repair_action": "repair_binding_or_route_to_registered_tool_openclaw.self_evolution.internal_repair_then_privately_verify",
+            },
+        )
+        plan = json.loads(Path(package.files[0]).read_text(encoding="utf-8"))
+
+    assert package.status == "planned"
+    assert package.tool_id == "openclaw.repair_plan.openclaw_self_evolution_internal_repair"
+    assert package.permission_scope == "owner_dm_write"
+    assert package.entrypoint == "scripts/openclaw/self_evolution_internal_repair.py"
+    assert package.registry_patch == {}
+    assert not any("generated_" in item for item in package.files)
+    assert plan["registry_tool"]["tool_id"] == "openclaw.self_evolution.internal_repair"
+    assert plan["implementation_required"] is True
+
+
 def test_toolsmith_verify_promote_falls_back_when_pytest_missing() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

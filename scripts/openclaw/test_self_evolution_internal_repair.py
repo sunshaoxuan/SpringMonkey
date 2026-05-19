@@ -238,6 +238,30 @@ def test_package_guardrail_text_keeps_public_release_approval_gated_without_bloc
     assert decision.public_release_requires_approval is False
     assert decision.external_effect_requires_approval is False
 
+
+def test_registered_self_evolution_repair_package_action_allows_internal_repair():
+    package_state = {
+        "tool_id": "openclaw.repair_plan.openclaw_self_evolution_internal_repair",
+        "permission_scope": "requires_authorization",
+        "allowed_repair_action": "repair_binding_or_route_to_registered_tool_openclaw.self_evolution.internal_repair_then_privately_verify",
+        "llm_classification": {
+            "intent_kind": "internal_self_evolution_repair",
+            "autonomy_allowed": True,
+            "expected_capability_family": "openclaw.self_evolution.internal_repair",
+            "allowed_repair_action": "repair_binding_or_route_to_registered_tool_openclaw.self_evolution.internal_repair_then_privately_verify",
+            "autonomy_boundary": "Do not perform public release or external side effects without approval.",
+        },
+    }
+    decision = repair.decide_boundary(
+        "那你检查一下能力代码是不是有什么问题，请你修好它。",
+        "Registered self repair tool semantically matches code inspection, repair, private verification, and verifiable completion requirements.",
+        package_state,
+    )
+    assert decision.internal_write_allowed is True
+    assert decision.private_verification_allowed is True
+    assert decision.external_effect_requires_approval is False
+    assert decision.public_release_requires_approval is False
+
 def test_public_release_text_is_not_hardcoded_business_rule():
     source = Path(repair.__file__).read_text(encoding="utf-8")
     assert "天气预报文" not in source
