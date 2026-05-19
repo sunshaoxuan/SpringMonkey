@@ -35,7 +35,7 @@ DEFAULT_TIMEOUT_SECONDS = 3600
 DEFAULT_REPO_ROOT = Path("/var/lib/openclaw/repos/SpringMonkey")
 DEFAULT_QUEUE_RETRY_SECONDS = 60
 
-ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
+ACTIVE_STATUSES = {"running", "final_detected", "delivery_queued"}
 OWNER_QUEUE_TARGET = f"user:{DEFAULT_OWNER_USER_ID}"
 LEGACY_OWNER_CHANNEL_TARGET = f"channel:{DEFAULT_OWNER_USER_ID}"
 

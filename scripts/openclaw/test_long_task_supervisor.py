@@ -77,14 +77,17 @@ def test_delivery_failure_keeps_final_for_retry(tmp_path: Path) -> None:
 
     assert tasks[0]["status"] == "delivery_failed"
     assert tasks[0]["final_report"] == "最终结果"
-    retry = supervisor.poll_tasks(
+    automatic_retry = supervisor.poll_tasks(
         state_path=state,
         sessions_dir=sessions,
         deliver=True,
         repair=False,
         deliverer=lambda _task, _body: (True, "sent"),
     )
-    assert retry[0]["status"] == "delivered"
+    assert automatic_retry == []
+    stored = supervisor.read_state(state)["tasks"][0]
+    assert stored["status"] == "delivery_failed"
+    assert stored["final_report"] == "最终结果"
 
 
 def test_deliver_owner_dm_queues_origin_channel_before_created_dm(monkeypatch, tmp_path: Path) -> None:
@@ -631,3 +634,29 @@ def test_status_text_counts_delivery_failed_separately(tmp_path: Path) -> None:
     assert "进行中/待投递：0" in text
     assert "投递失败：1" in text
     assert "结论：最终结果投递失败" in text
+
+
+def test_delivery_failed_is_terminal_until_explicit_retry(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    task = supervisor.register_task(source="cron", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
+    task.update(
+        {
+            "status": "delivery_failed",
+            "stage": "stale_queue_delivery_failed",
+            "delivery_state": "failed",
+            "final_report": "最终结果",
+        }
+    )
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+
+    tasks = supervisor.poll_tasks(
+        state_path=state,
+        deliver=True,
+        repair=False,
+        deliverer=lambda _task, _body: (_ for _ in ()).throw(AssertionError("should not redeliver automatically")),
+    )
+
+    assert tasks == []
+    stored = supervisor.read_state(state)["tasks"][0]
+    assert stored["status"] == "delivery_failed"
+    assert stored["delivery_state"] == "failed"
