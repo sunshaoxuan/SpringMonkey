@@ -100,7 +100,20 @@ def test_prompt_matches_square_single_city_image_contract() -> None:
     assert "large city name" in prompt
     assert "date in very small type" in prompt
     assert "temperature range in medium type" in prompt
+    assert 'temperature label EXACTLY "17-27°C"' in prompt
+    assert "daily minimum hyphen daily maximum" in prompt
+    assert "do not show current temperature" in prompt
     assert "東京" in prompt
+
+
+def test_temperature_label_uses_one_fixed_min_max_format() -> None:
+    card = mod.WeatherCard("東京", "東京", "東京", "tokyo tower", 22, 2, 30, 12, 4, 36, 27, 17, "ok")
+
+    assert mod.temperature_range_label(card) == "17-27°C"
+
+    prompt = mod.build_image_prompt([card], datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo")), "weekday")
+    assert 'temperature label EXACTLY "17-27°C"' in prompt
+    assert "22°C" not in prompt
 
 
 def test_model_output_is_normalized_to_formal_vertical_aspect(tmp_path: Path) -> None:

@@ -52,6 +52,13 @@ def _fmt(value: float | int | None, suffix: str = "", digits: int = 0) -> str:
         return "N/A"
     return f"{float(value):.{digits}f}{suffix}" if digits else f"{int(round(float(value)))}{suffix}"
 
+def temperature_range_label(card: WeatherCard) -> str:
+    if card.temp_min_c is not None and card.temp_max_c is not None:
+        return f"{_fmt(card.temp_min_c)}-{_fmt(card.temp_max_c)}°C"
+    if card.temperature_c is not None:
+        return f"{_fmt(card.temperature_c)}°C"
+    return "N/A"
+
 def _city_for_area(area: str) -> tuple[str, str]:
     if "杉並" in area or "東京" in area or "品川" in area or "川口" in area or "埼玉" in area:
         return "東京", "Tokyo Tower or Tokyo Skytree, compact Tokyo skyline, neighborhood streets, riverside bridges, and station plaza"
@@ -108,7 +115,7 @@ def _scene_svg(card: WeatherCard, *, x: int, theme: str) -> str:
     ground = "#9bd18b" if theme == "green" else "#91c7d9"
     tower_color = "#ef8354" if card.city == "Tokyo" else "#6d8ccf"
     label = f"{card.label} · {card.area}"
-    return f'''<g transform="translate({x},150)"><rect x="0" y="0" width="520" height="620" rx="34" fill="{sky}" opacity="0.95"/><ellipse cx="260" cy="435" rx="205" ry="78" fill="{ground}"/><path d="M120 430 L260 350 L405 430 L260 510 Z" fill="#c8f0b6" stroke="#6aa66f" stroke-width="3"/>{_building_svg(160,330,58,110,'#7da0d6')}{_building_svg(250,300,70,145,'#8fb3e7')}{_building_svg(335,345,48,88,'#7593c7')}<polygon points="248,330 284,160 322,330" fill="{tower_color}"/><polygon points="262,260 307,260 294,306 270,306" fill="#ffe9c7" opacity="0.78"/><rect x="232" y="410" width="95" height="26" rx="12" fill="#67748f"/><path d="M105 448 C170 420, 220 470, 280 445 S390 435, 430 470" fill="none" stroke="#67a7df" stroke-width="18" opacity="0.55"/><circle cx="405" cy="95" r="42" fill="#fff7b2" opacity="0.9"/><text x="48" y="72" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="800" fill="#21304f">{_esc(label)}</text><text x="48" y="116" font-family="Inter, system-ui, sans-serif" font-size="28" fill="#21304f">{weather_icon(card.weather_code)} {_esc(report.weather_label(card.weather_code))}  {_fmt(card.temperature_c, '°C')}</text><text x="48" y="532" font-family="Inter, system-ui, sans-serif" font-size="23" fill="#21304f">最高 {_fmt(card.temp_max_c, '°C')} / 最低 {_fmt(card.temp_min_c, '°C')} · 降水 {_fmt(card.precipitation_probability, '%')}</text><text x="48" y="570" font-family="Inter, system-ui, sans-serif" font-size="21" fill="#21304f">风 {_fmt(card.wind_kmh, 'km/h')} · UV {_fmt(card.uv_index)} · AQI {_fmt(card.aqi)}</text></g>'''
+    return f'''<g transform="translate({x},150)"><rect x="0" y="0" width="520" height="620" rx="34" fill="{sky}" opacity="0.95"/><ellipse cx="260" cy="435" rx="205" ry="78" fill="{ground}"/><path d="M120 430 L260 350 L405 430 L260 510 Z" fill="#c8f0b6" stroke="#6aa66f" stroke-width="3"/>{_building_svg(160,330,58,110,'#7da0d6')}{_building_svg(250,300,70,145,'#8fb3e7')}{_building_svg(335,345,48,88,'#7593c7')}<polygon points="248,330 284,160 322,330" fill="{tower_color}"/><polygon points="262,260 307,260 294,306 270,306" fill="#ffe9c7" opacity="0.78"/><rect x="232" y="410" width="95" height="26" rx="12" fill="#67748f"/><path d="M105 448 C170 420, 220 470, 280 445 S390 435, 430 470" fill="none" stroke="#67a7df" stroke-width="18" opacity="0.55"/><circle cx="405" cy="95" r="42" fill="#fff7b2" opacity="0.9"/><text x="48" y="72" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="800" fill="#21304f">{_esc(label)}</text><text x="48" y="116" font-family="Inter, system-ui, sans-serif" font-size="28" fill="#21304f">{weather_icon(card.weather_code)} {_esc(report.weather_label(card.weather_code))}  {_esc(temperature_range_label(card))}</text><text x="48" y="532" font-family="Inter, system-ui, sans-serif" font-size="23" fill="#21304f">温度 {_esc(temperature_range_label(card))} · 降水 {_fmt(card.precipitation_probability, '%')}</text><text x="48" y="570" font-family="Inter, system-ui, sans-serif" font-size="21" fill="#21304f">风 {_fmt(card.wind_kmh, 'km/h')} · UV {_fmt(card.uv_index)} · AQI {_fmt(card.aqi)}</text></g>'''
 
 def render_svg(cards: list[WeatherCard], now: datetime) -> str:
     cards = cards[:2] or []
@@ -250,9 +257,10 @@ def write_weather_image(cards: list[WeatherCard], now: datetime | None = None, o
 def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
     summaries = []
     for card in cards:
+        temp_label = temperature_range_label(card)
         summaries.append(
-            f"{card.city}: {report.weather_label(card.weather_code)}, {_fmt(card.temperature_c, '°C')}, "
-            f"high {_fmt(card.temp_max_c, '°C')}, low {_fmt(card.temp_min_c, '°C')}, "
+            f"{card.city}: {report.weather_label(card.weather_code)}, temperature label EXACTLY \"{temp_label}\" "
+            f"(daily minimum to daily maximum only; do not show current temperature), "
             f"rain probability {_fmt(card.precipitation_probability, '%')}, wind {_fmt(card.wind_kmh, 'km/h')}; "
             f"landmark reference: {card.landmark_hint}"
         )
@@ -269,6 +277,8 @@ def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -
         "for example sun, clouds, rain, wind, mist, puddles, reflections, or atmospheric particles around the buildings. "
         "Typography inside the image: at the very top show a large city name in the same written language as the city name; "
         "directly below or near it show a prominent weather icon; under the icon show the date in very small type and the temperature range in medium type. "
+        "Use one identical temperature format for every city: daily minimum hyphen daily maximum, for example 17-27°C. "
+        "Copy each provided temperature label exactly; do not add current temperature, high/low words, arrows, extra numbers, or mixed formats. "
         "Weather text has no background and may overlap or blend with the buildings naturally. "
         f"Forecast date: {now:%Y-%m-%d} ({day_kind}). Forecast data: {'; '.join(summaries)}. "
         "No extra caption outside the image, no brand logos, no watermarks, no copyrighted characters, no unreadable clutter."
