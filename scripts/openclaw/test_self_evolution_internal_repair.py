@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -29,7 +30,7 @@ def test_execute_run_writes_approval_package_and_does_not_push_on_verify_failure
         repo = Path(tmp) / "repo"
         repo.mkdir()
         command_result = repair.CommandResult(command="verify", returncode=1, stdout_tail="", stderr_tail="failed")
-        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=["x.py"]):
+        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=[]):
             result = repair.execute_self_evolution_run(
                 implementation_run_id="impl_test",
                 text="落实内部能力后推仓库，内部实现后私人频道测试，通过后公共频道发布。",
@@ -54,7 +55,7 @@ def test_execute_run_can_reach_verified_without_push():
         repo = Path(tmp) / "repo"
         repo.mkdir()
         command_result = repair.CommandResult(command="verify", returncode=0, stdout_tail="ok", stderr_tail="")
-        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=["x.py"]):
+        with patch.object(repair, "run_command", return_value=command_result), patch.object(repair, "git_changed_files", return_value=[]):
             result = repair.execute_self_evolution_run(
                 implementation_run_id="impl_ok",
                 text="执行通用内部能力补齐并私人验证",
@@ -69,6 +70,76 @@ def test_execute_run_can_reach_verified_without_push():
     assert result.stage == "verified"
     assert result.retry_allowed is True
 
+
+def test_verified_changed_run_commits_even_when_push_not_requested():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        command_result = repair.CommandResult(command="verify", returncode=0, stdout_tail="ok", stderr_tail="")
+        changed_sequence = [["scripts/openclaw/example.py"], []]
+
+        def fake_changed_files(_repo: Path) -> list[str]:
+            return changed_sequence.pop(0) if changed_sequence else []
+
+        def fake_run_command(command: str, _repo: Path) -> repair.CommandResult:
+            assert "git push" not in command
+            return command_result
+
+        with (
+            patch.object(repair, "run_command", side_effect=fake_run_command),
+            patch.object(repair, "git_changed_files", side_effect=fake_changed_files),
+            patch.object(
+                repair.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess(["git"], 0, stdout="abc123\n", stderr=""),
+            ),
+        ):
+            result = repair.execute_self_evolution_run(
+                implementation_run_id="impl_commit",
+                text="执行通用内部能力补齐并私人验证",
+                reason="internal repair",
+                repo_root=repo,
+                package_state_path=None,
+                run_dir=Path(tmp) / "runs",
+                verify_commands=["verify"],
+                push=False,
+            )
+    assert result.status == "passed"
+    assert result.stage == "committed"
+    assert result.commit == "abc123"
+    assert result.retry_allowed is True
+
+
+def test_verified_changed_run_fails_without_commit_evidence():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        command_result = repair.CommandResult(command="verify", returncode=0, stdout_tail="ok", stderr_tail="")
+        changed_sequence = [["scripts/openclaw/example.py"], ["scripts/openclaw/example.py"]]
+
+        def fake_changed_files(_repo: Path) -> list[str]:
+            return changed_sequence.pop(0) if changed_sequence else ["scripts/openclaw/example.py"]
+
+        def fake_run_command(command: str, _repo: Path) -> repair.CommandResult:
+            if command.startswith("git commit"):
+                return repair.CommandResult(command=command, returncode=1, stdout_tail="", stderr_tail="nothing to commit")
+            return command_result
+
+        with patch.object(repair, "run_command", side_effect=fake_run_command), patch.object(repair, "git_changed_files", side_effect=fake_changed_files):
+            result = repair.execute_self_evolution_run(
+                implementation_run_id="impl_no_commit",
+                text="执行通用内部能力补齐并私人验证",
+                reason="internal repair",
+                repo_root=repo,
+                package_state_path=None,
+                run_dir=Path(tmp) / "runs",
+                verify_commands=["verify"],
+                push=False,
+            )
+    assert result.status == "failed"
+    assert result.stage == "commit_failed"
+    assert result.retry_allowed is False
+    assert "git evidence failed" in result.retry_reason
 
 
 def test_package_guardrail_text_does_not_create_false_external_block():

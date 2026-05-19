@@ -146,26 +146,49 @@ def git_changed_files(repo_root: Path) -> list[str]:
     return files
 
 
-def commit_and_push(repo_root: Path, implementation_run_id: str, changed_files: list[str]) -> tuple[bool, str, str]:
+def commit_changes(repo_root: Path, implementation_run_id: str, changed_files: list[str]) -> tuple[bool, str, str]:
     if not changed_files:
-        return False, "", "no changes to push"
-    fetch = run_command("git fetch origin", repo_root)
-    if fetch.returncode != 0:
-        return False, "", f"git fetch origin failed: {fetch.stderr_tail or fetch.stdout_tail}"
-    rebase = run_command("git pull --rebase origin main", repo_root)
-    if rebase.returncode != 0:
-        return False, "", f"git pull --rebase origin main failed: {rebase.stderr_tail or rebase.stdout_tail}"
-    add = run_command("git add config/openclaw/intent_tools.json scripts/openclaw/intent_tool_router.py scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py", repo_root)
+        return False, "", "no changes to commit"
+    add = run_command("git add -A", repo_root)
     if add.returncode != 0:
         return False, "", f"git add failed: {add.stderr_tail or add.stdout_tail}"
-    commit = run_command(f"git commit -m 'Add self evolution internal repair executor ({implementation_run_id})'", repo_root)
+    commit = run_command(f"git commit -m 'Verified internal self-evolution repair ({implementation_run_id})'", repo_root)
     if commit.returncode != 0:
         return False, "", f"git commit failed: {commit.stderr_tail or commit.stdout_tail}"
-    rev = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+    rev = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo_root,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+    )
+    if rev.returncode != 0:
+        return False, "", f"git rev-parse HEAD failed: {tail(rev.stderr or rev.stdout)}"
+    return True, rev.stdout.strip(), "committed"
+
+
+def push_commit(repo_root: Path) -> tuple[bool, str]:
+    fetch = run_command("git fetch origin", repo_root)
+    if fetch.returncode != 0:
+        return False, f"git fetch origin failed: {fetch.stderr_tail or fetch.stdout_tail}"
+    rebase = run_command("git pull --rebase origin main", repo_root)
+    if rebase.returncode != 0:
+        return False, f"git pull --rebase origin main failed: {rebase.stderr_tail or rebase.stdout_tail}"
     push = run_command("git push origin main", repo_root)
     if push.returncode != 0:
-        return False, rev.stdout.strip(), f"git push origin main failed: {push.stderr_tail or push.stdout_tail}"
-    return True, rev.stdout.strip(), "pushed"
+        return False, f"git push origin main failed: {push.stderr_tail or push.stdout_tail}"
+    return True, "pushed"
+
+
+def commit_and_push(repo_root: Path, implementation_run_id: str, changed_files: list[str]) -> tuple[bool, str, str]:
+    committed, commit, commit_evidence = commit_changes(repo_root, implementation_run_id, changed_files)
+    if not committed:
+        return False, commit, commit_evidence
+    pushed, push_evidence = push_commit(repo_root)
+    return pushed, commit, push_evidence
 
 
 def write_approval_package(run_dir: Path, implementation_run_id: str, boundary: BoundaryDecision, package_state: dict[str, Any]) -> str:
@@ -242,20 +265,31 @@ def execute_self_evolution_run(
     changed = git_changed_files(repo_root)
     pushed = False
     commit = ""
-    push_evidence = ""
-    if push and verify_ok and boundary.git_push_allowed:
-        pushed, commit, push_evidence = commit_and_push(repo_root, implementation_run_id, changed)
-    status = "passed" if verify_ok and ((not push) or pushed or not git_changed_files(repo_root)) else "failed"
+    git_evidence = ""
+    git_evidence_ok = not changed
+    if verify_ok and changed:
+        committed, commit, git_evidence = commit_changes(repo_root, implementation_run_id, changed)
+        remaining = git_changed_files(repo_root)
+        git_evidence_ok = bool(committed and commit and not remaining)
+        if not git_evidence_ok and not git_evidence:
+            git_evidence = f"commit evidence missing; remaining changes: {remaining}"
+    if push and verify_ok and git_evidence_ok and boundary.git_push_allowed and commit:
+        pushed, push_evidence = push_commit(repo_root)
+        git_evidence = "; ".join(part for part in [git_evidence, push_evidence] if part)
+    push_ok = (not push) or pushed or (not changed)
+    status = "passed" if verify_ok and git_evidence_ok and push_ok else "failed"
     stage = "verified" if verify_ok else "verify_failed"
     if dry_run:
         status = "planned"
         stage = "dry_run"
-    elif push and verify_ok:
-        remaining = git_changed_files(repo_root)
-        stage = "pushed" if pushed else ("no_changes_to_push" if not remaining else "push_failed")
+    elif verify_ok and changed:
+        if push:
+            stage = "pushed" if pushed else "push_failed"
+        else:
+            stage = "committed" if git_evidence_ok else "commit_failed"
     evidence_parts = [f"{item['command']} -> {item['returncode']}" for item in verify_results]
-    if push_evidence:
-        evidence_parts.append(push_evidence)
+    if git_evidence:
+        evidence_parts.append(git_evidence)
     result = SelfEvolutionRunResult(
         implementation_run_id=implementation_run_id,
         status=status,
@@ -266,8 +300,8 @@ def execute_self_evolution_run(
         verify_results=verify_results,
         pushed=pushed,
         commit=commit,
-        retry_allowed=verify_ok,
-        retry_reason="internal repair verified" if verify_ok else "verification failed; inspect verify_results",
+        retry_allowed=status == "passed",
+        retry_reason="internal repair verified with git evidence" if status == "passed" else "verification or git evidence failed; inspect verify_results",
         boundary=asdict(boundary),
         approval_package=approval_package,
         run_record="",

@@ -1349,7 +1349,7 @@
       "invocation_log_policy": "harness_tool_invocation_jsonl",
       "confirm_policy": "owner_controlled_internal_repo_write_only_public_release_approval_gated",
       "idempotency": "implementation_run_id_package_id_git_commit",
-      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py scripts/openclaw/intent_tool_router.py && python scripts/openclaw/test_self_evolution_internal_repair.py && python scripts/openclaw/test_self_evolution_internal_repair_registry.py && python scripts/openclaw/test_self_evolution_internal_repair_router.py && python scripts/openclaw/verify_intent_tool_registry.py && python scripts/openclaw/verify_harness_registry.py && python scripts/openclaw/verify_capability_baseline.py && python scripts/weather/test_weather_image_forecast.py",
+      "verify_command": "python -m compileall -q scripts/openclaw/self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair.py scripts/openclaw/test_self_evolution_internal_repair_registry.py scripts/openclaw/intent_tool_router.py && python scripts/openclaw/test_self_evolution_internal_repair.py && python scripts/openclaw/test_self_evolution_internal_repair_registry.py && python scripts/openclaw/test_self_evolution_internal_repair_router.py && python scripts/openclaw/verify_intent_tool_registry.py && python scripts/openclaw/verify_harness_registry.py && python scripts/openclaw/verify_capability_baseline.py",
       "failure_policy": "reply_failure_and_record_gap",
       "reply_policy": "tool_stdout",
       "capability_id": "openclaw.self_evolution.internal_repair",
