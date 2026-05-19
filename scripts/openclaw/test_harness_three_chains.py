@@ -288,6 +288,61 @@ def test_repair_started_summary_includes_tracking_identifiers() -> None:
     assert "结果投递" in summary
 
 
+def test_repair_started_reports_tracking_trigger_status() -> None:
+    import harness_dispatcher
+
+    class Repair:
+        status = "repair_started"
+        gap_ref = "kernel_session=session_x gap_id=gap_y"
+        replay_allowed = False
+        registry_tool = None
+        implementation_run = {
+            "long_task_id": "long_abc",
+            "run_id": "impl_abc",
+        }
+
+    def model_caller(_messages: list[dict[str, str]]) -> str:
+        return json.dumps(
+            {
+                "conversation_mode": "task",
+                "domain": "weather",
+                "action": "implement",
+                "canonical_text": "实现天气任务变更",
+                "context_refs": [],
+                "parameters": {},
+                "safety": "write",
+                "result_contract": {},
+                "tool_candidates": [],
+                "confidence": 0.95,
+                "reason": "requires implementation",
+            },
+            ensure_ascii=False,
+        )
+
+    with tempfile.TemporaryDirectory() as tmp, patch.object(harness_dispatcher, "run_repair", return_value=Repair()):
+        result = handle_event(
+            text="实现天气任务变更",
+            channel="discord_dm",
+            user_id="999666719356354610",
+            message_timestamp="2026-05-19T00:00:00+09:00",
+            registry={"tools": []},
+            context="",
+            kernel_root=Path(tmp) / "kernel",
+            timeout_seconds=10,
+            extract_args=lambda _tool, _text, _ts: {},
+            run_tool=lambda _tool, _args, _timeout: (0, ""),
+            format_reply=lambda _tool, _args, _code, output: output,
+            audit_intent=lambda **_kwargs: None,
+            evaluate_result=lambda _tool, _output, _contract: None,
+            model_caller=model_caller,
+        )
+
+    assert result.status == "tracking"
+    assert "触发状态：已启动" in result.reply
+    assert "未执行" not in result.reply
+    assert "跟踪编号：long_abc" in result.reply
+
+
 def test_reporter_summarizes_generated_helper_json_reply() -> None:
     envelope = ReportEnvelope(
         task_id="task_self",

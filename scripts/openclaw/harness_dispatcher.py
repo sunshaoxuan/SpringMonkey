@@ -143,7 +143,7 @@ def handle_event(
         public_payload: str = "",
     ) -> DispatchResult:
         tool_id = str((tool or {}).get("tool_id") or "")
-        outcome = "completed" if status in {"ok", "chat"} else ("blocked" if status == "unsupported" else "failed")
+        outcome = "completed" if status in {"ok", "chat", "tracking"} else ("blocked" if status == "unsupported" else "failed")
         record_trial(
             HarnessTrialRecord(
                 trace_id=trace_id,
@@ -255,7 +255,7 @@ def handle_event(
                 replayed.reply = "\n".join([replayed.reply, "自演进：已尝试重放，但原任务仍未完成。"])
             return replayed
         return finish(
-            "unsupported",
+            "tracking" if repair.status == "repair_started" else "unsupported",
             "\n".join([capability_gap_user_summary(repair.status, repair), f"记录：{repair.gap_ref}", f"自演进：{repair.status}"]),
             frame,
             binding,

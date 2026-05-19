@@ -222,6 +222,7 @@ def status_label(status: str) -> str:
     return {
         "ok": "成功",
         "chat": "回复",
+        "tracking": "已启动",
         "failed": "失败",
         "unsupported": "未执行",
     }.get(status, status or "unknown")
