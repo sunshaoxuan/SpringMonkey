@@ -165,7 +165,7 @@ def test_batch_model_generation_refuses_partial_delivery(tmp_path: Path) -> None
 
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
-        if len(calls) == 1:
+        if len(calls) in {1, 3}:
             return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"outputs": [{"path": str(generated)}]}), stderr="")
         return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="model timeout")
 
@@ -173,7 +173,6 @@ def test_batch_model_generation_refuses_partial_delivery(tmp_path: Path) -> None
         mod.write_weather_images_with_model(cards, now, tmp_path, day_kind=day_kind, command_runner=fake_run)
     except RuntimeError as exc:
         assert "refusing partial delivery" in str(exc)
-        assert "北京" in str(exc)
         assert "大连" in str(exc)
     else:
         raise AssertionError("partial weather image generation must fail")
@@ -191,6 +190,38 @@ def test_build_media_reply_rejects_suspicious_model_placeholder(tmp_path: Path) 
         assert "suspiciously small" in str(exc)
     else:
         raise AssertionError("small model image placeholders must not be delivered")
+
+
+def test_model_image_generation_retries_timeout(tmp_path: Path, monkeypatch) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    generated = tmp_path / "retry.png"
+    generated.write_bytes(mod._png_bytes(1024, 1024, bytearray(os.urandom(1024 * 1024 * 3))))
+    calls = []
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_RETRIES", "2")
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if len(calls) == 1:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="[image-generation] candidate failed: request timed out\n- plugins.allow: plugin not installed: line")
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"outputs": [{"path": str(generated)}]}), stderr="")
+
+    path = mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+
+    assert path == generated
+    assert len(calls) == 2
+    assert "360000" in calls[0]
+
+
+def test_image_error_summary_filters_plugin_noise() -> None:
+    summary = mod._summarize_image_error(
+        "[image-generation] candidate failed: openai/gpt-image-2: request timed out\n"
+        "- plugins.allow: plugin not installed: line\n"
+        "TimeoutError: request timed out\n"
+    )
+
+    assert "request timed out" in summary
+    assert "plugin not installed" not in summary
 
 if __name__ == "__main__":
     raise SystemExit(main())

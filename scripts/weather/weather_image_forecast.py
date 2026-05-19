@@ -22,6 +22,8 @@ DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
 TARGET_IMAGE_WIDTH = 1024
 TARGET_IMAGE_HEIGHT = 1024
 MIN_MODEL_IMAGE_BYTES = 100_000
+DEFAULT_IMAGE_TIMEOUT_MS = 360_000
+DEFAULT_IMAGE_RETRIES = 2
 
 WEATHER_IMAGE_LOCATIONS = [
     report.Location("東京", "東京", 35.6762, 139.6503),
@@ -284,53 +286,87 @@ def generate_model_image(
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / f"weather_miniature_{_image_slug(cards)}_{now:%Y%m%d_%H%M%S}_image2.png"
-    cmd = [
-        "openclaw",
-        "infer",
-        "image",
-        "generate",
-        "--model",
-        model,
-        "--prompt",
-        build_image_prompt(cards, now, day_kind),
-        "--size",
-        "1024x1024",
-        "--output-format",
-        "png",
-        "--output",
-        str(path),
-        "--timeout-ms",
-        "180000",
-        "--json",
-    ]
+    timeout_ms = int(os.environ.get("OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS", str(DEFAULT_IMAGE_TIMEOUT_MS)))
+    retries = max(1, int(os.environ.get("OPENCLAW_WEATHER_IMAGE_RETRIES", str(DEFAULT_IMAGE_RETRIES))))
+    prompt = build_image_prompt(cards, now, day_kind)
+    last_error = ""
     env = os.environ.copy()
     env.setdefault("HOME", "/var/lib/openclaw")
-    proc = command_runner(
-        cmd,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=240,
-        env=env,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError((proc.stderr or proc.stdout or f"image generation failed: {proc.returncode}")[-1000:])
-    try:
-        payload = json.loads(proc.stdout or "{}")
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"image generation returned invalid JSON: {exc}") from exc
-    outputs = payload.get("outputs") if isinstance(payload, dict) else None
-    first = outputs[0] if isinstance(outputs, list) and outputs else {}
-    generated = Path(str(first.get("path") or path))
-    if not generated.is_file():
-        raise RuntimeError(f"image generation did not create output file: {generated}")
-    if generated.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
-        raise RuntimeError(f"image generation output is not PNG: {generated}")
-    normalize_png_aspect(generated, target_width=TARGET_IMAGE_WIDTH, target_height=TARGET_IMAGE_HEIGHT)
-    validate_weather_image_artifact(generated, require_model_quality=True)
-    return generated
+    for attempt in range(1, retries + 1):
+        attempt_path = path if attempt == 1 else output_dir / f"{path.stem}_retry{attempt}{path.suffix}"
+        cmd = [
+            "openclaw",
+            "infer",
+            "image",
+            "generate",
+            "--model",
+            model,
+            "--prompt",
+            prompt,
+            "--size",
+            "1024x1024",
+            "--output-format",
+            "png",
+            "--output",
+            str(attempt_path),
+            "--timeout-ms",
+            str(timeout_ms),
+            "--json",
+        ]
+        try:
+            proc = command_runner(
+                cmd,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=max(60, timeout_ms // 1000 + 90),
+                env=env,
+            )
+        except subprocess.TimeoutExpired as exc:
+            last_error = f"attempt {attempt}/{retries} timed out after {timeout_ms}ms"
+            continue
+        if proc.returncode != 0:
+            last_error = _summarize_image_error(proc.stderr or proc.stdout or f"image generation failed: {proc.returncode}")
+            continue
+        try:
+            payload = json.loads(proc.stdout or "{}")
+        except json.JSONDecodeError as exc:
+            last_error = f"image generation returned invalid JSON: {exc}"
+            continue
+        outputs = payload.get("outputs") if isinstance(payload, dict) else None
+        first = outputs[0] if isinstance(outputs, list) and outputs else {}
+        generated = Path(str(first.get("path") or attempt_path))
+        try:
+            validate_generated_model_image(generated)
+        except Exception as exc:
+            last_error = str(exc)
+            continue
+        return generated
+    raise RuntimeError(f"image generation failed after {retries} attempt(s): {last_error}")
+
+
+def validate_generated_model_image(path: Path) -> None:
+    if not path.is_file():
+        raise RuntimeError(f"image generation did not create output file: {path}")
+    if path.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
+        raise RuntimeError(f"image generation output is not PNG: {path}")
+    normalize_png_aspect(path, target_width=TARGET_IMAGE_WIDTH, target_height=TARGET_IMAGE_HEIGHT)
+    validate_weather_image_artifact(path, require_model_quality=True)
+
+
+def _summarize_image_error(text: str) -> str:
+    lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    useful = [
+        line
+        for line in lines
+        if any(token in line.lower() for token in ("image-generation", "timed out", "timeout", "http", "error", "failed"))
+        and "plugin not installed" not in line.lower()
+        and "plugins.allow" not in line.lower()
+    ]
+    selected = useful[-4:] if useful else lines[-4:]
+    return " | ".join(selected)[-800:] if selected else "image generation failed"
 
 
 def validate_weather_image_artifact(path: Path, *, require_model_quality: bool = False) -> None:
