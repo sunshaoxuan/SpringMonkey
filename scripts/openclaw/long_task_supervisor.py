@@ -230,7 +230,11 @@ def discord_request(token: str, path: str, payload: dict[str, Any]) -> tuple[boo
     req = urllib.request.Request(
         f"https://discord.com/api/v10{path}",
         data=body,
-        headers={"Authorization": f"Bot {token}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bot {token}",
+            "Content-Type": "application/json",
+            "User-Agent": "DiscordBot (https://github.com/sunshaoxuan/SpringMonkey, 1.0)",
+        },
         method="POST",
     )
     try:

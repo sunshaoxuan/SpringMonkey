@@ -254,6 +254,35 @@ def test_deliver_owner_dm_uses_owner_channel_before_create_dm(monkeypatch) -> No
     assert "owner_channel=discord_http_200" in evidence
 
 
+def test_discord_request_sets_discord_bot_user_agent(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self) -> bytes:
+            return b"{}"
+
+    def fake_urlopen(req, timeout=0):
+        captured.update(dict(req.header_items()))
+        assert timeout == 20
+        return FakeResponse()
+
+    monkeypatch.setattr(supervisor.urllib.request, "urlopen", fake_urlopen)
+
+    ok, evidence, _data = supervisor.discord_request("token", "/users/@me/channels", {"recipient_id": "owner"})
+
+    assert ok is True
+    assert evidence == "discord_http_200"
+    assert captured["User-agent"].startswith("DiscordBot ")
+
+
 def test_deliver_owner_dm_queues_origin_channel_before_dm_fallback(monkeypatch, tmp_path: Path) -> None:
     queue = tmp_path / "delivery-queue"
     monkeypatch.setattr(supervisor, "discord_token", lambda _config_path=supervisor.DEFAULT_CONFIG_PATH: "token")
