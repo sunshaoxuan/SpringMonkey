@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Install a host guard that reapplies and verifies SpringMonkey runtime layers after OpenClaw upgrades."""
+"""Install a host guard that reapplies and verifies SpringMonkey runtime layers after OpenClaw upgrades.
+
+This guard is intentionally not attached to ``openclaw.service`` as an
+ExecStartPre hook. The full inventory can call OpenClaw plugin inspection and
+is too heavy for every gateway restart. It is installed as an explicit
+post-upgrade verifier so service startup remains fast and recoverable.
+"""
 from __future__ import annotations
 
 import os
@@ -23,7 +29,7 @@ export HOME=/var/lib/openclaw
 cd "$SPRINGMONKEY_REPO_PATH"
 
 install -d -m 755 /usr/local/lib/openclaw
-install -d -m 755 /etc/systemd/system/openclaw.service.d
+install -d -m 755 /etc/systemd/system
 
 cat >/usr/local/lib/openclaw/ensure_springmonkey_upgrade_resilience.sh <<'EOF'
 #!/usr/bin/env bash
@@ -59,17 +65,25 @@ echo "[springmonkey-upgrade-guard] ok"
 EOF
 chmod 755 /usr/local/lib/openclaw/ensure_springmonkey_upgrade_resilience.sh
 
-cat >/etc/systemd/system/openclaw.service.d/40-springmonkey-upgrade-resilience.conf <<'EOF'
+cat >/etc/systemd/system/openclaw-upgrade-resilience-check.service <<'EOF'
+[Unit]
+Description=SpringMonkey OpenClaw upgrade resilience verifier
+After=openclaw.service
+
 [Service]
-ExecStartPre=/usr/local/lib/openclaw/ensure_springmonkey_upgrade_resilience.sh
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/var/lib/openclaw/repos/SpringMonkey
+Environment=HOME=/var/lib/openclaw
+ExecStart=/usr/local/lib/openclaw/ensure_springmonkey_upgrade_resilience.sh
 EOF
 
 systemctl daemon-reload
 /usr/local/lib/openclaw/ensure_springmonkey_upgrade_resilience.sh
-systemctl restart openclaw.service
-sleep 8
 systemctl is-active openclaw.service
 python3 scripts/openclaw/runtime_patch_inventory.py --fail-on-missing
+systemctl start openclaw-upgrade-resilience-check.service
 echo "UPGRADE_RESILIENCE_GUARD_INSTALLED"
 """
 
