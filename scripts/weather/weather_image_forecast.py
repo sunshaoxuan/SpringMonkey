@@ -21,6 +21,7 @@ DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
 DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
 TARGET_IMAGE_WIDTH = 1024
 TARGET_IMAGE_HEIGHT = 1024
+MIN_MODEL_IMAGE_BYTES = 100_000
 
 WEATHER_IMAGE_LOCATIONS = [
     report.Location("東京", "東京", 35.6762, 139.6503),
@@ -328,7 +329,26 @@ def generate_model_image(
     if generated.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
         raise RuntimeError(f"image generation output is not PNG: {generated}")
     normalize_png_aspect(generated, target_width=TARGET_IMAGE_WIDTH, target_height=TARGET_IMAGE_HEIGHT)
+    validate_weather_image_artifact(generated, require_model_quality=True)
     return generated
+
+
+def validate_weather_image_artifact(path: Path, *, require_model_quality: bool = False) -> None:
+    if not path.is_file():
+        raise RuntimeError(f"weather image file missing: {path}")
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise RuntimeError(f"weather image is not a PNG file: {path}")
+    if len(data) < 1000:
+        raise RuntimeError(f"weather image is too small to be valid: {path} bytes={len(data)}")
+    if len(data) >= 24:
+        width, height = struct.unpack(">II", data[16:24])
+        if (width, height) != (TARGET_IMAGE_WIDTH, TARGET_IMAGE_HEIGHT):
+            raise RuntimeError(f"weather image size mismatch: {path} size={width}x{height}")
+    if require_model_quality and len(data) < MIN_MODEL_IMAGE_BYTES:
+        raise RuntimeError(
+            f"model weather image is suspiciously small, likely deterministic fallback or placeholder: {path} bytes={len(data)}"
+        )
 
 
 def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, target_height: int = TARGET_IMAGE_HEIGHT) -> None:
@@ -461,13 +481,10 @@ def write_weather_image_with_model(
     now = now or datetime.now(TZ)
     selected_model = model if model is not None else os.environ.get("OPENCLAW_WEATHER_IMAGE_MODEL", DEFAULT_IMAGE_MODEL)
     if selected_model and selected_model.lower() not in {"off", "none", "fallback"}:
-        try:
-            return generate_model_image(cards, now, day_kind or "平日", output_dir, model=selected_model, command_runner=command_runner)
-        except Exception:
-            # Deterministic fallback keeps the cron from failing, but the normal
-            # path must be the configured image model.
-            pass
-    return write_weather_image(cards, now, output_dir)
+        return generate_model_image(cards, now, day_kind or "平日", output_dir, model=selected_model, command_runner=command_runner)
+    path = write_weather_image(cards, now, output_dir)
+    validate_weather_image_artifact(path)
+    return path
 
 
 def _avg(values: list[float | int | None], *, digits: int = 1) -> float | None:
@@ -554,16 +571,27 @@ def write_weather_images_with_model(
     command_runner=subprocess.run,
 ) -> list[Path]:
     now = now or datetime.now(TZ)
-    return [
-        write_weather_image_with_model([card], now, output_dir, day_kind=day_kind, model=model, command_runner=command_runner)
-        for card in cards
-    ]
+    paths: list[Path] = []
+    failures: list[str] = []
+    for card in cards:
+        try:
+            paths.append(write_weather_image_with_model([card], now, output_dir, day_kind=day_kind, model=model, command_runner=command_runner))
+        except Exception as exc:
+            failures.append(f"{card.city}: {exc}")
+    if failures:
+        raise RuntimeError("weather image generation incomplete; refusing partial delivery: " + " | ".join(failures))
+    return paths
 
 def build_media_reply(paths: Path | list[Path], cards: list[WeatherCard], now: datetime, day_kind: str) -> str:
     if isinstance(paths, Path):
         path_list = [paths]
     else:
         path_list = paths
+    if len(path_list) != len(cards):
+        raise RuntimeError(f"weather media count mismatch: paths={len(path_list)} cards={len(cards)}")
+    for path in path_list:
+        require_model_quality = path.name.endswith("_image2.png")
+        validate_weather_image_artifact(path, require_model_quality=require_model_quality)
     return "\n".join(f"MEDIA:{path}" for path in path_list)
 
 def generate_weather_image_reply(now: datetime | None = None, *, fetch_json=report.fetch_json, output_dir: Path = DEFAULT_OUTPUT_DIR) -> str:
