@@ -143,6 +143,40 @@ def test_delivery_queue_fallback_tracks_ack(tmp_path: Path) -> None:
     assert delivered[0]["delivery_state"] == "delivered"
 
 
+def test_stale_delivery_queue_retries_direct_delivery_and_archives_entry(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    queue = tmp_path / "delivery-queue"
+    task = supervisor.register_task(source="domain_implementation", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
+    _ok, evidence = supervisor.enqueue_openclaw_delivery(task, "最终结果", queue_dir=queue)
+    queue_id = evidence.split(":", 1)[1]
+    task.update(
+        {
+            "status": "delivery_queued",
+            "stage": "delivery_queued",
+            "delivery_state": "queued",
+            "delivery_queue_id": queue_id,
+            "final_report": "最终结果",
+            "result_status": "success",
+        }
+    )
+    supervisor.upsert_task(task, state_path=state)
+
+    delivered = supervisor.poll_tasks(
+        state_path=state,
+        deliver=True,
+        repair=False,
+        queue_dir=queue,
+        now_ts=(queue / f"{queue_id}.json").stat().st_mtime + supervisor.DEFAULT_QUEUE_RETRY_SECONDS + 1,
+        deliverer=lambda _task, body: (body.endswith("最终结果"), "sent"),
+    )
+
+    assert delivered[0]["status"] == "delivered"
+    assert delivered[0]["stage"] == "stale_queue_delivered"
+    assert delivered[0]["delivery_state"] == "delivered"
+    assert not (queue / f"{queue_id}.json").exists()
+    assert (queue / "manual-closed" / f"{queue_id}.json").exists()
+
+
 def test_delivery_queue_uses_origin_channel_when_available(tmp_path: Path) -> None:
     queue = tmp_path / "delivery-queue"
     task = {"run_id": "run_1", "reply_channel_id": "origin_channel"}

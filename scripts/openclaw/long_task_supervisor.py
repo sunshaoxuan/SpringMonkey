@@ -33,6 +33,7 @@ DEFAULT_OWNER_DM_CHANNEL = "1497009159940608020"
 DEFAULT_OWNER_USER_ID = "999666719356354610"
 DEFAULT_TIMEOUT_SECONDS = 3600
 DEFAULT_REPO_ROOT = Path("/var/lib/openclaw/repos/SpringMonkey")
+DEFAULT_QUEUE_RETRY_SECONDS = 60
 
 ACTIVE_STATUSES = {"running", "final_detected", "delivery_failed", "delivery_queued"}
 OWNER_QUEUE_TARGET = f"user:{DEFAULT_OWNER_USER_ID}"
@@ -352,6 +353,21 @@ def delivery_queue_state(entry_id: str, *, queue_dir: Path = DEFAULT_DELIVERY_QU
     if (queue_dir / "failed" / f"{entry_id}.json").exists():
         return "failed"
     return "acked"
+
+
+def archive_delivery_queue_entry(entry_id: str, *, queue_dir: Path = DEFAULT_DELIVERY_QUEUE_DIR) -> bool:
+    if not entry_id:
+        return False
+    path = queue_dir / f"{entry_id}.json"
+    if not path.exists():
+        return False
+    archive_dir = queue_dir / "manual-closed"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        path.replace(archive_dir / path.name)
+        return True
+    except OSError:
+        return False
 
 
 def read_delivery_queue_entry(path: Path) -> dict[str, Any] | None:
@@ -746,6 +762,26 @@ def poll_tasks(
                 task["delivery_state"] = "failed"
                 append_event({"event": "delivery_failed", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "evidence": "openclaw_delivery_queue_failed"})
                 changed = True
+            elif deliver and queue_status == "pending" and str(task.get("final_report") or "").strip():
+                queue_id = str(task.get("delivery_queue_id") or "")
+                queue_path = queue_dir / f"{queue_id}.json"
+                try:
+                    queue_age = now_ts - queue_path.stat().st_mtime
+                except OSError:
+                    queue_age = 0
+                if queue_age >= DEFAULT_QUEUE_RETRY_SECONDS:
+                    send = deliverer or (lambda item, body: deliver_owner_dm(item, body))
+                    ok, evidence = send(task, final_delivery_text(task))
+                    task["delivery_retry_evidence"] = evidence
+                    if ok:
+                        archive_delivery_queue_entry(queue_id, queue_dir=queue_dir)
+                        result_status = str(task.get("result_status") or "success")
+                        task["status"] = "failed" if result_status == "failed" else "delivered"
+                        task["stage"] = "stale_queue_failed_delivered" if result_status == "failed" else "stale_queue_delivered"
+                        task["delivery_state"] = "delivered"
+                        task["delivered_at"] = utc_now()
+                        append_event({"event": "delivered", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "via": "stale_delivery_queue_retry"})
+                        changed = True
             results.append(dict(task))
             continue
         if not task.get("final_report") and task.get("status") == "running":
