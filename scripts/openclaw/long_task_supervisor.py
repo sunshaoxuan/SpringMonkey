@@ -488,10 +488,36 @@ def domain_report_claims_repo_change(visible: str) -> bool:
     return bool(re.search(r"(scripts|config|packages)/[A-Za-z0-9_./-]+\.(py|json|md|toml|js|ts)", visible))
 
 
-def domain_report_claims_committed_changes(visible: str) -> bool:
+def extract_claimed_commit_hashes(visible: str) -> list[str]:
     if not visible.strip():
-        return False
-    has_commit = bool(re.search(r"\b[0-9a-f]{7,40}\b", visible, re.IGNORECASE))
+        return []
+    return re.findall(r"\b[0-9a-f]{7,40}\b", visible, re.IGNORECASE)
+
+
+def git_commit_exists(repo_root: Path, commit: str) -> tuple[bool, str]:
+    if not repo_root.is_dir():
+        return False, f"repo root not found: {repo_root}"
+    try:
+        proc = subprocess.run(
+            ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+            cwd=repo_root,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=20,
+        )
+    except Exception as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+    output = (proc.stdout or "").strip()
+    return proc.returncode == 0, output or f"git cat-file {commit} -> {proc.returncode}"
+
+
+def domain_report_claims_committed_changes(visible: str, *, repo_root: Path | None = None) -> tuple[bool, str]:
+    if not visible.strip():
+        return False, "empty report"
+    commits = extract_claimed_commit_hashes(visible)
     commit_markers = (
         "commit:",
         "已成功 push",
@@ -503,7 +529,18 @@ def domain_report_claims_committed_changes(visible: str) -> bool:
         "工作树干净",
         "worktree clean",
     )
-    return has_commit and any(marker in visible for marker in commit_markers)
+    if not any(marker in visible for marker in commit_markers):
+        return False, "report has no commit/push marker"
+    if not commits:
+        return False, "report mentions commit/push but includes no commit hash"
+    root = repo_root or DEFAULT_REPO_ROOT
+    missing: list[str] = []
+    for commit in commits:
+        exists, evidence = git_commit_exists(root, commit)
+        if exists:
+            return True, f"verified commit exists: {commit}"
+        missing.append(f"{commit}: {evidence}")
+    return False, "claimed commit hashes not found in repo: " + "; ".join(missing)
 
 
 def git_has_worktree_changes(repo_root: Path) -> tuple[bool, str]:
@@ -574,12 +611,14 @@ def domain_implementation_report_status(stdout: str, *, repo_root: Path | None =
         evidence = visible or "tool failure without verified implementation report"
         return "failed", "内部能力实现未通过验收：执行器工具失败或 replay invalid。\n" + evidence
     if domain_report_claims_repo_change(visible):
-        has_changes, git_evidence = git_has_worktree_changes(repo_root or DEFAULT_REPO_ROOT)
-        if not has_changes and not domain_report_claims_committed_changes(visible):
-            evidence = git_evidence or "git status --short returned no changes"
+        root = repo_root or DEFAULT_REPO_ROOT
+        has_changes, git_evidence = git_has_worktree_changes(root)
+        has_commit, commit_evidence = domain_report_claims_committed_changes(visible, repo_root=root)
+        if not has_changes and not has_commit:
+            evidence = "; ".join(item for item in (git_evidence or "git status --short returned no changes", commit_evidence) if item)
             return (
                 "failed",
-                "内部能力实现未通过验收：报告声称修改了仓库/注册表/测试，但真实 Git 工作树没有对应变更。\n"
+                "内部能力实现未通过验收：报告声称修改了仓库/注册表/测试，但真实 Git 工作树没有对应变更，也没有可验证 commit。\n"
                 f"Git 证据：{evidence}\n"
                 + visible,
             )

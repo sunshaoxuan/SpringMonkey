@@ -389,7 +389,50 @@ def test_domain_implementation_claimed_repo_changes_require_git_diff(monkeypatch
 
     assert tasks[0]["status"] == "final_detected"
     assert tasks[0]["result_status"] == "failed"
-    assert "真实 Git 工作树没有对应变更" in tasks[0]["final_report"]
+    assert "没有可验证 commit" in tasks[0]["final_report"]
+
+
+def test_domain_implementation_claimed_push_requires_real_commit(monkeypatch, tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    stdout = tmp_path / "impl.out"
+    stderr = tmp_path / "impl.err"
+    stdout.write_text(
+        "\n".join(
+            [
+                "implementation_run_id: impl_1",
+                "修改内容",
+                "- 更新 scripts/weather/weather_image_forecast.py",
+                "python scripts/openclaw/verify_intent_tool_registry.py",
+                "验证通过。",
+                "已推送仓库。",
+                "commit: deadbee",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    stderr.write_text("", encoding="utf-8")
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task.update({"pid": 12345, "stdout_file": str(stdout), "stderr_file": str(stderr), "repo_root": str(repo)})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
+    monkeypatch.setattr(supervisor, "git_has_worktree_changes", lambda _repo: (False, ""))
+    monkeypatch.setattr(supervisor, "git_commit_exists", lambda _repo, _commit: (False, "not found"))
+
+    tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
+
+    assert tasks[0]["status"] == "final_detected"
+    assert tasks[0]["result_status"] == "failed"
+    assert "claimed commit hashes not found" in tasks[0]["final_report"]
 
 
 def test_domain_implementation_committed_verified_run_is_success_despite_replay_invalid(monkeypatch, tmp_path: Path) -> None:
@@ -447,6 +490,7 @@ def test_domain_implementation_committed_verified_run_is_success_despite_replay_
     supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
     monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
     monkeypatch.setattr(supervisor, "git_has_worktree_changes", lambda _repo: (False, ""))
+    monkeypatch.setattr(supervisor, "git_commit_exists", lambda _repo, _commit: (True, "exists"))
 
     tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
 
