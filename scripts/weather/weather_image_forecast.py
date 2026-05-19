@@ -322,6 +322,7 @@ def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, 
     try:
         from PIL import Image
     except Exception:
+        _normalize_png_aspect_stdlib(path, target_width=target_width, target_height=target_height)
         return
     with Image.open(path) as image:
         if image.size == (target_width, target_height):
@@ -338,6 +339,101 @@ def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, 
             canvas.paste(image.convert("RGB"), (0, 0))
             image = canvas
         image.save(path, format="PNG")
+
+
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    pa = abs(p - a)
+    pb = abs(p - b)
+    pc = abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    if pb <= pc:
+        return b
+    return c
+
+
+def _png_chunks(data: bytes) -> list[tuple[bytes, bytes]]:
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return []
+    chunks: list[tuple[bytes, bytes]] = []
+    pos = 8
+    while pos + 8 <= len(data):
+        size = struct.unpack(">I", data[pos : pos + 4])[0]
+        kind = data[pos + 4 : pos + 8]
+        payload = data[pos + 8 : pos + 8 + size]
+        chunks.append((kind, payload))
+        pos += 12 + size
+        if kind == b"IEND":
+            break
+    return chunks
+
+
+def _normalize_png_aspect_stdlib(path: Path, *, target_width: int, target_height: int) -> None:
+    data = path.read_bytes()
+    chunks = _png_chunks(data)
+    if not chunks:
+        return
+    ihdr = next((payload for kind, payload in chunks if kind == b"IHDR"), None)
+    if not ihdr:
+        return
+    width, height, bit_depth, color_type, compression, filter_method, interlace = struct.unpack(">IIBBBBB", ihdr)
+    if (width, height) == (target_width, target_height):
+        return
+    if width != target_width or height <= target_height:
+        return
+    if bit_depth != 8 or color_type != 2 or compression != 0 or filter_method != 0 or interlace != 0:
+        return
+    idat = b"".join(payload for kind, payload in chunks if kind == b"IDAT")
+    if not idat:
+        return
+    try:
+        raw = zlib.decompress(idat)
+    except zlib.error:
+        return
+    bpp = 3
+    row_len = width * bpp
+    expected = (row_len + 1) * height
+    if len(raw) < expected:
+        return
+    rows: list[bytearray] = []
+    prev = bytearray(row_len)
+    offset = 0
+    for _row in range(height):
+        filter_type = raw[offset]
+        encoded = bytearray(raw[offset + 1 : offset + 1 + row_len])
+        offset += row_len + 1
+        recon = bytearray(row_len)
+        for i, value in enumerate(encoded):
+            left = recon[i - bpp] if i >= bpp else 0
+            up = prev[i]
+            upper_left = prev[i - bpp] if i >= bpp else 0
+            if filter_type == 0:
+                recon[i] = value
+            elif filter_type == 1:
+                recon[i] = (value + left) & 0xFF
+            elif filter_type == 2:
+                recon[i] = (value + up) & 0xFF
+            elif filter_type == 3:
+                recon[i] = (value + ((left + up) // 2)) & 0xFF
+            elif filter_type == 4:
+                recon[i] = (value + _paeth(left, up, upper_left)) & 0xFF
+            else:
+                return
+        rows.append(recon)
+        prev = recon
+    cropped = rows[:target_height]
+    packed = b"".join(b"\x00" + bytes(row) for row in cropped)
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", target_width, target_height, bit_depth, color_type, compression, filter_method, interlace))
+        + _png_chunk(b"IDAT", zlib.compress(packed, 6))
+        + _png_chunk(b"IEND", b"")
+    )
+
+
+def _png_chunk(kind: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
 
 
 def write_weather_image_with_model(
