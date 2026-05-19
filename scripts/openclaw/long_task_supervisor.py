@@ -895,8 +895,11 @@ def status_text(*, state_path: Path = DEFAULT_STATE_PATH, limit: int = 10) -> st
     tasks = [item for item in read_state(state_path).get("tasks", []) if isinstance(item, dict)]
     tasks = list(reversed(tasks[-limit:]))
     lines = ["长任务状态", f"最近任务：{len(tasks)}"]
-    running = [item for item in tasks if str(item.get("status") or "") in ACTIVE_STATUSES]
+    running = [item for item in tasks if str(item.get("status") or "") in {"running", "final_detected", "delivery_queued"}]
+    delivery_failed = [item for item in tasks if str(item.get("status") or "") == "delivery_failed"]
     lines.append(f"进行中/待投递：{len(running)}")
+    if delivery_failed:
+        lines.append(f"投递失败：{len(delivery_failed)}")
     for index, task in enumerate(tasks, start=1):
         title = str(task.get("job_name") or task.get("job_id") or task.get("run_id") or "long task")
         status = str(task.get("status") or "unknown")

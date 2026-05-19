@@ -618,3 +618,16 @@ def test_status_text_distinguishes_delivery_queue_from_running(tmp_path: Path) -
 
     assert "结论：最终结果已进入投递队列" in text
     assert "结论：正在进行，尚未最终收口。" not in text
+
+
+def test_status_text_counts_delivery_failed_separately(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    task = supervisor.register_task(source="cron", job_id="job_1", run_id="run_1", job_name="job", state_path=state)
+    task.update({"status": "delivery_failed", "stage": "stale_queue_delivery_failed", "delivery_state": "failed"})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+
+    text = supervisor.status_text(state_path=state)
+
+    assert "进行中/待投递：0" in text
+    assert "投递失败：1" in text
+    assert "结论：最终结果投递失败" in text
