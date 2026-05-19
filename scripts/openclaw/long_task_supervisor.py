@@ -256,7 +256,7 @@ def deliver_to_channel(token: str, channel_id: str, text: str) -> tuple[bool, st
     return ok, evidence
 
 
-def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEFAULT_CONFIG_PATH) -> tuple[bool, str]:
+def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEFAULT_CONFIG_PATH, allow_queue: bool = True) -> tuple[bool, str]:
     token = discord_token(config_path)
     if not token:
         return False, "missing Discord token"
@@ -265,6 +265,8 @@ def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEF
         ok, evidence = deliver_to_channel(token, preferred_channel, text)
         if ok:
             return True, evidence
+        if not allow_queue:
+            return False, f"preferred_channel_failed={evidence}"
         queued, queue_evidence = enqueue_openclaw_delivery(task, text, destination=f"channel:{preferred_channel}")
         if queued:
             return False, f"{queue_evidence}; preferred_channel_failed={evidence}"
@@ -276,9 +278,11 @@ def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEF
             return False, f"{evidence}; create_dm_failed={dm_evidence}"
         retry_ok, retry_evidence = deliver_to_channel(token, channel_id, text)
         if not retry_ok:
-                queued, queue_evidence = enqueue_openclaw_delivery(task, text)
-                if queued:
-                    return False, queue_evidence
+            if not allow_queue:
+                return False, f"{evidence}; create_dm={dm_evidence}; retry={retry_evidence}"
+            queued, queue_evidence = enqueue_openclaw_delivery(task, text)
+            if queued:
+                return False, queue_evidence
         return retry_ok, f"{evidence}; create_dm={dm_evidence}; retry={retry_evidence}"
     fallback_channel = os.environ.get("OPENCLAW_OWNER_DM_CHANNEL") or DEFAULT_OWNER_DM_CHANNEL
     if fallback_channel:
@@ -289,12 +293,16 @@ def deliver_owner_dm(task: dict[str, Any], text: str, *, config_path: Path = DEF
     if not channel_id:
         ok, evidence = deliver_to_channel(token, fallback_channel, text)
         if not ok:
+            if not allow_queue:
+                return False, f"owner_channel_failed={evidence}; create_dm_failed={dm_evidence}"
             queued, queue_evidence = enqueue_openclaw_delivery(task, text)
             if queued:
                 return False, queue_evidence
         return ok, f"create_dm_failed={dm_evidence}; fallback={evidence}"
     ok, evidence = deliver_to_channel(token, channel_id, text)
     if not ok:
+        if not allow_queue:
+            return False, f"create_dm={dm_evidence}; send={evidence}"
         queued, queue_evidence = enqueue_openclaw_delivery(task, text)
         if queued:
             return False, queue_evidence
@@ -770,7 +778,7 @@ def poll_tasks(
                 except OSError:
                     queue_age = 0
                 if queue_age >= DEFAULT_QUEUE_RETRY_SECONDS:
-                    send = deliverer or (lambda item, body: deliver_owner_dm(item, body))
+                    send = deliverer or (lambda item, body: deliver_owner_dm(item, body, allow_queue=False))
                     ok, evidence = send(task, final_delivery_text(task))
                     task["delivery_retry_evidence"] = evidence
                     if ok:
@@ -781,6 +789,12 @@ def poll_tasks(
                         task["delivery_state"] = "delivered"
                         task["delivered_at"] = utc_now()
                         append_event({"event": "delivered", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "via": "stale_delivery_queue_retry"})
+                        changed = True
+                    else:
+                        task["status"] = "delivery_failed"
+                        task["stage"] = "stale_queue_delivery_failed"
+                        task["delivery_state"] = "failed"
+                        append_event({"event": "delivery_failed", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "evidence": evidence})
                         changed = True
             results.append(dict(task))
             continue
