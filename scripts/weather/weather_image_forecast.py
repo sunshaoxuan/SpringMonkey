@@ -19,6 +19,8 @@ import discord_weather_report as report
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
 DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
+TARGET_IMAGE_WIDTH = 1024
+TARGET_IMAGE_HEIGHT = 1365
 
 @dataclass(frozen=True)
 class WeatherCard:
@@ -312,7 +314,30 @@ def generate_model_image(
         raise RuntimeError(f"image generation did not create output file: {generated}")
     if generated.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
         raise RuntimeError(f"image generation output is not PNG: {generated}")
+    normalize_png_aspect(generated, target_width=TARGET_IMAGE_WIDTH, target_height=TARGET_IMAGE_HEIGHT)
     return generated
+
+
+def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, target_height: int = TARGET_IMAGE_HEIGHT) -> None:
+    try:
+        from PIL import Image
+    except Exception:
+        return
+    with Image.open(path) as image:
+        if image.size == (target_width, target_height):
+            return
+        if image.width != target_width:
+            new_height = max(1, round(image.height * (target_width / image.width)))
+            image = image.resize((target_width, new_height))
+        if image.height > target_height:
+            # Keep the top typography and city landmark focal area; trim excess
+            # from the bottom when the image API coerces 3:4 to 1024x1536.
+            image = image.crop((0, 0, target_width, target_height))
+        elif image.height < target_height:
+            canvas = Image.new("RGB", (target_width, target_height), image.getpixel((0, image.height - 1)) if image.height else (248, 247, 244))
+            canvas.paste(image.convert("RGB"), (0, 0))
+            image = canvas
+        image.save(path, format="PNG")
 
 
 def write_weather_image_with_model(

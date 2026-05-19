@@ -36,7 +36,11 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
     expected = tmp_path / "model.png"
-    expected.write_bytes(b"\x89PNG\r\n\x1a\nmodel")
+    try:
+        from PIL import Image
+        Image.new("RGB", (1024, 1536), (240, 244, 250)).save(expected)
+    except Exception:
+        expected.write_bytes(mod.render_png(cards, now))
     calls = []
 
     def fake_run(cmd, **kwargs):
@@ -80,6 +84,20 @@ def test_prompt_matches_vertical_single_city_image_contract() -> None:
     assert "date in very small type" in prompt
     assert "temperature range in medium type" in prompt
     assert "東京" in prompt
+
+
+def test_model_output_is_normalized_to_three_by_four(tmp_path: Path) -> None:
+    try:
+        from PIL import Image
+    except Exception:
+        return
+    path = tmp_path / "model.png"
+    Image.new("RGB", (1024, 1536), (240, 244, 250)).save(path)
+
+    mod.normalize_png_aspect(path)
+
+    with Image.open(path) as image:
+        assert image.size == (1024, 1365)
 
 
 def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) -> None:
