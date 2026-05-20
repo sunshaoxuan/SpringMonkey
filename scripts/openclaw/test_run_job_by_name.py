@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 
 import run_job_by_name as runner
 
@@ -90,14 +91,14 @@ def test_manual_media_job_preserves_multiple_media_delivery_evidence(monkeypatch
 
 
 def test_composite_news_job_runs_both_formal_slots(monkeypatch, capsys) -> None:
-    calls: list[list[str]] = []
+    calls: list[str] = []
 
-    def fake_run(command, **kwargs):
-        calls.append(list(command))
-        text = "morning report" if "0900" in " ".join(command) else "evening report"
-        return subprocess.CompletedProcess(command, 0, stdout=text, stderr="")
+    def fake_news_job(name):
+        calls.append(name)
+        text = "morning report" if name.endswith("0900") else "evening report"
+        return 0, text, f"/tmp/{name}", ""
 
-    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner, "run_news_pipeline_job", fake_news_job)
 
     assert runner.run_composite_script_job("news-digest-jst-today") == 0
     payload = json.loads(capsys.readouterr().out)
@@ -108,4 +109,77 @@ def test_composite_news_job_runs_both_formal_slots(monkeypatch, capsys) -> None:
     assert "morning report" in payload["final_report"]
     assert "news-digest-jst-1700" in payload["final_report"]
     assert "evening report" in payload["final_report"]
-    assert len(calls) == 2
+    assert calls == ["news-digest-jst-0900", "news-digest-jst-1700"]
+
+
+def test_composite_news_public_delivery_sends_and_marks_each_slot(monkeypatch, capsys) -> None:
+    sent: list[tuple[str, str]] = []
+    marked: list[tuple[str, str]] = []
+
+    def fake_news_job(name):
+        text = "morning report" if name.endswith("0900") else "evening report"
+        return 0, text, f"/tmp/{name}", ""
+
+    def fake_send(channel_id, content):
+        sent.append((channel_id, content))
+        return 1, "text"
+
+    def fake_mark(name, run_dir):
+        marked.append((name, run_dir))
+        return "MARK_PUBLISHED_OK"
+
+    monkeypatch.setenv("OPENCLAW_NEWS_DELIVERY_CHANNEL_ID", "public_channel")
+    monkeypatch.setattr(runner, "run_news_pipeline_job", fake_news_job)
+    monkeypatch.setattr(runner, "send_discord_message", fake_send)
+    monkeypatch.setattr(runner, "mark_news_published", fake_mark)
+
+    assert runner.run_composite_script_job("news-digest-jst-today") == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "success"
+    assert payload["delivery"] == "manual_owner_reply"
+    assert "已补发到公共频道" in payload["final_report"]
+    assert "morning report" not in payload["final_report"]
+    assert "evening report" not in payload["final_report"]
+    assert sent == [("public_channel", "morning report"), ("public_channel", "evening report")]
+    assert marked == [("news-digest-jst-0900", "/tmp/news-digest-jst-0900"), ("news-digest-jst-1700", "/tmp/news-digest-jst-1700")]
+
+
+def test_news_pipeline_job_uses_window_override_and_reads_final_report(monkeypatch, tmp_path) -> None:
+    run_dir = tmp_path / "news-run"
+    run_dir.mkdir()
+    (run_dir / "final_broadcast.md").write_text("补发正文", encoding="utf-8")
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = list(command)
+        return subprocess.CompletedProcess(command, 0, stdout=f"PIPELINE_OK {run_dir}\n", stderr="")
+
+    monkeypatch.setenv("OPENCLAW_NEWS_WINDOW_START_TS", "1779033600")
+    monkeypatch.setenv("OPENCLAW_NEWS_WINDOW_END_TS", "1779062400")
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    code, final_report, found_run_dir, detail = runner.run_news_pipeline_job("news-digest-jst-1700")
+
+    assert code == 0
+    assert final_report == "补发正文"
+    assert Path(found_run_dir) == run_dir
+    assert "--window-start" in captured["command"]
+    assert "--window-end" in captured["command"]
+    assert "--reset-published-window-start" in captured["command"]
+    assert "--ignore-recent" in captured["command"]
+    assert detail.startswith("PIPELINE_OK")
+
+
+def test_composite_news_job_fails_when_pipeline_returns_no_final_content(monkeypatch, capsys) -> None:
+    def fake_news_job(name):
+        return 0, "", f"/tmp/{name}", "PIPELINE_OK without final content"
+
+    monkeypatch.setattr(runner, "run_news_pipeline_job", fake_news_job)
+
+    assert runner.run_composite_script_job("news-digest-jst-today") == 1
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "failed"
+    assert payload["failures"][0]["returncode"] == 4
+    assert "did not produce final_broadcast.md content" in payload["failures"][0]["stderr"]

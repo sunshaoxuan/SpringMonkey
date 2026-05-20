@@ -47,6 +47,79 @@ COMPOSITE_SCRIPT_JOBS: dict[str, list[str]] = {
     "news-digest-jst-today": ["news-digest-jst-0900", "news-digest-jst-1700"],
 }
 
+
+def is_news_job(name: str) -> bool:
+    return name.startswith("news-digest-jst-")
+
+
+def run_news_pipeline_job(name: str) -> tuple[int, str, str, str]:
+    script = REPO / "scripts" / "news" / "run_news_pipeline.py"
+    cmd = [sys.executable, str(script), "--job", name]
+    start_ts = os.environ.get("OPENCLAW_NEWS_WINDOW_START_TS", "").strip()
+    end_ts = os.environ.get("OPENCLAW_NEWS_WINDOW_END_TS", "").strip()
+    if start_ts and end_ts:
+        cmd.extend(
+            [
+                "--window-start",
+                start_ts,
+                "--window-end",
+                end_ts,
+                "--reset-published-window-start",
+                start_ts,
+                "--reset-published-window-end",
+                end_ts,
+                "--ignore-recent",
+            ]
+        )
+    proc = subprocess.run(
+        cmd,
+        cwd=REPO,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=int(os.environ.get("OPENCLAW_RUN_JOB_TIMEOUT", "5400")),
+    )
+    run_dir = ""
+    for line in (proc.stdout or "").splitlines():
+        if line.startswith("PIPELINE_OK "):
+            run_dir = line.split(None, 1)[1].strip()
+    final_report = ""
+    if run_dir:
+        final_path = Path(run_dir) / "final_broadcast.md"
+        if final_path.is_file():
+            final_report = final_path.read_text(encoding="utf-8", errors="replace").strip()
+    return proc.returncode, final_report, run_dir, proc.stderr or proc.stdout or ""
+
+
+def mark_news_published(name: str, run_dir: str) -> str:
+    if not run_dir:
+        return "no-run-dir"
+    script = REPO / "scripts" / "news" / "run_news_pipeline.py"
+    proc = subprocess.run(
+        [sys.executable, str(script), "--job", name, "--mark-published-run-dir", run_dir],
+        cwd=REPO,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        return f"failed:{proc.returncode}:{(proc.stderr or proc.stdout)[-300:]}"
+    return (proc.stdout or "").strip() or "marked"
+
+
+def maybe_deliver_news(name: str, final_report: str, run_dir: str) -> tuple[str, str]:
+    channel = os.environ.get("OPENCLAW_NEWS_DELIVERY_CHANNEL_ID", "").strip()
+    if not channel:
+        return "manual_owner_reply", ""
+    chunks, kind = send_discord_message(channel, final_report)
+    mark = mark_news_published(name, run_dir)
+    return f"public_discord:{channel}:chunks={chunks}:kind={kind}", mark
+
 def find_id_by_name(name: str) -> str | None:
     if not JOBS_PATH.exists():
         return None
@@ -66,23 +139,35 @@ def run_direct_script_job(name: str) -> int:
     because that re-enters an agent turn and can publish model/tool errors to the
     job's configured public destination.
     """
-    command = DIRECT_SCRIPT_JOBS[name]
-    proc = subprocess.run(
-        command,
-        cwd=REPO,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=int(os.environ.get("OPENCLAW_RUN_JOB_TIMEOUT", "5400")),
-    )
-    if proc.returncode == 0:
-        final_report = (proc.stdout or "").strip()
+    if is_news_job(name):
+        returncode, final_report, run_dir, detail = run_news_pipeline_job(name)
+        stderr_text = detail
+    else:
+        command = DIRECT_SCRIPT_JOBS[name]
+        proc = subprocess.run(
+            command,
+            cwd=REPO,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=int(os.environ.get("OPENCLAW_RUN_JOB_TIMEOUT", "5400")),
+        )
+        returncode, final_report, run_dir, stderr_text = proc.returncode, (proc.stdout or "").strip(), "", proc.stderr or ""
+    if returncode == 0 and is_news_job(name) and not final_report.strip():
+        returncode = 4
+        stderr_text = f"news pipeline did not produce final_broadcast.md content; run_dir={run_dir or 'none'}; detail={stderr_text[-500:]}"
+    if returncode == 0:
         delivery = "manual_owner_reply"
         reply_channel = os.environ.get("OPENCLAW_REPLY_CHANNEL_ID", "").strip()
         media_delivery = ""
-        if reply_channel and parse_media_reply(final_report):
+        published_mark = ""
+        if is_news_job(name):
+            delivery, published_mark = maybe_deliver_news(name, final_report, run_dir)
+            if delivery.startswith("public_discord:"):
+                final_report = f"{name} 已补发到公共频道。\n投递：{delivery}\n发布标记：{published_mark}"
+        elif reply_channel and parse_media_reply(final_report):
             _chunks, media_delivery = send_discord_message(reply_channel, final_report)
             delivery = "manual_media_sent"
             final_report = ""
@@ -94,7 +179,8 @@ def run_direct_script_job(name: str) -> int:
                     "delivery": delivery,
                     "final_report": final_report,
                     "media_delivery": media_delivery,
-                    "stderr_hidden": bool((proc.stderr or "").strip()),
+                    "publishedMark": published_mark,
+                    "stderr_hidden": bool((stderr_text or "").strip()),
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -107,15 +193,15 @@ def run_direct_script_job(name: str) -> int:
                 "status": "failed",
                 "job_name": name,
                 "delivery": "manual_owner_reply",
-                "returncode": proc.returncode,
-                "stdout": (proc.stdout or "").strip()[-1200:],
-                "stderr": (proc.stderr or "").strip()[-1200:],
+                "returncode": returncode,
+                "stdout": final_report[-1200:],
+                "stderr": (stderr_text or "").strip()[-1200:],
             },
             ensure_ascii=False,
             indent=2,
         )
     )
-    return proc.returncode or 1
+    return int(returncode) or 1
 
 
 def run_composite_script_job(name: str) -> int:
@@ -123,26 +209,29 @@ def run_composite_script_job(name: str) -> int:
     reports: list[str] = []
     failures: list[dict[str, str | int]] = []
     for part in parts:
-        command = DIRECT_SCRIPT_JOBS[part]
-        proc = subprocess.run(
-            command,
-            cwd=REPO,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=int(os.environ.get("OPENCLAW_RUN_JOB_TIMEOUT", "5400")),
-        )
-        if proc.returncode == 0:
-            reports.append(f"## {part}\n{(proc.stdout or '').strip()}")
+        returncode, final_report, run_dir, detail = run_news_pipeline_job(part)
+        if returncode == 0 and not final_report.strip():
+            failures.append(
+                {
+                    "job_name": part,
+                    "returncode": 4,
+                    "stdout": "",
+                    "stderr": f"news pipeline did not produce final_broadcast.md content; run_dir={run_dir or 'none'}; detail={(detail or '')[-500:]}",
+                }
+            )
+        elif returncode == 0:
+            delivery, published_mark = maybe_deliver_news(part, final_report, run_dir)
+            if delivery.startswith("public_discord:"):
+                reports.append(f"## {part}\n已补发到公共频道。\n投递：{delivery}\n发布标记：{published_mark}")
+            else:
+                reports.append(f"## {part}\n{final_report}")
         else:
             failures.append(
                 {
                     "job_name": part,
-                    "returncode": proc.returncode,
-                    "stdout": (proc.stdout or "").strip()[-800:],
-                    "stderr": (proc.stderr or "").strip()[-800:],
+                    "returncode": returncode,
+                    "stdout": final_report[-800:],
+                    "stderr": (detail or "").strip()[-800:],
                 }
             )
     if failures:

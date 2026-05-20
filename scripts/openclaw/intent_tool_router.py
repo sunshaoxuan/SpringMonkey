@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 
@@ -328,6 +329,25 @@ def parse_message_time(raw: str) -> datetime:
     return value
 
 
+def parse_local_window_ts(value: Any, message_timestamp: str) -> int | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    base = parse_message_time(message_timestamp).astimezone(ZoneInfo("Asia/Tokyo"))
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M"):
+        try:
+            dt = datetime.strptime(raw[:19], fmt)
+            return int(dt.replace(tzinfo=base.tzinfo).timestamp())
+        except ValueError:
+            pass
+    match = re.search(r"(\d{1,2})[/-](\d{1,2})\s+(\d{1,2})(?::(\d{2}))?", raw)
+    if match:
+        month, day, hour, minute = match.groups()
+        dt = datetime(base.year, int(month), int(day), int(hour), int(minute or 0), tzinfo=base.tzinfo)
+        return int(dt.timestamp())
+    return None
+
+
 def extract_cron_job_from_text(text: str, job_map: dict[str, str]) -> str | None:
     normalized = normalize_text(text)
     for key in sorted(job_map, key=len, reverse=True):
@@ -357,7 +377,7 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
             job_name = str(schema.get("default_job") or "").strip() or None
         if not job_name:
             raise ValueError("无法从指令中识别正式 cron 任务时间；请明确 09:00 或 17:00")
-        return {"job_name": job_name}
+        return {"job_name": job_name, "message_timestamp": message_timestamp}
     if mode == "fixed_cron_job":
         return {"job_name": str(schema["job_name"])}
     if mode == "memory_backfill":
@@ -568,6 +588,14 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
     env = os.environ.copy()
     if tool.get("tool_id"):
         env["OPENCLAW_BOUND_TOOL_ID"] = str(tool.get("tool_id") or "")
+    if str(tool.get("tool_id") or "") == "openclaw.cron.run.news":
+        start_ts = parse_local_window_ts(args.get("news_window_start"), str(args.get("message_timestamp") or ""))
+        end_ts = parse_local_window_ts(args.get("news_window_end"), str(args.get("message_timestamp") or ""))
+        if start_ts and end_ts:
+            env["OPENCLAW_NEWS_WINDOW_START_TS"] = str(start_ts)
+            env["OPENCLAW_NEWS_WINDOW_END_TS"] = str(end_ts)
+        if args.get("public_delivery"):
+            env["OPENCLAW_NEWS_DELIVERY_CHANNEL_ID"] = os.environ.get("OPENCLAW_NEWS_PUBLIC_CHANNEL_ID", "1483636573235843072")
     proc = subprocess.run(
         cmd,
         cwd=REPO,

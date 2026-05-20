@@ -1447,6 +1447,8 @@ def main() -> int:
     )
     parser.add_argument("--reset-published-window-start", type=int, help="重置已播报状态的窗口起点 Unix 秒")
     parser.add_argument("--reset-published-window-end", type=int, help="重置已播报状态的窗口终点 Unix 秒")
+    parser.add_argument("--window-start", type=int, help="覆盖本轮新闻抓取窗口起点 Unix 秒")
+    parser.add_argument("--window-end", type=int, help="覆盖本轮新闻抓取窗口终点 Unix 秒")
     parser.add_argument("--mark-published-run-dir", type=Path, help="Discord 成功发送后，将指定 run-dir 的 selected_items 标记为已正式播报")
     parser.add_argument("--openai-timeout", type=int, default=300)
     parser.add_argument("--ollama-timeout", type=int, default=300)
@@ -1511,6 +1513,17 @@ def main() -> int:
 
     plan = build_plan(cfg, job)
     window_start_ts, window_end_ts = compute_window_bounds(job, cfg.get("timezone", "Asia/Tokyo"))
+    if args.window_start is not None or args.window_end is not None:
+        if args.window_start is None or args.window_end is None:
+            raise SystemExit("--window-start and --window-end must be used together")
+        if args.window_start >= args.window_end:
+            raise SystemExit("window start must be before end")
+        window_start_ts, window_end_ts = int(args.window_start), int(args.window_end)
+        tz = ZoneInfo(cfg.get("timezone", "Asia/Tokyo"))
+        start_label = datetime.fromtimestamp(window_start_ts, tz).strftime("%m/%d %H:%M")
+        end_label = datetime.fromtimestamp(window_end_ts, tz).strftime("%m/%d %H:%M")
+        job["windowLabel"] = f"{start_label} 到 {end_label}（{cfg.get('timezone', 'Asia/Tokyo')}）"
+        plan["window_label"] = job["windowLabel"]
     save_json(run_dir / "plan.json", plan)
     trace.artifact("run_dir", str(run_dir))
     trace.artifact("window_label", job["windowLabel"])

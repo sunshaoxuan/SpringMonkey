@@ -526,3 +526,50 @@ def test_dispatcher_passes_model_cron_status_topic_to_tool() -> None:
 
     assert result.status == "ok"
     assert seen["topic"] == "news"
+
+
+def test_dispatcher_passes_model_news_window_and_delivery_contract_to_tool() -> None:
+    import intent_tool_router as router
+    import harness_dispatcher
+    from harness_intent_agent import IntentFrame
+    from unittest.mock import patch
+
+    registry = router.load_registry()
+    frame = IntentFrame(
+        conversation_mode="task",
+        domain="news",
+        action="run",
+        canonical_text="补发新闻正式任务",
+        context_refs=[],
+        parameters={
+            "time_window": {"start": "5/18 17:00", "end": "5/19 17:00"},
+            "delivery_target": "public channel",
+        },
+        safety="readonly",
+        result_contract={"type": "cron_ack", "delivery": "public channel"},
+        tool_candidates=[{"tool_id": "openclaw.cron.run.news", "confidence": 0.96, "reason": "semantic formal news makeup"}],
+        confidence=0.96,
+        reason="semantic formal news makeup",
+    )
+    seen = {}
+
+    def fake_run(_tool, args, _timeout):
+        seen.update(args)
+        return 0, json.dumps({"status": "success", "job_name": args["job_name"], "final_report": "已补发到公共频道。"}, ensure_ascii=False)
+
+    with tempfile.TemporaryDirectory() as tmp, patch.object(harness_dispatcher, "infer_intent_frame", return_value=frame), patch.object(router, "run_tool", side_effect=fake_run):
+        result = router.handle(
+            "补发昨天17点到今天17点的新闻到公共频道",
+            "discord_dm",
+            "999666719356354610",
+            "2026-05-20T00:00:00+09:00",
+            registry_override=registry,
+            kernel_root=Path(tmp) / "kernel",
+            context="",
+        )
+
+    assert result.status == "ok"
+    assert seen["job_name"] == "news-digest-jst-today"
+    assert seen["news_window_start"] == "5/18 17:00"
+    assert seen["news_window_end"] == "5/19 17:00"
+    assert seen["public_delivery"] is True

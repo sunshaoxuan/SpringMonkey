@@ -563,7 +563,7 @@
     {
       "intent_id": "news.cron_run",
       "tool_id": "openclaw.cron.run.news",
-      "description": "Run formal news cron jobs by name; never generate ad hoc news text.",
+      "description": "Run formal news cron jobs by name for missed scheduled delivery, makeup delivery, or an owner-requested rerun; never generate ad hoc news text. The model may supply a semantic time_window and delivery target, and the runner must use the formal pipeline artifact for any public delivery.",
       "owner_agent": "newsWorker",
       "patterns": [
         "新闻",
@@ -611,14 +611,12 @@
       ],
       "worker_agent": "newsWorker",
       "prompt_hints": [
-        "新闻",
-        "播报",
-        "news",
-        "触发",
-        "重跑",
-        "跑一轮",
-        "补跑",
-        "执行"
+        "formal scheduled news delivery",
+        "missed news digest makeup",
+        "rerun an existing news cron job",
+        "deliver the formal generated news artifact",
+        "select a time_window when the user asks for a specific missed period",
+        "set delivery_target when the user asks to post back to a public channel"
       ],
       "input_contract": {
         "type": "cron_job_from_text"

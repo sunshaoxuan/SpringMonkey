@@ -464,6 +464,44 @@ def test_news_makeup_without_slot_maps_to_composite_formal_job() -> None:
     args = router.extract_args(tool, "补发今天没发的新闻", "2026-05-20T22:00:00+09:00")
 
     assert args["job_name"] == "news-digest-jst-today"
+    assert args["message_timestamp"] == "2026-05-20T22:00:00+09:00"
+
+
+def test_news_window_timestamp_parser_uses_message_year_and_jst() -> None:
+    start = router.parse_local_window_ts("5/18 17:00", "2026-05-20T22:00:00+09:00")
+    end = router.parse_local_window_ts("5/19 17:00", "2026-05-20T22:00:00+09:00")
+
+    assert start is not None
+    assert end is not None
+    assert end - start == 24 * 60 * 60
+
+
+def test_news_tool_env_includes_window_and_public_delivery(monkeypatch) -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "openclaw.cron.run.news")
+    captured: dict[str, dict[str, str]] = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["env"] = kwargs["env"]
+        return SimpleNamespace(returncode=0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(router.subprocess, "run", fake_run)
+    code, _output = router.run_tool(
+        tool,
+        {
+            "job_name": "news-digest-jst-today",
+            "message_timestamp": "2026-05-20T22:00:00+09:00",
+            "news_window_start": "5/18 17:00",
+            "news_window_end": "5/19 17:00",
+            "public_delivery": True,
+        },
+        30,
+    )
+
+    assert code == 0
+    assert captured["env"]["OPENCLAW_NEWS_WINDOW_START_TS"]
+    assert captured["env"]["OPENCLAW_NEWS_WINDOW_END_TS"]
+    assert captured["env"]["OPENCLAW_NEWS_DELIVERY_CHANNEL_ID"]
 
 
 def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:

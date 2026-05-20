@@ -301,6 +301,16 @@ def handle_event(
         topic = str(frame.parameters.get("topic") or "").strip()
         if topic:
             args["topic"] = topic
+    if schema_mode == "cron_job_from_text":
+        params = frame.parameters if isinstance(frame.parameters, dict) else {}
+        window = params.get("time_window") if isinstance(params.get("time_window"), dict) else {}
+        if window:
+            args["news_window_start"] = window.get("start")
+            args["news_window_end"] = window.get("end")
+        target = " ".join(str(params.get(key) or "") for key in ("delivery_target", "requested_delivery_target", "delivery"))
+        contract_text = json.dumps(frame.result_contract, ensure_ascii=False) if isinstance(frame.result_contract, dict) else ""
+        if "public" in target.lower() or "公共" in target or "public" in contract_text.lower() or "公共" in contract_text:
+            args["public_delivery"] = True
     audit = audit_intent(text=args.get("text", frame.canonical_text or text), context=prompt_context, selected_tool=binding.tool, extracted_args=args)
     args = audit.corrected_args
     args["_result_contract"] = audit.result_contract
