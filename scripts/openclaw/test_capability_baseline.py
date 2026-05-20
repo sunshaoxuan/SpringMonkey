@@ -154,3 +154,39 @@ def test_cron_status_tool_reads_jobs_json() -> None:
     assert "匹配数量：1" in output
     assert "xhs-recommendation-every-3-days" in output
     assert "openai-codex/gpt-5.5" in output
+
+
+def test_cron_status_reports_direct_cron_as_effective_public_schedule() -> None:
+    from cron_status_tool import format_status
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        jobs = root / "jobs.json"
+        direct = root / "openclaw-direct-discord"
+        jobs.write_text(
+            json.dumps(
+                {
+                    "jobs": [
+                        {
+                            "id": "job_news",
+                            "name": "news-digest-jst-1700",
+                            "enabled": False,
+                            "schedule": {"kind": "cron", "expr": "0 17 * * *", "tz": "Asia/Tokyo"},
+                            "payload": {"model": "ollama/qwen3:14b"},
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        direct.write_text(
+            "0 17 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py "
+            "--name news-digest-jst-1700 --channel-id 1483636573235843072 --timeout 5400 --command echo ok\n",
+            encoding="utf-8",
+        )
+        output = format_status("为什么公共频道的新闻停了", "news", jobs, direct)
+    assert "结论：匹配任务 1 个；直发 cron 启用 1 个" in output
+    assert "内部：disabled | 直发：enabled" in output
+    assert "直发计划：0 17 * * *" in output
+    assert "频道：1483636573235843072" in output
