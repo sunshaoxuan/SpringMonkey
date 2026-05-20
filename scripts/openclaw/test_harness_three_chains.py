@@ -223,6 +223,48 @@ def test_reporter_can_allow_links_explicitly() -> None:
     assert "https://example.com/path" in format_owner_reply(envelope)
 
 
+def test_cron_status_success_preserves_delivery_evidence_lines() -> None:
+    output = "\n".join(
+        [
+            "OpenClaw 定时任务状态",
+            "主题：news",
+            "任务总数：12",
+            "匹配数量：2",
+            "结论：匹配任务 2 个；直发 cron 启用 2 个；今天未找到 direct cron 成功投递记录。",
+            "",
+            "1.",
+            "任务：news-digest-jst-0900 | 内部：disabled | 直发：enabled | 直发计划：0 9 * * * | 频道：1483636573235843072",
+            "最近执行：成功",
+            "开始：2026-05-18T09:00:01",
+            "今天是否执行过：否",
+            "投递：delivered",
+            "",
+            "2.",
+            "任务：news-digest-jst-1700 | 内部：disabled | 直发：enabled | 直发计划：0 17 * * * | 频道：1483636573235843072",
+            "最近执行：成功",
+            "开始：2026-05-18T17:00:01",
+            "今天是否执行过：否",
+            "投递：delivered",
+        ]
+    )
+    envelope = ReportEnvelope(
+        task_id="cron_status",
+        trace_id="trace_cron",
+        status="ok",
+        visibility="owner_dm",
+        summary=output,
+        diagnostics_ref="trace_id=trace_cron route=registered_task",
+    )
+
+    reply = format_owner_reply(envelope)
+
+    assert "news-digest-jst-0900" in reply
+    assert "news-digest-jst-1700" in reply
+    assert "今天是否执行过：否" in reply
+    assert "投递：delivered" in reply
+    assert "详细诊断：后台日志保留" not in reply
+
+
 def test_reporter_keeps_failure_and_tracking_as_structured_reports() -> None:
     failed = ReportEnvelope(
         task_id="task_failed",

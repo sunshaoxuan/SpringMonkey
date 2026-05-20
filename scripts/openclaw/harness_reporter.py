@@ -194,6 +194,9 @@ def summarize_self_evolution_result(result: str, *, tool_status: str = "") -> st
 
 
 def concise_operational_summary(text: str, *, max_lines: int = 5, max_chars: int = 700) -> str:
+    if (text or "").lstrip().startswith("OpenClaw 定时任务状态"):
+        max_lines = max(max_lines, 40)
+        max_chars = max(max_chars, 1800)
     kept: list[str] = []
     for raw in (text or "").splitlines():
         line = raw.strip()
