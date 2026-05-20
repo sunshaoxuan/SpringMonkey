@@ -190,3 +190,66 @@ def test_cron_status_reports_direct_cron_as_effective_public_schedule() -> None:
     assert "内部：disabled | 直发：enabled" in output
     assert "直发计划：0 17 * * *" in output
     assert "频道：1483636573235843072" in output
+    assert "最近执行：未找到 direct cron 最新执行记录。" in output
+
+
+def test_cron_status_reports_today_direct_cron_delivery_evidence() -> None:
+    from cron_status_tool import format_status
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        jobs = root / "jobs.json"
+        direct = root / "openclaw-direct-discord"
+        log_dir = root / "logs"
+        log_dir.mkdir()
+        jobs.write_text(
+            json.dumps(
+                {
+                    "jobs": [
+                        {
+                            "id": "job_news",
+                            "name": "news-digest-jst-1700",
+                            "enabled": False,
+                            "schedule": "0 17 * * *",
+                            "payload": {"model": "openai-codex/gpt-5.5"},
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        direct.write_text(
+            "0 17 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py "
+            "--name news-digest-jst-1700 --channel-id 1483636573235843072 --timeout 5400 --command echo ok\n",
+            encoding="utf-8",
+        )
+        (log_dir / "news-digest-jst-1700.latest.json").write_text(
+            json.dumps(
+                {
+                    "name": "news-digest-jst-1700",
+                    "started": "2026-05-20T17:00:01+09:00",
+                    "finished": "2026-05-20T17:04:00+09:00",
+                    "returncode": 0,
+                    "delivery": "delivered",
+                    "sentChunks": 2,
+                    "publishedMark": "marked",
+                    "command": ["direct_cron_to_discord.py", "--channel-id", "1483636573235843072"],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        output = format_status(
+            "今天一天我都没收到新闻，你查查原因",
+            "news",
+            jobs,
+            direct,
+            log_dir=log_dir,
+            message_timestamp="2026-05-20T20:00:00+09:00",
+        )
+    assert "今天已有 1 个成功投递记录" in output
+    assert "最近执行：成功" in output
+    assert "今天是否执行过：是" in output
+    assert "投递：delivered" in output
+    assert "投递频道：1483636573235843072" in output
