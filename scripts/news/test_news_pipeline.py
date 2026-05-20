@@ -649,7 +649,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertTrue(ok, f"mechanical fallback should pass verify: {err}")
         self.assertIn("新闻简报", text)
         self.assertIn("**1. 日本**", text)
-        self.assertIn("**9. 市场或风险提示**", text)
+        self.assertIn("**8. 市场或风险提示**", text)
         self.assertIn("• ", text)
 
     def test_mechanical_fallback_strips_numbering(self):
@@ -687,6 +687,23 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertTrue(ok, f"empty-batch fallback should still pass: {err}")
         self.assertNotIn("本节无合格新增新闻条目", text)
         self.assertNotIn("**1. 日本**", text)
+
+    def test_mechanical_fallback_renumbers_visible_sections_when_empty_sections_omitted(self):
+        cfg = self.cfg
+        job = self.m.job_spec(cfg, "news-digest-jst-1700")
+        plan = self.m.build_plan(cfg, job)
+        merged = (
+            "<!-- batch:japan -->\n"
+            "<!-- batch:china -->\n- 中国新闻条目\n"
+            "<!-- batch:us -->\n- 美国新闻条目\n"
+        )
+        text = self.m._mechanical_fallback(cfg, plan, merged)
+        ok, err = _load_verify().verify_text(text, cfg)
+
+        self.assertTrue(ok, err)
+        self.assertIn("**1. 中国**", text)
+        self.assertIn("**2. 美国**", text)
+        self.assertNotIn("**2. 中国**", text)
 
     def test_ollama_api_model_name_strips_provider_prefix(self):
         self.assertEqual(
@@ -774,13 +791,25 @@ class TestVerifyDraft(unittest.TestCase):
     def test_omitted_empty_sections_are_allowed(self):
         text = """新闻简报
 窗口
+**1. 美国**
+• a
+**2. AI / 人工智能**
+• b
+"""
+        ok, err = self.v.verify_text(text, self.cfg)
+        self.assertTrue(ok, err)
+
+    def test_omitted_empty_sections_must_renumber_visibly(self):
+        text = """新闻简报
+窗口
 **3. 美国**
 • a
 **5. AI / 人工智能**
 • b
 """
         ok, err = self.v.verify_text(text, self.cfg)
-        self.assertTrue(ok, err)
+        self.assertFalse(ok)
+        self.assertTrue(any("编号必须连续" in e for e in err))
 
     def test_bad_numbering(self):
         text = """新闻简报

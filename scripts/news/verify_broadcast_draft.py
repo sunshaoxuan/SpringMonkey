@@ -33,26 +33,44 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
     flat = "\n".join(lines)
     outline_set = set(outline)
 
+    def parse_outline_line(value: str) -> tuple[int, str] | None:
+        match = re.match(r"^\*\*\s*(\d+)\.\s*(.+?)\s*\*\*$", value.strip())
+        if match:
+            return int(match.group(1)), match.group(2).strip()
+        return None
+
+    outline_names = [parsed[1] for item in outline if (parsed := parse_outline_line(item))]
+
     if re.search(r"<think>.*?</think>", flat, flags=re.IGNORECASE | re.DOTALL):
         errors.append("contains_think_block: 成稿中出现 <think> 思维链内容")
 
     if title not in flat:
         errors.append(f"missing_title: 正文中应出现标题「{title}」")
 
-    # outline 匹配：按顺序检查每个 outline 条目是否作为独立行出现
+    # outline 匹配：按顺序检查每个 outline 条目是否作为独立行出现。
+    # 空栏目省略时，用户可见编号必须重新从 1 连续编号，避免第一条显示为 **2. 中国**。
     found_outline: list[str] = []
+    found_parsed: list[tuple[int, str]] = []
     for ln in lines:
         s = ln.strip()
+        parsed = parse_outline_line(s)
+        if parsed:
+            found_parsed.append(parsed)
         if s in outline_set:
             found_outline.append(s)
     if fr.get("omitEmptySections", False):
-        expected_index = 0
-        for found in found_outline:
+        expected_name_index = 0
+        for visible_index, (_number, name) in enumerate(found_parsed, 1):
+            if _number != visible_index:
+                errors.append(
+                    f"bad_top_level_numbering: 空栏目省略后编号必须连续从 1 开始, 实际第 {visible_index} 个标题编号为 {_number}: {name}"
+                )
+                break
             try:
-                expected_index = outline.index(found, expected_index) + 1
+                expected_name_index = outline_names.index(name, expected_name_index) + 1
             except ValueError:
                 errors.append(
-                    f"bad_top_level_numbering: 期望按 {outline!r} 的顺序出现子集, 实际 {found_outline!r}"
+                    f"bad_top_level_numbering: 期望按 {outline_names!r} 的顺序出现栏目名, 实际 {[name for _, name in found_parsed]!r}"
                 )
                 break
     elif found_outline != outline:
@@ -72,7 +90,7 @@ def verify_text(text: str, cfg: dict) -> tuple[bool, list[str]]:
     if forbid_nested:
         for i, ln in enumerate(lines, 1):
             s = ln.strip()
-            if s in outline_set:
+            if s in outline_set or parse_outline_line(s):
                 continue
             # 独立行以裸数字编号开头（如 1. xxx / 2) xxx），且不是 outline
             if re.match(r"^\*{0,2}\d+[\.\)）]\s", s):

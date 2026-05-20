@@ -1307,6 +1307,19 @@ def _strip_item_numbering(line: str) -> str:
     return s
 
 
+def _compact_section_title(section_title: str, visible_index: int) -> str:
+    import re as _re
+
+    raw = section_title.strip()
+    match = _re.match(r"^\*\*\s*\d+\.\s*(.+?)\s*\*\*$", raw)
+    if match:
+        return f"**{visible_index}. {match.group(1)}**"
+    match = _re.match(r"^\d+\.\s*(.+?)\s*$", raw)
+    if match:
+        return f"{visible_index}. {match.group(1)}"
+    return section_title
+
+
 def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
     """
     不依赖 LLM，纯机械拼接出 100% 通过 verify 的播报稿。
@@ -1345,14 +1358,16 @@ def _mechanical_fallback(cfg: dict, plan: dict, merged_draft: str) -> str:
                     batch_content[current_bid].append(stripped)
 
     result_lines = [plan["title_line"], plan["window_label"]]
+    visible_index = 1
     for i, sec_title in enumerate(outline):
         bid = batch_ids[i] if i < len(batch_ids) else None
         items = batch_content.get(bid, []) if bid else []
         if items:
             if result_lines and result_lines[-1] != "":
                 result_lines.append("")
-            result_lines.append(sec_title)
+            result_lines.append(_compact_section_title(sec_title, visible_index) if omit_empty else sec_title)
             result_lines.extend(items)
+            visible_index += 1
         elif not omit_empty:
             if result_lines and result_lines[-1] != "":
                 result_lines.append("")
@@ -1370,6 +1385,7 @@ def merge_workers(run_dir: Path, plan: dict) -> str:
     outline = plan.get("_outline") or []
 
     lines = [plan["title_line"], plan["window_label"]]
+    visible_index = 1
     for i, b in enumerate(plan["batches"]):
         bid = b["id"]
         p = run_dir / f"worker_{bid}.md"
@@ -1377,7 +1393,8 @@ def merge_workers(run_dir: Path, plan: dict) -> str:
             raise SystemExit(f"missing worker file: {p}")
         content = p.read_text(encoding="utf-8").strip()
 
-        header = outline[i] if i < len(outline) else b.get("outline_line", f"{i+1}. {bid}")
+        raw_header = outline[i] if i < len(outline) else b.get("outline_line", f"{i+1}. {bid}")
+        header = _compact_section_title(raw_header, visible_index) if fr.get("omitEmptySections", False) else raw_header
 
         if content and not content.startswith("•") and not content.startswith(bullet):
             if lines and lines[-1] != "":
@@ -1387,11 +1404,13 @@ def merge_workers(run_dir: Path, plan: dict) -> str:
                 cline = cline.strip()
                 if cline:
                     lines.append(cline)
+            visible_index += 1
         elif content:
             if lines and lines[-1] != "":
                 lines.append("")
             lines.append(header)
             lines.append(content)
+            visible_index += 1
         elif not fr.get("omitEmptySections", False):
             if lines and lines[-1] != "":
                 lines.append("")
