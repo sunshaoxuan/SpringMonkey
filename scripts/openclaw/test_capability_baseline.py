@@ -253,3 +253,41 @@ def test_cron_status_reports_today_direct_cron_delivery_evidence() -> None:
     assert "今天是否执行过：是" in output
     assert "投递：delivered" in output
     assert "投递频道：1483636573235843072" in output
+
+
+def test_cron_status_explains_unescaped_percent_as_root_cause() -> None:
+    from cron_status_tool import format_status
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        jobs = root / "jobs.json"
+        direct = root / "openclaw-direct-discord"
+        jobs.write_text(
+            json.dumps(
+                {
+                    "jobs": [
+                        {
+                            "id": "job_news",
+                            "name": "news-digest-jst-0900",
+                            "enabled": False,
+                            "schedule": "0 9 * * *",
+                            "payload": {"model": "openai-codex/gpt-5.5"},
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        direct.write_text(
+            "0 9 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py "
+            "--name news-digest-jst-0900 --channel-id 1483636573235843072 "
+            "--command bash -lc 'DIR=$(printf \"%s\\n\" \"$OUT\" | tail -n1); cat \"$DIR/final_broadcast.md\"'\n",
+            encoding="utf-8",
+        )
+
+        output = format_status("为什么没发新闻", "news", jobs, direct, message_timestamp="2026-05-20T20:00:00+09:00")
+
+    assert "命令截断风险" in output
+    assert "未转义 %" in output
+    assert "这是未投递的优先原因" in output

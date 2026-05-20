@@ -104,6 +104,20 @@ def direct_cron_channel(line: str) -> str:
     return "unknown"
 
 
+def has_unescaped_cron_percent(line: str) -> bool:
+    escaped = False
+    for char in line:
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == "%":
+            return True
+    return False
+
+
 def parse_dt(value: str) -> datetime | None:
     raw = (value or "").strip()
     if not raw:
@@ -205,6 +219,8 @@ def summarize_job(job: dict[str, Any], direct_lines: list[str], log_dir: Path, n
         f"模型：{payload.get('model') or job.get('model') or '未知'}",
     ]
     if direct:
+        if has_unescaped_cron_percent(direct[0]):
+            lines.append("配置风险：direct cron 命令包含未转义 %；cron 会从该处截断命令，导致定时触发但脚本不完整。")
         lines.extend(summarize_direct_execution(name, log_dir, now))
     return lines
 
@@ -226,6 +242,12 @@ def format_status(
         for job in matches
         if direct_cron_for_job(str(job.get("name") or (job.get("payload") or {}).get("name") or job.get("id") or ""), direct_lines)
     )
+    cron_percent_risks = [
+        name
+        for name in [str(job.get("name") or (job.get("payload") or {}).get("name") or job.get("id") or "") for job in matches]
+        for line in direct_cron_for_job(name, direct_lines)
+        if has_unescaped_cron_percent(line)
+    ]
     now = effective_now(message_timestamp)
     names = [str(job.get("name") or (job.get("payload") or {}).get("name") or job.get("id") or "") for job in matches]
     executions = [load_direct_execution_log(name, log_dir) for name in names if name]
@@ -236,7 +258,9 @@ def format_status(
     ]
     today_success = [item for item in today_runs if item and item.get("returncode") == 0 and str(item.get("delivery") or "") == "delivered"]
     today_failures = [item for item in today_runs if item and item.get("returncode") != 0]
-    if matches and direct_match_count and today_success:
+    if cron_percent_risks:
+        conclusion = f"匹配任务 {len(matches)} 个；直发 cron 启用 {direct_match_count} 个；发现 {len(cron_percent_risks)} 个 direct cron 命令截断风险，这是未投递的优先原因。"
+    elif matches and direct_match_count and today_success:
         conclusion = f"匹配任务 {len(matches)} 个；直发 cron 启用 {direct_match_count} 个；今天已有 {len(today_success)} 个成功投递记录。"
     elif matches and direct_match_count and today_runs:
         conclusion = f"匹配任务 {len(matches)} 个；直发 cron 启用 {direct_match_count} 个；今天有执行记录但未确认成功投递。"

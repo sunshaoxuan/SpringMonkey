@@ -23,7 +23,9 @@ def test_news_cron_preserves_command_substitution_for_helper() -> None:
     assert len(news_lines) == 2
     for line in news_lines:
         assert "--command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/" in line
-        assert 'DIR=$(printf "%s\\n" "$OUT"' in line
+        assert 'DIR=$(echo "$OUT" | sed -n "s/^PIPELINE_OK //p"' in line
+        assert "printf" not in line
+        assert "%" not in line
         assert 'cat "$DIR/final_broadcast.md"\'' in line
         assert r"OUT=\$(python3" not in line
         assert "${REPO}" not in line
