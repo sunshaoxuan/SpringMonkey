@@ -632,7 +632,7 @@ def format_reply(tool: dict[str, Any], args: dict[str, Any], returncode: int, ou
             lines.extend(["长任务状态：正在进行", "触发结果：已成功进入跟踪，不代表任务已完成。", "后续：完成或失败后会补发结果到 owner DM。"])
             return "\n".join(lines)
         if status == "success" and not final_report:
-            return "触发状态：成功"
+            return "任务已经触发完成；没有检测到需要展示的最终内容。"
         if final_report:
             lines = ["OpenClaw 正式任务已完成。", f"任务：{job_name or 'configured recurring job'}"]
             lines.extend(["", final_report])

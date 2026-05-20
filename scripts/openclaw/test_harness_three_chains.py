@@ -405,6 +405,7 @@ def test_reporter_summarizes_generated_helper_json_reply() -> None:
 def test_discord_patch_does_not_add_business_router_success_prefix() -> None:
     source = (Path(__file__).resolve().parent / "patch_discord_timescar_dm_preroute.py").read_text(encoding="utf-8")
     assert "汤猴私信任务已由通用事件路由处理。" not in source
+    assert "汤猴已收到私信，正在通过事件入口处理" not in source
     assert "汤猴私信任务路由失败" in source
 
 

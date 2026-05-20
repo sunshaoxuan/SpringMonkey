@@ -591,7 +591,7 @@ def test_cron_ack_media_already_sent_returns_short_success() -> None:
 
     reply = router.format_reply({"reply_policy": "cron_ack"}, {"job_name": "weather-report-jst-0700"}, 0, output)
 
-    assert reply == "触发状态：成功"
+    assert reply == "任务已经触发完成；没有检测到需要展示的最终内容。"
 
 
 def test_weather_query_maps_to_registered_tool() -> None:

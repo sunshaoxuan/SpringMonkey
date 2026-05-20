@@ -103,16 +103,9 @@ function startSpringMonkeyDmLifecycle(params) {
 		void sendTypingSignal();
 	}, 8000);
 	typingTimer.unref?.();
-	const ackTimer = setTimeout(() => {
-		if (stopped || ackSent) return;
-		ackSent = true;
-		void sendSpringMonkeyRouterMessage(params, "汤猴已收到私信，正在通过事件入口处理。完成后会继续回复执行结果。");
-	}, 4000);
-	ackTimer.unref?.();
 	return () => {
 		stopped = true;
 		clearInterval(typingTimer);
-		clearTimeout(ackTimer);
 	};
 }
 async function maybeHandleSpringMonkeyIntentToolRouter(params) {
