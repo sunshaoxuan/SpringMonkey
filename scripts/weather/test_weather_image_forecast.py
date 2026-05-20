@@ -98,6 +98,8 @@ def test_prompt_matches_square_single_city_image_contract() -> None:
     assert "minimal pure-color soft background" in prompt
     assert "no panels, no cards, no text boxes" in prompt
     assert "large city name" in prompt
+    assert "unified clean modern CJK sans-serif typography system" in prompt
+    assert "consistent font family, weight, spacing, and layout" in prompt
     assert "date in very small type" in prompt
     assert "temperature range in medium type" in prompt
     assert 'temperature label EXACTLY "17-27°C"' in prompt

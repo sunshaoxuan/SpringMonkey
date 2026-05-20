@@ -276,6 +276,7 @@ def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -
         "Weather integration: weather effects must be integrated into the city architecture and interact with the scene, "
         "for example sun, clouds, rain, wind, mist, puddles, reflections, or atmospheric particles around the buildings. "
         "Typography inside the image: at the very top show a large city name in the same written language as the city name; "
+        "use one unified clean modern CJK sans-serif typography system for all Japanese and Chinese city names, with consistent font family, weight, spacing, and layout across every city image. "
         "directly below or near it show a prominent weather icon; under the icon show the date in very small type and the temperature range in medium type. "
         "Use one identical temperature format for every city: daily minimum hyphen daily maximum, for example 17-27°C. "
         "Copy each provided temperature label exactly; do not add current temperature, high/low words, arrows, extra numbers, or mixed formats. "
