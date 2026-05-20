@@ -86,7 +86,7 @@ def tool_contract(tool: dict[str, Any]) -> ToolContract:
         permission_scope=str(tool.get("permission_scope") or tool.get("permission") or ""),
         safety=safety,
         write_operation=bool(tool.get("write_operation")),
-        examples=_list(tool.get("examples")) or _list(tool.get("prompt_hints"))[:3],
+        examples=_list(tool.get("examples")),
         counterexamples=_list(tool.get("counterexamples")),
     )
 
