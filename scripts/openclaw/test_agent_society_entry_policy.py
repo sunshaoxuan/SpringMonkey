@@ -62,9 +62,34 @@ def test_entry_policy_prompt_states_semantic_routing_law() -> None:
     assert "Use meaning, user goal" in combined
 
 
-def test_simple_chat_branch_is_the_only_non_model_shortcut() -> None:
-    assert classify_interaction_kind("你好") == CHAT_KIND
-    assert not should_apply_agent_society_protocol("谢谢")
+def test_direct_chat_uses_model_semantics_not_regex_shortcut() -> None:
+    result = classify_entry_policy(
+        "你好",
+        model_caller=lambda _messages: json.dumps(
+            {
+                "interaction_kind": CHAT_KIND,
+                "execution_depth": ATOMIC_DEPTH,
+                "apply_agent_society": False,
+                "apply_operational_execution": False,
+                "apply_self_improvement": False,
+                "reasoning_summary": "model classified this as casual chat",
+            },
+            ensure_ascii=False,
+        ),
+    )
+
+    assert result.interaction_kind == CHAT_KIND
+    assert result.reasoning_summary == "model classified this as casual chat"
+
+
+def test_non_direct_and_empty_are_the_only_non_model_shortcuts() -> None:
+    result = classify_entry_policy(
+        "",
+        model_caller=lambda _messages: (_ for _ in ()).throw(AssertionError("model should not be called for empty input")),
+    )
+
+    assert result.interaction_kind == CHAT_KIND
+    assert result.reasoning_summary == "non-direct, heartbeat, or empty"
 
 
 def test_model_frame_controls_task_classification_not_keywords() -> None:
@@ -116,7 +141,8 @@ def test_staged_protocol_contains_keyword_regex_boundary() -> None:
 
 def main() -> int:
     test_entry_policy_prompt_states_semantic_routing_law()
-    test_simple_chat_branch_is_the_only_non_model_shortcut()
+    test_direct_chat_uses_model_semantics_not_regex_shortcut()
+    test_non_direct_and_empty_are_the_only_non_model_shortcuts()
     test_model_frame_controls_task_classification_not_keywords()
     test_model_frame_can_keep_keyword_heavy_text_as_chat()
     test_model_unavailable_does_not_force_task_protocol()

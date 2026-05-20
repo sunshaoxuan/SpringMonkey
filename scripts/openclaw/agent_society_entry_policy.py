@@ -16,12 +16,6 @@ ATOMIC_DEPTH = "atomic"
 STAGED_DEPTH = "staged"
 AGENTIC_DEPTH = "agentic"
 
-SIMPLE_CHAT_PATTERN = re.compile(
-    r"^\s*(你好|您好|hi|hello|早上好|晚上好|谢谢|thanks|ok|好的|收到|嗯|在吗|拜拜|bye)[!！,.，。 ]*\s*$",
-    re.IGNORECASE,
-)
-
-
 @dataclass(frozen=True)
 class EntryPolicyFrame:
     interaction_kind: str
@@ -69,8 +63,6 @@ def _simple_frame(prompt: str, *, is_direct: bool, is_heartbeat: bool) -> EntryP
     text = normalize_prompt(prompt)
     if is_heartbeat or not is_direct or not text:
         return EntryPolicyFrame(CHAT_KIND, ATOMIC_DEPTH, False, False, False, "non-direct, heartbeat, or empty")
-    if SIMPLE_CHAT_PATTERN.fullmatch(text):
-        return EntryPolicyFrame(CHAT_KIND, ATOMIC_DEPTH, False, False, False, "simple liveness or acknowledgement")
     return None
 
 
