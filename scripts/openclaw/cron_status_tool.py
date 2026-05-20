@@ -14,6 +14,7 @@ from typing import Any
 DEFAULT_JOBS_PATH = Path("/var/lib/openclaw/.openclaw/cron/jobs.json")
 DEFAULT_DIRECT_CRON_PATH = Path("/etc/cron.d/openclaw-direct-discord")
 DEFAULT_DIRECT_CRON_LOG_DIR = Path("/var/lib/openclaw/.openclaw/logs/direct_discord_cron")
+DEFAULT_SYSTEM_LOG_PATHS = (Path("/var/log/syslog"), Path("/var/log/cron"), Path("/var/log/messages"))
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -146,6 +147,34 @@ def load_direct_execution_log(name: str, log_dir: Path) -> dict[str, Any] | None
     return data if isinstance(data, dict) else None
 
 
+def load_recent_system_cron_evidence(name: str, paths: tuple[Path, ...] = DEFAULT_SYSTEM_LOG_PATHS, *, limit: int = 5) -> list[str]:
+    if not name:
+        return []
+    hits: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if name in line and "CRON" in line and "CMD" in line:
+                hits.append(line.strip())
+    return hits[-limit:]
+
+
+def summarize_system_cron_evidence(name: str, system_log_paths: tuple[Path, ...]) -> list[str]:
+    hits = load_recent_system_cron_evidence(name, system_log_paths)
+    if not hits:
+        return []
+    latest = hits[-1]
+    lines = [f"系统 cron 最近触发：{latest[:260]}"]
+    if 'DIR=$(printf "' in latest or "$(printf " in latest and "final_broadcast.md" not in latest:
+        lines.append("根因证据：系统 cron 日志显示命令在 printf/% 附近被截断；cron 文件中的未转义 % 会造成这种截断。")
+    return lines
+
+
 def summarize_direct_execution(name: str, log_dir: Path, now: datetime) -> list[str]:
     data = load_direct_execution_log(name, log_dir)
     if not data:
@@ -201,7 +230,13 @@ def matches_topic(job: dict[str, Any], topic: str) -> bool:
     return normalized_topic in haystack
 
 
-def summarize_job(job: dict[str, Any], direct_lines: list[str], log_dir: Path, now: datetime) -> list[str]:
+def summarize_job(
+    job: dict[str, Any],
+    direct_lines: list[str],
+    log_dir: Path,
+    now: datetime,
+    system_log_paths: tuple[Path, ...],
+) -> list[str]:
     payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     enabled = job.get("enabled")
     if enabled is None:
@@ -221,6 +256,7 @@ def summarize_job(job: dict[str, Any], direct_lines: list[str], log_dir: Path, n
     if direct:
         if has_unescaped_cron_percent(direct[0]):
             lines.append("配置风险：direct cron 命令包含未转义 %；cron 会从该处截断命令，导致定时触发但脚本不完整。")
+        lines.extend(summarize_system_cron_evidence(name, system_log_paths))
         lines.extend(summarize_direct_execution(name, log_dir, now))
     return lines
 
@@ -233,6 +269,7 @@ def format_status(
     *,
     log_dir: Path = DEFAULT_DIRECT_CRON_LOG_DIR,
     message_timestamp: str = "",
+    system_log_paths: tuple[Path, ...] = DEFAULT_SYSTEM_LOG_PATHS,
 ) -> str:
     jobs = load_jobs(jobs_path)
     direct_lines = load_direct_cron_lines(direct_cron_path)
@@ -248,6 +285,11 @@ def format_status(
         for line in direct_cron_for_job(name, direct_lines)
         if has_unescaped_cron_percent(line)
     ]
+    historical_truncation_risks = [
+        name
+        for name in [str(job.get("name") or (job.get("payload") or {}).get("name") or job.get("id") or "") for job in matches]
+        if any("根因证据：" in line for line in summarize_system_cron_evidence(name, system_log_paths))
+    ]
     now = effective_now(message_timestamp)
     names = [str(job.get("name") or (job.get("payload") or {}).get("name") or job.get("id") or "") for job in matches]
     executions = [load_direct_execution_log(name, log_dir) for name in names if name]
@@ -260,6 +302,8 @@ def format_status(
     today_failures = [item for item in today_runs if item and item.get("returncode") != 0]
     if cron_percent_risks:
         conclusion = f"匹配任务 {len(matches)} 个；直发 cron 启用 {direct_match_count} 个；发现 {len(cron_percent_risks)} 个 direct cron 命令截断风险，这是未投递的优先原因。"
+    elif historical_truncation_risks:
+        conclusion = f"匹配任务 {len(matches)} 个；直发 cron 启用 {direct_match_count} 个；系统日志显示 {len(historical_truncation_risks)} 个任务最近被 cron 命令截断，这是未投递的优先原因。"
     elif matches and direct_match_count and today_success:
         conclusion = f"匹配任务 {len(matches)} 个；直发 cron 启用 {direct_match_count} 个；今天已有 {len(today_success)} 个成功投递记录。"
     elif matches and direct_match_count and today_runs:
@@ -283,7 +327,7 @@ def format_status(
     for index, job in enumerate(matches[:10], start=1):
         lines.append("")
         lines.append(f"{index}.")
-        lines.extend(summarize_job(job, direct_lines, log_dir, now))
+        lines.extend(summarize_job(job, direct_lines, log_dir, now, system_log_paths))
     return "\n".join(lines)
 
 
@@ -295,7 +339,9 @@ def main() -> int:
     parser.add_argument("--jobs-path", type=Path, default=Path(os.environ.get("OPENCLAW_CRON_JOBS_PATH", DEFAULT_JOBS_PATH)))
     parser.add_argument("--direct-cron-path", type=Path, default=Path(os.environ.get("OPENCLAW_DIRECT_CRON_PATH", DEFAULT_DIRECT_CRON_PATH)))
     parser.add_argument("--direct-cron-log-dir", type=Path, default=Path(os.environ.get("OPENCLAW_DIRECT_CRON_LOG_DIR", DEFAULT_DIRECT_CRON_LOG_DIR)))
+    parser.add_argument("--system-log-path", action="append", type=Path, default=None)
     args = parser.parse_args()
+    system_log_paths = tuple(args.system_log_path) if args.system_log_path else DEFAULT_SYSTEM_LOG_PATHS
     print(
         format_status(
             args.text,
@@ -304,6 +350,7 @@ def main() -> int:
             args.direct_cron_path,
             log_dir=args.direct_cron_log_dir,
             message_timestamp=args.message_timestamp,
+            system_log_paths=system_log_paths,
         )
     )
     return 0

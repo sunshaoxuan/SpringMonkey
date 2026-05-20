@@ -291,3 +291,52 @@ def test_cron_status_explains_unescaped_percent_as_root_cause() -> None:
     assert "命令截断风险" in output
     assert "未转义 %" in output
     assert "这是未投递的优先原因" in output
+
+
+def test_cron_status_explains_historical_syslog_truncation_after_config_fixed() -> None:
+    from cron_status_tool import format_status
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        jobs = root / "jobs.json"
+        direct = root / "openclaw-direct-discord"
+        syslog = root / "syslog"
+        jobs.write_text(
+            json.dumps(
+                {
+                    "jobs": [
+                        {
+                            "id": "job_news",
+                            "name": "news-digest-jst-1700",
+                            "enabled": False,
+                            "schedule": "0 17 * * *",
+                            "payload": {"model": "openai-codex/gpt-5.5"},
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        direct.write_text(
+            "0 17 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py "
+            "--name news-digest-jst-1700 --channel-id 1483636573235843072 "
+            "--command bash -lc 'DIR=$(echo \"$OUT\" | sed -n \"s/^PIPELINE_OK //p\" | tail -n1); cat \"$DIR/final_broadcast.md\"'\n",
+            encoding="utf-8",
+        )
+        syslog.write_text(
+            '2026-05-20T17:00:01+09:00 host CRON[740283]: (root) CMD (/usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-1700 --command bash -lc \'set -e; OUT=$(python3 job.py); DIR=$(printf ")\n',
+            encoding="utf-8",
+        )
+
+        output = format_status(
+            "为什么没发新闻",
+            "news",
+            jobs,
+            direct,
+            message_timestamp="2026-05-20T20:00:00+09:00",
+            system_log_paths=(syslog,),
+        )
+
+    assert "系统日志显示 1 个任务最近被 cron 命令截断" in output
+    assert "根因证据：系统 cron 日志显示命令在 printf/% 附近被截断" in output
