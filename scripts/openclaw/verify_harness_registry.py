@@ -54,6 +54,21 @@ def verify() -> int:
     if missing_layers:
         fail(f"missing harness layers: {missing_layers}")
 
+    policy = harness.get("dispatcher_policy") if isinstance(harness.get("dispatcher_policy"), dict) else {}
+    semantic_law = policy.get("semantic_intent_law") if isinstance(policy.get("semantic_intent_law"), dict) else {}
+    required_semantic = {
+        "primary_intent_understanding": "llm_semantic_contract_required",
+        "task_decomposition": "llm_semantic_contract_required",
+        "tool_selection": "llm_semantic_contract_required",
+    }
+    for key, expected in required_semantic.items():
+        if semantic_law.get(key) != expected:
+            fail(f"dispatcher_policy.semantic_intent_law.{key} must be {expected}")
+    forbidden = set(semantic_law.get("keyword_or_regex_forbidden_for") or [])
+    for item in ("chat_vs_task", "domain_selection", "action_selection", "tool_selection", "multi_step_decomposition"):
+        if item not in forbidden:
+            fail(f"semantic_intent_law.keyword_or_regex_forbidden_for missing {item}")
+
     subagents = {str(item.get("id")): item for item in harness.get("subagents", [])}
     for required in ("intentAgent", "plannerAgent", "toolWorker", "browserWorker", "newsWorker", "timescarWorker", "recoveryWorker", "evaluatorAgent"):
         if required not in subagents:

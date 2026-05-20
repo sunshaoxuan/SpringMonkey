@@ -99,6 +99,13 @@
   "dispatcher_policy": {
     "gateway_responsibilities": ["normalize_event", "build_context", "request_intent_frame", "bind_tool", "check_permission", "dispatch_worker", "send_typing_ack", "deliver_result"],
     "gateway_forbidden": ["keyword_primary_intent_routing", "pattern_primary_intent_routing", "long_running_business_execution", "unregistered_write_operation", "silent_failure"],
+    "semantic_intent_law": {
+      "primary_intent_understanding": "llm_semantic_contract_required",
+      "task_decomposition": "llm_semantic_contract_required",
+      "tool_selection": "llm_semantic_contract_required",
+      "keyword_or_regex_allowed_only_after_tool_selection_for": ["timestamps", "ids", "urls", "html_fields", "known_machine_protocol_markers"],
+      "keyword_or_regex_forbidden_for": ["chat_vs_task", "domain_selection", "action_selection", "tool_selection", "self_improvement_direction", "multi_step_decomposition"]
+    },
     "long_task_requires_runtime_session": true
   },
   "trace_policy": {

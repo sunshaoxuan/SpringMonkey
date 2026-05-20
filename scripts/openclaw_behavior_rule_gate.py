@@ -147,6 +147,36 @@ def verify_harness_registry() -> None:
     if proc.returncode != 0:
         raise SystemExit(proc.stdout.strip())
 
+def verify_semantic_intent_law_text() -> None:
+    harness = REPO / "config" / "openclaw" / "harness.json"
+    entry_policy = REPO / "scripts" / "openclaw" / "agent_society_entry_policy.py"
+    harness_text = harness.read_text(encoding="utf-8", errors="replace")
+    entry_text = entry_policy.read_text(encoding="utf-8", errors="replace")
+    required_harness = [
+        '"primary_intent_understanding": "llm_semantic_contract_required"',
+        '"task_decomposition": "llm_semantic_contract_required"',
+        '"tool_selection": "llm_semantic_contract_required"',
+        '"chat_vs_task"',
+        '"multi_step_decomposition"',
+    ]
+    missing = [item for item in required_harness if item not in harness_text]
+    if missing:
+        raise SystemExit(
+            "OPENCLAW_BEHAVIOR_RULE_GATE_FAIL: semantic intent law missing from harness manifest.\n"
+            + "\n".join(f"  - {item}" for item in missing)
+        )
+    required_entry = [
+        "Do not use keyword matching, regex matching",
+        "LLM semantic contract layer, not keyword/regex routing",
+        "Keywords or regex may only be used after a tool is selected",
+    ]
+    missing_entry = [item for item in required_entry if item not in entry_text]
+    if missing_entry:
+        raise SystemExit(
+            "OPENCLAW_BEHAVIOR_RULE_GATE_FAIL: entry policy must state and enforce semantic routing law.\n"
+            + "\n".join(f"  - {item}" for item in missing_entry)
+        )
+
 
 def verify_js_patch_syntax_gates() -> None:
     offenders: list[str] = []
@@ -223,6 +253,7 @@ def main() -> int:
     verify_no_uncommitted_behavior_changes()
     verify_intent_registry()
     verify_harness_registry()
+    verify_semantic_intent_law_text()
     verify_js_patch_syntax_gates()
     if not args.skip_pushed_check:
         verify_head_pushed(args.remote_ref)

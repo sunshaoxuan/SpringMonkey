@@ -1,4 +1,4 @@
-from openclaw_behavior_rule_gate import is_behavior_rule_path
+from openclaw_behavior_rule_gate import is_behavior_rule_path, verify_semantic_intent_law_text
 
 
 def assert_true(value: bool, message: str) -> None:
@@ -37,6 +37,7 @@ def main() -> int:
         assert_true(is_behavior_rule_path(path), f"expected behavior path: {path}")
     for path in non_behavior_paths:
         assert_false(is_behavior_rule_path(path), f"expected non-behavior path: {path}")
+    verify_semantic_intent_law_text()
     print("openclaw_behavior_rule_gate_tests_ok")
     return 0
 

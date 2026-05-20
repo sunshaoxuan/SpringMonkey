@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
+import os
 import re
+from dataclasses import dataclass
+from typing import Any, Callable
+
+from model_fallback_client import chat_with_fallback
 
 CHAT_KIND = "chat"
 TASK_KIND = "task"
@@ -10,76 +16,121 @@ ATOMIC_DEPTH = "atomic"
 STAGED_DEPTH = "staged"
 AGENTIC_DEPTH = "agentic"
 
-CASUAL_PATTERN = re.compile(
+SIMPLE_CHAT_PATTERN = re.compile(
     r"^\s*(你好|您好|hi|hello|早上好|晚上好|谢谢|thanks|ok|好的|收到|嗯|在吗|拜拜|bye)[!！,.，。 ]*\s*$",
     re.IGNORECASE,
 )
 
-TRIVIAL_PATTERN = re.compile(
-    r"(几点|时间|time\b|天气$|weather$|你是谁|who are you)",
-    re.IGNORECASE,
-)
 
-REQUEST_SIGNAL_PATTERN = re.compile(
-    r"(请你|帮我|麻烦你|拜托|需要你|去帮|请帮|请处理|帮忙|看看|查一下|调查一下|排查一下|修一下|跟进一下|安排一下)",
-    re.IGNORECASE,
-)
-
-EXECUTION_SIGNAL_PATTERN = re.compile(
-    r"(处理|执行|完成|安排|调查|排查|修复|检查|查找|验证|测试|监视|盯住|跟进|整理|总结|汇报|报告|同步|通知|提醒|创建|生成|配置|设置|部署|重启|登录|改密码|保存密码|发到|转发|重跑|跑一下|确认一下)",
-    re.IGNORECASE,
-)
-
-OPERATION_VERB_PATTERN = re.compile(
-    r"(登录|登入|log\s?in|sign\s?in|change\s+password|reset\s+password|修改密码|重置密码|打开|访问|进入|navigate|open|visit|click|点击|search|查找|设置|配置|保存密码|提交|上传|download|upload|修复|排查|测试)",
-    re.IGNORECASE,
-)
-
-OPERATION_TARGET_PATTERN = re.compile(
-    r"(邮箱|email|mail|账号|account|网站|网页|browser|登录页|设置页|password|密码|google|docs|小红书|line|discord|slack|notion|service|系统|portal|dashboard)",
-    re.IGNORECASE,
-)
-
-TASKING_SIGNAL_PATTERN = re.compile(
-    r"(并|然后|再|同时|顺便|继续|并且|此外|还要|以及|总结|汇报|报告|验证|记录|记住|remember|report|verify|save|continue|follow\s?up|status)",
-    re.IGNORECASE,
-)
-
-REPAIR_SIGNAL_PATTERN = re.compile(
-    r"(修复|排查|失败|卡住|超时|timeout|drift|锚点|工具|script|helper|自动化|记住方法|self\s?repair|toolsmith)",
-    re.IGNORECASE,
-)
-
-MULTI_STEP_SIGNAL_PATTERN = re.compile(
-    r"(登录|登入|邮箱|账号|password|密码|网站|网页|browser|portal|dashboard|查询|搜索|search|查找|点击|进入|提交|下单|预约|订车|取消|支付|核对|验证|翻译|总结|归纳|整理|成文|引用|链接|网址|报告|汇报|同步|转发|发到|discord|line|抓取|fetch|discover|merge|finalize)",
-    re.IGNORECASE,
-)
-
-AGENTIC_SIGNAL_PATTERN = re.compile(
-    r"(自己判断|自己分辨|自己决定|自行|自动|动态|多步|多阶段|拆解|重规划|replan|self\s?repair|toolsmith|写工具|调试|上线新工具|增强自己的能力|不断增强|持续改进|创建任务|定时任务|cron|schedule|pipeline)",
-    re.IGNORECASE,
-)
+@dataclass(frozen=True)
+class EntryPolicyFrame:
+    interaction_kind: str
+    execution_depth: str
+    apply_agent_society: bool
+    apply_operational_execution: bool
+    apply_self_improvement: bool
+    reasoning_summary: str = ""
 
 
 def normalize_prompt(prompt: str) -> str:
     return re.sub(r"\s+", " ", prompt or "").strip()
 
 
+def _extract_json_object(text: str) -> dict[str, Any]:
+    raw = (text or "").strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError(f"model did not return JSON: {raw[:200]}")
+    data = json.loads(raw[start : end + 1])
+    if not isinstance(data, dict):
+        raise ValueError("model returned non-object JSON")
+    return data
+
+
+def _validate_frame(data: dict[str, Any]) -> EntryPolicyFrame:
+    interaction_kind = str(data.get("interaction_kind") or CHAT_KIND)
+    execution_depth = str(data.get("execution_depth") or ATOMIC_DEPTH)
+    if interaction_kind not in {CHAT_KIND, TASK_KIND}:
+        raise ValueError(f"invalid interaction_kind: {interaction_kind}")
+    if execution_depth not in {ATOMIC_DEPTH, STAGED_DEPTH, AGENTIC_DEPTH}:
+        raise ValueError(f"invalid execution_depth: {execution_depth}")
+    return EntryPolicyFrame(
+        interaction_kind=interaction_kind,
+        execution_depth=execution_depth,
+        apply_agent_society=bool(data.get("apply_agent_society")),
+        apply_operational_execution=bool(data.get("apply_operational_execution")),
+        apply_self_improvement=bool(data.get("apply_self_improvement")),
+        reasoning_summary=str(data.get("reasoning_summary") or ""),
+    )
+
+
+def _simple_frame(prompt: str, *, is_direct: bool, is_heartbeat: bool) -> EntryPolicyFrame | None:
+    text = normalize_prompt(prompt)
+    if is_heartbeat or not is_direct or not text:
+        return EntryPolicyFrame(CHAT_KIND, ATOMIC_DEPTH, False, False, False, "non-direct, heartbeat, or empty")
+    if SIMPLE_CHAT_PATTERN.fullmatch(text):
+        return EntryPolicyFrame(CHAT_KIND, ATOMIC_DEPTH, False, False, False, "simple liveness or acknowledgement")
+    return None
+
+
+def build_entry_policy_prompt(prompt: str, *, is_direct: bool, is_heartbeat: bool) -> list[dict[str, str]]:
+    system = (
+        "You are OpenClaw's entry-policy classifier. Return strict JSON only. "
+        "Schema: {interaction_kind, execution_depth, apply_agent_society, apply_operational_execution, apply_self_improvement, reasoning_summary}. "
+        "interaction_kind: chat|task. execution_depth: atomic|staged|agentic. "
+        "This is a semantic classifier. Do not use keyword matching, regex matching, token hits, or example phrase matching to decide intent. "
+        "Use meaning, user goal, implied workflow, side effects, required observations, and repair needs. "
+        "Use chat only for casual conversation, liveness, acknowledgements, or explanations that require no durable task state. "
+        "Use task when the user asks for work to be done, state to be inspected or changed, facts to be researched, a process to be monitored, a result to be delivered, or a previous failure to be repaired. "
+        "Use atomic only for a single-step task with no meaningful hidden state or follow-up. "
+        "Use staged when the request naturally requires multiple observations, tools, verification, delivery, or a final report. "
+        "Use agentic when the request requires dynamic replanning, self-repair, tool creation/refinement, debugging, deployment validation, or ongoing improvement. "
+        "apply_operational_execution means the task needs real tool/browser/system execution, not just a conversational answer. "
+        "apply_self_improvement means the task is about repairing or improving OpenClaw/Tanghou's own capabilities, regressions, tools, routing, tests, deployment, or reliability. "
+        "If uncertain between chat and task, choose task with atomic depth only if the user is asking for work; otherwise choose chat. "
+    )
+    user = "\n".join(
+        [
+            f"is_direct={str(is_direct).lower()}",
+            f"is_heartbeat={str(is_heartbeat).lower()}",
+            "Current message:",
+            prompt,
+        ]
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def classify_entry_policy(
+    prompt: str,
+    *,
+    is_direct: bool = True,
+    is_heartbeat: bool = False,
+    model_caller: Callable[[list[dict[str, str]]], str] | None = None,
+) -> EntryPolicyFrame:
+    simple = _simple_frame(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat)
+    if simple is not None:
+        return simple
+    override = os.environ.get("OPENCLAW_ENTRY_POLICY_FRAME_JSON", "").strip()
+    if override:
+        return _validate_frame(_extract_json_object(override))
+    messages = build_entry_policy_prompt(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat)
+    try:
+        content = model_caller(messages) if model_caller else chat_with_fallback(messages, timeout=25, temperature=0)[0]
+        return _validate_frame(_extract_json_object(content))
+    except Exception as exc:
+        # Conservative fallback is not a semantic router: it avoids keyword
+        # branching and only marks the request as an atomic task so the main
+        # Harness LLM can make the actual semantic decision later.
+        return EntryPolicyFrame(TASK_KIND, ATOMIC_DEPTH, True, False, False, f"entry policy model unavailable: {type(exc).__name__}: {exc}")
+
+
 def classify_interaction_kind(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> str:
-    return TASK_KIND if should_apply_agent_society_protocol(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat) else CHAT_KIND
+    return classify_entry_policy(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat).interaction_kind
 
 
 def classify_execution_depth(prompt: str) -> str:
-    text = normalize_prompt(prompt)
-    if not text:
-        return ATOMIC_DEPTH
-    if AGENTIC_SIGNAL_PATTERN.search(text):
-        return AGENTIC_DEPTH
-    if MULTI_STEP_SIGNAL_PATTERN.search(text):
-        return STAGED_DEPTH
-    if REQUEST_SIGNAL_PATTERN.search(text) and EXECUTION_SIGNAL_PATTERN.search(text):
-        return STAGED_DEPTH
-    return ATOMIC_DEPTH
+    return classify_entry_policy(prompt).execution_depth
 
 
 def build_multistep_task_protocol(prompt: str, *, execution_depth: str | None = None) -> str:
@@ -91,6 +142,8 @@ def build_multistep_task_protocol(prompt: str, *, execution_depth: str | None = 
         "[runtime-task-creation-policy]",
         f"execution_depth: {depth_label}",
         "This is a real task, not casual chat.",
+        "Intent understanding, task decomposition, and tool choice must be made through the LLM semantic contract layer, not keyword/regex routing.",
+        "Keywords or regex may only be used after a tool is selected for deterministic low-level parsing such as timestamps, IDs, URLs, or HTML fields.",
         "You must decide goal, tasks, steps, tools, observations, and success checks before claiming completion.",
         "If the task involves websites, login, querying, searching, submission, translation, summarization, reporting, or delivery, treat it as multi-step by default.",
         "Write or refine helper tools when repeated capability gaps appear, validate them, and reuse them.",
@@ -104,45 +157,20 @@ def build_multistep_task_protocol(prompt: str, *, execution_depth: str | None = 
             ]
         )
     else:
-        lines.extend(
-            [
-                "This task is staged. Expose the phases and failure surfaces instead of hiding them in one black-box exec.",
-            ]
-        )
+        lines.append("This task is staged. Expose the phases and failure surfaces instead of hiding them in one black-box exec.")
     return "\n".join(lines)
 
 
 def should_apply_operational_execution_protocol(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> bool:
-    if is_heartbeat or not is_direct:
-        return False
-    text = normalize_prompt(prompt)
-    if not text:
-        return False
-    return bool(OPERATION_VERB_PATTERN.search(text) and OPERATION_TARGET_PATTERN.search(text))
+    return classify_entry_policy(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat).apply_operational_execution
 
 
 def should_apply_agent_society_protocol(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> bool:
-    if is_heartbeat or not is_direct:
-        return False
-    text = normalize_prompt(prompt)
-    if not text or CASUAL_PATTERN.fullmatch(text):
-        return False
-    if TRIVIAL_PATTERN.search(text) and not REQUEST_SIGNAL_PATTERN.search(text) and not EXECUTION_SIGNAL_PATTERN.search(text):
-        return False
-    if should_apply_operational_execution_protocol(text, is_direct=is_direct, is_heartbeat=is_heartbeat):
-        return True
-    if REQUEST_SIGNAL_PATTERN.search(text) and EXECUTION_SIGNAL_PATTERN.search(text):
-        return True
-    if EXECUTION_SIGNAL_PATTERN.search(text) and (TASKING_SIGNAL_PATTERN.search(text) or len(text) >= 18):
-        return True
-    return False
+    return classify_entry_policy(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat).apply_agent_society
 
 
 def should_apply_self_improvement_protocol(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> bool:
-    if not should_apply_agent_society_protocol(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat):
-        return False
-    text = normalize_prompt(prompt)
-    return bool(REPAIR_SIGNAL_PATTERN.search(text) or should_apply_operational_execution_protocol(text, is_direct=is_direct, is_heartbeat=is_heartbeat))
+    return classify_entry_policy(prompt, is_direct=is_direct, is_heartbeat=is_heartbeat).apply_self_improvement
 
 
 __all__ = [
@@ -151,7 +179,10 @@ __all__ = [
     "CHAT_KIND",
     "TASK_KIND",
     "STAGED_DEPTH",
+    "EntryPolicyFrame",
+    "build_entry_policy_prompt",
     "build_multistep_task_protocol",
+    "classify_entry_policy",
     "classify_execution_depth",
     "classify_interaction_kind",
     "normalize_prompt",
