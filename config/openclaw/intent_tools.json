@@ -580,6 +580,7 @@
       "entrypoint": "scripts/openclaw/run_job_by_name.py",
       "args_schema": {
         "mode": "cron_job_from_text",
+        "default_job": "news-digest-jst-today",
         "job_map": {
           "09": "news-digest-jst-0900",
           "9": "news-digest-jst-0900",

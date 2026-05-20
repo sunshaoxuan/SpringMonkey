@@ -457,6 +457,15 @@ def test_news_1700_maps_to_formal_cron_job() -> None:
     assert args["job_name"] == "news-digest-jst-1700"
 
 
+def test_news_makeup_without_slot_maps_to_composite_formal_job() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "openclaw.cron.run.news")
+
+    args = router.extract_args(tool, "补发今天没发的新闻", "2026-05-20T22:00:00+09:00")
+
+    assert args["job_name"] == "news-digest-jst-today"
+
+
 def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:
     registry = load_registry()
     frame = harness_dispatcher.infer_intent_frame(

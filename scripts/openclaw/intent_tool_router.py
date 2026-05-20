@@ -354,6 +354,8 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
     if mode == "cron_job_from_text":
         job_name = extract_cron_job_from_text(text, schema.get("job_map") or {})
         if not job_name:
+            job_name = str(schema.get("default_job") or "").strip() or None
+        if not job_name:
             raise ValueError("无法从指令中识别正式 cron 任务时间；请明确 09:00 或 17:00")
         return {"job_name": job_name}
     if mode == "fixed_cron_job":

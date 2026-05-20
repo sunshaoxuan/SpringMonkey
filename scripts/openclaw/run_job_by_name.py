@@ -43,6 +43,9 @@ DIRECT_SCRIPT_JOBS: dict[str, list[str]] = {
         ),
     ],
 }
+COMPOSITE_SCRIPT_JOBS: dict[str, list[str]] = {
+    "news-digest-jst-today": ["news-digest-jst-0900", "news-digest-jst-1700"],
+}
 
 def find_id_by_name(name: str) -> str | None:
     if not JOBS_PATH.exists():
@@ -115,12 +118,72 @@ def run_direct_script_job(name: str) -> int:
     return proc.returncode or 1
 
 
+def run_composite_script_job(name: str) -> int:
+    parts = COMPOSITE_SCRIPT_JOBS[name]
+    reports: list[str] = []
+    failures: list[dict[str, str | int]] = []
+    for part in parts:
+        command = DIRECT_SCRIPT_JOBS[part]
+        proc = subprocess.run(
+            command,
+            cwd=REPO,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=int(os.environ.get("OPENCLAW_RUN_JOB_TIMEOUT", "5400")),
+        )
+        if proc.returncode == 0:
+            reports.append(f"## {part}\n{(proc.stdout or '').strip()}")
+        else:
+            failures.append(
+                {
+                    "job_name": part,
+                    "returncode": proc.returncode,
+                    "stdout": (proc.stdout or "").strip()[-800:],
+                    "stderr": (proc.stderr or "").strip()[-800:],
+                }
+            )
+    if failures:
+        print(
+            json.dumps(
+                {
+                    "status": "failed",
+                    "job_name": name,
+                    "delivery": "manual_owner_reply",
+                    "failures": failures,
+                    "final_report": "\n\n".join(reports),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 1
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "job_name": name,
+                "delivery": "manual_owner_reply",
+                "final_report": "\n\n".join(reports),
+                "stderr_hidden": False,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print("Usage: run_job_by_name.py <job_name>")
         return 1
 
     name = sys.argv[1]
+    if name in COMPOSITE_SCRIPT_JOBS:
+        return run_composite_script_job(name)
     if name in DIRECT_SCRIPT_JOBS and os.environ.get("OPENCLAW_RUN_JOB_FORCE_OPENCLAW_CRON") != "1":
         return run_direct_script_job(name)
 

@@ -87,3 +87,25 @@ def test_manual_media_job_preserves_multiple_media_delivery_evidence(monkeypatch
     assert payload["delivery"] == "manual_media_sent"
     assert str(first) in payload["media_delivery"]
     assert str(second) in payload["media_delivery"]
+
+
+def test_composite_news_job_runs_both_formal_slots(monkeypatch, capsys) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(list(command))
+        text = "morning report" if "0900" in " ".join(command) else "evening report"
+        return subprocess.CompletedProcess(command, 0, stdout=text, stderr="")
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    assert runner.run_composite_script_job("news-digest-jst-today") == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "success"
+    assert payload["job_name"] == "news-digest-jst-today"
+    assert "news-digest-jst-0900" in payload["final_report"]
+    assert "morning report" in payload["final_report"]
+    assert "news-digest-jst-1700" in payload["final_report"]
+    assert "evening report" in payload["final_report"]
+    assert len(calls) == 2
