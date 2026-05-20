@@ -13,6 +13,7 @@ from agent_society_entry_policy import (
     TASK_KIND,
     build_entry_policy_prompt,
     build_multistep_task_protocol,
+    classify_entry_policy,
     classify_execution_depth,
     classify_interaction_kind,
     should_apply_agent_society_protocol,
@@ -84,6 +85,17 @@ def test_model_frame_can_keep_keyword_heavy_text_as_chat() -> None:
         assert classify_execution_depth(prompt) == ATOMIC_DEPTH
 
 
+def test_model_unavailable_does_not_force_task_protocol() -> None:
+    result = classify_entry_policy(
+        "这是一句复杂但模型不可用时不应被关键词强行判成任务的话。",
+        model_caller=lambda _messages: (_ for _ in ()).throw(RuntimeError("offline")),
+    )
+
+    assert result.interaction_kind == CHAT_KIND
+    assert result.execution_depth == ATOMIC_DEPTH
+    assert not result.apply_agent_society
+
+
 def test_agentic_depth_and_self_improvement_are_model_decisions() -> None:
     with entry_frame(frame(kind=TASK_KIND, depth=AGENTIC_DEPTH, agent_society=True, operational=True, self_improvement=True)):
         prompt = "请沿正确方向补齐自身能力，验证后再回到原任务。"
@@ -107,6 +119,7 @@ def main() -> int:
     test_simple_chat_branch_is_the_only_non_model_shortcut()
     test_model_frame_controls_task_classification_not_keywords()
     test_model_frame_can_keep_keyword_heavy_text_as_chat()
+    test_model_unavailable_does_not_force_task_protocol()
     test_agentic_depth_and_self_improvement_are_model_decisions()
     test_staged_protocol_contains_keyword_regex_boundary()
     print("agent_society_entry_policy_ok")

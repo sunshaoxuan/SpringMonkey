@@ -120,9 +120,9 @@ def classify_entry_policy(
         return _validate_frame(_extract_json_object(content))
     except Exception as exc:
         # Conservative fallback is not a semantic router: it avoids keyword
-        # branching and only marks the request as an atomic task so the main
-        # Harness LLM can make the actual semantic decision later.
-        return EntryPolicyFrame(TASK_KIND, ATOMIC_DEPTH, True, False, False, f"entry policy model unavailable: {type(exc).__name__}: {exc}")
+        # branching and does not inject task protocols when the semantic
+        # classifier is unavailable.
+        return EntryPolicyFrame(CHAT_KIND, ATOMIC_DEPTH, False, False, False, f"entry policy model unavailable: {type(exc).__name__}: {exc}")
 
 
 def classify_interaction_kind(prompt: str, *, is_direct: bool = True, is_heartbeat: bool = False) -> str:

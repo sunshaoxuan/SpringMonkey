@@ -205,6 +205,9 @@ def test_reporter_suppresses_links_by_default() -> None:
     reply = format_owner_reply(envelope)
     assert "https://example.com" not in reply
     assert "链接已记录后台" in reply
+    assert "触发状态：成功" not in reply
+    assert "详细诊断：后台日志保留" not in reply
+    assert reply.endswith("---")
 
 
 def test_reporter_can_allow_links_explicitly() -> None:
@@ -218,6 +221,30 @@ def test_reporter_can_allow_links_explicitly() -> None:
         allow_links=True,
     )
     assert "https://example.com/path" in format_owner_reply(envelope)
+
+
+def test_reporter_keeps_failure_and_tracking_as_structured_reports() -> None:
+    failed = ReportEnvelope(
+        task_id="task_failed",
+        trace_id="trace_failed",
+        status="failed",
+        visibility="owner_dm",
+        summary="工具失败。",
+        diagnostics_ref="trace_id=trace_failed route=execute",
+        failure_type="executor_failed",
+    )
+    tracking = ReportEnvelope(
+        task_id="task_tracking",
+        trace_id="trace_tracking",
+        status="tracking",
+        visibility="owner_dm",
+        summary="长任务已启动。",
+        diagnostics_ref="trace_id=trace_tracking route=binding",
+    )
+
+    assert "触发状态：失败" in format_owner_reply(failed)
+    assert "详细诊断：后台日志保留" in format_owner_reply(failed)
+    assert "触发状态：已启动" in format_owner_reply(tracking)
 
 
 def test_reporter_summarizes_web_research_without_sources_or_evidence() -> None:
