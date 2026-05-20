@@ -426,6 +426,11 @@ def apply_model_intent_frame(args: dict[str, Any], classification: Classificatio
         capability_id = str(params.get("capability_id") or "").strip()
         if capability_id:
             updated["capability_id"] = capability_id
+    if (classification.tool or {}).get("args_schema", {}).get("mode") == "cron_status":
+        params = frame.get("parameters") if isinstance(frame.get("parameters"), dict) else {}
+        topic = str(params.get("topic") or "").strip()
+        if topic:
+            updated["topic"] = topic
     updated["_model_intent_frame"] = frame
     return updated
 

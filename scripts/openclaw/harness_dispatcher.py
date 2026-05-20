@@ -296,6 +296,11 @@ def handle_event(
 
     args = extract_args(binding.tool, frame.canonical_text or text, message_timestamp)
     args["_model_intent_frame"] = asdict(frame)
+    schema_mode = str((binding.tool.get("args_schema") or {}).get("mode") or "")
+    if schema_mode == "cron_status":
+        topic = str(frame.parameters.get("topic") or "").strip()
+        if topic:
+            args["topic"] = topic
     audit = audit_intent(text=args.get("text", frame.canonical_text or text), context=prompt_context, selected_tool=binding.tool, extracted_args=args)
     args = audit.corrected_args
     args["_result_contract"] = audit.result_contract

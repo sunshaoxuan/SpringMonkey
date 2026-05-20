@@ -1494,13 +1494,17 @@
     {
       "intent_id": "openclaw.cron.status",
       "tool_id": "openclaw.cron.status",
-      "description": "Inspect OpenClaw cron jobs by topic without running or changing them.",
+      "description": "Inspect OpenClaw cron jobs by semantic topic without running or changing them. Use for questions about whether a scheduled job exists, is enabled, where it publishes, or why an expected public recurring job appears stopped.",
       "owner_agent": "toolWorker",
       "patterns": [
         "定时任务",
         "定期任务",
         "cron",
         "任务状态",
+        "新闻",
+        "新聞",
+        "天气",
+        "天氣",
         "小红书",
         "小紅書",
         "XHS",
@@ -1513,12 +1517,15 @@
         "状态",
         "在哪",
         "没看到",
-        "列出"
+        "列出",
+        "停了",
+        "为什么没发",
+        "是否还在计划里"
       ],
       "entrypoint": "scripts/openclaw/cron_status_tool.py",
       "args_schema": {
         "mode": "cron_status",
-        "topic": "xhs",
+        "topic": "all",
         "force": false
       },
       "permission": "owner_dm",
@@ -1544,8 +1551,14 @@
       "worker_agent": "toolWorker",
       "prompt_hints": [
         "检查每3天一次的小红书文章撰写任务状态",
+        "检查公共频道新闻定时任务状态",
+        "为什么公共频道的新闻停了",
+        "新闻播报任务是否还在计划里",
+        "检查天气预报定时任务状态",
         "定时任务",
         "任务状态",
+        "新闻",
+        "天气",
         "小红书",
         "XHS",
         "cron"

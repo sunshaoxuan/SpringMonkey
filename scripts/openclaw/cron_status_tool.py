@@ -71,10 +71,17 @@ def job_text(job: dict[str, Any]) -> str:
 
 
 def matches_topic(job: dict[str, Any], topic: str) -> bool:
+    normalized_topic = (topic or "all").strip().lower()
+    if normalized_topic in {"", "all", "any"}:
+        return True
     haystack = job_text(job).lower()
-    if topic == "xhs":
+    if normalized_topic == "xhs":
         return any(token in haystack for token in ("xhs", "小红书", "小紅書", "xiaohongshu", "文章撰写", "投稿"))
-    return topic.lower() in haystack
+    if normalized_topic == "news":
+        return any(token in haystack for token in ("news", "新闻", "新聞", "digest", "broadcast", "播报", "早报", "晚报"))
+    if normalized_topic == "weather":
+        return any(token in haystack for token in ("weather", "天气", "天氣", "forecast", "预报", "預報"))
+    return normalized_topic in haystack
 
 
 def summarize_job(job: dict[str, Any]) -> list[str]:

@@ -486,7 +486,30 @@ def test_xhs_cron_status_binds_to_readonly_status_tool() -> None:
     result = router.classify("检查每3天一次的小红书文章撰写任务状态。", "discord_dm", "999", registry)
     assert result.tool_id == "openclaw.cron.status"
     args = router.extract_args(result.tool or {}, frame.canonical_text, "2026-05-04T00:00:00+09:00")
+    result.intent_frame = frame.__dict__
+    args = router.apply_model_intent_frame(args, result)
     assert args["topic"] == "xhs"
+
+
+def test_cron_status_model_topic_overrides_registry_default() -> None:
+    registry = load_registry()
+    tool = next(item for item in registry["tools"] if item["tool_id"] == "openclaw.cron.status")
+    classification = router.classification_for_tool_id(
+        registry,
+        "openclaw.cron.status",
+        "semantic cron status",
+        intent_frame={
+            "conversation_mode": "task",
+            "domain": "cron",
+            "action": "status",
+            "canonical_text": "为什么公共频道的新闻停了？",
+            "parameters": {"topic": "news"},
+        },
+    )
+    assert classification is not None
+    args = router.extract_args(tool, "为什么公共频道的新闻停了？", "2026-05-20T00:00:00+09:00")
+    args = router.apply_model_intent_frame(args, classification)
+    assert args["topic"] == "news"
 
 
 def test_configured_recurring_job_run_binds_to_generic_cron_tool() -> None:

@@ -55,7 +55,46 @@ def test_xhs_cron_status_semantic_contract_and_args() -> None:
     assert frame.tool_candidates[0]["tool_id"] == "openclaw.cron.status"
     tool = next(item for item in registry["tools"] if item["tool_id"] == "openclaw.cron.status")
     args = extract_args(tool, frame.canonical_text, "2026-05-08T23:00:00+09:00")
+    args["_model_intent_frame"] = frame.__dict__
+    if frame.parameters.get("topic"):
+        args["topic"] = frame.parameters["topic"]
     assert args["topic"] == "xhs"
+
+
+def test_news_cron_status_tool_reads_news_jobs() -> None:
+    from cron_status_tool import format_status
+
+    with tempfile.TemporaryDirectory() as tmp:
+        jobs = Path(tmp) / "jobs.json"
+        jobs.write_text(
+            json.dumps(
+                {
+                    "jobs": [
+                        {
+                            "id": "job_news",
+                            "name": "news-digest-jst-1700",
+                            "enabled": True,
+                            "cron": "0 17 * * *",
+                            "payload": {"model": "openai-codex/gpt-5.5"},
+                        },
+                        {
+                            "id": "job_xhs",
+                            "name": "xhs-recommendation-every-3-days",
+                            "enabled": True,
+                            "cron": "0 10 */3 * *",
+                            "payload": {"model": "openai-codex/gpt-5.5"},
+                        },
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        output = format_status("为什么公共频道的新闻停了", "news", jobs)
+    assert "主题：news" in output
+    assert "匹配数量：1" in output
+    assert "news-digest-jst-1700" in output
+    assert "xhs-recommendation" not in output
 
 
 def test_recurring_cron_run_semantic_contract_and_args() -> None:
