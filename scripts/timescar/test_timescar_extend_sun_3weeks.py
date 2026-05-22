@@ -67,7 +67,15 @@ def test_select_target_reservation_uses_expected_sat_only_before_extension() -> 
     assert selected and selected["bookingNumber"] == "target"
 
 
+def test_change_submit_completion_markers_are_tolerant() -> None:
+    assert mod.change_submit_completed("予約変更を受付けました。")
+    assert mod.change_submit_completed("予約変更を 受け付けました。")
+    assert mod.change_submit_completed("変更完了")
+    assert not mod.change_submit_completed("予約変更（確認）")
+
+
 if __name__ == "__main__":
     test_fetch_reservations_retries_and_uses_sibling_script()
     test_select_target_reservation_uses_expected_sat_only_before_extension()
+    test_change_submit_completion_markers_are_tolerant()
     print("timescar_extend_sun_3weeks_ok")

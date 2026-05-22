@@ -128,6 +128,21 @@ def format_report(reservation: dict) -> str:
     )
 
 
+def change_submit_completed(body: str) -> bool:
+    normalized = re.sub(r"\s+", "", body)
+    return any(
+        marker in normalized
+        for marker in (
+            "予約変更を受付けました。",
+            "予約変更を受け付けました。",
+            "変更を受付けました。",
+            "変更を受け付けました。",
+            "予約変更完了",
+            "変更完了",
+        )
+    )
+
+
 def is_login(page) -> bool:
     return bool(page.locator("#cardNo1").count() and page.locator("#tpPassword").count())
 
@@ -223,12 +238,21 @@ def main() -> int:
             done = page.locator("body").inner_text()
             if "ご注意ください！" in done and page.locator("text=了解").count():
                 page.locator("text=了解").click(force=True)
-                page.locator("#doOnceRegist").click(force=True)
                 page.wait_for_load_state("domcontentloaded")
                 done = page.locator("body").inner_text()
-            if "予約変更を受付けました。" not in done:
-                raise ExtendError("failed: extension submit did not complete")
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted extension")
+                if not change_submit_completed(done) and page.locator("#doOnceRegist").count():
+                    page.locator("#doOnceRegist").click(force=True)
+                    page.wait_for_load_state("domcontentloaded")
+                    done = page.locator("body").inner_text()
+            if change_submit_completed(done):
+                runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted extension")
+            else:
+                runtime.record_step(
+                    step=phase,
+                    status="postcheck",
+                    tool="browser",
+                    detail="completion text not found; verifying reservation list",
+                )
 
         refreshed = [reservation for reservation in fetch_reservations() if reservation.get("bookingNumber") == target["bookingNumber"]]
         if not refreshed:

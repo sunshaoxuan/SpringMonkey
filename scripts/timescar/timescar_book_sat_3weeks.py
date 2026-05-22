@@ -124,6 +124,21 @@ def format_report(reservation: dict, keep_same_car: str) -> str:
     )
 
 
+def booking_submit_completed(body: str) -> bool:
+    normalized = re.sub(r"\s+", "", body)
+    return any(
+        marker in normalized
+        for marker in (
+            "予約登録を受付けました。",
+            "予約登録を受け付けました。",
+            "予約を受付けました。",
+            "予約を受け付けました。",
+            "予約登録完了",
+            "予約完了",
+        )
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
@@ -195,9 +210,15 @@ def main() -> int:
             page.locator("#doOnceRegist").click()
             page.wait_for_load_state("domcontentloaded")
             done_text = page.locator("body").inner_text()
-            if "予約登録を受付けました。" not in done_text:
-                raise BookingError("failed: reservation submit did not complete")
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted booking")
+            if booking_submit_completed(done_text):
+                runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted booking")
+            else:
+                runtime.record_step(
+                    step=phase,
+                    status="postcheck",
+                    tool="browser",
+                    detail="completion text not found; verifying reservation list",
+                )
 
         result = existing_reservation_for_target()
         if not result:

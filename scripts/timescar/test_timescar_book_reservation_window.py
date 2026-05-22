@@ -5,6 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import timescar_book_reservation_window as mod
+import timescar_book_sat_3weeks as sat_mod
 
 
 TZ = ZoneInfo("Asia/Tokyo")
@@ -43,6 +44,10 @@ def main() -> int:
     assert mod.booking_submit_completed("予約登録を 受け付けました。")
     assert mod.booking_submit_completed("予約完了")
     assert not mod.booking_submit_completed("予約登録（確認）")
+    assert sat_mod.booking_submit_completed("予約登録を受付けました。")
+    assert sat_mod.booking_submit_completed("予約登録を 受け付けました。")
+    assert sat_mod.booking_submit_completed("予約完了")
+    assert not sat_mod.booking_submit_completed("予約登録（確認）")
     unavailable = mod.format_unavailable_report(start, end, "久我山４丁目２", "ヤリスクロス（ハイブリッド）", "not available")
     assert "未执行预订，目标窗口不可预订" in unavailable
     assert "not available" in unavailable
