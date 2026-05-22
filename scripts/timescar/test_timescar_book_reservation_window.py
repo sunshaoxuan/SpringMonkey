@@ -11,6 +11,32 @@ import timescar_book_sat_3weeks as sat_mod
 TZ = ZoneInfo("Asia/Tokyo")
 
 
+class FakeLocator:
+    def __init__(self, page):
+        self.page = page
+
+    def count(self) -> int:
+        return 1
+
+    def click(self, force: bool = False) -> None:
+        self.page.clicks += 1
+        self.page.body = "予約登録を受け付けました。"
+
+
+class FakePage:
+    def __init__(self):
+        self.body = "ご注意ください！"
+        self.clicks = 0
+        self.waits = 0
+
+    def locator(self, selector: str):
+        assert selector in {"text=了解", "#doOnceRegist"}
+        return FakeLocator(self)
+
+    def wait_for_load_state(self, state: str) -> None:
+        self.waits += 1
+
+
 def main() -> int:
     start = datetime(2026, 5, 6, 9, 0, tzinfo=TZ)
     end = datetime(2026, 5, 6, 21, 0, tzinfo=TZ)
@@ -48,6 +74,12 @@ def main() -> int:
     assert sat_mod.booking_submit_completed("予約登録を 受け付けました。")
     assert sat_mod.booking_submit_completed("予約完了")
     assert not sat_mod.booking_submit_completed("予約登録（確認）")
+    fake_page = FakePage()
+    assert mod.confirm_attention_if_present(fake_page, fake_page.body) == "予約登録を受け付けました。"
+    assert fake_page.clicks == 1
+    fake_page = FakePage()
+    assert sat_mod.confirm_attention_if_present(fake_page, fake_page.body) == "予約登録を受け付けました。"
+    assert fake_page.clicks == 1
     unavailable = mod.format_unavailable_report(start, end, "久我山４丁目２", "ヤリスクロス（ハイブリッド）", "not available")
     assert "未执行预订，目标窗口不可预订" in unavailable
     assert "not available" in unavailable

@@ -139,6 +139,19 @@ def booking_submit_completed(body: str) -> bool:
     )
 
 
+def confirm_attention_if_present(page, body: str) -> str:
+    if "ご注意ください！" not in body or page.locator("text=了解").count() == 0:
+        return body
+    page.locator("text=了解").click(force=True)
+    page.wait_for_load_state("domcontentloaded")
+    body = page.locator("body").inner_text()
+    if not booking_submit_completed(body) and page.locator("#doOnceRegist").count():
+        page.locator("#doOnceRegist").click(force=True)
+        page.wait_for_load_state("domcontentloaded")
+        body = page.locator("body").inner_text()
+    return body
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
@@ -210,6 +223,7 @@ def main() -> int:
             page.locator("#doOnceRegist").click()
             page.wait_for_load_state("domcontentloaded")
             done_text = page.locator("body").inner_text()
+            done_text = confirm_attention_if_present(page, done_text)
             if booking_submit_completed(done_text):
                 runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted booking")
             else:
