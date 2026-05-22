@@ -31,7 +31,7 @@ def test_memory_backfill_write_uses_embedding_and_lancedb_insert() -> None:
                 [candidate],
                 db_path=Path(tmp) / "lancedb",
                 base_url="http://127.0.0.1:11434",
-                model="bge-m3:latest",
+                model=tool.DEFAULT_EMBED_MODEL,
                 dimensions=tool.DEFAULT_DIMENSIONS,
                 backfill_log=log,
             )

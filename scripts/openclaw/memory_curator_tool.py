@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_DB_PATH = Path("/var/lib/openclaw/.openclaw/memory/lancedb")
+DEFAULT_DB_PATH = Path("/var/lib/openclaw/.openclaw/memory/lancedb-qwen3-embedding-8b-4096")
 DEFAULT_AUDIT_LOG = Path("/var/lib/openclaw/.openclaw/workspace/var/memory_curator_audit.jsonl")
 NOISE_RE = re.compile(
     r"(encrypted_content|iVBORw0KGgo|base64|gAAAAA|\.png\s|root root \d+|url\.parse\(\)|DEP0169|System \(untrusted\))",

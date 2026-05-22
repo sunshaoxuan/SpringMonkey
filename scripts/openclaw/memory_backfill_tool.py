@@ -16,12 +16,12 @@ from typing import Any
 
 
 DEFAULT_OPENCLAW_HOME = Path("/var/lib/openclaw/.openclaw")
-DEFAULT_DB_PATH = DEFAULT_OPENCLAW_HOME / "memory" / "lancedb"
+DEFAULT_DB_PATH = DEFAULT_OPENCLAW_HOME / "memory" / "lancedb-qwen3-embedding-8b-4096"
 DEFAULT_SESSIONS_DIR = DEFAULT_OPENCLAW_HOME / "agents" / "main" / "sessions"
 DEFAULT_BACKFILL_LOG = DEFAULT_OPENCLAW_HOME / "workspace" / "var" / "memory_backfill_records.jsonl"
 DEFAULT_OLLAMA_BASE_URL = "http://ccnode.briconbric.com:22545"
-DEFAULT_EMBED_MODEL = "bge-m3:latest"
-DEFAULT_DIMENSIONS = 1024
+DEFAULT_EMBED_MODEL = "qwen3-embedding:8b"
+DEFAULT_DIMENSIONS = 4096
 
 TOPIC_PATTERNS = {
     "xhs": re.compile(r"(小红书|小紅書|XHS|xhs|Costco|Frutteto|投稿|话题|話題|笔记|筆記)", re.IGNORECASE),
