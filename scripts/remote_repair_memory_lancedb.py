@@ -42,7 +42,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-config_path = Path(os.environ.get("OPENCLAW_CONFIG", "/var/lib/openclaw/.openclaw/openclaw.json"))
+primary_config_path = Path(os.environ.get("OPENCLAW_CONFIG", "/var/lib/openclaw/.openclaw/openclaw.json"))
 model = os.environ.get("OPENCLAW_MEMORY_EMBED_MODEL", "qwen3-embedding:8b")
 dims = int(os.environ.get("OPENCLAW_MEMORY_EMBED_DIMS", "4096"))
 configured = os.environ.get("OPENCLAW_MEMORY_OLLAMA_BASE_URL", "").strip()
@@ -127,42 +127,52 @@ if selected is None:
     selected = {"provider": "ollama", "baseUrl": fallback, "apiKey": "ollama-local"}
     probe_log.append("no embedding endpoint currently reachable; text fallback remains enabled")
 
-data = json.loads(config_path.read_text(encoding="utf-8"))
-backup = config_path.with_suffix(config_path.suffix + ".memory-stage3-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + ".bak")
-shutil.copy2(config_path, backup)
-
-agents_defaults = data.get("agents", {}).get("defaults")
-if isinstance(agents_defaults, dict):
-    agents_defaults.pop("llm", None)
-
-discord = data.setdefault("channels", {}).setdefault("discord", {})
-if not isinstance(discord.get("streaming"), dict):
-    discord["streaming"] = {"mode": "off"}
-for guild in (discord.get("guilds") or {}).values():
-    if isinstance(guild, dict):
-        for channel in (guild.get("channels") or {}).values():
-            if isinstance(channel, dict):
-                channel.pop("allow", None)
-
-entry = data.setdefault("plugins", {}).setdefault("entries", {}).setdefault("memory-lancedb", {})
-entry["enabled"] = True
-cfg = entry.setdefault("config", {})
-emb = cfg.setdefault("embedding", {})
-emb["provider"] = selected["provider"]
-emb["model"] = model
-emb["baseUrl"] = selected["baseUrl"]
-emb["apiKey"] = selected["apiKey"]
-emb["dimensions"] = dims
 safe_model = model.replace(":", "-").replace("/", "-")
-cfg["dbPath"] = f"/var/lib/openclaw/.openclaw/memory/lancedb-{safe_model}-{dims}"
-cfg["autoCapture"] = True
-cfg["autoRecall"] = True
-cfg["captureMaxChars"] = 2000
-data.setdefault("plugins", {}).setdefault("slots", {})["memory"] = "memory-lancedb"
 
-config_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-print("CONFIG_BACKUP", backup)
-print("MEMORY_EMBEDDING", json.dumps(emb, ensure_ascii=False, sort_keys=True))
+def patch_config(config_path: Path) -> None:
+    if not config_path.is_file():
+        print("CONFIG_SKIP_MISSING", config_path)
+        return
+    data = json.loads(config_path.read_text(encoding="utf-8"))
+    backup = config_path.with_suffix(config_path.suffix + ".memory-stage3-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + ".bak")
+    shutil.copy2(config_path, backup)
+
+    agents_defaults = data.get("agents", {}).get("defaults")
+    if isinstance(agents_defaults, dict):
+        agents_defaults.pop("llm", None)
+
+    discord = data.setdefault("channels", {}).setdefault("discord", {})
+    if not isinstance(discord.get("streaming"), dict):
+        discord["streaming"] = {"mode": "off"}
+    for guild in (discord.get("guilds") or {}).values():
+        if isinstance(guild, dict):
+            for channel in (guild.get("channels") or {}).values():
+                if isinstance(channel, dict):
+                    channel.pop("allow", None)
+
+    entry = data.setdefault("plugins", {}).setdefault("entries", {}).setdefault("memory-lancedb", {})
+    entry["enabled"] = True
+    cfg = entry.setdefault("config", {})
+    emb = cfg.setdefault("embedding", {})
+    emb["provider"] = selected["provider"]
+    emb["model"] = model
+    emb["baseUrl"] = selected["baseUrl"]
+    emb["apiKey"] = selected["apiKey"]
+    emb["dimensions"] = dims
+    cfg["dbPath"] = f"/var/lib/openclaw/.openclaw/memory/lancedb-{safe_model}-{dims}"
+    cfg["autoCapture"] = True
+    cfg["autoRecall"] = True
+    cfg["captureMaxChars"] = 2000
+    data.setdefault("plugins", {}).setdefault("slots", {})["memory"] = "memory-lancedb"
+
+    config_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("CONFIG_BACKUP", backup)
+    print("MEMORY_CONFIG", config_path)
+    print("MEMORY_EMBEDDING", json.dumps(emb, ensure_ascii=False, sort_keys=True))
+
+patch_config(primary_config_path)
+if primary_config_path != Path("/root/.openclaw/openclaw.json"):
+    patch_config(Path("/root/.openclaw/openclaw.json"))
 print("PROBE_LOG")
 for item in probe_log:
     print(" - " + item)
