@@ -84,6 +84,19 @@ def option_texts(page, selector: str) -> list[dict[str, str]]:
     )
 
 
+def select_first_available(page, selector: str, values: list[str]) -> None:
+    last_error: Exception | None = None
+    for value in values:
+        for kwargs in ({"value": value}, {"label": value}):
+            try:
+                page.select_option(selector, **kwargs, timeout=5000)
+                return
+            except Exception as exc:
+                last_error = exc
+    options = option_texts(page, selector)
+    raise BookingError(f"failed: option unavailable: {selector} wanted={values} options={options}") from last_error
+
+
 def find_model_value(page) -> str:
     for item in option_texts(page, "#carId"):
         if TARGET_MODEL in item["text"]:
@@ -191,11 +204,11 @@ def main() -> int:
             model_value = find_model_value(page)
             page.select_option("#carId", model_value)
             page.select_option("#dateStart", target_start.strftime("%Y-%m-%d 00:00:00.0"))
-            page.select_option("#hourStart", "9")
-            page.select_option("#minuteStart", "00")
+            select_first_available(page, "#hourStart", ["09", "9"])
+            select_first_available(page, "#minuteStart", ["00", "0"])
             page.select_option("#dateEnd", target_end.strftime("%Y-%m-%d 00:00:00.0"))
-            page.select_option("#hourEnd", "21")
-            page.select_option("#minuteEnd", "00")
+            select_first_available(page, "#hourEnd", ["21"])
+            select_first_available(page, "#minuteEnd", ["00", "0"])
             page.check("#exemptNocFlgYes")
 
             phase = "validate-booking-form"
@@ -211,9 +224,14 @@ def main() -> int:
             confirm_match = re.search(r"利用開始日時\s*(\d{4})年(\d{2})月(\d{2})日（[^）]+）(\d{2}):(\d{2})", text)
             if not confirm_match:
                 raise BookingError("failed: could not verify target reservation date on confirm page")
-            confirm_date = f"{confirm_match.group(1)}-{confirm_match.group(2)}-{confirm_match.group(3)}"
-            if confirm_date != target_start.strftime("%Y-%m-%d"):
-                raise BookingError(f'failed: target date mismatch, expected {target_start.strftime("%Y-%m-%d")}, got {confirm_date}')
+            confirm_start = (
+                f"{confirm_match.group(1)}-{confirm_match.group(2)}-{confirm_match.group(3)}"
+                f"T{confirm_match.group(4)}:{confirm_match.group(5)}"
+            )
+            if confirm_start != target_start.strftime("%Y-%m-%dT%H:%M"):
+                raise BookingError(
+                    f'failed: target start mismatch, expected {target_start.strftime("%Y-%m-%dT%H:%M")}, got {confirm_start}'
+                )
 
             if args.dry_run:
                 runtime.finish("ok", "dry-run", final_message="dry-run ok")

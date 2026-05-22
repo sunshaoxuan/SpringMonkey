@@ -104,6 +104,19 @@ def option_texts(page, selector: str) -> list[dict[str, str]]:
     )
 
 
+def select_first_available(page, selector: str, values: list[str]) -> None:
+    last_error: Exception | None = None
+    for value in values:
+        for kwargs in ({"value": value}, {"label": value}):
+            try:
+                page.select_option(selector, **kwargs, timeout=5000)
+                return
+            except Exception as exc:
+                last_error = exc
+    options = option_texts(page, selector)
+    raise BookingWindowError(f"failed: option unavailable: {selector} wanted={values} options={options}") from last_error
+
+
 def model_options(page, model_preference: str) -> list[dict[str, str]]:
     options = option_texts(page, "#carId")
     if model_preference.strip().lower() in {ANY_AVAILABLE_MODEL, "any_available", "available"}:
@@ -290,11 +303,11 @@ def main() -> int:
                 tried.append(selected_model_text)
                 page.select_option("#carId", model["value"])
                 page.select_option("#dateStart", start.strftime("%Y-%m-%d 00:00:00.0"))
-                page.select_option("#hourStart", str(start.hour))
-                page.select_option("#minuteStart", f"{start.minute:02d}")
+                select_first_available(page, "#hourStart", [f"{start.hour:02d}", str(start.hour)])
+                select_first_available(page, "#minuteStart", [f"{start.minute:02d}", str(start.minute)])
                 page.select_option("#dateEnd", end.strftime("%Y-%m-%d 00:00:00.0"))
-                page.select_option("#hourEnd", str(end.hour))
-                page.select_option("#minuteEnd", f"{end.minute:02d}")
+                select_first_available(page, "#hourEnd", [f"{end.hour:02d}", str(end.hour)])
+                select_first_available(page, "#minuteEnd", [f"{end.minute:02d}", str(end.minute)])
                 if page.locator("#exemptNocFlgYes").count():
                     page.check("#exemptNocFlgYes")
                 page.locator("#doCheck").click()
