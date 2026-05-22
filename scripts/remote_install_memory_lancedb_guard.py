@@ -126,7 +126,7 @@ chmod 755 /usr/local/lib/openclaw/check_memory_lancedb_dims.sh
 cat >/etc/systemd/system/openclaw.service.d/20-memory-lancedb-guard.conf <<'EOF'
 [Service]
 TimeoutStartSec=120
-ExecStartPre=/usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh
+ExecStartPre=-/usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh
 ExecStartPost=/usr/local/lib/openclaw/check_memory_lancedb_dims.sh
 EOF
 
