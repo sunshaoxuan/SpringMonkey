@@ -140,11 +140,12 @@ def booking_submit_completed(body: str) -> bool:
 
 
 def confirm_attention_if_present(page, body: str) -> str:
-    if "ご注意ください！" not in body or page.locator("text=了解").count() == 0:
+    if "ご注意ください！" not in body:
         return body
-    page.locator("text=了解").click(force=True)
-    page.wait_for_load_state("domcontentloaded")
-    body = page.locator("body").inner_text()
+    if page.locator("text=了解").count():
+        page.locator("text=了解").click(force=True)
+        page.wait_for_load_state("domcontentloaded")
+        body = page.locator("body").inner_text()
     if not booking_submit_completed(body) and page.locator("#doOnceRegist").count():
         page.locator("#doOnceRegist").click(force=True)
         page.wait_for_load_state("domcontentloaded")
