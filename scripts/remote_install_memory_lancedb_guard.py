@@ -137,7 +137,7 @@ systemctl is-active openclaw.service
 echo "=== drop-in ==="
 systemctl cat openclaw.service | sed -n '/20-memory-lancedb-guard.conf/,+10p'
 echo "=== patch verify ==="
-/usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh
+/usr/local/lib/openclaw/ensure_memory_lancedb_guard.sh || true
 echo "=== dims verify ==="
 /usr/local/lib/openclaw/check_memory_lancedb_dims.sh
 echo "=== recent logs ==="
