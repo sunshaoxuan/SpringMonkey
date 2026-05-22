@@ -25,6 +25,9 @@ class FakeLocator:
         self.page.clicks += 1
         self.page.body = "予約登録を受け付けました。"
 
+    def inner_text(self) -> str:
+        return self.page.body
+
 
 class FakePage:
     def __init__(self):
@@ -33,7 +36,7 @@ class FakePage:
         self.waits = 0
 
     def locator(self, selector: str):
-        assert selector in {"text=了解", "#doOnceRegist"}
+        assert selector in {"text=了解", "#doOnceRegist", "body"}
         return FakeLocator(self, selector)
 
     def wait_for_load_state(self, state: str) -> None:
