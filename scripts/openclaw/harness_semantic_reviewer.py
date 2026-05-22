@@ -27,7 +27,10 @@ def review_intent_frame(frame: IntentFrame, tool: dict[str, Any] | None, origina
         return SemanticReview(False, "task frame has no bound tool", "tool_binding_missing")
     if tool:
         write_tool = bool(tool.get("write_operation"))
-        if write_tool and frame.safety == "readonly":
+        readonly_actions = {str(item) for item in tool.get("readonly_actions", []) if str(item or "").strip()}
+        action_safety = tool.get("action_safety") if isinstance(tool.get("action_safety"), dict) else {}
+        action_allows_readonly = frame.action in readonly_actions or str(action_safety.get(frame.action) or "") == "readonly"
+        if write_tool and frame.safety == "readonly" and not action_allows_readonly:
             return SemanticReview(False, "model selected write tool but marked safety readonly", "safety_mismatch")
         if not write_tool and frame.safety in {"write", "destructive", "credential"}:
             return SemanticReview(False, "model selected readonly tool for unsafe frame", "safety_mismatch")

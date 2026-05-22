@@ -57,3 +57,28 @@ def test_missing_web_research_tool_reports_system_gap() -> None:
     binding = bind_tool(frame("web", "research"), data)
     assert binding.status == "gap"
     assert "missing_registered_public_research_tool" in binding.reason
+
+
+def test_binds_candidate_by_registered_tool_alias() -> None:
+    binding = bind_tool(
+        frame(
+            "self",
+            "verify",
+            [
+                {
+                    "tool_id": "openclaw.repair_plan.openclaw_self_evolution_internal_repair",
+                    "confidence": 0.96,
+                    "reason": "repair package alias for registered internal repair verifier",
+                }
+            ],
+        ),
+        registry(),
+    )
+    assert binding.status == "bound"
+    assert binding.tool and binding.tool["tool_id"] == "openclaw.self_evolution.internal_repair"
+
+
+def test_self_verify_binds_by_domain_action_without_alias_candidate() -> None:
+    binding = bind_tool(frame("self", "verify"), registry())
+    assert binding.status == "bound"
+    assert binding.tool and binding.tool["tool_id"] == "openclaw.self_evolution.internal_repair"

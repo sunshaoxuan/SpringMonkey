@@ -26,6 +26,8 @@ def test_registry_contains_generic_self_evolution_internal_repair_tool():
     assert "test_self_evolution_internal_repair_router.py" in tool["verify_command"]
     assert tool["domain"] == "self"
     assert set(tool["actions"]) >= {"repair", "implement", "verify", "push"}
+    assert "verify" in tool.get("readonly_actions", [])
+    assert "openclaw.repair_plan.openclaw_self_evolution_internal_repair" in tool.get("tool_aliases", [])
     generic_fields = {key: value for key, value in tool.items() if key != "verify_command"}
     encoded = json.dumps(generic_fields, ensure_ascii=False).lower()
     assert "天气" not in encoded

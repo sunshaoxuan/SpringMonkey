@@ -15,8 +15,20 @@ class ToolBinding:
     confidence: float = 0.0
 
 
+def _tool_aliases(tool: dict[str, Any]) -> set[str]:
+    aliases: set[str] = set()
+    for key in ("tool_aliases", "aliases", "legacy_tool_ids"):
+        values = tool.get(key)
+        if isinstance(values, list):
+            aliases.update(str(item) for item in values if str(item or "").strip())
+    return aliases
+
+
 def _tool_by_id(registry: dict[str, Any], tool_id: str) -> dict[str, Any] | None:
-    return next((item for item in registry.get("tools", []) if str(item.get("tool_id")) == tool_id), None)
+    for item in registry.get("tools", []):
+        if str(item.get("tool_id")) == tool_id or tool_id in _tool_aliases(item):
+            return item
+    return None
 
 
 def bind_tool(frame: IntentFrame, registry: dict[str, Any]) -> ToolBinding:

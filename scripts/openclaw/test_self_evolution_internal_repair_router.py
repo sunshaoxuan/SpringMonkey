@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import intent_tool_router as router
+from harness_intent_agent import IntentFrame
 
 
 def tool(push_default: bool = False):
@@ -63,6 +64,44 @@ def test_run_tool_passes_push_flag_for_internal_repair():
     joined = " ".join(cmd)
     assert "天气" not in joined and "weather" not in joined.lower()
 
+
+
+def test_verify_repair_package_alias_binds_to_internal_repair_tool():
+    frame = IntentFrame(
+        conversation_mode="task",
+        domain="self",
+        action="verify",
+        canonical_text="验证修复包 implementation_run_id: impl_alias",
+        context_refs=[],
+        parameters={},
+        safety="readonly",
+        result_contract={"type": "self_evolution_repair_result"},
+        tool_candidates=[
+            {
+                "tool_id": "openclaw.repair_plan.openclaw_self_evolution_internal_repair",
+                "confidence": 0.96,
+                "reason": "semantic repair package verification alias",
+            }
+        ],
+        confidence=0.96,
+        reason="repair package verification maps to registered self-evolution verifier",
+    )
+    registry = {"tools": [dict(tool(), **{
+        "tool_id": "openclaw.self_evolution.internal_repair",
+        "intent_id": "openclaw.self_evolution.internal_repair",
+        "domain": "self",
+        "actions": ["repair", "implement", "verify", "push"],
+        "readonly_actions": ["verify"],
+        "tool_aliases": ["openclaw.repair_plan.openclaw_self_evolution_internal_repair"],
+        "write_operation": True,
+    })]}
+
+    binding = router.bind_tool(frame, registry)
+    review = router.review_intent_frame(frame, binding.tool, "验证你的修复包")
+
+    assert binding.status == "bound"
+    assert binding.tool and binding.tool["tool_id"] == "openclaw.self_evolution.internal_repair"
+    assert review.passed is True
 
 if __name__ == "__main__":
     for name, fn in list(globals().items()):

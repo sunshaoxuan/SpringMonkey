@@ -1378,6 +1378,12 @@
         "verify",
         "push"
       ],
+      "readonly_actions": [
+        "verify"
+      ],
+      "tool_aliases": [
+        "openclaw.repair_plan.openclaw_self_evolution_internal_repair"
+      ],
       "worker_agent": "toolWorker",
       "prompt_hints": [
         "执行通用能力补齐 run",
