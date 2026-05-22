@@ -184,6 +184,21 @@ def unavailable_reason(body: str) -> str | None:
     return None
 
 
+def booking_submit_completed(body: str) -> bool:
+    normalized = re.sub(r"\s+", "", body)
+    return any(
+        marker in normalized
+        for marker in (
+            "予約登録を受付けました。",
+            "予約登録を受け付けました。",
+            "予約を受付けました。",
+            "予約を受け付けました。",
+            "予約登録完了",
+            "予約完了",
+        )
+    )
+
+
 def assert_confirm_page(body: str, start: datetime, end: datetime, station_name: str, model_preference: str) -> None:
     if "入力内容に誤りがあります" in body:
         raise BookingWindowError("failed: booking form validation error")
@@ -310,9 +325,15 @@ def main() -> int:
             page.locator("#doOnceRegist").click()
             page.wait_for_load_state("domcontentloaded")
             done_text = page.locator("body").inner_text()
-            if "予約登録を受付けました。" not in done_text:
-                raise BookingWindowError("failed: reservation submit did not complete")
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted booking")
+            if booking_submit_completed(done_text):
+                runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted booking")
+            else:
+                runtime.record_step(
+                    step=phase,
+                    status="postcheck",
+                    tool="browser",
+                    detail="completion text not found; verifying reservation list",
+                )
 
         result = existing_reservation_for_window(start, end, args.station_name, args.model_preference)
         if not result:

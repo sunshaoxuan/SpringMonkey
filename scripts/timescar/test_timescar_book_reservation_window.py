@@ -39,6 +39,10 @@ def main() -> int:
     report = mod.format_report(reservation)
     assert "预约已提交并回查确认" in report
     assert "是否保留同车：是" in report
+    assert mod.booking_submit_completed("予約登録を受付けました。")
+    assert mod.booking_submit_completed("予約登録を 受け付けました。")
+    assert mod.booking_submit_completed("予約完了")
+    assert not mod.booking_submit_completed("予約登録（確認）")
     unavailable = mod.format_unavailable_report(start, end, "久我山４丁目２", "ヤリスクロス（ハイブリッド）", "not available")
     assert "未执行预订，目标窗口不可预订" in unavailable
     assert "not available" in unavailable

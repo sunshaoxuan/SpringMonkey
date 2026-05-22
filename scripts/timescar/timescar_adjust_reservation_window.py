@@ -206,6 +206,21 @@ def assert_confirm_page(body: str, new_start: datetime, new_return: datetime) ->
         raise AdjustError("确认页结束时间不匹配")
 
 
+def change_submit_completed(body: str) -> bool:
+    normalized = re.sub(r"\s+", "", body)
+    return any(
+        marker in normalized
+        for marker in (
+            "予約変更を受付けました。",
+            "予約変更を受け付けました。",
+            "変更を受付けました。",
+            "変更を受け付けました。",
+            "予約変更完了",
+            "変更完了",
+        )
+    )
+
+
 def is_recoverable_browser_closed_error(exc: Exception) -> bool:
     lowered = str(exc).lower()
     return (
@@ -338,13 +353,19 @@ def main() -> int:
                         page.locator("text=了解").click(force=True)
                         page.wait_for_load_state("domcontentloaded")
                         body = page.locator("body").inner_text()
-                        if "予約変更を受付けました。" not in body and page.locator("#doOnceRegist").count():
+                        if not change_submit_completed(body) and page.locator("#doOnceRegist").count():
                             page.locator("#doOnceRegist").click(force=True)
                             page.wait_for_load_state("domcontentloaded")
                             body = page.locator("body").inner_text()
-                    if "予約変更を受付けました。" not in body:
-                        raise AdjustError("提交后未看到预约变更完成提示")
-                    runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted change")
+                    if change_submit_completed(body):
+                        runtime.record_step(step=phase, status="ok", tool="browser", detail="submitted change")
+                    else:
+                        runtime.record_step(
+                            step=phase,
+                            status="postcheck",
+                            tool="browser",
+                            detail="completion text not found; verifying reservation list",
+                        )
                     browser_completed = True
                     break
             except Exception as exc:

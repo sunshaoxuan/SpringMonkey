@@ -30,6 +30,10 @@ def main() -> int:
         RuntimeError("Locator.evaluate_all: Target page, context or browser has been closed")
     )
     assert not adjust_mod.is_recoverable_browser_closed_error(RuntimeError("提交后未看到预约变更完成提示"))
+    assert adjust_mod.change_submit_completed("予約変更を受付けました。")
+    assert adjust_mod.change_submit_completed("予約変更を 受け付けました。")
+    assert adjust_mod.change_submit_completed("変更完了")
+    assert not adjust_mod.change_submit_completed("予約変更（確認）")
     original = fake_reservation(datetime(2026, 5, 5, 9, 0, tzinfo=TZ))
     changed = {
         **original,
