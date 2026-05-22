@@ -215,12 +215,32 @@ def booking_submit_completed(body: str) -> bool:
 def confirm_attention_if_present(page, body: str) -> str:
     if "ご注意ください！" not in body:
         return body
-    if page.locator("text=了解").count():
-        page.locator("text=了解").click(force=True)
-        page.wait_for_load_state("domcontentloaded")
-        body = page.locator("body").inner_text()
+    clicked_notice = False
+    for selector in (
+        "#licenseCaution_box .s_agree",
+        "#drvReportCaution_box .s_agree",
+        "#grossNegligenceAccident_box .s_agree",
+        "#info_box .s_agree",
+        "#noMaxChargeRoadwayStAgree_box .s_agree",
+        ".info_message .s_agree",
+        "text=了解",
+    ):
+        locator = page.locator(selector).first
+        if locator.count() and locator.is_visible():
+            locator.click(force=True)
+            clicked_notice = True
+            page.wait_for_timeout(5000)
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=15000)
+            except Exception:
+                pass
+            body = page.locator("body").inner_text()
+            break
     if not booking_submit_completed(body) and page.locator("#doOnceRegist").count():
+        if not clicked_notice:
+            page.locator("#nocIntroReadFlg").evaluate("el => el.value = 'true'") if page.locator("#nocIntroReadFlg").count() else None
         page.locator("#doOnceRegist").click(force=True)
+        page.wait_for_timeout(5000)
         page.wait_for_load_state("domcontentloaded")
         body = page.locator("body").inner_text()
     return body

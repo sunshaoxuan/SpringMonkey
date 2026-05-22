@@ -16,10 +16,17 @@ class FakeLocator:
         self.page = page
         self.selector = selector
 
+    @property
+    def first(self):
+        return self
+
     def count(self) -> int:
-        if self.selector == "text=了解":
+        if self.selector != "#licenseCaution_box .s_agree":
             return 0
         return 1
+
+    def is_visible(self) -> bool:
+        return self.count() > 0
 
     def click(self, force: bool = False) -> None:
         self.page.clicks += 1
@@ -36,10 +43,12 @@ class FakePage:
         self.waits = 0
 
     def locator(self, selector: str):
-        assert selector in {"text=了解", "#doOnceRegist", "body"}
         return FakeLocator(self, selector)
 
     def wait_for_load_state(self, state: str) -> None:
+        self.waits += 1
+
+    def wait_for_timeout(self, timeout_ms: int) -> None:
         self.waits += 1
 
 
