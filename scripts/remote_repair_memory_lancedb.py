@@ -19,9 +19,9 @@ REPO = os.environ.get("SPRINGMONKEY_REPO_PATH", "/var/lib/openclaw/repos/SpringM
 REMOTE = r"""
 set -euo pipefail
 REPO="${SPRINGMONKEY_REPO_PATH:-/var/lib/openclaw/repos/SpringMonkey}"
-OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-/root/.openclaw/openclaw.json}"
-MEMORY_MODEL="${OPENCLAW_MEMORY_EMBED_MODEL:-bge-m3:latest}"
-MEMORY_DIMS="${OPENCLAW_MEMORY_EMBED_DIMS:-1024}"
+OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-/var/lib/openclaw/.openclaw/openclaw.json}"
+MEMORY_MODEL="${OPENCLAW_MEMORY_EMBED_MODEL:-qwen3-embedding:8b}"
+MEMORY_DIMS="${OPENCLAW_MEMORY_EMBED_DIMS:-4096}"
 QUERY="${OPENCLAW_MEMORY_VERIFY_QUERY:-小红书 Costco Frutteto 投稿}"
 
 cd "$REPO"
@@ -42,9 +42,9 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-config_path = Path(os.environ.get("OPENCLAW_CONFIG", "/root/.openclaw/openclaw.json"))
-model = os.environ.get("OPENCLAW_MEMORY_EMBED_MODEL", "bge-m3:latest")
-dims = int(os.environ.get("OPENCLAW_MEMORY_EMBED_DIMS", "1024"))
+config_path = Path(os.environ.get("OPENCLAW_CONFIG", "/var/lib/openclaw/.openclaw/openclaw.json"))
+model = os.environ.get("OPENCLAW_MEMORY_EMBED_MODEL", "qwen3-embedding:8b")
+dims = int(os.environ.get("OPENCLAW_MEMORY_EMBED_DIMS", "4096"))
 configured = os.environ.get("OPENCLAW_MEMORY_OLLAMA_BASE_URL", "").strip()
 
 def probe_ollama(base: str) -> tuple[bool, str]:
@@ -153,7 +153,8 @@ emb["model"] = model
 emb["baseUrl"] = selected["baseUrl"]
 emb["apiKey"] = selected["apiKey"]
 emb["dimensions"] = dims
-cfg["dbPath"] = "/var/lib/openclaw/.openclaw/memory/lancedb"
+safe_model = model.replace(":", "-").replace("/", "-")
+cfg["dbPath"] = f"/var/lib/openclaw/.openclaw/memory/lancedb-{safe_model}-{dims}"
 cfg["autoCapture"] = True
 cfg["autoRecall"] = True
 cfg["captureMaxChars"] = 2000

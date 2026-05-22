@@ -97,21 +97,23 @@ import time
 import urllib.request
 from urllib.error import URLError
 
-payload = json.dumps({"model": "bge-m3:latest", "input": "memory lancedb health check"}).encode()
+payload = json.dumps({"model": "qwen3-embedding:8b", "input": "memory lancedb health check"}).encode()
 headers = {
     "Content-Type": "application/json",
     "Authorization": "Bearer ollama-local-placeholder",
 }
-url = "http://ccnode.briconbric.com:22545/v1/embeddings"
+url = "http://ccnode.briconbric.com:22545/api/embed"
 errors = []
 for attempt in range(1, 5):
     try:
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        vec = data["data"][0]["embedding"]
+        vec = data.get("embedding")
+        if vec is None and isinstance(data.get("embeddings"), list) and data["embeddings"]:
+            vec = data["embeddings"][0]
         dims = len(vec)
-        if dims != 1024:
+        if dims != 4096:
             raise SystemExit(f"[memory-guard] embedding dims mismatch via {url}: {dims}")
         print(f"[memory-guard] embedding dims ok via {url}: {dims}")
         raise SystemExit(0)
