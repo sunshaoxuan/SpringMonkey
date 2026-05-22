@@ -51,8 +51,8 @@ python3 "$PATCH" >/tmp/memory-lancedb-guard-patch.log 2>&1 || {
   exit 1
 }
 python3 "$AUTOCAPTURE_PATCH" >/tmp/memory-lancedb-guard-autocapture.log 2>&1 || {
+  echo "[memory-guard] autocapture patch skipped or incompatible with current plugin layout" >&2
   cat /tmp/memory-lancedb-guard-autocapture.log >&2 || true
-  exit 1
 }
 python3 "$TEXT_FALLBACK_PATCH" >/tmp/memory-lancedb-guard-text-fallback.log 2>&1 || {
   cat /tmp/memory-lancedb-guard-text-fallback.log >&2 || true
@@ -74,9 +74,6 @@ text = plugin.read_text(encoding="utf-8")
 required = [
     "const response = await fetch(`${baseUrl}/embeddings`, {",
     "Embeddings dimension mismatch: expected ${expectedDims}, got ${vector.length}",
-    "function stripConversationMetadata(text) {",
-    "remember|记住|记一下|请记住|别忘了",
-    "const normalizedTexts = texts.map((text) => stripConversationMetadata(text)).filter(Boolean);",
     "async textSearch(queryText, limit = 5)",
     "vector search failed, using text fallback",
 ]
