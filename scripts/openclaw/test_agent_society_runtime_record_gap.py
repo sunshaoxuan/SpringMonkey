@@ -16,6 +16,7 @@ CASES = [
 
 
 def run_case(repo_root: Path, expected_category: str, observation: str) -> dict[str, object]:
+    helper_path: Path | None = None
     with tempfile.TemporaryDirectory(prefix="agent_society_gap_test_") as tmp:
         root = Path(tmp)
         cmd = [
@@ -60,7 +61,7 @@ def run_case(repo_root: Path, expected_category: str, observation: str) -> dict[
         helper_output = json.loads(helper_run.stdout)
         if helper_output.get("status") != "ready":
             raise AssertionError(f"expected ready helper output for {expected_category}, got {helper_output.get('status')}")
-        return {
+        row = {
             "expected_category": expected_category,
             "helper_name": helper["name"],
             "helper_status": helper["status"],
@@ -68,6 +69,9 @@ def run_case(repo_root: Path, expected_category: str, observation: str) -> dict[
             "check_count": len(helper_output.get("checks", [])),
             "action_count": len(helper_output.get("suggested_actions", [])),
         }
+        if helper_path is not None:
+            helper_path.unlink(missing_ok=True)
+        return row
 
 
 def test_record_only_does_not_write_helper() -> None:
