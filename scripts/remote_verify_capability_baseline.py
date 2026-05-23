@@ -47,9 +47,11 @@ import json
 from pathlib import Path
 payload = json.loads(Path("/tmp/openclaw-regression-baseline.json").read_text(encoding="utf-8"))
 assert payload["matched"] is True, payload
-assert payload["status"] == "awaiting_authorization", payload
+assert payload["status"] == "internal_repair_required", payload
 assert payload["expected_tool_id"] == "timescar.dm.adjust_start", payload
 assert payload["write_operation"] is True, payload
+assert payload["package"]["internal_repair_allowed"] is True, payload
+assert payload["package"]["external_side_effect"] is True, payload
 print("regression_gate_ok", payload["baseline_case_id"], payload["status"])
 PY
 rm -rf "$TMP_KERNEL"
