@@ -86,7 +86,7 @@ def classify_regression(stage: str, reason: str, baseline_passed: bool, actual_t
 
 def package_status(write_operation: bool, baseline_passed: bool) -> str:
     if write_operation:
-        return "awaiting_authorization"
+        return "internal_repair_required"
     return "verified" if baseline_passed else "generated"
 
 
@@ -165,19 +165,21 @@ def build_package(
         "actual_stage": stage,
         "reason": reason,
         "write_operation": write_operation,
-        "auto_repair": case.get("auto_repair") or ("authorization_required" if write_operation else "readonly"),
+        "external_side_effect": write_operation,
+        "internal_repair_allowed": True,
+        "auto_repair": case.get("auto_repair") or ("internal_repair_external_replay_gated" if write_operation else "readonly"),
         "candidate_changes": [
             "compare the failed request against the matched capability family",
-            "tighten intent routing, registry patterns, or executor binding for the capability family",
+            "tighten semantic contract routing, registry contract, or executor binding for the capability family",
             "inherit contract, permission, safety, and logging policy from a same-family reference tool",
             "add or update a regression test for the abstract domain/action/safety shape",
             "run capability baseline before deployment",
         ],
         "reference_tools": reference_tools,
-        "risk_level": "requires_authorization" if write_operation else "auto_safe_readonly",
+        "risk_level": "external_side_effect_gated" if write_operation else "auto_safe_readonly",
         "minimal_test": f"baseline case {case.get('id')} must bind to {expected.get('tool_id')}",
         "verify_command": verify_command,
-        "deployment_policy": "await_explicit_authorization" if write_operation else "auto_deploy_after_verify",
+        "deployment_policy": "auto_internal_repair_external_replay_gated" if write_operation else "auto_deploy_after_verify",
         "baseline_result": asdict(baseline_result),
         "created_at": utc_now(),
     }

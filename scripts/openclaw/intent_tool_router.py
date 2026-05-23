@@ -76,7 +76,7 @@ def utc_now() -> str:
 
 
 def normalize_text(text: str) -> str:
-    return re.sub(r"\s+", "", text or "").strip()
+    return "".join(str(text or "").split()).strip()
 
 
 

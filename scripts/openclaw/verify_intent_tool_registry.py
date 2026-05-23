@@ -77,6 +77,15 @@ def main() -> int:
         verify_command = str(tool.get("verify_command") or "").strip()
         if not verify_command:
             fail(f"{tool_id}: verify_command required")
+    from verify_harness_flow_exits import scan_semantic_file, SEMANTIC_FILES, rel
+
+    findings = []
+    for path in SEMANTIC_FILES:
+        if path.is_file():
+            findings.extend(scan_semantic_file(path))
+    if findings:
+        first = findings[0]
+        fail(f"semantic routing guard failed at {rel(first.path)}:{first.line}: {first.message}")
     print(f"intent_tool_registry_ok tools={len(tools)}")
     return 0
 

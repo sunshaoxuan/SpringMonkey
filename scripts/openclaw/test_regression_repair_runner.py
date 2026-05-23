@@ -9,7 +9,7 @@ import regression_repair_runner as runner
 from harness_intent_agent import IntentFrame
 
 
-def test_write_baseline_regression_waits_for_authorization() -> None:
+def test_write_baseline_regression_allows_internal_repair() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         result = runner.run_regression_repair(
             text="把这单的开始时间往后推24小时，结束时间不变。",
@@ -20,10 +20,13 @@ def test_write_baseline_regression_waits_for_authorization() -> None:
         rows = (Path(tmp) / "kernel" / "regression_repair_packages.jsonl").read_text(encoding="utf-8").splitlines()
     assert result.matched is True
     assert result.regression_type == "existing_tool_regression"
-    assert result.status == "awaiting_authorization"
+    assert result.status == "internal_repair_required"
     assert result.expected_tool_id == "timescar.dm.adjust_start"
     assert result.write_operation is True
-    assert json.loads(rows[0])["deployment_policy"] == "await_explicit_authorization"
+    row = json.loads(rows[0])
+    assert row["deployment_policy"] == "auto_internal_repair_external_replay_gated"
+    assert row["internal_repair_allowed"] is True
+    assert row["external_side_effect"] is True
 
 
 def test_readonly_baseline_regression_is_verified_package() -> None:
@@ -50,13 +53,29 @@ def test_capability_repair_prefers_baseline_regression_over_new_gap() -> None:
             reason="tool binding gap",
             kernel_root=Path(tmp) / "kernel",
             repo_root=Path(__file__).resolve().parents[2],
+            implementation_starter=lambda **_kwargs: capability_repair_runner.DomainImplementationRun(
+                run_id="impl_regression",
+                package_id="regression_test",
+                status="running",
+                stage="implementation_agent_running",
+                job_name="自增益实现",
+                started_at="2026-05-23T00:00:00+00:00",
+                pid=123,
+                prompt_file="prompt.txt",
+                stdout_file="stdout.log",
+                stderr_file="stderr.log",
+                long_task_id="long_regression",
+                evidence="test_started",
+            ),
         )
         events = [json.loads(line) for line in Path(result.event_log).read_text(encoding="utf-8").splitlines()]
-    assert result.status == "awaiting_authorization"
+    assert result.status == "repair_started"
     assert result.replay_allowed is False
     assert result.gap_ref.startswith("regression_ref=")
+    assert result.implementation_run["run_id"] == "impl_regression"
     assert events[-1]["baseline_case_id"] == "timescar_adjust_relative_this_booking"
     assert events[-1]["regression_type"] == "existing_tool_regression"
+    assert events[-1]["resolved_by"]["implementation_run"]["run_id"] == "impl_regression"
 
 
 def test_capability_repair_allows_readonly_baseline_regression_replay() -> None:

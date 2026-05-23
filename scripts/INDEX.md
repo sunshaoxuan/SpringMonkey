@@ -151,6 +151,10 @@
   - 用途：从 `config/openclaw/intent_tools.json` 派生语义 `ToolContract` / `IntentContract`，供 intentAgent 按能力契约选工具，而不是按 `patterns` / `required_any` 做业务关键词匹配。
   - 典型验证：`python -m pytest -q scripts/openclaw/test_harness_contracts.py`
 
+- `scripts/openclaw/verify_harness_flow_exits.py`
+  - 用途：检查 Harness 语义层和自增益流程出口；语义路由、绑定、自增益方向不得使用业务关键词或业务正则，中间状态不得作为最终出口。
+  - 典型用法：`python scripts/openclaw/verify_harness_flow_exits.py`
+
 - `scripts/openclaw/domain_implementation_runner.py`
   - 用途：当自增益已生成 `blocked_until_domain_implementation` 的规划包且模型判定可内部修复时，注册可追踪实现 run，并启动内部 agent 写代码、补测试、验证和收口；不执行外部生产写入。
   - 典型用法：`python scripts/openclaw/domain_implementation_runner.py start --package-state <package_state.json> --text "<原始请求>" --reason "<失败原因>"`
@@ -170,7 +174,7 @@
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py self-evolution-closure`
 
 - `remote_install_long_task_supervisor.py`
-  - 用途：安装 `openclaw-long-task-supervisor.timer`，每分钟执行一次 `long_task_supervisor.py poll --deliver`，负责长任务最终结果补发和超时收口。
+  - 用途：安装 `openclaw-long-task-supervisor.timer`，每分钟执行一次 `long_task_supervisor.py poll --deliver`，负责长任务阶段进度私聊报告、最终结果补发和超时收口。
   - 典型用法：`python SpringMonkey/scripts/remote_install_long_task_supervisor.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-supervisor`
 

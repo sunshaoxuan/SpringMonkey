@@ -452,6 +452,41 @@ def test_domain_implementation_process_output_becomes_final_report(monkeypatch, 
     assert "验证通过" in tasks[0]["final_report"]
 
 
+def test_long_task_stage_change_reports_private_progress(monkeypatch, tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    stdout = tmp_path / "impl.out"
+    stderr = tmp_path / "impl.err"
+    stdout.write_text("implementation_run_id=impl_1\npython -m pytest -q scripts/openclaw\n验证通过。", encoding="utf-8")
+    stderr.write_text("", encoding="utf-8")
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        reply_channel_id="origin_dm",
+        state_path=state,
+    )
+    task.update({"pid": 12345, "stdout_file": str(stdout), "stderr_file": str(stderr)})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
+    delivered: list[str] = []
+
+    supervisor.poll_tasks(
+        state_path=state,
+        sessions_dir=sessions,
+        deliver=True,
+        repair=False,
+        deliverer=lambda _task, body: (delivered.append(body) is None, "sent"),
+    )
+
+    assert any("OpenClaw 长任务进度" in item and "已检测到最终结果" in item for item in delivered)
+    stored = supervisor.read_state(state)["tasks"][0]
+    assert stored["last_progress_stage"] == "final_detected"
+    assert stored["progress_delivery_state"] == "delivered"
+
+
 def test_domain_implementation_generic_file_written_report_fails_validation(monkeypatch, tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     sessions = tmp_path / "sessions"

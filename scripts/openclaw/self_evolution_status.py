@@ -33,13 +33,17 @@ def lifecycle(event: dict) -> str:
     status = str(event.get("runner_status") or "recorded")
     if event.get("regression_ref"):
         if event.get("match_kind") == "capability_family":
-            if status == "awaiting_authorization":
-                return "known_direction_detected -> package_verified -> awaiting_authorization"
+            if status == "internal_repair_required":
+                return "known_direction_detected -> package_verified -> internal_repair_required"
+            if status == "repair_started":
+                return "known_direction_detected -> package_verified -> internal_repair_started"
             if status in {"verified", "deployed"}:
                 return f"known_direction_detected -> package_{status} -> replay_ready"
             return f"known_direction_detected -> {status}"
-        if status == "awaiting_authorization":
-            return "regression_detected -> package_verified -> awaiting_authorization"
+        if status == "internal_repair_required":
+            return "regression_detected -> package_verified -> internal_repair_required"
+        if status == "repair_started":
+            return "regression_detected -> package_verified -> internal_repair_started"
         if status in {"verified", "deployed"}:
             return f"regression_detected -> package_{status} -> replay_ready"
         return f"regression_detected -> {status}"

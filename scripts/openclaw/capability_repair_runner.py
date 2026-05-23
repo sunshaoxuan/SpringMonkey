@@ -92,6 +92,31 @@ def upsert_event(kernel_root: Path, payload: dict[str, Any], fingerprint: str) -
     return path
 
 
+def regression_package_state_path(kernel_root: Path, package: dict[str, Any]) -> Path:
+    package_id = str(package.get("package_id") or "regression_repair")
+    path = kernel_root / "regression_packages" / package_id / "package_state.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "package_id": package_id,
+        "status": package.get("status"),
+        "gap_type": package.get("regression_type"),
+        "safety_class": package.get("risk_level"),
+        "tool_id": package.get("expected_tool_id"),
+        "permission_scope": "owner_controlled_internal_repair",
+        "write_operation": bool(package.get("write_operation")),
+        "external_side_effect": bool(package.get("external_side_effect")),
+        "internal_repair_allowed": bool(package.get("internal_repair_allowed")),
+        "replay_policy": "blocked_until_domain_implementation",
+        "reason": package.get("reason"),
+        "files": [],
+        "fingerprint": package.get("fingerprint"),
+        "verify_command": package.get("verify_command"),
+        "candidate_changes": package.get("candidate_changes"),
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def is_tool_readonly(tool: dict[str, Any] | None) -> bool:
     return bool(tool) and not bool(tool.get("write_operation"))
 
@@ -162,12 +187,34 @@ def run_repair(
         registry_path=repo_root / "config" / "openclaw" / "intent_tools.json",
     )
     if regression.matched:
+        implementation_run: DomainImplementationRun | None = None
+        status = regression.status
         replay_allowed = regression.status == "verified" and not regression.write_operation and replay_depth == 0
         replay_reason = (
             "已验证的只读基线回归可重放一次"
             if replay_allowed
-            else ("写入范围的基线回归需要明确授权" if regression.write_operation else f"回归修复状态为 {regression.status}")
+            else ("写入能力回归已允许内部修复，真实外部写入仍需原始命令或明确重试" if regression.write_operation else f"回归修复状态为 {regression.status}")
         )
+        if regression.write_operation:
+            starter = implementation_starter or start_domain_implementation
+            try:
+                package_state = regression_package_state_path(kernel_root, regression.package)
+                implementation_run = starter(
+                    package_state=package_state,
+                    text=text,
+                    reason=reason,
+                    repo_root=repo_root,
+                    kernel_root=kernel_root,
+                )
+                status = "repair_started" if implementation_run.status == "running" else "final_failed"
+                replay_reason = (
+                    f"已启动内部回归修复 run={implementation_run.run_id}，外部写入重放仍受策略门控"
+                    if status == "repair_started"
+                    else f"内部回归修复启动失败：{implementation_run.evidence}"
+                )
+            except Exception as exc:
+                status = "final_failed"
+                replay_reason = f"内部回归修复启动异常：{type(exc).__name__}: {exc}"
         event = {
             "created_at": utc_now(),
             "updated_at": utc_now(),
@@ -181,7 +228,7 @@ def run_repair(
             "context_tail": context[-2000:],
             "gap_ref": f"regression_ref={regression.package.get('package_id')}",
             "gap_status": "regression",
-            "runner_status": regression.status,
+            "runner_status": status,
             "safety_class": "requires_confirmation_or_credentials" if regression.write_operation else "auto_safe_readonly",
             "replay_allowed": replay_allowed,
             "replay_reason": replay_reason,
@@ -190,7 +237,7 @@ def run_repair(
             "baseline_case_id": regression.baseline_case_id,
             "expected_tool_id": regression.expected_tool_id,
             "actual_stage": regression.actual_stage,
-            "repair_status": regression.status,
+            "repair_status": status,
             "regression_type": regression.regression_type,
             "match_kind": regression.match_kind,
             "reference_tools": regression.reference_tools or [],
@@ -209,10 +256,11 @@ def run_repair(
                 "status": regression.status,
                 "gap_type": regression.regression_type,
                 "tool_id": regression.expected_tool_id,
-                "replay_policy": "await_explicit_authorization" if regression.write_operation else "verify_before_replay",
+                "replay_policy": "external_replay_gated_after_internal_repair" if regression.write_operation else "verify_before_replay",
                 "verify_output_tail": regression.package.get("baseline_result", {}).get("reason", ""),
                 "promoted_at": utc_now() if replay_allowed else "",
-                "deployment_status": "awaiting_authorization" if regression.write_operation else "not_requested",
+                "deployment_status": "internal_repair_started" if implementation_run else ("not_requested" if not regression.write_operation else "internal_repair_required"),
+                "implementation_run": None if implementation_run is None else asdict(implementation_run),
             },
         }
         log_path = upsert_event(kernel_root, event, regression.fingerprint)
@@ -223,13 +271,13 @@ def run_repair(
                 f"expected_tool={regression.expected_tool_id}",
                 f"regression_type={regression.regression_type}",
                 f"match_kind={regression.match_kind}",
-                f"修复包状态：{regression.status}",
+                f"修复包状态：{status}",
                 f"重放判定：{'允许' if replay_allowed else '不允许'}，{replay_reason}",
                 f"事件日志：{log_path}",
             ]
         )
         return RepairRunnerResult(
-            status=regression.status,
+            status=status,
             stage=stage,
             safety_class="requires_confirmation_or_credentials" if regression.write_operation else "auto_safe_readonly",
             gap_ref=f"regression_ref={regression.package.get('package_id')}",
@@ -239,6 +287,7 @@ def run_repair(
             plan=event["plan"],
             registry_tool=registry_tool,
             toolsmith_package=regression.package,
+            implementation_run=None if implementation_run is None else asdict(implementation_run),
             event_log=str(log_path),
             created_at=utc_now(),
         )
@@ -480,7 +529,7 @@ def main() -> int:
         deploy_readonly=args.deploy_readonly,
     )
     print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
-    return 0 if result.status in {"recorded", "planned", "generated", "verified", "promoted", "deployed", "replayed", "blocked", "repair_started"} else 1
+    return 0 if result.status in {"recorded", "planned", "generated", "verified", "promoted", "deployed", "replayed", "repair_started", "final_succeeded"} else 1
 
 
 if __name__ == "__main__":

@@ -34,10 +34,27 @@ DEFAULT_OWNER_USER_ID = "999666719356354610"
 DEFAULT_TIMEOUT_SECONDS = 3600
 DEFAULT_REPO_ROOT = Path("/var/lib/openclaw/repos/SpringMonkey")
 DEFAULT_QUEUE_RETRY_SECONDS = 60
+DEFAULT_PROGRESS_INTERVAL_SECONDS = 600
 
 ACTIVE_STATUSES = {"running", "final_detected", "delivery_queued"}
 OWNER_QUEUE_TARGET = f"user:{DEFAULT_OWNER_USER_ID}"
 LEGACY_OWNER_CHANNEL_TARGET = f"channel:{DEFAULT_OWNER_USER_ID}"
+
+PROGRESS_STAGE_LABELS = {
+    "running": "已启动并进入跟踪",
+    "implementation_agent_running": "内部实现运行中",
+    "final_detected": "已检测到最终结果，准备投递",
+    "delivery_queued": "最终结果已进入投递队列",
+    "delivery_failed": "最终结果投递失败，等待重试或故障报告",
+    "timeout_waiting_final_report": "已超时，正在记录可修复事件",
+    "long_task_failed_delivered": "失败报告已投递",
+    "delivered": "最终结果已投递",
+    "cron_failed_delivery_queued": "任务失败报告已进入投递队列",
+    "cron_failed_delivered": "任务失败报告已投递",
+    "stale_queue_delivered": "滞留投递已补发",
+    "stale_queue_failed_delivered": "滞留失败报告已补发",
+    "stale_queue_delivery_failed": "滞留投递重试失败",
+}
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -90,6 +107,60 @@ def append_event(event: dict[str, Any], path: Path = DEFAULT_EVENTS_PATH) -> Non
     payload = {"created_at": utc_now(), **event}
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def progress_text(task: dict[str, Any]) -> str:
+    title = str(task.get("job_name") or task.get("job_id") or task.get("run_id") or "long task")
+    stage = str(task.get("stage") or task.get("status") or "unknown")
+    label = PROGRESS_STAGE_LABELS.get(stage, f"阶段更新：{stage}")
+    lines = [
+        "OpenClaw 长任务进度",
+        f"任务：{title}",
+        f"跟踪编号：{task.get('task_id') or 'unknown'}",
+        f"状态：{label}",
+    ]
+    run_id = str(task.get("run_id") or "").strip()
+    if run_id:
+        lines.append(f"运行编号：{run_id}")
+    if stage in {"final_detected", "delivery_queued", "delivery_failed", "delivered", "long_task_failed_delivered"}:
+        lines.append("后续：最终结果会投递到发起命令的私聊或 owner DM。")
+    else:
+        lines.append("后续：关键阶段变化会继续私聊报告，直到最终成功或最终失败。")
+    return "\n".join(lines)
+
+
+def maybe_report_progress(
+    task: dict[str, Any],
+    *,
+    deliver: bool,
+    deliverer: Callable[[dict[str, Any], str], tuple[bool, str]] | None,
+    now_ts: float,
+) -> bool:
+    if not deliver:
+        return False
+    stage = str(task.get("stage") or task.get("status") or "")
+    if not stage:
+        return False
+    last_stage = str(task.get("last_progress_stage") or "")
+    last_at = parse_iso(str(task.get("last_progress_at") or ""))
+    if stage == last_stage and now_ts - last_at < DEFAULT_PROGRESS_INTERVAL_SECONDS:
+        return False
+    send = deliverer or (lambda item, body: deliver_owner_dm(item, body))
+    ok, evidence = send(task, progress_text(task))
+    task["last_progress_stage"] = stage
+    task["last_progress_at"] = utc_now()
+    task["progress_delivery_state"] = "delivered" if ok else "failed"
+    task["progress_delivery_evidence"] = evidence
+    append_event(
+        {
+            "event": "progress_reported" if ok else "progress_report_failed",
+            "task_id": task.get("task_id"),
+            "run_id": task.get("run_id"),
+            "stage": stage,
+            "evidence": evidence,
+        }
+    )
+    return True
 
 
 def upsert_task(task: dict[str, Any], *, state_path: Path = DEFAULT_STATE_PATH) -> dict[str, Any]:
@@ -804,6 +875,8 @@ def poll_tasks(
                         task["delivery_state"] = "failed"
                         append_event({"event": "delivery_failed", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "evidence": evidence})
                         changed = True
+            if maybe_report_progress(task, deliver=deliver, deliverer=deliverer, now_ts=now_ts):
+                changed = True
             results.append(dict(task))
             continue
         if not task.get("final_report") and task.get("status") == "running":
@@ -824,6 +897,8 @@ def poll_tasks(
                 )
                 changed = True
             if task.get("final_report"):
+                if maybe_report_progress(task, deliver=deliver, deliverer=deliverer, now_ts=now_ts):
+                    changed = True
                 results.append(dict(task))
                 continue
             cron_failure = find_cron_failure_delivery(task, queue_dir=queue_dir)
@@ -847,6 +922,8 @@ def poll_tasks(
                     }
                 )
                 changed = True
+                if maybe_report_progress(task, deliver=deliver, deliverer=deliverer, now_ts=now_ts):
+                    changed = True
                 results.append(dict(task))
                 continue
             report = find_final_report(task, sessions_dir=sessions_dir)
@@ -892,6 +969,8 @@ def poll_tasks(
                 task["stage"] = "delivery_failed"
                 task["delivery_state"] = "failed"
                 append_event({"event": "delivery_failed", "task_id": task.get("task_id"), "run_id": task.get("run_id"), "evidence": evidence})
+            changed = True
+        if maybe_report_progress(task, deliver=deliver, deliverer=deliverer, now_ts=now_ts):
             changed = True
         results.append(dict(task))
     if changed:

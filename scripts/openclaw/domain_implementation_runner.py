@@ -155,7 +155,7 @@ def start_implementation(
     if force:
         run_id = f"{base_run_id}_r{datetime.now(timezone.utc).strftime('%H%M%S')}"
     prior = None if force else existing_run(run_id, state_path=state_path)
-    if prior and str(prior.get("status") or "") in ACTIVE_STATUSES | {"delivered", "failed", "timed_out"}:
+    if prior and str(prior.get("status") or "") in ACTIVE_STATUSES:
         return DomainImplementationRun(
             run_id=run_id,
             package_id=package_id,
@@ -170,6 +170,8 @@ def start_implementation(
             long_task_id=str(prior.get("task_id") or ""),
             evidence="existing_run_reused",
         )
+    if prior and str(prior.get("status") or "") in {"delivered", "failed", "timed_out", "delivery_failed"}:
+        run_id = f"{base_run_id}_r{datetime.now(timezone.utc).strftime('%H%M%S')}"
 
     run_dir.mkdir(parents=True, exist_ok=True)
     prompt_file = run_dir / f"{run_id}.prompt.txt"
