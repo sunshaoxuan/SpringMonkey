@@ -143,6 +143,15 @@ def change_submit_completed(body: str) -> bool:
     )
 
 
+def extract_validation_blocker(body: str) -> str:
+    normalized = re.sub(r"\s+", "", body)
+    if "予約できない期間が含まれていますので、空き状況をご確認ください。" in normalized:
+        return "目标延长时段包含不可预约区间，TimesCar 页面拒绝延长。"
+    if "入力内容に誤りがあります" in normalized:
+        return "TimesCar 修改页返回输入校验错误。"
+    return ""
+
+
 def is_login(page) -> bool:
     return bool(page.locator("#cardNo1").count() and page.locator("#tpPassword").count())
 
@@ -218,7 +227,14 @@ def main() -> int:
             page.wait_for_load_state("domcontentloaded")
             txt = page.locator("body").inner_text()
             if "入力内容に誤りがあります" in txt:
-                raise ExtendError("failed: extension form validation error")
+                blocker = extract_validation_blocker(txt)
+                if blocker.startswith("目标延长时段包含不可预约区间"):
+                    message = f"{blocker}\n目标返还时间：{target_sun_end[:16].replace('T', ' ')}\n预约编号：{target.get('bookingNumber', '')}"
+                    runtime.record_step(step=phase, status="blocked", tool="browser", detail=blocker)
+                    runtime.finish("blocked", "no-availability", final_message=message)
+                    print(message)
+                    return 0
+                raise ExtendError(f"failed: {blocker or 'extension form validation error'}")
             confirm_end = re.search(r"返却予定日時\s*(\d{4})年(\d{2})月(\d{2})日（[^）]+）(\d{2}):(\d{2})", txt)
             if not confirm_end:
                 raise ExtendError("failed: could not verify extension confirm page")

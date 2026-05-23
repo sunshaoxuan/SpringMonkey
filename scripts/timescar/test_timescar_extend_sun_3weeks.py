@@ -74,8 +74,15 @@ def test_change_submit_completion_markers_are_tolerant() -> None:
     assert not mod.change_submit_completed("予約変更（確認）")
 
 
+def test_extract_validation_blocker_reports_no_availability() -> None:
+    body = "入力内容に誤りがあります\n予約できない期間が含まれていますので、空き状況をご確認ください。"
+    assert mod.extract_validation_blocker(body) == "目标延长时段包含不可预约区间，TimesCar 页面拒绝延长。"
+    assert mod.extract_validation_blocker("入力内容に誤りがあります") == "TimesCar 修改页返回输入校验错误。"
+
+
 if __name__ == "__main__":
     test_fetch_reservations_retries_and_uses_sibling_script()
     test_select_target_reservation_uses_expected_sat_only_before_extension()
     test_change_submit_completion_markers_are_tolerant()
+    test_extract_validation_blocker_reports_no_availability()
     print("timescar_extend_sun_3weeks_ok")
