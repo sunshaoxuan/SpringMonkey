@@ -42,7 +42,18 @@ LEGACY_OWNER_CHANNEL_TARGET = f"channel:{DEFAULT_OWNER_USER_ID}"
 
 PROGRESS_STAGE_LABELS = {
     "running": "已启动并进入跟踪",
+    "analysis_started": "开始定位缺口",
+    "implementation_started": "内部实现已启动",
     "implementation_agent_running": "内部实现运行中",
+    "diff_created": "已产生代码差异",
+    "tests_started": "开始运行验证",
+    "tests_passed": "验证通过",
+    "tests_failed": "验证失败，准备继续收紧",
+    "commit_created": "已生成可验证提交",
+    "remote_deployed": "远端部署验证完成",
+    "replay_started": "开始受控重试",
+    "final_succeeded": "最终成功",
+    "final_failed": "最终失败",
     "final_detected": "已检测到最终结果，准备投递",
     "delivery_queued": "最终结果已进入投递队列",
     "delivery_failed": "最终结果投递失败，等待重试或故障报告",
@@ -109,6 +120,46 @@ def append_event(event: dict[str, Any], path: Path = DEFAULT_EVENTS_PATH) -> Non
         fh.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def latest_stage_event(path_value: str) -> dict[str, Any] | None:
+    if not path_value:
+        return None
+    path = Path(path_value)
+    if not path.is_file():
+        return None
+    latest: dict[str, Any] | None = None
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict) and str(row.get("stage") or "").strip():
+            latest = row
+    return latest
+
+
+def apply_stage_event(task: dict[str, Any]) -> bool:
+    event = latest_stage_event(str(task.get("stage_events_file") or ""))
+    if not event:
+        return False
+    stage = str(event.get("stage") or "").strip()
+    if not stage or stage == str(task.get("stage") or ""):
+        return False
+    task["stage"] = stage
+    task["implementation_stage_summary"] = str(event.get("summary") or "")
+    task["implementation_stage_evidence"] = str(event.get("evidence") or "")
+    task["last_seen"] = utc_now()
+    append_event(
+        {
+            "event": "stage_changed",
+            "task_id": task.get("task_id"),
+            "run_id": task.get("run_id"),
+            "stage": stage,
+            "summary": task.get("implementation_stage_summary"),
+        }
+    )
+    return True
+
+
 def progress_text(task: dict[str, Any]) -> str:
     title = str(task.get("job_name") or task.get("job_id") or task.get("run_id") or "long task")
     stage = str(task.get("stage") or task.get("status") or "unknown")
@@ -124,6 +175,8 @@ def progress_text(task: dict[str, Any]) -> str:
         lines.append(f"运行编号：{run_id}")
     if stage in {"final_detected", "delivery_queued", "delivery_failed", "delivered", "long_task_failed_delivered"}:
         lines.append("后续：最终结果会投递到发起命令的私聊或 owner DM。")
+    elif stage in {"final_succeeded", "final_failed"}:
+        lines.append("后续：最终报告正在收口并准备投递。")
     else:
         lines.append("后续：关键阶段变化会继续私聊报告，直到最终成功或最终失败。")
     return "\n".join(lines)
@@ -832,6 +885,13 @@ def poll_tasks(
         if str(task.get("status") or "") not in ACTIVE_STATUSES:
             continue
         task["last_seen"] = utc_now()
+        if apply_stage_event(task):
+            changed = True
+            if str(task.get("stage") or "") in {"final_succeeded", "final_failed"} and not str(task.get("final_report") or "").strip():
+                task["status"] = "final_detected"
+                task["result_status"] = "failed" if str(task.get("stage")) == "final_failed" else "success"
+                task["final_report"] = str(task.get("implementation_stage_summary") or task.get("implementation_stage_evidence") or "内部实现已完成。")
+                task["delivery_state"] = "pending"
         if task.get("status") == "delivery_queued":
             queue_status = delivery_queue_state(str(task.get("delivery_queue_id") or ""), queue_dir=queue_dir)
             task["delivery_queue_state"] = queue_status

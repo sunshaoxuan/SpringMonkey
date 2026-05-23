@@ -25,6 +25,7 @@ DEFAULT_TIMEOUT_SECONDS = 7200
 DEFAULT_MODEL = "openai/gpt-5.5"
 SERVICE_STATE_DIR = Path("/var/lib/openclaw/.openclaw")
 SERVICE_CONFIG_PATH = SERVICE_STATE_DIR / "openclaw.json"
+FINAL_STAGES = {"final_succeeded", "final_failed"}
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -56,6 +57,7 @@ class DomainImplementationRun:
     stderr_file: str
     long_task_id: str
     evidence: str = ""
+    stage_events_file: str = ""
 
 
 def load_package(package_state: Path) -> dict[str, Any]:
@@ -65,6 +67,33 @@ def load_package(package_state: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"package state is not a JSON object: {package_state}")
     return data
+
+
+def stage_events_path(run_dir: Path, run_id: str) -> Path:
+    return run_dir / f"{run_id}.stages.jsonl"
+
+
+def append_stage_event(
+    path: Path,
+    *,
+    run_id: str,
+    stage: str,
+    status: str = "running",
+    summary: str = "",
+    evidence: str = "",
+) -> dict[str, Any]:
+    payload = {
+        "created_at": utc_now(),
+        "run_id": run_id,
+        "stage": stage,
+        "status": status,
+        "summary": summary,
+        "evidence": evidence,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+    return payload
 
 
 def existing_run(run_id: str, *, state_path: Path = DEFAULT_STATE_PATH) -> dict[str, Any] | None:
@@ -169,6 +198,7 @@ def start_implementation(
             stderr_file=str(prior.get("stderr_file") or ""),
             long_task_id=str(prior.get("task_id") or ""),
             evidence="existing_run_reused",
+            stage_events_file=str(prior.get("stage_events_file") or ""),
         )
     if prior and str(prior.get("status") or "") in {"delivered", "failed", "timed_out", "delivery_failed"}:
         run_id = f"{base_run_id}_r{datetime.now(timezone.utc).strftime('%H%M%S')}"
@@ -177,8 +207,10 @@ def start_implementation(
     prompt_file = run_dir / f"{run_id}.prompt.txt"
     stdout_file = run_dir / f"{run_id}.stdout.log"
     stderr_file = run_dir / f"{run_id}.stderr.log"
+    events_file = stage_events_path(run_dir, run_id)
     prompt = build_prompt(package=package, text=text, reason=reason, run_id=run_id, repo_root=repo_root)
     prompt_file.write_text(prompt, encoding="utf-8")
+    append_stage_event(events_file, run_id=run_id, stage="analysis_started", summary="内部实现 run 已登记，开始定位缺口。")
 
     task = register_task(
         source="domain_implementation",
@@ -235,11 +267,13 @@ def start_implementation(
                 )
             pid = int(proc.pid)
             evidence = "implementation_agent_started"
+            append_stage_event(events_file, run_id=run_id, stage="implementation_started", summary="内部实现 agent 已启动。", evidence=f"pid={pid}")
         except Exception as exc:
             status = "failed"
-            stage = "implementation_agent_start_failed"
+            stage = "final_failed"
             evidence = f"{type(exc).__name__}: {exc}"
             stderr_file.write_text(evidence + "\n", encoding="utf-8")
+            append_stage_event(events_file, run_id=run_id, stage="final_failed", status="failed", summary="内部实现 agent 启动失败。", evidence=evidence)
 
     updated = dict(task)
     updated.update(
@@ -250,6 +284,7 @@ def start_implementation(
             "prompt_file": str(prompt_file),
             "stdout_file": str(stdout_file),
             "stderr_file": str(stderr_file),
+            "stage_events_file": str(events_file),
             "kernel_root": str(kernel_root),
             "repo_root": str(repo_root),
             "delivery_state": "pending" if status == "running" else "not_applicable",
@@ -271,6 +306,7 @@ def start_implementation(
         stderr_file=str(stderr_file),
         long_task_id=str(updated.get("task_id") or ""),
         evidence=evidence,
+        stage_events_file=str(events_file),
     )
 
 

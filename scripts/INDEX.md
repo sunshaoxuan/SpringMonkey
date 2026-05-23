@@ -167,11 +167,22 @@
 - `scripts/openclaw/verify_self_evolution_closure.py`
   - 用途：验收自增益端到端闭环硬条件：本地 HEAD 与 `origin/main` 一致、工作树干净、没有悬挂长任务、没有投递失败、没有“可重算为成功却被记录为失败”的 domain implementation run。
   - 典型用法：`python scripts/openclaw/verify_self_evolution_closure.py --fetch`
+  - gauntlet 门禁：`python scripts/openclaw/verify_self_evolution_closure.py --require-gauntlet`
+
+- `scripts/openclaw/self_evolution_gauntlet.py`
+  - 用途：在临时 Git worktree 中运行受控自增益实战验收；构造合成回归，要求产生真实代码 diff、测试结果、commit 和最终状态记录。
+  - 只读场景：`python scripts/openclaw/self_evolution_gauntlet.py --scenario readonly-helper-regression --worktree-temp --json`
+  - 写操作回归场景：`python scripts/openclaw/self_evolution_gauntlet.py --scenario write-tool-regression --worktree-temp --json`
 
 - `remote_verify_self_evolution_closure.py`
   - 用途：远端只读验收自增益闭环，组合运行 Git 真源同步、长任务收口、registry/harness/baseline 检查和状态摘要。
   - 典型用法：`python SpringMonkey/scripts/remote_verify_self_evolution_closure.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py self-evolution-closure`
+
+- `remote_verify_self_evolution_gauntlet.py`
+  - 用途：远端运行自增益实战验收，覆盖只读回归与写操作回归两个合成场景，并用 `--require-gauntlet` 验证记录。
+  - 典型用法：`python SpringMonkey/scripts/remote_verify_self_evolution_gauntlet.py`
+  - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py self-evolution-gauntlet`
 
 - `remote_install_long_task_supervisor.py`
   - 用途：安装 `openclaw-long-task-supervisor.timer`，每分钟执行一次 `long_task_supervisor.py poll --deliver`，负责长任务阶段进度私聊报告、最终结果补发和超时收口。

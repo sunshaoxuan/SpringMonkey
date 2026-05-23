@@ -135,6 +135,31 @@ def check_service(*, skip_service: bool) -> list[CheckResult]:
     return [CheckResult("openclaw_service_active", proc.returncode == 0 and output == "active", output or f"exit={proc.returncode}")]
 
 
+def check_gauntlet(gauntlet_root: Path) -> list[CheckResult]:
+    path = gauntlet_root / "self_evolution_gauntlet.jsonl"
+    if not path.is_file():
+        return [CheckResult("self_evolution_gauntlet_present", False, f"missing {path}")]
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    scenarios = {str(row.get("scenario") or ""): row for row in rows if row.get("ok") is True}
+    required = {"readonly-helper-regression", "write-tool-regression"}
+    missing = sorted(required - set(scenarios))
+    commits = [str(row.get("commit") or "") for row in scenarios.values()]
+    changed_ok = all(row.get("changed_files") for row in scenarios.values())
+    return [
+        CheckResult("self_evolution_gauntlet_present", True, str(path)),
+        CheckResult("self_evolution_gauntlet_scenarios", not missing, "ok" if not missing else "missing=" + ",".join(missing)),
+        CheckResult("self_evolution_gauntlet_commits", all(commits), ",".join(item[:12] for item in commits if item) or "none"),
+        CheckResult("self_evolution_gauntlet_changed_files", changed_ok, "ok" if changed_ok else "missing changed files"),
+    ]
+
+
 def emit(results: list[CheckResult], *, json_output: bool) -> None:
     payload = {"ok": all(item.ok for item in results), "checks": [item.__dict__ for item in results]}
     if json_output:
@@ -153,6 +178,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fetch", action="store_true", help="Fetch origin before comparing HEAD and origin/main.")
     parser.add_argument("--allow-active", action="store_true", help="Allow active long tasks during an in-progress smoke.")
     parser.add_argument("--skip-service", action="store_true", help="Skip systemd service check for local tests.")
+    parser.add_argument("--require-gauntlet", action="store_true", help="Require recent controlled self-evolution gauntlet records.")
+    parser.add_argument("--gauntlet-root", type=Path, default=supervisor.WORKSPACE / "agent_society_kernel")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -160,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
     results.extend(check_git(args.repo_root, fetch=args.fetch))
     results.extend(check_long_tasks(args.state, allow_active=args.allow_active))
     results.extend(check_service(skip_service=args.skip_service))
+    if args.require_gauntlet:
+        results.extend(check_gauntlet(args.gauntlet_root))
     emit(results, json_output=args.json)
     return 0 if all(item.ok for item in results) else 1
 

@@ -41,6 +41,7 @@ TOOLS: dict[str, str] = {
     "capability-baseline": "remote_verify_capability_baseline.py",
     "long-task-verify": "remote_verify_long_task_supervisor.py",
     "self-evolution-closure": "remote_verify_self_evolution_closure.py",
+    "self-evolution-gauntlet": "remote_verify_self_evolution_gauntlet.py",
     "long-task-supervisor": "remote_install_long_task_supervisor.py",
     "toolsmith-deploy": "remote_deploy_toolsmith_semantic.py",
     "upgrade-guard": "remote_install_upgrade_resilience_guard.py",

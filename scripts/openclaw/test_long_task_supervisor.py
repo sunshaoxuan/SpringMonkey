@@ -487,6 +487,36 @@ def test_long_task_stage_change_reports_private_progress(monkeypatch, tmp_path: 
     assert stored["progress_delivery_state"] == "delivered"
 
 
+def test_domain_implementation_stage_event_updates_task_progress(tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    events = tmp_path / "impl.stages.jsonl"
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task["stage_events_file"] = str(events)
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    events.write_text(
+        '{"run_id":"impl_1","stage":"diff_created","status":"running","summary":"diff ready","evidence":""}\n',
+        encoding="utf-8",
+    )
+    delivered: list[str] = []
+
+    tasks = supervisor.poll_tasks(
+        state_path=state,
+        deliver=True,
+        repair=False,
+        deliverer=lambda _task, body: (delivered.append(body) is None, "sent"),
+    )
+
+    assert tasks[0]["stage"] == "diff_created"
+    assert tasks[0]["implementation_stage_summary"] == "diff ready"
+    assert any("已产生代码差异" in item for item in delivered)
+
+
 def test_domain_implementation_generic_file_written_report_fails_validation(monkeypatch, tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     sessions = tmp_path / "sessions"

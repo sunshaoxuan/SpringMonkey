@@ -130,6 +130,7 @@ def main() -> int:
     events = [effective_event(args.kernel_root, event) for event in read_jsonl_tail(args.kernel_root / "capability_gap_events.jsonl", args.limit)]
     display_events = [event for event in events if str(event.get("runner_status") or "") != "superseded"]
     regressions = read_jsonl_tail(args.kernel_root / "regression_repair_packages.jsonl", args.limit)
+    gauntlets = read_jsonl_tail(args.kernel_root / "self_evolution_gauntlet.jsonl", args.limit)
     plans = read_jsonl_tail(args.kernel_root / "dm_capability_plans.jsonl", args.limit)
     registry = args.kernel_root / "helper_registry.json"
     helper_count = helper_count_from_registry(registry)
@@ -145,6 +146,7 @@ def main() -> int:
         f"能力缺口事件：{len(display_events)} 条最近有效记录",
         f"补强计划：{len(plans)} 条最近记录",
         f"回归收紧包：{len(regressions)} 条最近记录",
+        f"自增益实战验收：{len(gauntlets)} 条最近记录",
         f"已推广 helper：{helper_count}",
         f"长任务记录：{len(long_tasks)} 条最近记录",
     ]
@@ -164,6 +166,12 @@ def main() -> int:
         lines.append(
             f"long-task {index}. {title} status={task.get('status')} "
             f"stage={task.get('stage')} delivery={task.get('delivery_state')}"
+        )
+    for index, item in enumerate(reversed(gauntlets), start=1):
+        lines.append(
+            f"gauntlet {index}. scenario={item.get('scenario')} status={item.get('status')} "
+            f"ok={item.get('ok')} commit={str(item.get('commit') or 'none')[:12]} "
+            f"replay={item.get('replay_allowed')} evidence={str(item.get('evidence') or '')[:80]}"
         )
     for index, event in enumerate(reversed(display_events), start=1):
         resolved_by = event.get("resolved_by") if isinstance(event.get("resolved_by"), dict) else {}
