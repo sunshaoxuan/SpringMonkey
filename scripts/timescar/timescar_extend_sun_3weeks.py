@@ -230,8 +230,8 @@ def main() -> int:
                 blocker = extract_validation_blocker(txt)
                 if blocker.startswith("目标延长时段包含不可预约区间"):
                     message = f"{blocker}\n目标返还时间：{target_sun_end[:16].replace('T', ' ')}\n预约编号：{target.get('bookingNumber', '')}"
-                    runtime.record_step(step=phase, status="blocked", tool="browser", detail=blocker)
-                    runtime.finish("blocked", "no-availability", final_message=message)
+                    runtime.record_step(step=phase, status="skipped", tool="browser", detail=blocker)
+                    runtime.finish("skipped", "no-availability", final_message=message)
                     print(message)
                     return 0
                 raise ExtendError(f"failed: {blocker or 'extension form validation error'}")
