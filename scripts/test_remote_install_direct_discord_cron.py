@@ -51,6 +51,7 @@ def test_direct_cron_failure_records_repair_gap() -> None:
     assert "agent_society_runtime_record_gap.py" in remote
     assert "direct-cron:{name}" in remote
     assert "repairGap" in remote
+    assert "--record-only" in remote
     assert "classify direct cron failure" in remote
 
 

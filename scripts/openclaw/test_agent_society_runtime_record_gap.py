@@ -70,9 +70,41 @@ def run_case(repo_root: Path, expected_category: str, observation: str) -> dict[
         }
 
 
+def test_record_only_does_not_write_helper() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    with tempfile.TemporaryDirectory(prefix="agent_society_gap_record_only_") as tmp:
+        root = Path(tmp)
+        before = set((repo_root / "scripts" / "openclaw" / "helpers").glob("*.py"))
+        cmd = [
+            sys.executable,
+            str(repo_root / "scripts" / "openclaw" / "agent_society_runtime_record_gap.py"),
+            "--root",
+            str(root),
+            "--repo-root",
+            str(repo_root),
+            "--channel",
+            "direct-cron:test",
+            "--user-id",
+            "direct-cron-test",
+            "--prompt",
+            "direct cron job failed and needs durable repair evidence",
+            "--observation",
+            "missing helper for direct cron failure smoke",
+            "--record-only",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        payload = json.loads(result.stdout)
+        after = set((repo_root / "scripts" / "openclaw" / "helpers").glob("*.py"))
+
+    assert payload["gap_id"].startswith("gap_")
+    assert payload["helper"] is None
+    assert before == after
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     rows = [run_case(repo_root, expected_category, observation) for expected_category, observation in CASES]
+    test_record_only_does_not_write_helper()
     print(json.dumps(rows, ensure_ascii=False, indent=2))
     return 0
 

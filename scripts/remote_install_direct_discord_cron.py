@@ -162,6 +162,7 @@ def record_direct_failure_gap(name: str, command: list[str], returncode: int | s
             observation,
             "--failure-status",
             "failed",
+            "--record-only",
             "--next-decision",
             "classify direct cron failure, create bounded repair evidence, and retry only when policy allows",
         ],

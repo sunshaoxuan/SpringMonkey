@@ -53,6 +53,7 @@ def main() -> int:
     parser.add_argument("--failure-status", default="blocked", choices=["blocked", "failed"])
     parser.add_argument("--next-decision", default="classify blocker and prepare a bounded repair path")
     parser.add_argument("--safety-class", choices=["auto_safe_readonly", "requires_confirmation_or_credentials", "unsupported_or_ambiguous"])
+    parser.add_argument("--record-only", action="store_true", help="Record durable gap evidence without writing helper code into the repo.")
     args = parser.parse_args()
 
     kernel = AgentSocietyKernel(Path(args.root))
@@ -94,7 +95,7 @@ def main() -> int:
     if safety_class == "auto_safe_readonly":
         registry_candidate = promoted_tool_for_text(args.prompt) or promoted_tool_for_text(args.observation)
     repo_root = Path(args.repo_root)
-    if registry_candidate is None and gap.category in REUSABLE_HELPER_CATEGORIES:
+    if not args.record_only and registry_candidate is None and gap.category in REUSABLE_HELPER_CATEGORIES:
         helper_name = gap.proposed_tool_name
         if not helper_name:
             session = kernel.load_session(session.session_id)
