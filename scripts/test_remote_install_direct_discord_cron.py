@@ -43,7 +43,19 @@ def test_weather_cron_uses_image_forecast_with_long_timeout() -> None:
         assert "scripts/weather/discord_weather_report.py" not in line
 
 
+def test_direct_cron_failure_records_repair_gap() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert "def record_direct_failure_gap" in remote
+    assert "agent_society_runtime_record_gap.py" in remote
+    assert "direct-cron:{name}" in remote
+    assert "repairGap" in remote
+    assert "classify direct cron failure" in remote
+
+
 if __name__ == "__main__":
     test_news_cron_preserves_command_substitution_for_helper()
     test_weather_cron_uses_image_forecast_with_long_timeout()
+    test_direct_cron_failure_records_repair_gap()
     print("OK")

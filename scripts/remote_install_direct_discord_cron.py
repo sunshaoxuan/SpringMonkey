@@ -121,6 +121,65 @@ def send_discord(channel_id: str, content: str) -> int:
     return chunks
 
 
+def record_direct_failure_gap(name: str, command: list[str], returncode: int | str, stdout: str, stderr: str) -> str:
+    script = REPO / "scripts" / "openclaw" / "agent_society_runtime_record_gap.py"
+    if not script.is_file():
+        return "gap-recorder-missing"
+    observation = json.dumps(
+        {
+            "source": "direct_discord_cron",
+            "job_name": name,
+            "returncode": returncode,
+            "command": command,
+            "stdout_tail": stdout[-2000:],
+            "stderr_tail": stderr[-2000:],
+        },
+        ensure_ascii=False,
+    )
+    prompt = "\n".join(
+        [
+            f"direct_cron_job: {name}",
+            "execution_model: direct cron command -> delivery -> durable repair evidence",
+            f"command: {' '.join(command)}",
+            "Goal: classify this scheduled job failure, repair the internal execution path when safe, verify, and preserve external side effect gates.",
+        ]
+    )
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--root",
+            str(OPENCLAW_HOME / "workspace" / "agent_society_kernel"),
+            "--repo-root",
+            str(REPO),
+            "--channel",
+            f"direct-cron:{name}",
+            "--user-id",
+            name,
+            "--prompt",
+            prompt,
+            "--observation",
+            observation,
+            "--failure-status",
+            "failed",
+            "--next-decision",
+            "classify direct cron failure, create bounded repair evidence, and retry only when policy allows",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        return f"gap-record-failed:{proc.returncode}:{(proc.stderr or proc.stdout)[-300:]}"
+    try:
+        payload = json.loads(proc.stdout)
+        return str(payload.get("gap_id") or payload.get("session_id") or "gap-recorded")
+    except Exception:
+        return "gap-recorded"
+
+
 def public_failure_message(name: str, returncode: int | str, stdout: str, stderr: str) -> str:
     detail = "\n".join(x for x in (stderr, stdout) if x).strip()
     if name.startswith("news-digest-"):
@@ -214,19 +273,23 @@ def main() -> int:
             DEFAULT_DM_CHANNEL,
             public_failure_message(args.name, proc.returncode, stdout, stderr),
         )
+        result_payload["repairGap"] = record_direct_failure_gap(args.name, command, proc.returncode, stdout, stderr)
         result_payload["delivery"] = "failure-delivered-to-dm"
         result_payload["sentChunks"] = sent_chunks
         return proc.returncode or 1
     except subprocess.TimeoutExpired as exc:
         result_payload.update({"returncode": "timeout", "stderr": str(exc)})
+        result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "timeout", "", str(exc))
         send_discord(DEFAULT_DM_CHANNEL, public_failure_message(args.name, "timeout", "", str(exc)))
         return 124
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         result_payload.update({"returncode": "delivery-error", "stderr": f"HTTP {exc.code}: {body}"})
+        result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "delivery-error", "", body)
         return 2
     except Exception as exc:
         result_payload.update({"returncode": "exception", "stderr": f"{type(exc).__name__}: {exc}"})
+        result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "exception", "", f"{type(exc).__name__}: {exc}")
         try:
             send_discord(
                 DEFAULT_DM_CHANNEL,
