@@ -135,6 +135,9 @@ def write_probe_files(worktree: Path, scenario: str) -> list[str]:
                 "    assert result['status'] == 'ok'",
                 f"    assert result['scenario'] == '{scenario}'",
                 "",
+                "if __name__ == '__main__':",
+                "    test_gauntlet_probe_contract()",
+                "",
             ]
         ),
         encoding="utf-8",
@@ -207,9 +210,11 @@ def run_gauntlet(
         append_stage_event(events, run_id=run_id, stage="diff_created", summary="gauntlet 已写入合成修复代码。")
         changed_files = write_probe_files(worktree, scenario)
         append_stage_event(events, run_id=run_id, stage="tests_started", summary="gauntlet 开始运行验证。")
+        helper_file = changed_files[0]
         test_file = changed_files[1]
         commands = [
-            [sys.executable, "-m", "pytest", "-q", test_file],
+            [sys.executable, "-m", "compileall", "-q", helper_file, test_file],
+            [sys.executable, test_file],
             [sys.executable, "scripts/openclaw/verify_intent_tool_registry.py"],
             [sys.executable, "scripts/openclaw/verify_harness_registry.py"],
             [sys.executable, "scripts/openclaw/verify_capability_baseline.py"],
