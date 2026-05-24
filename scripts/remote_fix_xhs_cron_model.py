@@ -18,6 +18,7 @@ USER = os.environ.get("OPENCLAW_SSH_USER", "root")
 REPO = os.environ.get("SPRINGMONKEY_REPO_PATH", "/var/lib/openclaw/repos/SpringMonkey")
 JOB_NAME = os.environ.get("OPENCLAW_XHS_CRON_NAME", "xhs-recommendation-every-3-days")
 TARGET_MODEL = os.environ.get("OPENCLAW_XHS_CRON_MODEL", "openai-codex/gpt-5.5")
+TARGET_DELIVERY_TO = os.environ.get("OPENCLAW_XHS_CRON_DELIVERY_TO", "1497009159940608020")
 
 REMOTE = r"""
 set -euo pipefail
@@ -48,7 +49,7 @@ python3 scripts/cron/upsert_generic_cron_job.py \
   --tz "Asia/Tokyo" \
   --message-file "$TMP_MESSAGE" \
   --delivery-channel discord \
-  --delivery-to 999666719356354610 \
+  --delivery-to "$TARGET_DELIVERY_TO" \
   --delivery-mode announce \
   --delivery-account-id default \
   --model "$TARGET_MODEL" \
@@ -70,19 +71,23 @@ python3 scripts/openclaw/intent_tool_router.py \
   --message-timestamp "2026-05-09T00:00:00+09:00"
 
 echo "=== verify payload model ==="
-python3 - <<'PY' "$JOB_NAME" "$TARGET_MODEL"
+python3 - <<'PY' "$JOB_NAME" "$TARGET_MODEL" "$TARGET_DELIVERY_TO"
 import json
 import sys
 from pathlib import Path
 
-job_name, target_model = sys.argv[1], sys.argv[2]
+job_name, target_model, target_delivery_to = sys.argv[1], sys.argv[2], sys.argv[3]
 jobs = json.loads(Path("/var/lib/openclaw/.openclaw/cron/jobs.json").read_text(encoding="utf-8"))
 for job in jobs.get("jobs", []):
     if job.get("name") == job_name:
         model = job.get("payload", {}).get("model")
+        delivery_to = job.get("delivery", {}).get("to")
         print(f"MODEL={model}")
+        print(f"DELIVERY_TO={delivery_to}")
         if model != target_model:
             raise SystemExit(f"model mismatch: expected {target_model}, got {model}")
+        if delivery_to != target_delivery_to:
+            raise SystemExit(f"delivery mismatch: expected {target_delivery_to}, got {delivery_to}")
         break
 else:
     raise SystemExit(f"job not found: {job_name}")
@@ -110,6 +115,7 @@ def main() -> int:
             f"export SPRINGMONKEY_REPO_PATH={REPO!r}",
             f"export JOB_NAME={JOB_NAME!r}",
             f"export TARGET_MODEL={TARGET_MODEL!r}",
+            f"export TARGET_DELIVERY_TO={TARGET_DELIVERY_TO!r}",
         ]
     )
     _, stdout, stderr = client.exec_command(exports + "\n" + REMOTE.strip(), get_pty=True, timeout=600)
@@ -119,7 +125,7 @@ def main() -> int:
     sys.stdout.buffer.write(out.encode("utf-8", errors="replace"))
     if err.strip():
         sys.stderr.buffer.write(err.encode("utf-8", errors="replace"))
-    return 0 if "DONE" in out and f"MODEL={TARGET_MODEL}" in out else 1
+    return 0 if "DONE" in out and f"MODEL={TARGET_MODEL}" in out and f"DELIVERY_TO={TARGET_DELIVERY_TO}" in out else 1
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path)
                     "run_aliases": ["开始执行"],
                     "allow_manual_run": True,
                     "expected_model": "openai-codex/gpt-5.5",
-                    "expected_delivery_user_id": "owner-1",
+                    "expected_delivery_channel_id": "channel-1",
                 }
             ],
         },
@@ -42,7 +42,7 @@ def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path)
                     "name": "content-job",
                     "enabled": True,
                     "payload": {"model": "openai-codex/gpt-5.5"},
-                    "delivery": {"userId": "owner-1"},
+                    "delivery": {"to": "channel-1"},
                 }
             ]
         },
@@ -61,6 +61,38 @@ def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path)
     assert payload["status"] == "dry_run"
     assert payload["job_name"] == "content-job"
     assert payload["job_id"] == "job_1"
+
+
+def test_recurring_cron_run_rejects_delivery_channel_drift(tmp_path: Path) -> None:
+    capabilities = tmp_path / "capabilities.json"
+    jobs = tmp_path / "jobs.json"
+    write_json(
+        capabilities,
+        {
+            "schema_version": 1,
+            "jobs": [
+                {
+                    "capability_id": "recurring.test",
+                    "job_name": "content-job",
+                    "allow_manual_run": True,
+                    "expected_delivery_channel_id": "channel-1",
+                }
+            ],
+        },
+    )
+    write_json(jobs, {"jobs": [{"id": "job_1", "name": "content-job", "enabled": True, "delivery": {"to": "owner-user-id"}}]})
+
+    code, payload = tool.run_capability(
+        text="执行内容任务",
+        capabilities_path=capabilities,
+        jobs_path=jobs,
+        dry_run=True,
+        timeout=10,
+        capability_id="recurring.test",
+    )
+
+    assert code == 2
+    assert "channel id" in payload["error"]
 
 
 def test_recurring_cron_run_prefers_semantic_capability_id(tmp_path: Path) -> None:

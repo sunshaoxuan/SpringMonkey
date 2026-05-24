@@ -141,6 +141,9 @@ def validate_job(capability: dict[str, Any], cron_job: dict[str, Any]) -> tuple[
     expected_model = str(capability.get("expected_model") or "")
     if not model_matches(cron_job, expected_model):
         return False, f"cron job model does not match expected model: {expected_model}"
+    expected_channel_id = str(capability.get("expected_delivery_channel_id") or "")
+    if expected_channel_id and str(cron_job.get("delivery", {}).get("to") or "") != expected_channel_id:
+        return False, f"cron job delivery does not match expected channel id: {expected_channel_id}"
     expected_user_id = str(capability.get("expected_delivery_user_id") or "")
     if not delivery_matches(cron_job, expected_user_id):
         return False, f"cron job delivery does not include expected owner id: {expected_user_id}"

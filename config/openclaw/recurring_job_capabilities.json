@@ -25,7 +25,7 @@
       ],
       "allow_manual_run": true,
       "expected_model": "openai-codex/gpt-5.5",
-      "expected_delivery_user_id": "999666719356354610",
+      "expected_delivery_channel_id": "1497009159940608020",
       "permission_scope": "owner_dm_write",
       "write_operation": true
     }
