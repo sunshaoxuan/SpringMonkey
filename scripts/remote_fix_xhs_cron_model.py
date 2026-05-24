@@ -64,11 +64,7 @@ python3 scripts/cron/upsert_generic_cron_job.py \
 rm -f "$TMP_MESSAGE"
 
 echo "=== verify cron status ==="
-python3 scripts/openclaw/intent_tool_router.py \
-  --text "检查每3天一次的小红书文章撰写任务状态。" \
-  --channel discord_dm \
-  --user-id 999666719356354610 \
-  --message-timestamp "2026-05-09T00:00:00+09:00"
+python3 scripts/openclaw/cron_status_tool.py --topic xhs
 
 echo "=== verify payload model ==="
 python3 - <<'PY' "$JOB_NAME" "$TARGET_MODEL" "$TARGET_DELIVERY_TO"
