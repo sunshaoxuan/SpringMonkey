@@ -67,3 +67,34 @@ def test_start_implementation_dry_run_registers_long_task_idempotently() -> None
         assert second.evidence == "existing_run_reused"
         assert Path(first.prompt_file).is_file()
         assert "不要把具体用户任务硬编码成路由规则" in prompt_text
+
+
+def test_implementation_subprocess_env_forces_service_config_and_key_aliases(monkeypatch, tmp_path: Path) -> None:
+    secret = tmp_path / "codex.key"
+    secret.write_text("secret-value\n", encoding="utf-8")
+    env_file = tmp_path / "openclaw.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "OPENCLAW_PUBLIC_MODEL_BASE_URL=http://ccnode.briconbric.com:49530/v1",
+                f"NEWS_CODEX_API_KEY_FILE={secret}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(runner, "RUNTIME_ENV_FILES", (env_file,))
+
+    env = runner.implementation_subprocess_env(
+        {
+            "OPENCLAW_CONFIG_PATH": "/tmp/wrong-openclaw.json",
+            "OPENCLAW_STATE_DIR": "/tmp/wrong-state",
+            "PYTHONIOENCODING": "cp932",
+        }
+    )
+
+    assert env["OPENCLAW_CONFIG_PATH"] == str(runner.SERVICE_CONFIG_PATH)
+    assert env["OPENCLAW_STATE_DIR"] == str(runner.SERVICE_STATE_DIR)
+    assert env["PYTHONIOENCODING"] == "utf-8"
+    assert env["NEWS_CODEX_API_KEY"] == "secret-value"
+    assert env["OPENCLAW_PUBLIC_MODEL_API_KEY"] == "secret-value"
+    assert env["OPENCLAW_CODEX_API_KEY"] == "secret-value"

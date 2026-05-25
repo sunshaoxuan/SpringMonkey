@@ -14,6 +14,16 @@ def test_reply_media_repair_is_registered() -> None:
     assert (ROOT / "scripts" / TOOLS["reply-media-repair"]).is_file()
 
 
+def test_model_auth_verify_is_registered() -> None:
+    assert TOOLS["model-auth-verify"] == "remote_verify_model_auth_profiles.py"
+    assert (ROOT / "scripts" / TOOLS["model-auth-verify"]).is_file()
+
+
+def test_model_auth_guard_is_registered() -> None:
+    assert TOOLS["model-auth-guard"] == "remote_install_model_auth_profile_guard.py"
+    assert (ROOT / "scripts" / TOOLS["model-auth-guard"]).is_file()
+
+
 def test_reply_media_repair_is_documented() -> None:
     docs = [
         ROOT / "docs" / "ops" / "TOOLS_REGISTRY.md",

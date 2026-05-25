@@ -26,6 +26,10 @@ DEFAULT_MODEL = "openai/gpt-5.5"
 SERVICE_STATE_DIR = Path("/var/lib/openclaw/.openclaw")
 SERVICE_CONFIG_PATH = SERVICE_STATE_DIR / "openclaw.json"
 FINAL_STAGES = {"final_succeeded", "final_failed"}
+RUNTIME_ENV_FILES = (
+    Path("/etc/openclaw/openclaw.env"),
+    SERVICE_STATE_DIR / "openclaw.env",
+)
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -36,6 +40,69 @@ except Exception:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def load_runtime_env_files(env: dict[str, str], paths: tuple[Path, ...] | None = None) -> None:
+    paths = RUNTIME_ENV_FILES if paths is None else paths
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            if line.startswith("export "):
+                line = line[len("export ") :].strip()
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if key and key not in env:
+                env[key] = value.strip().strip('"').strip("'")
+
+
+def read_secret_from_env_file_ref(env: dict[str, str], *names: str) -> str:
+    for name in names:
+        value = env.get(name, "").strip()
+        if value:
+            return value
+        file_ref = env.get(f"{name}_FILE", "").strip()
+        if file_ref:
+            try:
+                secret = Path(file_ref).read_text(encoding="utf-8").strip()
+            except OSError:
+                secret = ""
+            if secret:
+                return secret
+    return ""
+
+
+def implementation_subprocess_env(base: dict[str, str] | None = None) -> dict[str, str]:
+    env = dict(os.environ if base is None else base)
+    load_runtime_env_files(env)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["OPENCLAW_STATE_DIR"] = str(SERVICE_STATE_DIR)
+    env["OPENCLAW_CONFIG_PATH"] = str(SERVICE_CONFIG_PATH)
+    key = read_secret_from_env_file_ref(
+        env,
+        "OPENCLAW_INTENT_MODEL_API_KEY",
+        "OPENCLAW_PUBLIC_MODEL_API_KEY",
+        "NEWS_CODEX_API_KEY",
+        "OPENCLAW_CODEX_API_KEY",
+        "CODEX_API_KEY",
+    )
+    if key:
+        for name in (
+            "OPENCLAW_INTENT_MODEL_API_KEY",
+            "OPENCLAW_PUBLIC_MODEL_API_KEY",
+            "NEWS_CODEX_API_KEY",
+            "OPENCLAW_CODEX_API_KEY",
+            "CODEX_API_KEY",
+        ):
+            env.setdefault(name, key)
+    return env
 
 
 def stable_run_id(package_id: str, fingerprint: str = "") -> str:
@@ -250,10 +317,7 @@ def start_implementation(
             selected_thinking,
             "--json",
         ]
-        env = dict(os.environ)
-        env.setdefault("PYTHONIOENCODING", "utf-8")
-        env.setdefault("OPENCLAW_STATE_DIR", str(SERVICE_STATE_DIR))
-        env.setdefault("OPENCLAW_CONFIG_PATH", str(SERVICE_CONFIG_PATH))
+        env = implementation_subprocess_env()
         try:
             with stdout_file.open("ab") as out, stderr_file.open("ab") as err:
                 proc = subprocess.Popen(

@@ -63,6 +63,8 @@ TOOLS: dict[str, str] = {
     "cron-run": "remote_cron_run_by_name.py",
     "cron-enable": "remote_enable_cron_jobs.py",
     "xhs-cron-model": "remote_fix_xhs_cron_model.py",
+    "model-auth-verify": "remote_verify_model_auth_profiles.py",
+    "model-auth-guard": "remote_install_model_auth_profile_guard.py",
 }
 
 

@@ -37,6 +37,14 @@
   - 用途：为 OpenClaw main agent 和本地 CLI agent 写入 `ollama` auth profile，并把 `models.providers.ollama.apiKey` 从本地标记值修正为可用于 ccnode 非本机端点的占位 key，确保 `ollama/qwen3:14b` 可作为 agent 兜底模型。
   - 典型用法：`python scripts/remote_configure_openclaw_ollama_agent_auth.py`
 
+- `remote_verify_model_auth_profiles.py`
+  - 用途：只读校验远端 OpenClaw 配置、agent auth profile 与共享 Codex key 文件是否一致；只输出长度和哈希，不输出密钥。
+  - 典型用法：`python scripts/openclaw_remote_cli.py model-auth-verify`
+
+- `remote_install_model_auth_profile_guard.py`
+  - 用途：为 `openclaw.service` 安装启动后 auth profile 自愈守护，修复服务启动时重写 `order` / `lastGood` 导致的认证漂移。
+  - 典型用法：`python scripts/openclaw_remote_cli.py model-auth-guard`
+
 - `remote_springmonkey_git_pull.py`
   - 用途：在 **`/var/lib/openclaw/repos/SpringMonkey`** 执行 `git pull`；可选 `OPENCLAW_RESTART_AFTER_PULL=1` 后重启 `openclaw.service`。
   - 流程约定见：`docs/ops/TOOLS_REGISTRY.md` §7。
