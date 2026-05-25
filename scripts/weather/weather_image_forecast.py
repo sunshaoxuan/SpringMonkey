@@ -19,11 +19,21 @@ import discord_weather_report as report
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
 DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
+DEFAULT_IMAGE_MODEL_CANDIDATES = (DEFAULT_IMAGE_MODEL,)
 TARGET_IMAGE_WIDTH = 1024
 TARGET_IMAGE_HEIGHT = 1536
 MIN_MODEL_IMAGE_BYTES = 100_000
 DEFAULT_IMAGE_TIMEOUT_MS = 360_000
 DEFAULT_IMAGE_RETRIES = 2
+NON_RETRYABLE_IMAGE_ERROR_TOKENS = (
+    "endpoint not supported",
+    "model_not_available",
+    "not in the current api key",
+    "不在当前 api key",
+    "invalid_api_key",
+    "incorrect api key",
+    "no api key found",
+)
 
 WEATHER_IMAGE_LOCATIONS = [
     report.Location("東京", "東京", 35.6762, 139.6503),
@@ -340,6 +350,8 @@ def generate_model_image(
             continue
         if proc.returncode != 0:
             last_error = _summarize_image_error(proc.stderr or proc.stdout or f"image generation failed: {proc.returncode}")
+            if is_non_retryable_image_error(last_error):
+                break
             continue
         try:
             payload = json.loads(proc.stdout or "{}")
@@ -356,6 +368,11 @@ def generate_model_image(
             continue
         return generated
     raise RuntimeError(f"image generation failed after {retries} attempt(s): {last_error}")
+
+
+def is_non_retryable_image_error(text: str) -> bool:
+    lowered = (text or "").lower()
+    return any(token in lowered for token in NON_RETRYABLE_IMAGE_ERROR_TOKENS)
 
 
 def validate_generated_model_image(path: Path) -> None:
@@ -378,6 +395,20 @@ def _summarize_image_error(text: str) -> str:
     ]
     selected = useful[-4:] if useful else lines[-4:]
     return " | ".join(selected)[-800:] if selected else "image generation failed"
+
+
+def image_model_candidates(model: str | None = None) -> list[str]:
+    if model is not None:
+        return [model]
+    raw = os.environ.get("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "").strip()
+    if not raw:
+        raw = os.environ.get("OPENCLAW_WEATHER_IMAGE_MODEL", "").strip()
+    values = [item.strip() for item in raw.replace(";", ",").split(",") if item.strip()] if raw else list(DEFAULT_IMAGE_MODEL_CANDIDATES)
+    deduped: list[str] = []
+    for value in values:
+        if value not in deduped:
+            deduped.append(value)
+    return deduped or [DEFAULT_IMAGE_MODEL]
 
 
 def validate_weather_image_artifact(path: Path, *, require_model_quality: bool = False) -> None:
@@ -530,9 +561,20 @@ def write_weather_image_with_model(
     command_runner=subprocess.run,
 ) -> Path:
     now = now or datetime.now(TZ)
-    selected_model = model if model is not None else os.environ.get("OPENCLAW_WEATHER_IMAGE_MODEL", DEFAULT_IMAGE_MODEL)
-    if selected_model and selected_model.lower() not in {"off", "none", "fallback"}:
-        return generate_model_image(cards, now, day_kind or "平日", output_dir, model=selected_model, command_runner=command_runner)
+    candidates = image_model_candidates(model)
+    if candidates and candidates[0].lower() not in {"off", "none", "fallback"}:
+        failures: list[str] = []
+        for selected_model in candidates:
+            if selected_model.lower() in {"off", "none", "fallback"}:
+                continue
+            try:
+                return generate_model_image(cards, now, day_kind or "平日", output_dir, model=selected_model, command_runner=command_runner)
+            except Exception as exc:
+                message = str(exc)
+                failures.append(f"{selected_model}: {message}")
+                if model is not None:
+                    break
+        raise RuntimeError("image provider unavailable for configured weather models: " + " | ".join(failures))
     path = write_weather_image(cards, now, output_dir)
     validate_weather_image_artifact(path)
     return path

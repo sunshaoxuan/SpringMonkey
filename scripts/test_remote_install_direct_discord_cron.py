@@ -39,6 +39,7 @@ def test_weather_cron_uses_image_forecast_with_long_timeout() -> None:
     assert weather_lines
     for line in weather_lines:
         assert "--timeout 1800" in line
+        assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2" in line
         assert "scripts/weather/weather_image_forecast.py" in line
         assert "scripts/weather/discord_weather_report.py" not in line
 

@@ -228,6 +228,53 @@ def test_model_image_generation_retries_timeout(tmp_path: Path, monkeypatch) -> 
     assert "360000" in calls[0]
 
 
+def test_model_image_generation_stops_retrying_non_retryable_provider_error(tmp_path: Path, monkeypatch) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    calls = []
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_RETRIES", "3")
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(
+            cmd,
+            1,
+            stdout="",
+            stderr="[image-generation] candidate failed: openai/gpt-image-2: OpenAI image generation failed (HTTP 404): endpoint not supported",
+        )
+
+    try:
+        mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+    except RuntimeError as exc:
+        assert "endpoint not supported" in str(exc)
+        assert "image provider unavailable" in str(exc)
+    else:
+        raise AssertionError("non-retryable provider errors must fail clearly")
+
+    assert len(calls) == 1
+
+
+def test_weather_image_model_candidates_try_next_configured_model(tmp_path: Path, monkeypatch) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    generated = tmp_path / "candidate.png"
+    generated.write_bytes(mod._png_bytes(1024, 1536, bytearray(os.urandom(1024 * 1536 * 3))))
+    calls = []
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/bad-image,openai/gpt-image-2")
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if len(calls) == 1:
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="model_not_available")
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"outputs": [{"path": str(generated)}]}), stderr="")
+
+    path = mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+
+    assert path == generated
+    assert "openai/bad-image" in calls[0]
+    assert "openai/gpt-image-2" in calls[1]
+
+
 def test_image_error_summary_filters_plugin_noise() -> None:
     summary = mod._summarize_image_error(
         "[image-generation] candidate failed: openai/gpt-image-2: request timed out\n"
