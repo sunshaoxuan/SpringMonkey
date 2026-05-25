@@ -761,6 +761,38 @@ class TestPlanAndTemplate(unittest.TestCase):
         max_items = int(self.cfg.get("model", {}).get("maxWorkerItems", 0))
         self.assertGreaterEqual(max_items, 20)
         self.assertLessEqual(max_items, 45)
+        per_item_timeout = int(self.cfg.get("model", {}).get("workerItemTimeoutSeconds", 0))
+        self.assertGreaterEqual(per_item_timeout, 30)
+        self.assertLessEqual(per_item_timeout, 120)
+
+    def test_process_item_uses_deterministic_title_fallback_when_models_fail(self):
+        item = {
+            "item_id": "001_title",
+            "source_url": "https://example.com/a",
+            "title": "中国发布新的技术政策",
+            "raw_content": "正文",
+            "fetch_ok": True,
+            "original_batch": "china",
+        }
+        old = self.m.chat_with_model
+        self.m.chat_with_model = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("timeout"))
+        try:
+            got = self.m.process_raw_article_item(
+                item,
+                ollama_host="",
+                openai_base_url="",
+                openai_api_key="",
+                model="openai-codex/gpt-5.5",
+                fallback_model="ollama/qwen3:14b",
+                timeout=1,
+                max_input_chars=100,
+            )
+        finally:
+            self.m.chat_with_model = old
+
+        self.assertTrue(got["included"])
+        self.assertEqual(got["processor"], "deterministic-title-fallback")
+        self.assertEqual(got["summary_zh"], "中国发布新的技术政策")
 
     def test_process_raw_article_items_reuses_existing_and_omits_over_budget(self):
         with tempfile.TemporaryDirectory() as tmp:

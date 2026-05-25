@@ -906,15 +906,23 @@ def process_raw_article_item(
                 category = str(parsed.get("category") or "other").strip().lower()
             except Exception as e2:
                 print(f"[pipeline] process item {item.get('item_id')} fallback {fallback_model} failed: {e2}", file=sys.stderr)
-                summary = ""
+                summary = deterministic_chinese_fallback(str(item.get("title") or ""))
                 region = result["region"]
                 category = "other"
-                result["skip_reason"] = "model_failed"
+                if summary:
+                    result["skip_reason"] = ""
+                    used_model = "deterministic-title-fallback"
+                else:
+                    result["skip_reason"] = "model_failed"
         else:
-            summary = ""
+            summary = deterministic_chinese_fallback(str(item.get("title") or ""))
             region = result["region"]
             category = "other"
-            result["skip_reason"] = "model_failed"
+            if summary:
+                result["skip_reason"] = ""
+                used_model = "deterministic-title-fallback"
+            else:
+                result["skip_reason"] = "model_failed"
 
     allowed_regions = set(DEFAULT_NEWS_REGIONS)
     allowed_categories = {
@@ -1542,6 +1550,9 @@ def main() -> int:
     ollama_host = resolve_ollama_base_url(cfg)
     max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
     max_worker_items = int(model_cfg.get("maxWorkerItems", 0) or 0)
+    default_worker_timeout = args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout
+    worker_item_timeout = max(15, int(model_cfg.get("workerItemTimeoutSeconds", default_worker_timeout) or default_worker_timeout))
+    worker_item_timeout = min(default_worker_timeout, worker_item_timeout)
     dedupe_hours = int((cfg.get("newsExecution") or {}).get("crossRunDedupeHours", 36))
     require_timestamp = bool((cfg.get("newsExecution") or {}).get("requireTimestampInWindow", True))
 
@@ -1583,6 +1594,7 @@ def main() -> int:
             "orchestrator_model": orch_model,
             "worker_call_mode": "per-article",
             "max_worker_items": max_worker_items,
+            "worker_item_timeout_seconds": worker_item_timeout,
             "ollama_api_worker": ollama_worker_model,
             "ollama_api_finalize": ollama_finalize_model,
             "ollama_base_url": ollama_host,
@@ -1781,7 +1793,7 @@ def main() -> int:
                 openai_api_key=api_key,
                 codex_base_url=codex_base_url,
                 codex_api_key=codex_api_key,
-                timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
+                timeout=worker_item_timeout,
             )
             if not healthy and fallback_model_raw and fallback_model_raw != worker_model_raw:
                 fallback_healthy, fallback_detail = check_processor_health(
@@ -1791,7 +1803,7 @@ def main() -> int:
                     openai_api_key=api_key,
                     codex_base_url=codex_base_url,
                     codex_api_key=codex_api_key,
-                    timeout=args.openai_timeout if is_openai_model(fallback_model_raw) else args.ollama_timeout,
+                    timeout=worker_item_timeout,
                 )
                 if fallback_healthy:
                     healthy = True
@@ -1834,7 +1846,7 @@ def main() -> int:
             codex_api_key=codex_api_key,
             model=worker_model_raw,
             fallback_model=fallback_model_raw,
-            timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
+            timeout=worker_item_timeout,
             max_input_chars=max_worker_chars,
             max_items=max_worker_items,
         )

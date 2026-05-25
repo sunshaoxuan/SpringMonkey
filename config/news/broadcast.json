@@ -432,6 +432,7 @@
     "newsFinalizeNote": "Codex 作为新闻编排、逐条处理与终稿格式化主模型；Qwen/Ollama 仅作为兜底。",
     "workerCallMode": "per-article",
     "maxWorkerItems": 40,
+    "workerItemTimeoutSeconds": 75,
     "maxWorkerInputChars": 1500,
     "thinking": "low",
     "timeoutSeconds": 3600,
