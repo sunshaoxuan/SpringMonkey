@@ -40,6 +40,30 @@ key_info("secret.news_codex_api_key", secret)
 if not secret:
     errors.append("missing shared codex key file")
 
+env_path = Path("/etc/openclaw/openclaw.env")
+env_values = {}
+if env_path.is_file():
+    for raw in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].strip()
+        key, value = line.split("=", 1)
+        env_values[key.strip()] = value.strip().strip('"').strip("'")
+print(f"env.NEWS_CODEX_BASE_URL={env_values.get('NEWS_CODEX_BASE_URL')}")
+print(f"env.OPENCLAW_PUBLIC_MODEL_BASE_URL={env_values.get('OPENCLAW_PUBLIC_MODEL_BASE_URL')}")
+print(f"env.OPENCLAW_MODEL_FALLBACK_BASE_URL={env_values.get('OPENCLAW_MODEL_FALLBACK_BASE_URL')}")
+print(f"env.OPENCLAW_QWEN_FALLBACK_BASE_URL={env_values.get('OPENCLAW_QWEN_FALLBACK_BASE_URL')}")
+for key in ("NEWS_CODEX_BASE_URL", "OPENCLAW_PUBLIC_MODEL_BASE_URL"):
+    value = env_values.get(key, "")
+    if value and "ccnode.briconbric.com:49530/v1" not in value:
+        errors.append(f"unexpected primary model endpoint {key}={value}")
+for key in ("OPENCLAW_MODEL_FALLBACK_BASE_URL", "OPENCLAW_QWEN_FALLBACK_BASE_URL", "OLLAMA_BASE_URL"):
+    value = env_values.get(key, "")
+    if value and "ccnode.briconbric.com:22545" not in value:
+        errors.append(f"unexpected fallback model endpoint {key}={value}")
+
 config_paths = [
     Path("/var/lib/openclaw/.openclaw/openclaw.json"),
     Path("/root/.openclaw/openclaw.json"),
@@ -65,6 +89,11 @@ for path in config_paths:
         errors.append(f"unexpected openai baseUrl in {path}: {base}")
     if secret and key != secret:
         errors.append(f"openai apiKey mismatch in {path}")
+    ollama = providers.get("ollama") or {}
+    ollama_base = str(ollama.get("baseUrl") or "")
+    print(f"ollama.baseUrl={ollama_base}")
+    if ollama_base and "ccnode.briconbric.com:22545" not in ollama_base:
+        errors.append(f"unexpected ollama baseUrl in {path}: {ollama_base}")
 
 for path in profile_paths:
     print(f"--- auth {path}")

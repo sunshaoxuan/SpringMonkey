@@ -23,7 +23,7 @@ install -d -m 755 /etc/systemd/system/openclaw.service.d
 cat >/usr/local/lib/openclaw/ensure_model_auth_profiles.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-sleep "${OPENCLAW_AUTH_PROFILE_GUARD_DELAY:-4}"
+sleep "${OPENCLAW_AUTH_PROFILE_GUARD_DELAY:-0}"
 python3 - <<'PY'
 import json
 import shutil
@@ -122,17 +122,45 @@ chmod 755 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
 
 cat >/etc/systemd/system/openclaw.service.d/35-model-auth-profile-guard.conf <<'EOF'
 [Service]
-ExecStartPost=/usr/local/lib/openclaw/ensure_model_auth_profiles.sh
+ExecStartPost=/bin/bash -lc 'OPENCLAW_AUTH_PROFILE_GUARD_DELAY=20 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh'
+EOF
+
+cat >/etc/systemd/system/openclaw-model-auth-profile-guard.service <<'EOF'
+[Unit]
+Description=Repair OpenClaw model auth profile drift
+After=openclaw.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/openclaw/ensure_model_auth_profiles.sh
+EOF
+
+cat >/etc/systemd/system/openclaw-model-auth-profile-guard.timer <<'EOF'
+[Unit]
+Description=Periodic OpenClaw model auth profile drift repair
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+AccuracySec=10
+Persistent=true
+
+[Install]
+WantedBy=timers.target
 EOF
 
 systemctl daemon-reload
 OPENCLAW_AUTH_PROFILE_GUARD_DELAY=0 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
+systemctl enable --now openclaw-model-auth-profile-guard.timer
 systemctl restart openclaw.service
-sleep 8
+sleep 35
 systemctl is-active openclaw.service
 OPENCLAW_AUTH_PROFILE_GUARD_DELAY=0 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
 echo "=== drop-in ==="
 systemctl cat openclaw.service | sed -n '/35-model-auth-profile-guard.conf/,+5p'
+echo "=== timer ==="
+systemctl is-enabled openclaw-model-auth-profile-guard.timer
+systemctl list-timers openclaw-model-auth-profile-guard.timer --no-pager || true
 echo DONE
 """
 
