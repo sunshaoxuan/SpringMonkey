@@ -783,6 +783,27 @@ def domain_implementation_report_status(stdout: str, *, repo_root: Path | None =
     return "success", visible
 
 
+def domain_implementation_failure_advice(task: dict[str, Any], failure_text: str) -> str:
+    try:
+        from llm_repair_advisor import format_advice_for_report, get_repair_advice, load_json_file
+
+        repo_root = Path(str(task.get("repo_root") or DEFAULT_REPO_ROOT))
+        has_changes, status_text = git_has_worktree_changes(repo_root)
+        package_path = Path(str(task.get("package_state") or "")) if str(task.get("package_state") or "") else None
+        advice = get_repair_advice(
+            task_text=str(task.get("original_text") or task.get("job_name") or ""),
+            failure_stage=str(task.get("stage") or "domain_implementation_failed"),
+            failure_reason=failure_text,
+            stdout=read_text_tail(str(task.get("stdout_file") or ""), 6000),
+            stderr=read_text_tail(str(task.get("stderr_file") or ""), 6000),
+            package_state=load_json_file(package_path),
+            repo_status=status_text if has_changes else "clean",
+        )
+        return format_advice_for_report(advice)
+    except Exception as exc:
+        return f"模型修复建议生成失败：{type(exc).__name__}: {exc}"
+
+
 def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
     if str(task.get("source") or "") != "domain_implementation":
         return {"found": False}
@@ -797,11 +818,16 @@ def find_domain_implementation_result(task: dict[str, Any]) -> dict[str, Any]:
         return {"found": False, "reason": "implementation process still running"}
     stderr = read_text_tail(str(task.get("stderr_file") or ""))
     if stdout:
-        return {"found": True, "result_status": result_status, "text": text}
+        advice = domain_implementation_failure_advice(task, text)
+        return {"found": True, "result_status": result_status, "text": text + "\n\n" + advice}
     if stderr:
-        return {"found": True, "result_status": "failed", "text": f"内部能力实现失败：\n{stderr}"}
+        failure_text = f"内部能力实现失败：\n{stderr}"
+        advice = domain_implementation_failure_advice(task, failure_text)
+        return {"found": True, "result_status": "failed", "text": failure_text + "\n\n" + advice}
     if pid > 0:
-        return {"found": True, "result_status": "failed", "text": "内部能力实现进程已退出，但没有产生最终输出。"}
+        failure_text = "内部能力实现进程已退出，但没有产生最终输出。"
+        advice = domain_implementation_failure_advice(task, failure_text)
+        return {"found": True, "result_status": "failed", "text": failure_text + "\n\n" + advice}
     return {"found": False, "reason": "implementation run registered but no process output yet"}
 
 

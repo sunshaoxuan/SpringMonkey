@@ -538,12 +538,14 @@ def test_domain_implementation_generic_file_written_report_fails_validation(monk
     task.update({"pid": 12345, "stdout_file": str(stdout), "stderr_file": str(stderr)})
     supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
     monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
+    monkeypatch.setattr(supervisor, "domain_implementation_failure_advice", lambda _task, _text: "模型修复建议\n- test advice")
 
     tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
 
     assert tasks[0]["status"] == "final_detected"
     assert tasks[0]["result_status"] == "failed"
     assert "未通过验收" in tasks[0]["final_report"]
+    assert "模型修复建议" in tasks[0]["final_report"]
 
 
 def test_domain_implementation_claimed_repo_changes_require_git_diff(monkeypatch, tmp_path: Path) -> None:
@@ -578,6 +580,7 @@ def test_domain_implementation_claimed_repo_changes_require_git_diff(monkeypatch
     supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
     monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
     monkeypatch.setattr(supervisor, "git_has_worktree_changes", lambda _repo: (False, ""))
+    monkeypatch.setattr(supervisor, "domain_implementation_failure_advice", lambda _task, _text: "模型修复建议\n- test advice")
 
     tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
 
@@ -621,12 +624,44 @@ def test_domain_implementation_claimed_push_requires_real_commit(monkeypatch, tm
     monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
     monkeypatch.setattr(supervisor, "git_has_worktree_changes", lambda _repo: (False, ""))
     monkeypatch.setattr(supervisor, "git_commit_exists", lambda _repo, _commit: (False, "not found"))
+    monkeypatch.setattr(supervisor, "domain_implementation_failure_advice", lambda _task, _text: "模型修复建议\n- test advice")
 
     tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
 
     assert tasks[0]["status"] == "final_detected"
     assert tasks[0]["result_status"] == "failed"
     assert "claimed commit hashes not found" in tasks[0]["final_report"]
+
+
+def test_domain_implementation_failure_appends_model_repair_advice(monkeypatch, tmp_path: Path) -> None:
+    state = tmp_path / "tasks.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    stdout = tmp_path / "impl.out"
+    stderr = tmp_path / "impl.err"
+    stdout.write_text("The file has been successfully written.", encoding="utf-8")
+    stderr.write_text("", encoding="utf-8")
+    task = supervisor.register_task(
+        source="domain_implementation",
+        job_id="repair_1",
+        run_id="impl_1",
+        job_name="自增益实现",
+        state_path=state,
+    )
+    task.update({"pid": 12345, "stdout_file": str(stdout), "stderr_file": str(stderr)})
+    supervisor.write_state({"schema_version": 1, "tasks": [task]}, state)
+    monkeypatch.setattr(supervisor, "process_running", lambda _pid: False)
+    monkeypatch.setattr(
+        supervisor,
+        "domain_implementation_failure_advice",
+        lambda _task, _text: "模型修复建议\n失败分类：implementation_evidence_missing\n下一步：\n- 生成真实 diff",
+    )
+
+    tasks = supervisor.poll_tasks(state_path=state, sessions_dir=sessions, deliver=False, repair=False)
+
+    assert tasks[0]["result_status"] == "failed"
+    assert "模型修复建议" in tasks[0]["final_report"]
+    assert "implementation_evidence_missing" in tasks[0]["final_report"]
 
 
 def test_domain_implementation_committed_verified_run_is_success_despite_replay_invalid(monkeypatch, tmp_path: Path) -> None:
