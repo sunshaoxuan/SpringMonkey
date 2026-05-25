@@ -19,6 +19,7 @@ def test_news_cron_preserves_command_substitution_for_helper() -> None:
     remote = module.REMOTE
     news_lines = [line for line in remote.splitlines() if "--name news-digest-jst-" in line]
 
+    assert "python3 scripts/news/apply_news_config.py" in remote
     assert 'cat >"${CRON_FILE}" <<\'EOF\'' in remote
     assert len(news_lines) == 2
     for line in news_lines:

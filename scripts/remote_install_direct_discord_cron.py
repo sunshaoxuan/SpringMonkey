@@ -27,6 +27,9 @@ CRON_FILE="/etc/cron.d/openclaw-direct-discord"
 JOBS_FILE="${OPENCLAW_HOME}/cron/jobs.json"
 TS="$(date +%Y%m%d-%H%M%S)"
 
+cd "${REPO}"
+python3 scripts/news/apply_news_config.py
+
 install -d -m 755 /usr/local/lib/openclaw
 install -d -m 755 "${OPENCLAW_HOME}/logs"
 
