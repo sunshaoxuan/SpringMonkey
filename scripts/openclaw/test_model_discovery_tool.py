@@ -64,6 +64,7 @@ def test_build_image_report_with_probe_rejects_endpoint_failure(monkeypatch, tmp
     assert report["usable_candidates"] == []
     assert report["probe_results"][0]["model_ref"] == "openai/gpt-image-2"
     assert report["probe_results"][0]["ok"] is False
+    assert report["probe_results"][0]["failure_kind"] == "generation_endpoint_unsupported"
 
 
 def test_discover_text_models_parses_model_list_table() -> None:
@@ -78,3 +79,9 @@ ollama/qwen3:14b                           text       32k
     models, _detail = tool.discover_text_models(command_runner=fake_run)
 
     assert [item["model_ref"] for item in models] == ["openai/gpt-5.5", "ollama/qwen3:14b"]
+
+
+def test_classify_image_probe_failure_distinguishes_catalog_from_endpoint() -> None:
+    assert tool.classify_image_probe_failure("HTTP 404 endpoint not supported") == "generation_endpoint_unsupported"
+    assert tool.classify_image_probe_failure("code=model_not_available") == "model_not_available_for_key"
+    assert tool.classify_image_probe_failure("model is not supported when using Codex with a ChatGPT account") == "account_does_not_support_image_model"

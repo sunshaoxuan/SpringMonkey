@@ -32,6 +32,7 @@ class ModelCandidate:
 class ProbeResult:
     model_ref: str
     ok: bool
+    failure_kind: str
     detail: str
 
 
@@ -133,7 +134,22 @@ def probe_image_model(model_ref: str, *, command_runner: CommandRunner = subproc
     )
     detail = (proc.stderr or proc.stdout or "").strip()
     ok = proc.returncode == 0 and output.exists() and output.stat().st_size > 1000
-    return ProbeResult(model_ref=model_ref, ok=ok, detail=detail[-1200:])
+    return ProbeResult(model_ref=model_ref, ok=ok, failure_kind="" if ok else classify_image_probe_failure(detail), detail=detail[-1200:])
+
+
+def classify_image_probe_failure(detail: str) -> str:
+    lowered = (detail or "").lower()
+    if "endpoint not supported" in lowered:
+        return "generation_endpoint_unsupported"
+    if "model_not_available" in lowered or "not in the current api key" in lowered or "不在当前 api key" in lowered:
+        return "model_not_available_for_key"
+    if "invalid_api_key" in lowered or "incorrect api key" in lowered or "no api key found" in lowered:
+        return "auth_unavailable"
+    if "not supported when using codex with a chatgpt account" in lowered:
+        return "account_does_not_support_image_model"
+    if "timeout" in lowered or "timed out" in lowered:
+        return "provider_timeout"
+    return "provider_error"
 
 
 def build_report(kind: str, *, probe: bool = False, command_runner: CommandRunner = subprocess.run) -> dict[str, Any]:
