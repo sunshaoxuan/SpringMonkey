@@ -757,6 +757,60 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertTrue(url.startswith("http://"), "model.ollamaBaseUrl should be set for pipeline hosts")
         self.assertNotIn("127.0.0.1", url)
 
+    def test_worker_item_budget_is_configured(self):
+        max_items = int(self.cfg.get("model", {}).get("maxWorkerItems", 0))
+        self.assertGreaterEqual(max_items, 20)
+        self.assertLessEqual(max_items, 45)
+
+    def test_process_raw_article_items_reuses_existing_and_omits_over_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            processed = run_dir / "processed_items"
+            processed.mkdir()
+            existing = {
+                "version": 1,
+                "item_id": "001_a",
+                "summary_zh": "已处理",
+                "included": True,
+            }
+            (processed / "001_a.json").write_text(json.dumps(existing, ensure_ascii=False), encoding="utf-8")
+            raw_items = [
+                {"item_id": "001_a", "title": "a", "source_url": "https://example.com/a"},
+                {"item_id": "002_b", "title": "b", "source_url": "https://example.com/b"},
+                {"item_id": "003_c", "title": "c", "source_url": "https://example.com/c"},
+            ]
+
+            def fake_process(item, **_kwargs):
+                return {
+                    "version": 1,
+                    "item_id": item["item_id"],
+                    "summary_zh": item["title"],
+                    "included": True,
+                }
+
+            old = self.m.process_raw_article_item
+            self.m.process_raw_article_item = fake_process
+            try:
+                got = self.m.process_raw_article_items(
+                    run_dir,
+                    raw_items,
+                    ollama_host="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    model="openai-codex/gpt-5.5",
+                    fallback_model="ollama/qwen3:14b",
+                    timeout=1,
+                    max_input_chars=100,
+                    max_items=2,
+                )
+            finally:
+                self.m.process_raw_article_item = old
+
+            self.assertEqual([item["item_id"] for item in got], ["001_a", "002_b"])
+            self.assertEqual(got[0]["summary_zh"], "已处理")
+            omitted = json.loads((run_dir / "worker_omitted_items.json").read_text(encoding="utf-8"))
+            self.assertEqual(omitted["omitted"][0]["item_id"], "003_c")
+
 
 class TestVerifyDraft(unittest.TestCase):
     def setUp(self):

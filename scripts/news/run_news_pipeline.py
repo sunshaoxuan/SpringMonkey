@@ -962,11 +962,34 @@ def process_raw_article_items(
     fallback_model: str,
     timeout: int,
     max_input_chars: int,
+    max_items: int = 0,
 ) -> list[dict[str, Any]]:
     processed_dir = run_dir / "processed_items"
     processed_dir.mkdir(parents=True, exist_ok=True)
     processed: list[dict[str, Any]] = []
-    for item in raw_items:
+    work_items = raw_items[:max_items] if max_items and max_items > 0 else list(raw_items)
+    omitted_items = raw_items[len(work_items) :]
+    if omitted_items:
+        save_json(
+            run_dir / "worker_omitted_items.json",
+            {
+                "version": 1,
+                "reason": "max_worker_items_budget",
+                "max_items": max_items,
+                "omitted": omitted_items,
+            },
+        )
+    for item in work_items:
+        item_id = str(item.get("item_id") or "")
+        existing_path = processed_dir / f"{item_id}.json" if item_id else None
+        if existing_path and existing_path.is_file():
+            try:
+                existing = json.loads(existing_path.read_text(encoding="utf-8"))
+            except Exception:
+                existing = None
+            if isinstance(existing, dict) and existing.get("item_id") == item_id:
+                processed.append(existing)
+                continue
         result = process_raw_article_item(
             item,
             ollama_host=ollama_host,
@@ -1518,6 +1541,7 @@ def main() -> int:
     codex_api_key = resolve_codex_api_key(cfg)
     ollama_host = resolve_ollama_base_url(cfg)
     max_worker_chars = int(model_cfg.get("maxWorkerInputChars", 1500))
+    max_worker_items = int(model_cfg.get("maxWorkerItems", 0) or 0)
     dedupe_hours = int((cfg.get("newsExecution") or {}).get("crossRunDedupeHours", 36))
     require_timestamp = bool((cfg.get("newsExecution") or {}).get("requireTimestampInWindow", True))
 
@@ -1558,6 +1582,7 @@ def main() -> int:
             "finalize_model": finalize_model_raw,
             "orchestrator_model": orch_model,
             "worker_call_mode": "per-article",
+            "max_worker_items": max_worker_items,
             "ollama_api_worker": ollama_worker_model,
             "ollama_api_finalize": ollama_finalize_model,
             "ollama_base_url": ollama_host,
@@ -1743,7 +1768,10 @@ def main() -> int:
         save_json(run_dir / "processed_items_index.json", {"version": 1, "items": processed_items})
         trace.step("process-items", "skipped", detail="dry-run placeholders", tool="ollama")
     else:
-        trace.step("process-items", "running", detail=f"items={len(raw_items)}", tool=worker_model_raw)
+        process_detail = f"items={len(raw_items)}"
+        if max_worker_items > 0 and len(raw_items) > max_worker_items:
+            process_detail += f", worker_budget={max_worker_items}, omitted={len(raw_items) - max_worker_items}"
+        trace.step("process-items", "running", detail=process_detail, tool=worker_model_raw)
         fetched_raw = len([x for x in raw_items if x.get("fetch_ok")])
         if fetched_raw > 0:
             healthy, health_detail = check_processor_health(
@@ -1808,9 +1836,13 @@ def main() -> int:
             fallback_model=fallback_model_raw,
             timeout=args.openai_timeout if is_openai_model(worker_model_raw) else args.ollama_timeout,
             max_input_chars=max_worker_chars,
+            max_items=max_worker_items,
         )
         included = len([x for x in processed_items if x.get("included")])
-        trace.step("process-items", "ok", detail=f"included={included}/{len(processed_items)}", tool=worker_model_raw)
+        process_ok_detail = f"included={included}/{len(processed_items)}"
+        if max_worker_items > 0 and len(raw_items) > len(processed_items):
+            process_ok_detail += f", omitted={len(raw_items) - len(processed_items)}"
+        trace.step("process-items", "ok", detail=process_ok_detail, tool=worker_model_raw)
         if fetched_raw > 0 and included == 0:
             reasons: dict[str, int] = {}
             for item in processed_items:
