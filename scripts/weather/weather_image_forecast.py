@@ -313,7 +313,9 @@ def generate_model_image(
     last_error = ""
     env = os.environ.copy()
     env.setdefault("HOME", "/var/lib/openclaw")
+    attempts_made = 0
     for attempt in range(1, retries + 1):
+        attempts_made = attempt
         attempt_path = path if attempt == 1 else output_dir / f"{path.stem}_retry{attempt}{path.suffix}"
         cmd = [
             "openclaw",
@@ -367,7 +369,7 @@ def generate_model_image(
             last_error = str(exc)
             continue
         return generated
-    raise RuntimeError(f"image generation failed after {retries} attempt(s): {last_error}")
+    raise RuntimeError(f"image generation failed after {attempts_made or retries} attempt(s): {last_error}")
 
 
 def is_non_retryable_image_error(text: str) -> bool:
