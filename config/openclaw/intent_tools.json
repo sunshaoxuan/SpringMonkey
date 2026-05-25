@@ -1560,6 +1560,58 @@
       "safety": "readonly"
     },
     {
+      "intent_id": "openclaw.model.discovery",
+      "tool_id": "openclaw.model.discovery",
+      "description": "Discover currently configured OpenClaw model candidates and optionally prove image providers with a bounded smoke probe.",
+      "owner_agent": "toolWorker",
+      "goal": "Read-only model catalog and provider health inspection for self-repair routing.",
+      "use_when": "Use when the user's goal is to inspect which model names or provider candidates are currently available, or when a model call failed and the next step requires choosing a valid configured model.",
+      "do_not_use_when": "Do not use to change model configuration, install providers, spend on large generation runs, or bypass provider authorization.",
+      "entrypoint": "scripts/openclaw/model_discovery_tool.py",
+      "args_schema": {
+        "mode": "fixed_args",
+        "args": [
+          "--kind",
+          "image",
+          "--json"
+        ],
+        "force": false
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm_readonly",
+      "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "json_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/model_discovery_tool.py && python -m pytest -q scripts/openclaw/test_model_discovery_tool.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.model.discovery",
+      "domain": "config",
+      "actions": [
+        "inspect",
+        "diagnose"
+      ],
+      "worker_agent": "toolWorker",
+      "prompt_hints": [
+        "model catalog inspection",
+        "provider model discovery",
+        "self-repair model fallback diagnosis"
+      ],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "json_business_result"
+      },
+      "safety": "readonly"
+    },
+    {
       "intent_id": "memory.generated_readonly",
       "tool_id": "memory.generated_readonly",
       "description": "Generated semantic read-only repair helper for: 请查询小红书长记忆里 Frutteto 投稿记录",

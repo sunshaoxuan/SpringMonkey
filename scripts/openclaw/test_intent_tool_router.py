@@ -95,6 +95,14 @@ def test_natural_language_time_range_parameter_parser() -> None:
     assert after.relation == "after"
 
 
+def test_fixed_args_tool_contract_builds_static_argument_list() -> None:
+    tool = registry_tool("openclaw.model.discovery")
+
+    args = router.extract_args(tool, "检查当前可用的图像模型", "2026-05-25T10:00:00+09:00")
+
+    assert args["args"] == ["--kind", "image", "--json"]
+
+
 def test_implicit_range_followup_inherits_recent_timescar_query_and_enriches_text() -> None:
     registry = load_registry()
     tool = next(item for item in registry["tools"] if item["tool_id"] == "timescar.dm.query")

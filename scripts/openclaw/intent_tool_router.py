@@ -380,6 +380,11 @@ def extract_args(tool: dict[str, Any], text: str, message_timestamp: str) -> dic
         return {"job_name": job_name, "message_timestamp": message_timestamp}
     if mode == "fixed_cron_job":
         return {"job_name": str(schema["job_name"])}
+    if mode == "fixed_args":
+        raw_args = schema.get("args") or []
+        if not isinstance(raw_args, list):
+            raise ValueError("fixed_args args_schema.args must be a list")
+        return {"args": [str(item) for item in raw_args]}
     if mode == "memory_backfill":
         return {
             "topic": str(schema.get("topic") or "xhs"),
@@ -499,6 +504,8 @@ def run_tool(tool: dict[str, Any], args: dict[str, Any], timeout_seconds: int) -
             cmd.append("--force")
     elif mode in {"cron_job_from_text", "fixed_cron_job"}:
         cmd = [sys.executable, str(entrypoint), args["job_name"]]
+    elif mode == "fixed_args":
+        cmd = [sys.executable, str(entrypoint), *list(args.get("args") or [])]
     elif mode == "memory_backfill":
         cmd = [
             sys.executable,
