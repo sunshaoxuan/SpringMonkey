@@ -54,20 +54,24 @@ def backup(path: Path) -> None:
 
 
 def write_json_if_changed(path: Path, data: dict) -> bool:
+    def ensure_openclaw_owner() -> None:
+        if str(path).startswith("/var/lib/openclaw/"):
+            try:
+                user = pwd.getpwnam("openclaw")
+                os.chown(path, user.pw_uid, user.pw_gid)
+            except Exception:
+                pass
+
     rendered = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     old = path.read_text(encoding="utf-8") if path.exists() else ""
     if old == rendered:
+        ensure_openclaw_owner()
         return False
     backup(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(rendered, encoding="utf-8")
     path.chmod(0o600)
-    if str(path).startswith("/var/lib/openclaw/"):
-        try:
-            user = pwd.getpwnam("openclaw")
-            os.chown(path, user.pw_uid, user.pw_gid)
-        except Exception:
-            pass
+    ensure_openclaw_owner()
     return True
 
 
