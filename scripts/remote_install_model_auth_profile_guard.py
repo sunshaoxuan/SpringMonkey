@@ -26,6 +26,8 @@ set -euo pipefail
 sleep "${OPENCLAW_AUTH_PROFILE_GUARD_DELAY:-0}"
 python3 - <<'PY'
 import json
+import os
+import pwd
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,6 +62,12 @@ def write_json_if_changed(path: Path, data: dict) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(rendered, encoding="utf-8")
     path.chmod(0o600)
+    if str(path).startswith("/var/lib/openclaw/"):
+        try:
+            user = pwd.getpwnam("openclaw")
+            os.chown(path, user.pw_uid, user.pw_gid)
+        except Exception:
+            pass
     return True
 
 

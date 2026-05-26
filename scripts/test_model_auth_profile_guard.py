@@ -35,6 +35,14 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
 
 
+def test_model_auth_guard_keeps_openclaw_home_readable_by_openclaw_user() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert 'pwd.getpwnam("openclaw")' in remote
+    assert "os.chown(path, user.pw_uid, user.pw_gid)" in remote
+
+
 if __name__ == "__main__":
     test_model_auth_guard_does_not_periodically_rewrite_runtime_config()
     test_model_auth_guard_does_not_hijack_openai_image_provider()
