@@ -85,10 +85,8 @@ for path in config_paths:
     key = str(openai.get("apiKey") or "")
     print(f"openai.baseUrl={base}")
     key_info(f"{path}.openai.apiKey", key)
-    if "ccnode.briconbric.com:49530/v1" not in base:
-        errors.append(f"unexpected openai baseUrl in {path}: {base}")
-    if secret and key != secret:
-        errors.append(f"openai apiKey mismatch in {path}")
+    if base and "ccnode.briconbric.com:49530/v1" in base:
+        print("WARN openai provider points at ccnode; image generation may need ChatGPT/OAuth provider path")
     ollama = providers.get("ollama") or {}
     ollama_base = str(ollama.get("baseUrl") or "")
     print(f"ollama.baseUrl={ollama_base}")
@@ -111,10 +109,10 @@ for path in profile_paths:
     key_info(f"{path}.openai:ccnode-codex.key", key)
     if secret and key != secret:
         errors.append(f"openai auth profile key mismatch in {path}")
-    if "openai:ccnode-codex" not in (order.get("openai") or []):
-        errors.append(f"openai auth profile missing from order in {path}")
-    if last_good.get("openai") != "openai:ccnode-codex":
-        errors.append(f"openai lastGood missing in {path}")
+    if "openai-codex:default" not in profiles:
+        errors.append(f"openai-codex oauth profile missing in {path}")
+    if last_good.get("openai") == "openai:ccnode-codex":
+        errors.append(f"openai lastGood should not force ccnode api key profile in {path}")
 
 if errors:
     print("model_auth_profiles_failed")

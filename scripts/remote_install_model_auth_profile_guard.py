@@ -67,15 +67,8 @@ for path in config_paths:
     if not path.exists():
         continue
     data = json.loads(path.read_text(encoding="utf-8"))
-    providers = data.setdefault("models", {}).setdefault("providers", {})
-    openai = providers.setdefault("openai", {})
-    openai["baseUrl"] = "http://ccnode.briconbric.com:49530/v1"
-    openai["apiKey"] = secret
-    models = openai.setdefault("models", [])
-    if not any(isinstance(item, dict) and item.get("id") == "gpt-5.5" for item in models):
-        models.insert(0, {"id": "gpt-5.5", "api": "openai-completions", "input": ["text"]})
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
-    defaults["primary"] = "openai/gpt-5.5"
+    defaults["primary"] = "openai-codex/gpt-5.5"
     fallbacks = defaults.setdefault("fallbacks", [])
     if "ollama/qwen3:14b" not in fallbacks:
         fallbacks.insert(0, "ollama/qwen3:14b")
@@ -108,10 +101,11 @@ for path in profile_paths:
         "copyToAgents": True,
     }
     order = data.setdefault("order", {})
-    order["openai"] = ["openai:ccnode-codex"] + [item for item in order.get("openai", []) if item != "openai:ccnode-codex"]
+    order["openai"] = [item for item in order.get("openai", []) if item != "openai:ccnode-codex"]
     order["ollama"] = ["ollama:default"] + [item for item in order.get("ollama", []) if item != "ollama:default"]
     last_good = data.setdefault("lastGood", {})
-    last_good["openai"] = "openai:ccnode-codex"
+    if last_good.get("openai") == "openai:ccnode-codex":
+        last_good.pop("openai", None)
     last_good["ollama"] = "ollama:default"
     if write_json_if_changed(path, data):
         print(f"[model-auth-profile-guard] updated profile {path}")
@@ -135,23 +129,9 @@ Type=oneshot
 ExecStart=/usr/local/lib/openclaw/ensure_model_auth_profiles.sh
 EOF
 
-cat >/etc/systemd/system/openclaw-model-auth-profile-guard.timer <<'EOF'
-[Unit]
-Description=Periodic OpenClaw model auth profile drift repair
-
-[Timer]
-OnBootSec=30
-OnUnitActiveSec=60
-AccuracySec=10
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
 systemctl daemon-reload
 OPENCLAW_AUTH_PROFILE_GUARD_DELAY=0 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
-systemctl enable --now openclaw-model-auth-profile-guard.timer
+systemctl disable --now openclaw-model-auth-profile-guard.timer 2>/dev/null || true
 systemctl restart openclaw.service
 sleep 35
 systemctl is-active openclaw.service
@@ -159,7 +139,7 @@ OPENCLAW_AUTH_PROFILE_GUARD_DELAY=0 /usr/local/lib/openclaw/ensure_model_auth_pr
 echo "=== drop-in ==="
 systemctl cat openclaw.service | sed -n '/35-model-auth-profile-guard.conf/,+5p'
 echo "=== timer ==="
-systemctl is-enabled openclaw-model-auth-profile-guard.timer
+systemctl is-enabled openclaw-model-auth-profile-guard.timer 2>/dev/null || true
 systemctl list-timers openclaw-model-auth-profile-guard.timer --no-pager || true
 echo DONE
 """
