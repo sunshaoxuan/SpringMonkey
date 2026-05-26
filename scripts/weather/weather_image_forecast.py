@@ -566,8 +566,10 @@ def write_weather_image_with_model(
     candidates = image_model_candidates(model)
     if candidates and candidates[0].lower() not in {"off", "none", "fallback"}:
         failures: list[str] = []
+        deterministic_fallback_requested = False
         for selected_model in candidates:
             if selected_model.lower() in {"off", "none", "fallback"}:
+                deterministic_fallback_requested = True
                 continue
             try:
                 return generate_model_image(cards, now, day_kind or "平日", output_dir, model=selected_model, command_runner=command_runner)
@@ -576,6 +578,14 @@ def write_weather_image_with_model(
                 failures.append(f"{selected_model}: {message}")
                 if model is not None:
                     break
+        if deterministic_fallback_requested:
+            path = write_weather_image(cards, now, output_dir)
+            validate_weather_image_artifact(path)
+            print(
+                "[weather-image] model providers failed; used deterministic fallback: " + " | ".join(failures)[-1000:],
+                file=os.sys.stderr,
+            )
+            return path
         raise RuntimeError("image provider unavailable for configured weather models: " + " | ".join(failures))
     path = write_weather_image(cards, now, output_dir)
     validate_weather_image_artifact(path)

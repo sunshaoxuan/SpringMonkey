@@ -161,6 +161,21 @@ def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) 
         raise AssertionError("model generation failure must not silently fall back")
 
 
+def test_model_image_generation_uses_explicit_candidate_fallback(tmp_path: Path, monkeypatch) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/gpt-image-2,fallback")
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="endpoint not supported")
+
+    path = mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=fake_run)
+
+    assert path.is_file()
+    assert path.name.endswith(".png")
+    assert not path.name.endswith("_image2.png")
+
+
 def test_deterministic_fallback_requires_explicit_model_mode(tmp_path: Path) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
