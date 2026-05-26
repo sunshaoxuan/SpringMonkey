@@ -843,6 +843,54 @@ class TestPlanAndTemplate(unittest.TestCase):
             omitted = json.loads((run_dir / "worker_omitted_items.json").read_text(encoding="utf-8"))
             self.assertEqual(omitted["omitted"][0]["item_id"], "003_c")
 
+    def test_process_raw_article_items_balances_budget_across_batches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            raw_items = []
+            for batch_id in ("japan", "china", "us", "europe", "ai", "technology", "entertainment", "world", "markets"):
+                for index in range(3):
+                    raw_items.append(
+                        {
+                            "item_id": f"{batch_id}_{index}",
+                            "original_batch": batch_id,
+                            "title": f"{batch_id} {index}",
+                            "source_url": f"https://example.com/{batch_id}/{index}",
+                        }
+                    )
+
+            def fake_process(item, **_kwargs):
+                return {
+                    "version": 1,
+                    "item_id": item["item_id"],
+                    "original_batch": item["original_batch"],
+                    "summary_zh": item["title"],
+                    "included": True,
+                }
+
+            old = self.m.process_raw_article_item
+            self.m.process_raw_article_item = fake_process
+            try:
+                got = self.m.process_raw_article_items(
+                    run_dir,
+                    raw_items,
+                    ollama_host="",
+                    openai_base_url="",
+                    openai_api_key="",
+                    model="openai-codex/gpt-5.5",
+                    fallback_model="ollama/qwen3:14b",
+                    timeout=1,
+                    max_input_chars=100,
+                    max_items=9,
+                )
+            finally:
+                self.m.process_raw_article_item = old
+
+            self.assertEqual(len(got), 9)
+            self.assertEqual({item["original_batch"] for item in got}, set(self.m.DEFAULT_NEWS_REGIONS))
+            omitted = json.loads((run_dir / "worker_omitted_items.json").read_text(encoding="utf-8"))
+            self.assertEqual(omitted["selection_strategy"], "balanced_by_original_batch")
+            self.assertEqual(len(omitted["omitted"]), 18)
+
 
 class TestVerifyDraft(unittest.TestCase):
     def setUp(self):

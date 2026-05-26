@@ -957,6 +957,52 @@ def process_raw_article_item(
     return result
 
 
+def select_worker_budget_items(
+    raw_items: list[dict[str, Any]],
+    max_items: int,
+    *,
+    batch_order: tuple[str, ...] = DEFAULT_NEWS_REGIONS,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not max_items or max_items <= 0 or len(raw_items) <= max_items:
+        return list(raw_items), []
+
+    batch_positions: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+    for idx, item in enumerate(raw_items):
+        batch_id = str(item.get("original_batch") or "__unbatched__")
+        batch_positions.setdefault(batch_id, []).append((idx, item))
+
+    if len(batch_positions) <= 1:
+        return list(raw_items[:max_items]), list(raw_items[max_items:])
+
+    ordered_batches = [batch_id for batch_id in batch_order if batch_id in batch_positions]
+    extras = sorted(
+        (batch_id for batch_id in batch_positions if batch_id not in set(batch_order)),
+        key=lambda bid: batch_positions[bid][0][0],
+    )
+    ordered_batches.extend(extras)
+
+    selected_indexes: set[int] = set()
+    cursors = {batch_id: 0 for batch_id in ordered_batches}
+    while len(selected_indexes) < max_items:
+        progressed = False
+        for batch_id in ordered_batches:
+            cursor = cursors[batch_id]
+            items = batch_positions[batch_id]
+            if cursor >= len(items):
+                continue
+            selected_indexes.add(items[cursor][0])
+            cursors[batch_id] = cursor + 1
+            progressed = True
+            if len(selected_indexes) >= max_items:
+                break
+        if not progressed:
+            break
+
+    work_items = [item for idx, item in enumerate(raw_items) if idx in selected_indexes]
+    omitted_items = [item for idx, item in enumerate(raw_items) if idx not in selected_indexes]
+    return work_items, omitted_items
+
+
 def process_raw_article_items(
     run_dir: Path,
     raw_items: list[dict[str, Any]],
@@ -975,14 +1021,14 @@ def process_raw_article_items(
     processed_dir = run_dir / "processed_items"
     processed_dir.mkdir(parents=True, exist_ok=True)
     processed: list[dict[str, Any]] = []
-    work_items = raw_items[:max_items] if max_items and max_items > 0 else list(raw_items)
-    omitted_items = raw_items[len(work_items) :]
+    work_items, omitted_items = select_worker_budget_items(raw_items, max_items)
     if omitted_items:
         save_json(
             run_dir / "worker_omitted_items.json",
             {
                 "version": 1,
                 "reason": "max_worker_items_budget",
+                "selection_strategy": "balanced_by_original_batch",
                 "max_items": max_items,
                 "omitted": omitted_items,
             },
