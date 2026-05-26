@@ -413,6 +413,10 @@ def image_model_candidates(model: str | None = None) -> list[str]:
     return deduped or [DEFAULT_IMAGE_MODEL]
 
 
+def deterministic_fallback_delivery_allowed() -> bool:
+    return os.environ.get("OPENCLAW_WEATHER_ALLOW_DETERMINISTIC_FALLBACK", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def validate_weather_image_artifact(path: Path, *, require_model_quality: bool = False) -> None:
     if not path.is_file():
         raise RuntimeError(f"weather image file missing: {path}")
@@ -578,7 +582,7 @@ def write_weather_image_with_model(
                 failures.append(f"{selected_model}: {message}")
                 if model is not None:
                     break
-        if deterministic_fallback_requested:
+        if deterministic_fallback_requested and deterministic_fallback_delivery_allowed():
             path = write_weather_image(cards, now, output_dir)
             validate_weather_image_artifact(path)
             print(

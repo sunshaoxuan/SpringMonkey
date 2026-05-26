@@ -41,7 +41,8 @@ def test_weather_cron_uses_image_forecast_with_long_timeout() -> None:
     assert weather_lines
     for line in weather_lines:
         assert "--timeout 1800" in line
-        assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2,fallback" in line
+        assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2" in line
+        assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2,fallback" not in line
         assert "scripts/weather/weather_image_forecast.py" in line
         assert "scripts/weather/discord_weather_report.py" not in line
 
@@ -58,8 +59,16 @@ def test_direct_cron_failure_records_repair_gap() -> None:
     assert "classify direct cron failure" in remote
 
 
+def test_run_as_openclaw_preserves_openclaw_home_for_oauth() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert '["runuser", "-u", "openclaw", "--", "env", "HOME=/var/lib/openclaw", *command]' in remote
+
+
 if __name__ == "__main__":
     test_news_cron_preserves_command_substitution_for_helper()
     test_weather_cron_uses_image_forecast_with_long_timeout()
     test_direct_cron_failure_records_repair_gap()
+    test_run_as_openclaw_preserves_openclaw_home_for_oauth()
     print("OK")
