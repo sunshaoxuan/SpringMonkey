@@ -29,6 +29,8 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
 
     assert 'openai["baseUrl"] = "http://ccnode.briconbric.com:49530/v1"' not in remote
     assert 'openai["apiKey"] = secret' not in remote
+    assert 'openai.pop("baseUrl", None)' in remote
+    assert 'openai.pop("apiKey", None)' in remote
     assert 'defaults["primary"] = "openai-codex/gpt-5.5"' in remote
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
 

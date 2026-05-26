@@ -85,8 +85,8 @@ for path in config_paths:
     key = str(openai.get("apiKey") or "")
     print(f"openai.baseUrl={base}")
     key_info(f"{path}.openai.apiKey", key)
-    if base and "ccnode.briconbric.com:49530/v1" in base:
-        print("WARN openai provider points at ccnode; image generation may need ChatGPT/OAuth provider path")
+    if base and "ccnode.briconbric.com:49530" in base:
+        errors.append(f"openai provider must not point at ccnode because image generation uses ChatGPT/OAuth path in {path}")
     ollama = providers.get("ollama") or {}
     ollama_base = str(ollama.get("baseUrl") or "")
     print(f"ollama.baseUrl={ollama_base}")

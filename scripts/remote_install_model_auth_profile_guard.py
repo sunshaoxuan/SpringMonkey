@@ -67,6 +67,12 @@ for path in config_paths:
     if not path.exists():
         continue
     data = json.loads(path.read_text(encoding="utf-8"))
+    providers = data.setdefault("models", {}).setdefault("providers", {})
+    openai = providers.get("openai")
+    if isinstance(openai, dict) and "ccnode.briconbric.com:49530" in str(openai.get("baseUrl", "")):
+        openai.pop("baseUrl", None)
+        openai.pop("apiKey", None)
+        openai.pop("models", None)
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
     defaults["primary"] = "openai-codex/gpt-5.5"
     fallbacks = defaults.setdefault("fallbacks", [])
