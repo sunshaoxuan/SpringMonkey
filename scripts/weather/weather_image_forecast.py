@@ -8,6 +8,7 @@ import math
 import os
 import struct
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 import zlib
@@ -399,18 +400,30 @@ def generate_model_image_http(prompt: str, path: Path, *, model: str, base_url: 
         "n": 1,
         "response_format": "b64_json",
     }
-    req = urllib.request.Request(
-        base_url.rstrip("/") + "/images/generations",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": "Bearer " + api_key,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-    )
+    data = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Authorization": "Bearer " + api_key,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
     timeout = max(60, int(os.environ.get("OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS", str(DEFAULT_IMAGE_TIMEOUT_MS))) // 1000 + 30)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        response = json.loads(resp.read().decode("utf-8"))
+    retries = max(1, int(os.environ.get("OPENCLAW_WEATHER_IMAGE_RETRIES", str(DEFAULT_IMAGE_RETRIES))))
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(base_url.rstrip("/") + "/images/generations", data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                response = json.loads(resp.read().decode("utf-8"))
+            break
+        except Exception as exc:
+            last_error = exc
+            if attempt >= retries:
+                raise
+            time.sleep(min(2 * attempt, 8))
+    else:
+        if last_error:
+            raise last_error
+        raise RuntimeError("image endpoint failed without exception")
     outputs = response.get("data") if isinstance(response, dict) else None
     first = outputs[0] if isinstance(outputs, list) and outputs else {}
     b64_png = first.get("b64_json") if isinstance(first, dict) else None
