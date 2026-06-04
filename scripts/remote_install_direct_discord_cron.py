@@ -32,6 +32,9 @@ python3 scripts/news/apply_news_config.py
 
 install -d -m 755 /usr/local/lib/openclaw
 install -d -m 755 "${OPENCLAW_HOME}/logs"
+install -d -o openclaw -g openclaw -m 700 "${OPENCLAW_HOME}/state"
+chown -R openclaw:openclaw "${OPENCLAW_HOME}/state"
+chmod 700 "${OPENCLAW_HOME}/state"
 
 cat >"${HELPER}" <<'PY'
 #!/usr/bin/env python3

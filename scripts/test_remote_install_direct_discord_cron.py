@@ -77,9 +77,19 @@ def test_run_as_openclaw_preserves_openclaw_home_for_oauth() -> None:
     assert '["runuser", "-u", "openclaw", "--", "env", "HOME=/var/lib/openclaw", *command]' in remote
 
 
+def test_installer_repairs_openclaw_state_ownership_for_model_cli() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert 'install -d -o openclaw -g openclaw -m 700 "${OPENCLAW_HOME}/state"' in remote
+    assert 'chown -R openclaw:openclaw "${OPENCLAW_HOME}/state"' in remote
+    assert 'chmod 700 "${OPENCLAW_HOME}/state"' in remote
+
+
 if __name__ == "__main__":
     test_news_cron_preserves_command_substitution_for_helper()
     test_weather_cron_uses_image_forecast_with_long_timeout()
     test_direct_cron_failure_records_repair_gap()
     test_run_as_openclaw_preserves_openclaw_home_for_oauth()
+    test_installer_repairs_openclaw_state_ownership_for_model_cli()
     print("OK")
