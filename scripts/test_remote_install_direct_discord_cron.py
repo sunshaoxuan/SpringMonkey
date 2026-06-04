@@ -43,6 +43,7 @@ def test_weather_cron_uses_image_forecast_with_long_timeout() -> None:
         assert "--timeout 1800" in line
         assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2" in line
         assert "OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr" in line
+        assert "OPENCLAW_WEATHER_IMAGE_RETRIES=3" in line
         assert "OPENCLAW_WEATHER_ALLOW_DETERMINISTIC_FALLBACK=1" not in line
         assert "scripts/weather/weather_image_forecast.py" in line
         assert "scripts/weather/discord_weather_report.py" not in line
