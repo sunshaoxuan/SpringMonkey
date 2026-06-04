@@ -227,6 +227,29 @@ def execution_report_message(name: str, status: str, detail: str = "") -> str:
     return format_owner_reply(envelope) + "\n详细诊断：后台日志保留，不投递到公共频道。"
 
 
+def safe_notify_dm(content: str, status: str, detail: str = "") -> int:
+    try:
+        return send_discord(DEFAULT_DM_CHANNEL, execution_report_message(content, status, detail))
+    except Exception:
+        return 0
+
+
+def should_deliver_public(name: str, message: str) -> bool:
+    if name.startswith("weather-report-"):
+        media_paths = []
+        for line in message.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if not line.startswith("MEDIA:"):
+                return False
+            media_paths.append(Path(line.split("MEDIA:", 1)[1].strip()))
+        if not media_paths:
+            return False
+        return all(path.is_file() and path.name.endswith("_image2.png") and path.stat().st_size >= 100000 for path in media_paths)
+    return True
+
+
 def main() -> int:
     args = parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -261,46 +284,60 @@ def main() -> int:
         if proc.returncode == 0:
             if stdout in set(args.skip_output):
                 result_payload["delivery"] = "skipped"
-                send_discord(DEFAULT_DM_CHANNEL, execution_report_message(args.name, "成功（无公开输出）"))
+                safe_notify_dm(args.name, "成功（无公开输出）")
                 return 0
             message = stdout or f"{args.name}: completed with no output."
-            sent_chunks = send_discord(args.channel_id, message)
-            result_payload["delivery"] = "delivered"
-            result_payload["sentChunks"] = sent_chunks
+            sent_chunks = 0
             result_payload["publishedMark"] = mark_published_after_delivery(args.name, stdout, command)
-            send_discord(
-                DEFAULT_DM_CHANNEL,
-                execution_report_message(args.name, "成功", f"成功结果已发布到频道 {args.channel_id}。"),
-            )
+            if should_deliver_public(args.name, message):
+                try:
+                    sent_chunks = send_discord(args.channel_id, message)
+                    result_payload["delivery"] = "delivered"
+                    safe_notify_dm(args.name, "成功", f"成功结果已发布到频道 {args.channel_id}。")
+                    result_payload["sentChunks"] = sent_chunks
+                    return 0 if sent_chunks else 2
+                except urllib.error.HTTPError as exc:
+                    body = exc.read().decode("utf-8", errors="replace")
+                    result_payload["delivery"] = "public-delivery-failed"
+                    result_payload["publishedMark"] = (
+                        f"{result_payload.get('publishedMark', 'not-marked')}; public-delivery-failed={exc.code}:{body[-300:]}"
+                    )
+                    result_payload["sentChunks"] = 0
+                    safe_notify_dm(args.name, "失败", f"公开频道投递失败，HTTP {exc.code}")
+                    return 2
+                except Exception as exc:
+                    result_payload["delivery"] = "public-delivery-failed"
+                    result_payload["sentChunks"] = 0
+                    safe_notify_dm(args.name, "失败", f"{type(exc).__name__}: {exc}")
+                    return 1
+            result_payload["delivery"] = "dm-only"
+            if args.name.startswith("weather-report-"):
+                result_payload["repairGap"] = record_direct_failure_gap(args.name, command, "quality-gate", stdout, stderr)
+                safe_notify_dm(args.name, "失败", "天气预报没有生成完整的高质量模型图片，本次没有投递公共频道。")
+                return 3
+            safe_notify_dm(args.name, "成功", f"已执行完成，结果如下：\n{message}")
+            result_payload["sentChunks"] = 0
             return 0
-        sent_chunks = send_discord(
-            DEFAULT_DM_CHANNEL,
-            public_failure_message(args.name, proc.returncode, stdout, stderr),
-        )
+        safe_notify_dm(args.name, "失败", public_failure_message(args.name, proc.returncode, stdout, stderr))
         result_payload["repairGap"] = record_direct_failure_gap(args.name, command, proc.returncode, stdout, stderr)
         result_payload["delivery"] = "failure-delivered-to-dm"
-        result_payload["sentChunks"] = sent_chunks
+        result_payload["sentChunks"] = 0
         return proc.returncode or 1
     except subprocess.TimeoutExpired as exc:
         result_payload.update({"returncode": "timeout", "stderr": str(exc)})
         result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "timeout", "", str(exc))
-        send_discord(DEFAULT_DM_CHANNEL, public_failure_message(args.name, "timeout", "", str(exc)))
+        safe_notify_dm(args.name, "失败", public_failure_message(args.name, "timeout", "", str(exc)))
         return 124
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
         result_payload.update({"returncode": "delivery-error", "stderr": f"HTTP {exc.code}: {body}"})
         result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "delivery-error", "", body)
+        safe_notify_dm(args.name, "失败", f"公开频道投递失败: HTTP {exc.code}")
         return 2
     except Exception as exc:
         result_payload.update({"returncode": "exception", "stderr": f"{type(exc).__name__}: {exc}"})
         result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "exception", "", f"{type(exc).__name__}: {exc}")
-        try:
-            send_discord(
-                DEFAULT_DM_CHANNEL,
-                execution_report_message(args.name, "失败", f"{type(exc).__name__}: {exc}"),
-            )
-        except Exception:
-            pass
+        safe_notify_dm(args.name, "失败", f"{type(exc).__name__}: {exc}")
         return 1
     finally:
         result_payload["finished"] = datetime.now().isoformat(timespec="seconds")
@@ -362,7 +399,7 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Direct Discord delivery for script-like jobs. These bypass OpenClaw model turns.
-0 7 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name weather-report-jst-0700 --channel-id 1483636573235843072 --timeout 1800 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2 OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 /var/lib/openclaw/repos/SpringMonkey/scripts/weather/weather_image_forecast.py
+0 7 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name weather-report-jst-0700 --channel-id 1483636573235843072 --timeout 1800 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2 OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 /var/lib/openclaw/repos/SpringMonkey/scripts/weather/weather_image_forecast.py
 
 0 9 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-0900 --channel-id 1483636573235843072 --timeout 7200 --command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/scripts/news/jobs/news_digest_jst_0900.py); DIR=$(echo "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
 0 17 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-1700 --channel-id 1483636573235843072 --timeout 7200 --command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/scripts/news/jobs/news_digest_jst_1700.py); DIR=$(echo "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
@@ -380,7 +417,7 @@ EOF
 chmod 644 "${CRON_FILE}"
 
 if [ "${RUN_DIRECT_DISCORD_SMOKE:-0}" = "1" ]; then
-  python3 "${HELPER}" --name weather-report-jst-0700-smoke --channel-id "${PUBLIC_CHANNEL}" --timeout 1800 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2 OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 "${REPO}/scripts/weather/weather_image_forecast.py"
+  python3 "${HELPER}" --name weather-report-jst-0700-smoke --channel-id "${PUBLIC_CHANNEL}" --timeout 1800 --run-as-openclaw --command env OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2 OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS=360000 OPENCLAW_WEATHER_IMAGE_RETRIES=2 python3 "${REPO}/scripts/weather/weather_image_forecast.py"
 fi
 
 echo "=== cron file ==="

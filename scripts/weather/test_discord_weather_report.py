@@ -62,8 +62,53 @@ def main() -> int:
         finally:
             mod.load_holidays = original_load_holidays
 
-        print(json.dumps({"line": result, "holiday_locations": [loc.label for loc in holiday_locations]}, ensure_ascii=True))
+    print(json.dumps({"line": result, "holiday_locations": [loc.label for loc in holiday_locations]}, ensure_ascii=True))
     return 0
+
+
+def test_fetch_weather_payload_falls_back_to_wttr_on_open_meteo_failure(monkeypatch) -> None:
+    location = mod.Location("东京", "東京", 35.6762, 139.6503)
+
+    def fake_fetch_json(url: str, attempts: int = 3) -> dict:
+        if "api.open-meteo.com" in url:
+            raise RuntimeError("open-meteo down")
+        if "wttr.in" in url:
+            return {
+                "current_condition": [{"temp_C": "21", "weatherCode": "113", "precipMM": "0.0", "windspeedKmph": "12"}],
+                "weather": [
+                    {
+                        "maxtempC": "24",
+                        "mintempC": "18",
+                        "hourly": [
+                            {"time": "2026-05-19 00", "tempC": "18", "weatherCode": "113", "chanceofrain": "0", "windspeedKmph": "12"},
+                        ],
+                    }
+                ],
+            }
+        raise AssertionError(url)
+
+    payload = mod.fetch_weather_payload(location, fetch_json=fake_fetch_json)
+
+    assert payload["source"] == "wttr"
+    assert payload["current"]["temperature_2m"] == 21.0
+    assert payload["daily"]["temperature_2m_max"][0] == 24.0
+
+
+def test_weather_payload_reports_all_providers_failure(monkeypatch) -> None:
+    location = mod.Location("东京", "東京", 35.6762, 139.6503)
+
+    def fake_fetch_json(_url: str) -> dict:
+        raise RuntimeError("service unavailable")
+
+    try:
+        mod.fetch_weather_payload(location, fetch_json=fake_fetch_json)
+    except Exception as exc:
+        message = str(exc)
+        assert "weather services all failed" in message
+        assert "open-meteo" in message
+        assert "wttr" in message
+    else:
+        raise AssertionError("expecting weather payload fetch failure")
 
 
 if __name__ == "__main__":

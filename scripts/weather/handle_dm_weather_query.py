@@ -11,6 +11,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from pathlib import Path
+import discord_weather_report as weather_report
 
 _OPENCLAW_DIR = Path(__file__).resolve().parents[1] / "openclaw"
 if str(_OPENCLAW_DIR) not in sys.path:
@@ -154,13 +155,34 @@ def fmt(value: float | int | None, suffix: str = "", digits: int = 0) -> str:
     return f"{float(value):.{digits}f}{suffix}"
 
 
+def _normalize_hourly_time(day: datetime, raw: str | None) -> str:
+    if not raw:
+        return ""
+    value = str(raw).strip()
+    if ":" in value:
+        return value
+    if value.count("-") >= 2:
+        return value
+    if value.isdigit():
+        if len(value) == 2:
+            return f"{day:%Y-%m-%d} {value}:00"
+        if len(value) == 4:
+            return f"{day:%Y-%m-%d} {value[:2]}:{value[2:]}"
+    return value
+
+
+def _value_matches_day(day: datetime, raw: str | None) -> bool:
+    if not isinstance(raw, str):
+        return False
+    return raw.startswith(day.strftime("%Y-%m-%d")) or (":" in raw and len(raw) <= 5)
+
+
 def values_for_day(hourly: dict, day: datetime, key: str) -> list[float]:
     times = hourly.get("time") or []
     values = hourly.get(key) or []
-    prefix = day.strftime("%Y-%m-%d")
     result: list[float] = []
     for t, value in zip(times, values):
-        if isinstance(t, str) and t.startswith(prefix) and value is not None:
+        if _value_matches_day(day, _normalize_hourly_time(day, t if isinstance(t, str) else "")) and value is not None:
             result.append(float(value))
     return result
 
@@ -182,26 +204,9 @@ def min_max(values: list[float]) -> tuple[float | None, float | None]:
 
 
 def fetch_location_weather(loc: Location, day: datetime) -> str:
-    query = urllib.parse.urlencode(
-        {
-            "latitude": loc.latitude,
-            "longitude": loc.longitude,
-            "timezone": "Asia/Tokyo",
-            "forecast_days": 7,
-            "hourly": ",".join(
-                [
-                    "temperature_2m",
-                    "weather_code",
-                    "precipitation_probability",
-                    "wind_speed_10m",
-                    "wind_gusts_10m",
-                    "visibility",
-                ]
-            ),
-        }
-    )
-    data = fetch_json(f"https://api.open-meteo.com/v1/forecast?{query}")
-    hourly = data.get("hourly") or {}
+    payload = weather_report.fetch_weather_payload(weather_report.Location(loc.name, loc.name, loc.latitude, loc.longitude), fetch_json=fetch_json)
+    source = str(payload.get("source", "open-meteo"))
+    hourly = payload.get("hourly") or {}
     temps = values_for_day(hourly, day, "temperature_2m")
     precip = values_for_day(hourly, day, "precipitation_probability")
     wind = values_for_day(hourly, day, "wind_speed_10m")
@@ -228,7 +233,7 @@ def fetch_location_weather(loc: Location, day: datetime) -> str:
         f"{fmt(tmin, '°C')}~{fmt(tmax, '°C')}，"
         f"最高降水概率{fmt(max_precip, '%')}，"
         f"最大风速{fmt(max_wind, 'km/h')}、阵风{fmt(max_gust, 'km/h')}，"
-        f"最低能见度{fmt(visibility_km, 'km', 1)}{note}"
+        f"最低能见度{fmt(visibility_km, 'km', 1)}{note}；数据源：{source}"
     )
 
 

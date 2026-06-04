@@ -59,12 +59,37 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert "1024x1536" in calls[0]
 
 
+def test_generate_weather_image_reply_falls_back_to_text_on_fetch_error(monkeypatch, tmp_path: Path) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_RETRIES", "1")
+
+    def broken_fetch_json(_url: str) -> dict:
+        raise RuntimeError("weather source unreachable")
+
+    result = mod.generate_weather_image_reply(now=now, fetch_json=broken_fetch_json, output_dir=tmp_path)
+    assert "天气预报" in result
+    assert "天气服务暂时不可用" in result
+
+
 def test_weather_image_locations_are_three_city_forecast_spec() -> None:
     assert [(loc.label, loc.area) for loc in mod.WEATHER_IMAGE_LOCATIONS] == [
         ("東京", "東京"),
         ("北京", "北京"),
         ("大连", "大连"),
     ]
+
+
+def test_weather_image_main_fails_when_only_text_fallback_is_available(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(mod, "generate_weather_image_reply", lambda: "天气预报\n- 天气服务暂时不可用")
+
+    assert mod.main() == 1
+    assert "天气服务暂时不可用" in capsys.readouterr().out
+
+
+def test_fetch_weather_card_reads_air_quality_from_shared_payload() -> None:
+    card = mod.fetch_weather_card(mod.WEATHER_IMAGE_LOCATIONS[0], fetch_json=fake_fetch_json)
+
+    assert card.aqi == 36
 
 
 def test_same_city_locations_merge_before_image_generation() -> None:

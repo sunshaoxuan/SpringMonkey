@@ -42,9 +42,20 @@ def test_weather_cron_uses_image_forecast_with_long_timeout() -> None:
     for line in weather_lines:
         assert "--timeout 1800" in line
         assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2" in line
-        assert "OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES=openai/gpt-image-2,fallback" not in line
+        assert "OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr" in line
+        assert "OPENCLAW_WEATHER_ALLOW_DETERMINISTIC_FALLBACK=1" not in line
         assert "scripts/weather/weather_image_forecast.py" in line
         assert "scripts/weather/discord_weather_report.py" not in line
+
+
+def test_weather_public_delivery_requires_model_media_quality_gate() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert "def should_deliver_public" in remote
+    assert 'path.name.endswith("_image2.png")' in remote
+    assert "path.stat().st_size >= 100000" in remote
+    assert "天气预报没有生成完整的高质量模型图片" in remote
 
 
 def test_direct_cron_failure_records_repair_gap() -> None:

@@ -79,29 +79,17 @@ def _city_for_area(area: str) -> tuple[str, str]:
     return area, "local skyline and compact streets"
 
 def fetch_weather_card(location: report.Location, *, fetch_json=report.fetch_json) -> WeatherCard:
-    forecast_url = "https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode({
-        "latitude": location.latitude, "longitude": location.longitude, "timezone": "Asia/Tokyo",
-        "current": "temperature_2m,weather_code,precipitation,wind_speed_10m,uv_index",
-        "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
-        "forecast_days": 2,
-    })
-    air_url = "https://air-quality-api.open-meteo.com/v1/air-quality?" + urllib.parse.urlencode({
-        "latitude": location.latitude, "longitude": location.longitude, "timezone": "Asia/Tokyo", "current": "us_aqi",
-    })
-    forecast = fetch_json(forecast_url)
-    try:
-        air = fetch_json(air_url)
-    except Exception:
-        air = {"current": {"us_aqi": None}}
-    current = forecast.get("current", {}) if isinstance(forecast.get("current"), dict) else {}
-    daily = forecast.get("daily", {}) if isinstance(forecast.get("daily"), dict) else {}
+    payload = report.fetch_weather_payload(location, fetch_json=fetch_json)
+    current = payload.get("current", {}) if isinstance(payload.get("current"), dict) else {}
+    daily = payload.get("daily", {}) if isinstance(payload.get("daily"), dict) else {}
+    air = payload.get("air", {})
     temp = current.get("temperature_2m"); precip = current.get("precipitation"); wind = current.get("wind_speed_10m")
     precip_prob = (daily.get("precipitation_probability_max") or [None])[0]
     city, landmark_hint = _city_for_area(location.area)
     return WeatherCard(
         label=location.label, area=location.area, city=city, landmark_hint=landmark_hint,
         temperature_c=temp, weather_code=current.get("weather_code"), precipitation_probability=precip_prob,
-        wind_kmh=wind, uv_index=current.get("uv_index"), aqi=(air.get("current") or {}).get("us_aqi") if isinstance(air, dict) else None,
+        wind_kmh=wind, uv_index=current.get("uv_index"), aqi=air.get("us_aqi") if isinstance(air, dict) else None,
         temp_max_c=(daily.get("temperature_2m_max") or [None])[0], temp_min_c=(daily.get("temperature_2m_min") or [None])[0],
         advice=report.traffic_advice(precip, precip_prob, wind, temp),
     )
@@ -705,13 +693,17 @@ def build_media_reply(paths: Path | list[Path], cards: list[WeatherCard], now: d
 
 def generate_weather_image_reply(now: datetime | None = None, *, fetch_json=report.fetch_json, output_dir: Path = DEFAULT_OUTPUT_DIR) -> str:
     now = now or datetime.now(TZ)
-    cards, _rest_day, day_kind = build_cards(now, fetch_json=fetch_json)
-    paths = write_weather_images_with_model(cards, now, output_dir, day_kind=day_kind)
-    return build_media_reply(paths, cards, now, day_kind)
+    try:
+        cards, _rest_day, day_kind = build_cards(now, fetch_json=fetch_json)
+        paths = write_weather_images_with_model(cards, now, output_dir, day_kind=day_kind)
+        return build_media_reply(paths, cards, now, day_kind)
+    except Exception:
+        return report.build_text_report(now, fetch_json=fetch_json)
 
 def main() -> int:
-    print(generate_weather_image_reply())
-    return 0
+    message = generate_weather_image_reply()
+    print(message)
+    return 0 if message.startswith("MEDIA:") else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

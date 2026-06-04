@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.error
 import urllib.parse
@@ -70,6 +71,47 @@ WEATHER_TEXT = {
     99: "强烈雷雨",
 }
 
+WEATHER_DATA_PROVIDER_ALIASES = {
+    "open-meteo": "open-meteo",
+    "open_meteo": "open-meteo",
+    "wttr": "wttr",
+}
+WEATHER_DATA_PROVIDER_ORDER = ("open-meteo", "wttr")
+WTTR_CODE_TO_OPENMETEO = {
+    "113": 0,
+    "116": 1,
+    "119": 3,
+    "122": 3,
+    "143": 45,
+    "176": 61,
+    "179": 73,
+    "182": 77,
+    "185": 48,
+    "200": 95,
+    "266": 95,
+    "293": 61,
+    "296": 63,
+    "299": 61,
+    "302": 63,
+    "305": 65,
+    "308": 82,
+    "311": 65,
+    "320": 71,
+    "326": 77,
+    "329": 75,
+    "332": 71,
+    "335": 73,
+    "359": 82,
+    "386": 95,
+    "389": 99,
+    "392": 95,
+    "395": 75,
+    "397": 77,
+    "353": 82,
+    "356": 82,
+    "389": 99,
+}
+
 
 def fetch_json(url: str, attempts: int = 3) -> dict:
     req = urllib.request.Request(
@@ -96,6 +138,167 @@ def fetch_json(url: str, attempts: int = 3) -> dict:
     if last_error:
         raise last_error
     raise RuntimeError("weather fetch failed without exception")
+
+
+def normalize_provider_name(value: str) -> str:
+    return WEATHER_DATA_PROVIDER_ALIASES.get((value or "").strip().lower(), (value or "").strip().lower())
+
+
+def weather_data_provider_order() -> tuple[str, ...]:
+    raw = os.environ.get("OPENCLAW_WEATHER_DATA_PROVIDERS", ",".join(WEATHER_DATA_PROVIDER_ORDER)).strip()
+    if not raw:
+        return WEATHER_DATA_PROVIDER_ORDER
+    providers = []
+    for item in raw.replace(";", ",").split(","):
+        normalized = normalize_provider_name(item)
+        if not normalized:
+            continue
+        if normalized in providers:
+            continue
+        providers.append(normalized)
+    return tuple(providers or WEATHER_DATA_PROVIDER_ORDER)
+
+
+def _wttr_city_query(area: str) -> str:
+    if any(token in area for token in ("東京", "東京", "原人自宅", "虎ノ門", "品川", "杉並", "川口", "大连")):
+        if "大连" in area or "大連" in area:
+            return "dalian"
+        return "Tokyo"
+    if any(token in area for token in ("北京", "Beijing", "北京")):
+        return "Beijing"
+    return area.replace(" ", "").replace("　", "")
+
+
+def _build_wttr_url(area: str) -> str:
+    return f"https://wttr.in/{urllib.parse.quote(_wttr_city_query(area))}?format=j1"
+
+
+def _to_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            cleaned = value.replace("°", "").replace("%", "").strip()
+            return float(cleaned)
+    except Exception:
+        return None
+    return None
+
+
+def _to_int(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        if isinstance(value, (int, float)):
+            return int(value)
+        if isinstance(value, str):
+            cleaned = value.strip().replace("%", "")
+            return int(float(cleaned))
+    except Exception:
+        return None
+    return None
+
+
+def _wttr_to_open_meteo_code(code: str) -> int | None:
+    if code is None:
+        return None
+    return WTTR_CODE_TO_OPENMETEO.get(str(code), None)
+
+
+def _extract_float_max(values: list[object]) -> float | None:
+    values = [_to_float(v) for v in values]
+    finite = [v for v in values if v is not None]
+    return max(finite) if finite else None
+
+
+def fetch_weather_payload_from_open_meteo(location: Location, *, fetch_json=fetch_json) -> dict:
+    forecast_url = "https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(
+        {
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "timezone": "Asia/Tokyo",
+            "current": "temperature_2m,weather_code,precipitation,wind_speed_10m,uv_index",
+            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+            "forecast_days": 2,
+        }
+    )
+    air_url = "https://air-quality-api.open-meteo.com/v1/air-quality?" + urllib.parse.urlencode(
+        {
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "timezone": "Asia/Tokyo",
+            "current": "us_aqi",
+        }
+    )
+    forecast = fetch_json(forecast_url)
+    try:
+        air = fetch_json(air_url)
+    except Exception:
+        air = {"current": {"us_aqi": None}}
+    return {
+        "source": "open-meteo",
+        "current": forecast.get("current") if isinstance(forecast.get("current"), dict) else {},
+        "daily": forecast.get("daily") if isinstance(forecast.get("daily"), dict) else {},
+        "air": air.get("current", {}) if isinstance(air, dict) else {},
+        "hourly": forecast.get("hourly", {}),
+    }
+
+
+def fetch_weather_payload_from_wttr(location: Location, *, fetch_json=fetch_json) -> dict:
+    data = fetch_json(_build_wttr_url(location.area), attempts=2)
+    current = (data.get("current_condition") or [{}])[0] if isinstance(data, dict) else {}
+    weather_list = data.get("weather")
+    today = weather_list[0] if isinstance(weather_list, list) and weather_list else {}
+    hourly = today.get("hourly", [])
+    weather_code = _wttr_to_open_meteo_code((current.get("weatherCode") or today.get("weatherCode") or "").strip())
+    tmax = _to_float(today.get("maxtempC"))
+    tmin = _to_float(today.get("mintempC"))
+    precip_prob = _extract_float_max([entry.get("chanceofrain") for entry in hourly if isinstance(entry, dict)])
+    precip = _to_float(current.get("precipMM"))
+    wind_kph = _extract_float_max([entry.get("windspeedKmph") for entry in hourly if isinstance(entry, dict)]) or _to_float(current.get("windspeedKmph"))
+    return {
+        "source": "wttr",
+        "current": {
+            "temperature_2m": _to_float(current.get("temp_C")),
+            "weather_code": weather_code,
+            "precipitation": precip or 0.0,
+            "wind_speed_10m": wind_kph,
+            "uv_index": _to_float(current.get("uvIndex")),
+        },
+        "daily": {
+            "weather_code": [weather_code] if weather_code is not None else [],
+            "temperature_2m_max": [tmax],
+            "temperature_2m_min": [tmin],
+            "precipitation_probability_max": [precip_prob],
+        },
+        "air": {},
+        "hourly": {
+            "time": [h.get("time") for h in hourly if isinstance(h, dict)],
+            "weather_code": [_wttr_to_open_meteo_code((h.get("weatherCode") or "").strip()) for h in hourly if isinstance(h, dict)],
+            "temperature_2m": [_to_float(h.get("tempC")) for h in hourly if isinstance(h, dict)],
+            "precipitation": [_to_float(h.get("precipMM")) for h in hourly if isinstance(h, dict)],
+            "wind_speed_10m": [_to_float(h.get("windspeedKmph")) for h in hourly if isinstance(h, dict)],
+            "wind_gusts_10m": [_to_float(h.get("WindGustKmph")) for h in hourly if isinstance(h, dict)],
+            "visibility": [_to_float(h.get("visibility")) for h in hourly if isinstance(h, dict)],
+        },
+    }
+
+
+def fetch_weather_payload(location: Location, *, fetch_json=fetch_json) -> dict:
+    failures: list[str] = []
+    for provider in weather_data_provider_order():
+        try:
+            if provider == "open-meteo":
+                return fetch_weather_payload_from_open_meteo(location, fetch_json=fetch_json)
+            if provider == "wttr":
+                return fetch_weather_payload_from_wttr(location, fetch_json=fetch_json)
+            raise ValueError(f"unsupported weather data provider: {provider}")
+        except Exception as exc:
+            failures.append(f"{provider}:{type(exc).__name__}:{exc}")
+            continue
+    raise RuntimeError("weather services all failed: " + " | ".join(failures))
 
 
 def load_holidays(target_year: int | None = None) -> dict[str, str]:
@@ -177,38 +380,14 @@ def format_number(value: float | int | None, suffix: str = "", digits: int = 0) 
     return f"{float(value):.{digits}f}{suffix}"
 
 
-def fetch_weather(location: Location) -> str:
-    forecast_url = "https://api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(
-        {
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-            "timezone": "Asia/Tokyo",
-            "current": "temperature_2m,weather_code,precipitation,wind_speed_10m,uv_index",
-            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
-            "forecast_days": 2,
-        }
-    )
-    air_url = "https://air-quality-api.open-meteo.com/v1/air-quality?" + urllib.parse.urlencode(
-        {
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-            "timezone": "Asia/Tokyo",
-            "current": "us_aqi",
-        }
-    )
-
+def fetch_weather(location: Location, *, fetch_json=fetch_json) -> str:
     try:
-        forecast = fetch_json(forecast_url)
+        payload = fetch_weather_payload(location, fetch_json=fetch_json)
     except Exception as e:
-        return f"- {location.label}（{location.area}）: 天气服务暂时不可用，无法取得实时预报（{type(e).__name__}）。"
-    try:
-        air = fetch_json(air_url)
-    except Exception:
-        air = {"current": {"us_aqi": None}}
-
-    current = forecast.get("current", {})
-    daily = forecast.get("daily", {})
-    aqi = air.get("current", {}).get("us_aqi")
+        return f"- {location.label}（{location.area}）: 天气服务暂时不可用，无法取得实时预报（{type(e).__name__}: {e}）。"
+    current = payload.get("current", {})
+    daily = payload.get("daily", {})
+    aqi = (payload.get("air", {}) or {}).get("us_aqi")
 
     temp = current.get("temperature_2m")
     code = current.get("weather_code")
@@ -229,12 +408,12 @@ def fetch_weather(location: Location) -> str:
     )
 
 
-def build_text_report(now: datetime | None = None) -> str:
+def build_text_report(now: datetime | None = None, *, fetch_json=fetch_json) -> str:
     now = now or datetime.now(TZ)
     locations, rest_day, day_kind = locations_for_day(now)
     lines = [f"天气预报 {now:%Y-%m-%d} {('休息日' if rest_day else '工作日')}（{day_kind}）"]
     for loc in locations:
-        lines.append(fetch_weather(loc))
+        lines.append(fetch_weather(loc, fetch_json=fetch_json))
     return "\n".join(lines)
 
 
@@ -250,8 +429,11 @@ def main() -> int:
         print(message)
         return 0
     except Exception as exc:
-        trace.step("generate-image-forecast", "failed", detail=f"{type(exc).__name__}: {exc}", tool="open-meteo+svg-renderer")
-        raise
+        failure = f"天气预报生成失败，原因：{type(exc).__name__}: {exc}"
+        trace.step("generate-image-forecast", "failed", detail=failure, tool="open-meteo+svg-renderer")
+        trace.finish("failed", "image-report-failed", final_message=failure)
+        print(failure)
+        return 1
 
 
 if __name__ == "__main__":
