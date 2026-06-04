@@ -74,7 +74,19 @@ def test_run_as_openclaw_preserves_openclaw_home_for_oauth() -> None:
     module = load_installer_module()
     remote = module.REMOTE
 
-    assert '["runuser", "-u", "openclaw", "--", "env", "HOME=/var/lib/openclaw", *command]' in remote
+    assert '["runuser", "-u", "openclaw", "--", "env", *public_model_env(), *command]' in remote
+
+
+def test_run_as_openclaw_injects_public_model_endpoint_and_key() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert "def public_model_env" in remote
+    assert "OPENCLAW_PUBLIC_MODEL_BASE_URL" in remote
+    assert "NEWS_CODEX_BASE_URL" in remote
+    assert "OPENCLAW_PUBLIC_MODEL_API_KEY_FILE" in remote
+    assert "OPENAI_BASE_URL" in remote
+    assert "OPENAI_API_KEY" in remote
 
 
 def test_installer_repairs_openclaw_state_ownership_for_model_cli() -> None:
@@ -91,5 +103,6 @@ if __name__ == "__main__":
     test_weather_cron_uses_image_forecast_with_long_timeout()
     test_direct_cron_failure_records_repair_gap()
     test_run_as_openclaw_preserves_openclaw_home_for_oauth()
+    test_run_as_openclaw_injects_public_model_endpoint_and_key()
     test_installer_repairs_openclaw_state_ownership_for_model_cli()
     print("OK")

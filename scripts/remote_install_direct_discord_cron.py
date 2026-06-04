@@ -61,6 +61,7 @@ from harness_reporter import append_report, build_report, format_owner_reply
 CONFIG = OPENCLAW_HOME / "openclaw.json"
 LOG_DIR = OPENCLAW_HOME / "logs" / "direct_discord_cron"
 DEFAULT_DM_CHANNEL = "1497009159940608020"
+ENV_FILE = Path("/etc/openclaw/openclaw.env")
 
 
 def parse_args() -> argparse.Namespace:
@@ -85,6 +86,35 @@ def discord_token() -> str:
     if not token:
         raise RuntimeError("missing channels.discord.token")
     return str(token)
+
+
+def read_env_file(path: Path = ENV_FILE) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.is_file():
+        return values
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip().strip('"').strip("'")
+        values[key.strip()] = value
+    return values
+
+
+def public_model_env() -> list[str]:
+    values = read_env_file()
+    base_url = values.get("OPENCLAW_PUBLIC_MODEL_BASE_URL") or values.get("NEWS_CODEX_BASE_URL")
+    key = values.get("OPENCLAW_PUBLIC_MODEL_API_KEY") or values.get("NEWS_CODEX_API_KEY")
+    key_file = values.get("OPENCLAW_PUBLIC_MODEL_API_KEY_FILE") or values.get("NEWS_CODEX_API_KEY_FILE")
+    if not key and key_file and Path(key_file).is_file():
+        key = Path(key_file).read_text(encoding="utf-8", errors="replace").strip()
+    env_items = ["HOME=/var/lib/openclaw"]
+    if base_url:
+        env_items.extend([f"OPENCLAW_PUBLIC_MODEL_BASE_URL={base_url}", f"OPENAI_BASE_URL={base_url}"])
+    if key:
+        env_items.extend([f"OPENCLAW_PUBLIC_MODEL_API_KEY={key}", f"OPENAI_API_KEY={key}"])
+    return env_items
 
 
 def mark_published_after_delivery(name: str, stdout: str, command: list[str]) -> str:
@@ -265,7 +295,7 @@ def main() -> int:
     try:
         command = args.command
         if args.run_as_openclaw:
-            command = ["runuser", "-u", "openclaw", "--", "env", "HOME=/var/lib/openclaw", *command]
+            command = ["runuser", "-u", "openclaw", "--", "env", *public_model_env(), *command]
         result_payload["command"] = command
         proc = subprocess.run(
             command,

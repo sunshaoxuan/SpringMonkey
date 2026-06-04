@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import tempfile
 import os
+import base64
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -57,6 +58,40 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
     assert "openai/gpt-image-2" in calls[0]
     assert "1024x1536" in calls[0]
+
+
+def test_model_image_generation_uses_openai_compatible_http_endpoint(tmp_path: Path, monkeypatch) -> None:
+    now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
+    generated_png = mod._png_bytes(1024, 1536, bytearray(os.urandom(1024 * 1536 * 3)))
+    requests = []
+    monkeypatch.setenv("OPENCLAW_PUBLIC_MODEL_BASE_URL", "http://ccnode.briconbric.com:49530/v1")
+    monkeypatch.setenv("OPENCLAW_PUBLIC_MODEL_API_KEY", "test-key")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self) -> bytes:
+            return json.dumps({"data": [{"b64_json": base64.b64encode(generated_png).decode("ascii")}]}).encode("utf-8")
+
+    def fake_urlopen(req, timeout):
+        requests.append((req, timeout))
+        return FakeResponse()
+
+    def forbidden_run(*_args, **_kwargs):
+        raise AssertionError("direct HTTP endpoint should bypass openclaw image CLI")
+
+    monkeypatch.setattr(mod.urllib.request, "urlopen", fake_urlopen)
+
+    path = mod.write_weather_image_with_model([cards[0]], now, tmp_path, day_kind=day_kind, command_runner=forbidden_run)
+
+    assert path.is_file()
+    assert requests
+    assert requests[0][0].full_url == "http://ccnode.briconbric.com:49530/v1/images/generations"
 
 
 def test_generate_weather_image_reply_falls_back_to_text_on_fetch_error(monkeypatch, tmp_path: Path) -> None:

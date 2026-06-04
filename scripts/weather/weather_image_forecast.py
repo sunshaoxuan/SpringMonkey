@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import html
+import base64
 import json
 import math
 import os
 import struct
 import subprocess
 import urllib.parse
+import urllib.request
 import zlib
 from dataclasses import dataclass
 from datetime import datetime
@@ -295,6 +297,12 @@ def generate_model_image(
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / f"weather_miniature_{_image_slug(cards)}_{now:%Y%m%d_%H%M%S}_image2.png"
+    direct_base_url = weather_image_base_url()
+    if direct_base_url:
+        prompt = build_image_prompt(cards, now, day_kind)
+        generate_model_image_http(prompt, path, model=model, base_url=direct_base_url)
+        validate_generated_model_image(path)
+        return path
     timeout_ms = int(os.environ.get("OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS", str(DEFAULT_IMAGE_TIMEOUT_MS)))
     retries = max(1, int(os.environ.get("OPENCLAW_WEATHER_IMAGE_RETRIES", str(DEFAULT_IMAGE_RETRIES))))
     prompt = build_image_prompt(cards, now, day_kind)
@@ -358,6 +366,57 @@ def generate_model_image(
             continue
         return generated
     raise RuntimeError(f"image generation failed after {attempts_made or retries} attempt(s): {last_error}")
+
+
+def weather_image_base_url() -> str:
+    return (
+        os.environ.get("OPENCLAW_WEATHER_IMAGE_BASE_URL", "").strip()
+        or os.environ.get("OPENCLAW_PUBLIC_MODEL_BASE_URL", "").strip()
+        or os.environ.get("NEWS_CODEX_BASE_URL", "").strip()
+    ).rstrip("/")
+
+
+def weather_image_api_key() -> str:
+    for name in ("OPENCLAW_WEATHER_IMAGE_API_KEY", "OPENCLAW_PUBLIC_MODEL_API_KEY", "NEWS_CODEX_API_KEY", "OPENAI_API_KEY"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    for name in ("OPENCLAW_WEATHER_IMAGE_API_KEY_FILE", "OPENCLAW_PUBLIC_MODEL_API_KEY_FILE", "NEWS_CODEX_API_KEY_FILE"):
+        path = os.environ.get(name, "").strip()
+        if path and Path(path).is_file():
+            return Path(path).read_text(encoding="utf-8").strip()
+    return ""
+
+
+def generate_model_image_http(prompt: str, path: Path, *, model: str, base_url: str) -> None:
+    api_key = weather_image_api_key()
+    if not api_key:
+        raise RuntimeError("missing weather image API key for OpenAI-compatible image endpoint")
+    payload = {
+        "model": model.split("/", 1)[-1],
+        "prompt": prompt,
+        "size": "1024x1024",
+        "n": 1,
+        "response_format": "b64_json",
+    }
+    req = urllib.request.Request(
+        base_url.rstrip("/") + "/images/generations",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": "Bearer " + api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+    )
+    timeout = max(60, int(os.environ.get("OPENCLAW_WEATHER_IMAGE_TIMEOUT_MS", str(DEFAULT_IMAGE_TIMEOUT_MS))) // 1000 + 30)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        response = json.loads(resp.read().decode("utf-8"))
+    outputs = response.get("data") if isinstance(response, dict) else None
+    first = outputs[0] if isinstance(outputs, list) and outputs else {}
+    b64_png = first.get("b64_json") if isinstance(first, dict) else None
+    if not isinstance(b64_png, str) or not b64_png.strip():
+        raise RuntimeError("image endpoint returned no b64_json output")
+    path.write_bytes(base64.b64decode(b64_png))
 
 
 def is_non_retryable_image_error(text: str) -> bool:
