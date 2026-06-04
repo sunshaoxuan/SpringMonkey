@@ -206,6 +206,20 @@ def test_stdlib_png_normalizer_crops_truecolor_png(tmp_path: Path) -> None:
     assert struct.unpack(">II", data[16:24]) == (1024, 1536)
 
 
+def test_stdlib_png_normalizer_pads_square_truecolor_png(tmp_path: Path) -> None:
+    path = tmp_path / "stdlib_square.png"
+    pixels = bytearray([240, 244, 250] * (1024 * 1024))
+    path.write_bytes(mod._png_bytes(1024, 1024, pixels))
+
+    mod._normalize_png_aspect_stdlib(path, target_width=1024, target_height=1536)
+
+    data = path.read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    import struct
+
+    assert struct.unpack(">II", data[16:24]) == (1024, 1536)
+
+
 def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)

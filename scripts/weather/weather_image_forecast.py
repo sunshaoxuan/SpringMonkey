@@ -548,7 +548,7 @@ def _normalize_png_aspect_stdlib(path: Path, *, target_width: int, target_height
     width, height, bit_depth, color_type, compression, filter_method, interlace = struct.unpack(">IIBBBBB", ihdr)
     if (width, height) == (target_width, target_height):
         return
-    if width != target_width or height <= target_height:
+    if width != target_width:
         return
     if bit_depth != 8 or color_type != 2 or compression != 0 or filter_method != 0 or interlace != 0:
         return
@@ -590,8 +590,16 @@ def _normalize_png_aspect_stdlib(path: Path, *, target_width: int, target_height
                 return
         rows.append(recon)
         prev = recon
-    cropped = rows[:target_height]
-    packed = b"".join(b"\x00" + bytes(row) for row in cropped)
+    if height > target_height:
+        normalized = rows[:target_height]
+    elif height < target_height:
+        top_pad = (target_height - height) // 2
+        bottom_pad = target_height - height - top_pad
+        pad_row = rows[-1] if rows else bytearray(row_len)
+        normalized = [bytearray(pad_row) for _ in range(top_pad)] + rows + [bytearray(pad_row) for _ in range(bottom_pad)]
+    else:
+        normalized = rows
+    packed = b"".join(b"\x00" + bytes(row) for row in normalized)
     path.write_bytes(
         b"\x89PNG\r\n\x1a\n"
         + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", target_width, target_height, bit_depth, color_type, compression, filter_method, interlace))
