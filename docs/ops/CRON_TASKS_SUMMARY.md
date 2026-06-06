@@ -26,5 +26,5 @@
 
 - **当前稳定链路（宿主机）**：`weather-report-jst-0700`、`news-digest-jst-0900`、`news-digest-jst-1700` 与 `timescar-*` 可切到 `/etc/cron.d/openclaw-direct-discord` 直投链路；该模式下对应 OpenClaw cron job 会被置为 `enabled=false` 避免重复触发。
 - **Direct Discord 权限模型**：`/etc/cron.d/openclaw-direct-discord` 中由 `root` 运行投递 helper 读取 Discord token，实际业务脚本通过 helper 的 `--run-as-openclaw` 以 `openclaw` 用户执行。不要改回由 `openclaw` 直接运行 helper，否则 `openclaw.json` 为 `600` 时会生成正文但无法投递。
-- **天氣預報 / 新聞播報**：只有成功的最终播报正文允许进入公共频道 `1483636573235843072`；执行报告、失败通知、诊断摘要、stderr/stdout、内部路径和阻塞说明必须进入私聊频道 `1497009159940608020`。天氣資料源按 `OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr` 順序兜底。正式公共天氣任務只允許完整的 `openai/gpt-image-2` 模型圖片投遞；文字兜底、缺圖、占位圖、deterministic fallback 圖都不得投遞公共頻道，需轉為私聊失敗報告並記錄修復 gap。
+- **天氣預報 / 新聞播報**：只有成功的最终播报正文允许进入公共频道 `1483636573235843072`；执行报告、失败通知、诊断摘要、stderr/stdout、内部路径和阻塞说明必须进入私聊频道 `1497009159940608020`。天氣資料源按 `OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr` 順序兜底。正式公共天氣任務只允許完整的 `openai/gpt-image-2` 模型圖片投遞，輸出規格為 1024x1024 方圖；文字兜底、缺圖、占位圖、deterministic fallback 圖都不得投遞公共頻道，需轉為私聊失敗報告並記錄修復 gap。
 - **TimesCar 監控**：涵蓋早間、深夜及自動訂單/續約邏輯。**務必**與宿主 `cron/jobs.json` 對照：`timescar-*` 只允許 `delivery.to = 1497009159940608020`；若發現任一誤為公共頻道 ID（例如曾出現在快照中的 ``timescar-ask-cancel-next24h-2300``），先做 `cron edit` 修正再跑上方校驗腳本。

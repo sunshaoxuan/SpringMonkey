@@ -24,7 +24,7 @@ DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
 DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
 DEFAULT_IMAGE_MODEL_CANDIDATES = (DEFAULT_IMAGE_MODEL,)
 TARGET_IMAGE_WIDTH = 1024
-TARGET_IMAGE_HEIGHT = 1536
+TARGET_IMAGE_HEIGHT = 1024
 MIN_MODEL_IMAGE_BYTES = 100_000
 DEFAULT_IMAGE_TIMEOUT_MS = 360_000
 DEFAULT_IMAGE_RETRIES = 2
@@ -267,8 +267,8 @@ def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -
         )
     scene_count = "one city scene" if len(cards) == 1 else f"{len(cards)} separate city scenes"
     return (
-        "Create a premium vertical weather forecast image as a single finished picture, not a UI mockup. "
-        f"Use a vertical 3:4 1024x1536 centered composition with {scene_count}. "
+        "Create a premium square weather forecast image as a single finished picture, not a UI mockup. "
+        f"Use a 1024x1024 centered composition with {scene_count}. "
         "If multiple people are in the same city, merge them into one city forecast scene; only add another scene when a distinct city exists. "
         "Camera and scene: clear 45-degree top-down isometric view, cute 3D chibi miniature city landmark diorama, "
         "choose exactly one recognizable landmark per city, main building centered, simple bright toy-like architectural details, "
@@ -324,7 +324,7 @@ def generate_model_image(
             "--prompt",
             prompt,
             "--size",
-            "1024x1536",
+            "1024x1024",
             "--output-format",
             "png",
             "--output",
@@ -512,10 +512,8 @@ def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, 
             # from the bottom when an image API returns a taller frame.
             image = image.crop((0, 0, target_width, target_height))
         elif image.height < target_height:
-            # Preserve generated art while adapting square model outputs to the
-            # formal vertical 3:4 cron contract. Center the scene vertically on a
-            # soft extension of the lower edge rather than silently publishing a
-            # square asset to the public workflow.
+            # Preserve generated art while adapting smaller outputs to the
+            # formal cron contract.
             canvas = Image.new("RGB", (target_width, target_height), image.getpixel((0, image.height - 1)) if image.height else (248, 247, 244))
             canvas.paste(image.convert("RGB"), (0, (target_height - image.height) // 2))
             image = canvas
