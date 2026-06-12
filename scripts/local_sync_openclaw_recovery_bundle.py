@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
 from datetime import datetime
 import os
 from pathlib import Path
@@ -12,9 +11,7 @@ import sys
 
 
 PATTERN = re.compile(r"openclaw-recovery-(\d{8})-(\d{6})\.tar\.gz$")
-KEEP_DAILY = 7
-KEEP_WEEKLY = 8
-KEEP_MONTHLY = 6
+KEEP_LATEST = 1
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,22 +46,7 @@ def prune_local_bundles(root: Path) -> None:
             items.append((stamp, path))
     items.sort(reverse=True)
 
-    keep: set[Path] = set()
-
-    for stamp, path in items[:KEEP_DAILY]:
-        keep.add(path)
-
-    weekly: dict[tuple[int, int], list[Path]] = defaultdict(list)
-    for stamp, path in items:
-        weekly[(stamp.isocalendar().year, stamp.isocalendar().week)].append(path)
-    for _, paths in sorted(weekly.items(), reverse=True)[:KEEP_WEEKLY]:
-        keep.add(paths[0])
-
-    monthly: dict[tuple[int, int], list[Path]] = defaultdict(list)
-    for stamp, path in items:
-        monthly[(stamp.year, stamp.month)].append(path)
-    for _, paths in sorted(monthly.items(), reverse=True)[:KEEP_MONTHLY]:
-        keep.add(paths[0])
+    keep = {path for _stamp, path in items[:KEEP_LATEST]}
 
     for _, path in items:
         if path not in keep:

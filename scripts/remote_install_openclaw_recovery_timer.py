@@ -95,7 +95,6 @@ cat >/usr/local/lib/openclaw/prune_openclaw_recovery_bundles.py <<'EOF'
 #!/usr/bin/env python3
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 import re
@@ -103,9 +102,7 @@ import re
 ROOT = Path("/var/backups/openclaw-recovery")
 PATTERN = re.compile(r"openclaw-recovery-(\d{8})-(\d{6})\.tar\.gz$")
 
-KEEP_DAILY = 7
-KEEP_WEEKLY = 8
-KEEP_MONTHLY = 6
+KEEP_LATEST = 1
 
 
 def parse_stamp(path: Path):
@@ -124,22 +121,7 @@ def main() -> int:
             items.append((stamp, path))
     items.sort(reverse=True)
 
-    keep = set()
-
-    for stamp, path in items[:KEEP_DAILY]:
-        keep.add(path)
-
-    weekly = defaultdict(list)
-    for stamp, path in items:
-        weekly[(stamp.isocalendar().year, stamp.isocalendar().week)].append(path)
-    for _, paths in sorted(weekly.items(), reverse=True)[:KEEP_WEEKLY]:
-        keep.add(paths[0])
-
-    monthly = defaultdict(list)
-    for stamp, path in items:
-        monthly[(stamp.year, stamp.month)].append(path)
-    for _, paths in sorted(monthly.items(), reverse=True)[:KEEP_MONTHLY]:
-        keep.add(paths[0])
+    keep = {path for _stamp, path in items[:KEEP_LATEST]}
 
     for _, path in items:
         if path not in keep:

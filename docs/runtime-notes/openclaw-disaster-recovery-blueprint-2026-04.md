@@ -141,20 +141,17 @@ The host should not depend on ad hoc human-triggered backups.
 The target operating mode is:
 
 - create one recovery bundle every day on the host
-- prune non-key historical bundles automatically
-- keep a rolling mix of near-term and long-term checkpoints
+- prune historical bundles automatically
+- keep only the latest checkpoint locally and on the host
 
 Current retention policy:
 
-- keep the latest `7` daily bundles
-- keep the latest `8` weekly anchors
-- keep the latest `6` monthly anchors
+- keep the latest `1` recovery bundle
 
 This is intended to balance:
 
-- quick rollback for recent breakage
-- enough older anchors for delayed discovery of corruption
-- bounded disk growth
+- quick rollback to the latest known host state
+- bounded disk growth on local and host storage
 
 The scheduled backup installer for this policy is:
 

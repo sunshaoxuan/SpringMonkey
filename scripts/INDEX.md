@@ -70,7 +70,7 @@
   - 典型用法：`python SpringMonkey/scripts/remote_verify_upgrade_resilience.py`
 
 - `remote_install_openclaw_recovery_timer.py`
-  - 用途：在宿主机安装每日 recovery bundle 定时备份与自动清理，默认每日生成恢复包，并保留近 7 日、近 8 周、近 6 月的关键备份。
+  - 用途：在宿主机安装每日 recovery bundle 定时备份与自动清理，默认每日生成恢复包，并只保留最新 1 个恢复包。
   - 典型用法：`python SpringMonkey/scripts/remote_install_openclaw_recovery_timer.py`
 
 - `local_sync_openclaw_recovery_bundle.py`
