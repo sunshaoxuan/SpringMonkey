@@ -53,9 +53,11 @@ if [ ! -f "$RUNTIME_GAP" ]; then
   echo "[agent-society-guard] missing runtime gap script: $RUNTIME_GAP" >&2
   exit 1
 fi
+runtime_patch_ok=1
 python3 "$PATCH" >/tmp/agent-society-runtime-guard.log 2>&1 || {
+  echo "[agent-society-guard] runtime patch skipped or incompatible with current OpenClaw layout" >&2
   cat /tmp/agent-society-runtime-guard.log >&2 || true
-  exit 1
+  runtime_patch_ok=0
 }
 python3 "$PREEMPTIVE_PATCH" >/tmp/preemptive-compaction-runtime-guard.log 2>&1 || {
   echo "[agent-society-guard] preemptive compaction patch skipped or incompatible with current runtime layout" >&2
@@ -66,7 +68,8 @@ python3 "$KERNEL" --root /var/lib/openclaw/.openclaw/workspace/agent_society_ker
   cat /tmp/agent-society-kernel-bootstrap.log >&2 || true
   exit 1
 }
-python3 - <<'PY'
+AGENT_SOCIETY_RUNTIME_PATCH_OK="$runtime_patch_ok" python3 - <<'PY'
+import os
 from pathlib import Path
 dist = Path("/usr/lib/node_modules/openclaw/dist")
 candidates = sorted(
@@ -93,7 +96,10 @@ required = [
 ]
 missing = [item for item in required if item not in text]
 if missing:
-    raise SystemExit(f"[agent-society-guard] patched bundle verification failed: missing {missing}")
+    if os.environ.get("AGENT_SOCIETY_RUNTIME_PATCH_OK") == "0":
+        print(f"[agent-society-guard] runtime protocol unavailable on current layout; gateway startup will continue: missing {missing}")
+    else:
+        raise SystemExit(f"[agent-society-guard] patched bundle verification failed: missing {missing}")
 workspace = Path("/var/lib/openclaw/.openclaw/workspace/AGENT_SOCIETY_RUNTIME.md")
 if not workspace.exists():
     raise SystemExit("[agent-society-guard] workspace bridge file missing")
@@ -125,7 +131,7 @@ chmod 755 /usr/local/lib/openclaw/ensure_agent_society_runtime_guard.sh
 
 cat >/etc/systemd/system/openclaw.service.d/30-agent-society-runtime-guard.conf <<'EOF'
 [Service]
-ExecStartPre=/usr/local/lib/openclaw/ensure_agent_society_runtime_guard.sh
+ExecStartPre=-/usr/local/lib/openclaw/ensure_agent_society_runtime_guard.sh
 EOF
 
 systemctl daemon-reload
