@@ -19,6 +19,12 @@ The guard still fails for missing repository scripts, kernel bootstrap failures,
 3. The service becomes active and remains stable.
 4. Model and channel checks run only after the gateway process is available.
 
+## Model authentication migration
+
+OpenClaw 2026.6.11 stores active authentication state in the agent SQLite database. The previous JSON-only auth guard can therefore report success while the active database contains no profiles. The ccnode credential is a proxy credential and does not use the official OpenAI `sk` format, so the interactive OpenAI key importer rejects it.
+
+Register `openai-codex` as a custom `openai-completions` provider backed by `http://ccnode.briconbric.com:49530/v1`. Keep `openai-codex/gpt-5.5` as the primary model and retain `ollama/qwen3:14b` as the first fallback. This keeps existing cron payloads and runtime policy identifiers stable while separating the ccnode proxy from the official `openai` provider.
+
 ## Rollback
 
 Restore the previous guard script and systemd drop-in from version control, then run `systemctl daemon-reload` and restart `openclaw.service`.
