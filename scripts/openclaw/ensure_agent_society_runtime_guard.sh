@@ -29,8 +29,8 @@ python3 "$PATCH" >/tmp/agent-society-runtime-guard.log 2>&1 || {
   runtime_patch_ok=0
 }
 python3 "$PREEMPTIVE_PATCH" >/tmp/preemptive-compaction-runtime-guard.log 2>&1 || {
+  echo "[agent-society-guard] preemptive compaction patch skipped or incompatible with current runtime layout" >&2
   cat /tmp/preemptive-compaction-runtime-guard.log >&2 || true
-  exit 1
 }
 install -d -m 755 /var/lib/openclaw/.openclaw/workspace/agent_society_kernel/sessions
 python3 "$KERNEL" --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel new-session --channel system --user-id bootstrap --prompt "refresh agent society kernel state root before gateway start" >/tmp/agent-society-kernel-bootstrap.log 2>&1 || {
