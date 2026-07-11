@@ -11,6 +11,7 @@ def test_runtime_guard_degrades_cleanly_when_upstream_layout_changes() -> None:
     assert 'AGENT_SOCIETY_RUNTIME_PATCH_OK="$runtime_patch_ok"' in guard
     assert "gateway startup will continue" in guard
     assert "preemptive compaction patch skipped or incompatible with current runtime layout" in guard
+    assert "preemptive compaction verification skipped" in guard
 
 
 def test_installer_makes_startup_guard_non_blocking() -> None:
