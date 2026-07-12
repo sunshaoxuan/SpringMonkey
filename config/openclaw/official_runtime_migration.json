@@ -19,6 +19,16 @@
   ],
   "test_delivery_policy": "owner_dm_only",
   "public_test_delivery_forbidden": true,
+  "recovery_guard": {
+    "enabled": true,
+    "max_reruns_per_incident": 2,
+    "restart_gateway_when_health_probe_fails": true,
+    "require_doctor_before_rerun": true,
+    "require_real_model_probe_for_model_failures": true,
+    "block_on_credentials": true,
+    "block_if_delivery_already_succeeded": true,
+    "preserve_cron_contract": true
+  },
   "legacy_components": {
     "openclaw-long-task-supervisor.timer": "keep_enabled_during_shadow",
     "openclaw-cron-failure-self-heal.timer": "keep_enabled_official_tasks_first",

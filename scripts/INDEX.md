@@ -318,6 +318,8 @@
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
 - `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；对 DM 只读能力 gap 可返回注册表工具候选，避免业务查询继续生成 generic repair helper
 - `openclaw/cron_failure_self_heal.py`：扫描宿主机 journal 里的 cron failure，去重后写入 durable kernel；同样走 `gap -> helper -> pattern -> promotion` 闭环，而不是只给用户发一条失败通知
+- `openclaw/cron_recovery_guard.py`：把 cron 失败推进为持久 incident，逐点检查任务契约、Health、Doctor、模型、凭据和投递安全，执行有界修复后调用官方 cron run 重跑，并在后续扫描中收口成功或失败
+- `openclaw/model_runtime_probe.py`：对主模型与配置的 fallback 做真实最小文本调用；cron 恢复守护只有在模型链实际可响应后才允许重跑模型类失败任务
 - `openclaw/scheduled_log_retention.py`：复用现有五分钟 root 扫描，每日最多执行一次按月日志归档、journald 月归档和 10% 剩余空间保护，不改动业务 cron
 - `openclaw/job_orchestrator.py`：cron/pipeline job 的通用执行包装器；把脚本命令作为 kernel step 的 action/tool 执行，成功保持 stdout 契约，失败写 gap、触发 helper、自修复后 bounded retry
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核；记录 order/dependency/parallel/shared-context 元数据，并可通过 `tree-report` 输出长流程树状报告

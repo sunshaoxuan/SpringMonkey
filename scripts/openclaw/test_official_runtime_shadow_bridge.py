@@ -98,6 +98,9 @@ def test_migration_config_forbids_public_test_delivery() -> None:
     assert cfg["preserve_existing_timers"] is True
     assert cfg["test_delivery_policy"] == "owner_dm_only"
     assert cfg["public_test_delivery_forbidden"] is True
+    assert cfg["recovery_guard"]["enabled"] is True
+    assert cfg["recovery_guard"]["max_reruns_per_incident"] == 2
+    assert cfg["recovery_guard"]["preserve_cron_contract"] is True
     assert set(cfg["owner_discord_dm_channel_ids"]).isdisjoint(cfg["public_discord_channel_ids"])
 
 

@@ -14,9 +14,12 @@ Move SpringMonkey runtime observation toward official OpenClaw Tasks, Task audit
 4. Retained historical failures older than 15 minutes are ignored during the source transition, preventing old task rows from being learned again.
 5. `official_runtime_shadow_bridge.py` captures Tasks, Task audit, Doctor, Health, and the complete cron contract fingerprint.
 6. Owner-DM reporting accepts structured object or array tool output and extracts user-facing text, preventing JSON punctuation such as `], ]` from replacing deployment evidence.
-6. The bridge performs no task mutation and no message delivery.
-7. `openclaw-long-task-supervisor.timer` and every existing cron definition remain active during the shadow phase.
-8. The existing cron-failure timer also writes the shadow snapshot after each scan, so repository auto-sync can activate the phase without changing systemd or waiting for a separate timer installation.
+7. `cron_recovery_guard.py` turns each terminal cron failure into a durable incident. It checks the unchanged cron contract, gateway health, Doctor, a real primary-or-fallback model call, credentials and delivery safety, applies bounded service or configuration repair, triggers the original official cron job by ID, and reconciles the resulting official run on later scans.
+8. Recovery permits at most two reruns per incident. Credential blockers, already-delivered runs, disabled or missing jobs, failed verification, and exhausted attempts stop automatic replay and remain visible in the incident state.
+9. The recovery guard compares the normalized cron contract before and after repair and replay. Any change to job identity, enabled state, schedule, delivery, session, model or fallback fails the recovery integrity gate.
+10. The bridge performs no task mutation and no message delivery.
+11. `openclaw-long-task-supervisor.timer` and every existing cron definition remain active during the shadow phase.
+12. The existing cron-failure timer also writes the shadow snapshot after each scan, so repository auto-sync can activate the phase without changing systemd or waiting for a separate timer installation.
 
 ## Delivery safety
 

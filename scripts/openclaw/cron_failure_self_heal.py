@@ -102,6 +102,7 @@ def parse_official_task_failures(
                 "source": "official_tasks",
                 "task_id": task_id,
                 "task_status": status,
+                "delivery_status": str(task.get("deliveryStatus") or ""),
                 "run_id": str(task.get("runId") or ""),
                 "flow_id": str(task.get("parentFlowId") or ""),
             }
@@ -316,7 +317,51 @@ def record_event(args: argparse.Namespace, event: dict[str, str], jobs_by_name: 
     payload["official_task_id"] = event.get("task_id", "")
     payload["official_run_id"] = event.get("run_id", "")
     payload["official_flow_id"] = event.get("flow_id", "")
+    payload["official_delivery_status"] = event.get("delivery_status", "")
     return payload
+
+
+def run_recovery_guard(
+    args: argparse.Namespace,
+    events: list[dict[str, str]],
+    tasks: list[dict[str, object]],
+    jobs_by_name: dict[str, dict],
+) -> dict[str, object]:
+    if args.disable_recovery_guard:
+        return {"status": "disabled"}
+    try:
+        from cron_recovery_guard import run_guard
+        from official_runtime_shadow_bridge import cron_contract
+
+        state_file = (
+            Path(args.recovery_state_file)
+            if args.recovery_state_file
+            else Path(args.root) / "cron_recovery_guard_state.json"
+        )
+        before_contract = cron_contract(Path(args.jobs_file)) if args.jobs_file else {}
+        result = run_guard(
+            events=events,
+            tasks=[task for task in tasks if isinstance(task, dict)],
+            jobs_by_name=jobs_by_name,
+            state_file=state_file,
+            repo_root=Path(args.repo_root),
+            kernel_root=Path(args.root),
+            allow_restart=not args.disable_recovery_restart,
+            max_reruns=args.recovery_max_reruns,
+        )
+        after_contract = cron_contract(Path(args.jobs_file)) if args.jobs_file else {}
+        changed = bool(before_contract and after_contract and before_contract.get("fingerprint") != after_contract.get("fingerprint"))
+        return {
+            "status": "failed" if changed else "active",
+            "cron_integrity": {
+                "changed_during_recovery": changed,
+                "before": before_contract.get("fingerprint", ""),
+                "after": after_contract.get("fingerprint", ""),
+            },
+            **result,
+        }
+    except Exception as exc:
+        return {"status": "failed", "reason": f"{type(exc).__name__}: {exc}"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -339,6 +384,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log-retention-state-file")
     parser.add_argument("--log-archive-root", default="/var/backups/openclaw-log-archive")
     parser.add_argument("--log-min-free-percent", type=float, default=10.0)
+    parser.add_argument("--disable-recovery-guard", action="store_true")
+    parser.add_argument("--disable-recovery-restart", action="store_true")
+    parser.add_argument("--recovery-state-file")
+    parser.add_argument("--recovery-max-reruns", type=int, default=2)
     return parser.parse_args()
 
 
@@ -350,6 +399,7 @@ def main() -> int:
     state_path = Path(args.state_file) if args.state_file else args.root / "cron_failure_watch_state.json"
 
     jobs_by_name = load_jobs_by_name(jobs_path)
+    tasks: list[dict[str, object]] = []
     source = "journal"
     fallback_reason = ""
     if args.source in {"auto", "tasks"}:
@@ -383,6 +433,7 @@ def main() -> int:
             seen[legacy_event_key] = payload.get("gap_id", "")
 
     save_seen_state(state_path, seen)
+    recovery_guard = run_recovery_guard(args, events, tasks, jobs_by_name)
     shadow_bridge = run_shadow_bridge(args, jobs_path)
     log_retention = run_daily_log_retention(args)
     print(
@@ -392,6 +443,7 @@ def main() -> int:
                 "processed_count": len(processed),
                 "signal_source": source,
                 "fallback_reason": fallback_reason,
+                "recovery_guard": recovery_guard,
                 "shadow_bridge": shadow_bridge,
                 "log_retention": log_retention,
             },
