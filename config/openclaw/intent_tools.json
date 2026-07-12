@@ -1662,6 +1662,51 @@
       "safety": "readonly",
       "implementation_status": "ready",
       "semantic_reference_tool_id": "memory.curator.xhs"
+    },
+    {
+      "intent_id": "openclaw.generated.openclaw_runtime_diagnostics_readonly",
+      "tool_id": "openclaw.generated.openclaw_runtime_diagnostics_readonly",
+      "description": "Generated semantic read-only repair helper for: 迁移私聊验证：请只在本私聊回复。检查 OpenClaw 当前 Tasks、doctor --lint、health 以及 official_runtime_shadow.json 是否可用。只读，不执行任何业务任务，不向公共频道发送消息。请",
+      "owner_agent": "timescarWorker",
+      "entrypoint": "scripts/openclaw/helpers/generated_openclaw_generated_openclaw_runtime_diagnostics_readonly.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm",
+      "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/helpers/generated_openclaw_generated_openclaw_runtime_diagnostics_readonly.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.generated.openclaw_runtime_diagnostics_readonly",
+      "domain": "timescar",
+      "actions": [
+        "status",
+        "runtime",
+        "diagnostics",
+        "readonly"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "safety": "readonly",
+      "implementation_status": "ready",
+      "semantic_reference_tool_id": "timescar.dm.keep_next"
     }
   ]
 }
