@@ -223,6 +223,47 @@ def test_reporter_can_allow_links_explicitly() -> None:
     assert "https://example.com/path" in format_owner_reply(envelope)
 
 
+def test_reporter_extracts_text_from_structured_command_array() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_command",
+        trace_id="trace_command",
+        status="ok",
+        visibility="owner_dm",
+        summary=json.dumps(
+            [
+                {"type": "text", "text": "2df6aa0"},
+                {"content": [{"type": "text", "text": "official_runtime_shadow=ok"}]},
+                [],
+            ],
+            ensure_ascii=False,
+            indent=2,
+        ),
+        diagnostics_ref="trace_id=trace_command route=registered_task",
+    )
+
+    reply = format_owner_reply(envelope)
+
+    assert "2df6aa0" in reply
+    assert "official_runtime_shadow=ok" in reply
+    assert "]," not in reply
+
+
+def test_reporter_discards_json_punctuation_only_lines() -> None:
+    envelope = ReportEnvelope(
+        task_id="task_broken_json",
+        trace_id="trace_broken_json",
+        status="ok",
+        visibility="owner_dm",
+        summary="[\n],\n]\n",
+        diagnostics_ref="trace_id=trace_broken_json route=registered_task",
+    )
+
+    reply = format_owner_reply(envelope)
+
+    assert "]," not in reply
+    assert "任务已处理" in reply
+
+
 def test_cron_status_success_preserves_delivery_evidence_lines() -> None:
     output = "\n".join(
         [
