@@ -1707,6 +1707,53 @@
       "safety": "readonly",
       "implementation_status": "ready",
       "semantic_reference_tool_id": "timescar.dm.keep_next"
+    },
+    {
+      "intent_id": "openclaw.generated.openclaw_runtime_cron_tasks",
+      "tool_id": "openclaw.generated.openclaw_runtime_cron_tasks",
+      "description": "Generated semantic read-only repair helper for: [私有测试，只回复本私聊，禁止转发或发送到任何公共频道] 请在主机上执行只读盘点：1. HOME=/var/lib/openclaw openclaw cron list --json 2. HOME=/var/lib/openclaw o",
+      "owner_agent": "timescarWorker",
+      "entrypoint": "scripts/openclaw/helpers/generated_openclaw_generated_openclaw_runtime_cron_tasks.py",
+      "args_schema": {
+        "mode": "dm_text_timestamp",
+        "force": false
+      },
+      "permission": "owner_dm",
+      "permission_scope": "owner_dm",
+      "write_operation": false,
+      "input_schema": {
+        "type": "dm_text_timestamp"
+      },
+      "output_schema": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "invocation_log_policy": "harness_tool_invocation_jsonl",
+      "verify_command": "python -m compileall -q scripts/openclaw/helpers/generated_openclaw_generated_openclaw_runtime_cron_tasks.py",
+      "failure_policy": "reply_failure_and_record_gap",
+      "reply_policy": "tool_stdout",
+      "capability_id": "openclaw.generated.openclaw_runtime_cron_tasks",
+      "domain": "timescar",
+      "actions": [
+        "status",
+        "runtime",
+        "diagnostics",
+        "readonly",
+        "cron",
+        "tasks"
+      ],
+      "worker_agent": "timescarWorker",
+      "prompt_hints": [],
+      "input_contract": {
+        "type": "dm_text_timestamp"
+      },
+      "output_contract": {
+        "type": "plain_text_business_result",
+        "requires_trace": true
+      },
+      "safety": "readonly",
+      "implementation_status": "ready",
+      "semantic_reference_tool_id": "openclaw.generated.openclaw_runtime_diagnostics_readonly"
     }
   ]
 }
