@@ -2,6 +2,8 @@
 
 最後更新：2026-04-28（補充投遞校驗）
 
+2026-07-12 新增私有批量测试规则：使用 `scripts/remote_batch_test_jobs.py --execute --deliver-owner-dm` 动态发现当前 OpenClaw cron、direct cron 和 OpenClaw systemd timers。测试器不修改正式 cron，不调用 `openclaw cron run`，公共任务移除投递后执行，新闻使用 test broadcast 且不写 published 状态，TimesCar 订车和续订强制 `--dry-run`。未知写入任务仅做契约检查并标记 blocked。测试摘要只允许发送到 owner 私聊 `1497009159940608020`。
+
 > **投遞隱私校驗**：將宿主 `cron/jobs.json` 拷出後執行  
 > `python3 scripts/cron/verify_timescar_delivery_channels.py jobs.json`。  
 > 若 `timescar-*` 的 `delivery.to` 誤為公共頻道 `1483636573235843072`，會導致租車內容誤投公開頻道；修復與根因說明見 `docs/runtime-notes/discord-timescar-public-channel-leak.md`。
