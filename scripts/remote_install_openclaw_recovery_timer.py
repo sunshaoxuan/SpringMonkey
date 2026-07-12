@@ -32,6 +32,7 @@ WORKDIR="${ROOT}/${BASENAME}"
 ARCHIVE="${ROOT}/${BASENAME}.tar.gz"
 
 mkdir -p "$WORKDIR"
+trap 'rm -rf "$WORKDIR"' EXIT
 mkdir -p "${WORKDIR}/meta"
 export WORKDIR
 
@@ -85,7 +86,6 @@ systemctl cat openclaw.service > "${WORKDIR}/meta/openclaw.service.txt" || true
 journalctl -u openclaw.service -n 300 --no-pager > "${WORKDIR}/meta/openclaw.service.journal.txt" || true
 
 tar -C "$ROOT" -czf "$ARCHIVE" "$BASENAME"
-rm -rf "$WORKDIR"
 echo "$ARCHIVE"
 EOF
 
@@ -114,6 +114,10 @@ def parse_stamp(path: Path):
 
 def main() -> int:
     ROOT.mkdir(parents=True, exist_ok=True)
+    for path in ROOT.glob("openclaw-recovery-*"):
+        if path.is_dir():
+            import shutil
+            shutil.rmtree(path)
     items = []
     for path in sorted(ROOT.glob("openclaw-recovery-*.tar.gz")):
         stamp = parse_stamp(path)
