@@ -35,6 +35,30 @@ def load_official_tasks(args: argparse.Namespace) -> tuple[list[dict[str, object
     return [task for task in tasks if isinstance(task, dict)], "official_tasks"
 
 
+def load_official_cron_jobs(args: argparse.Namespace) -> tuple[dict[str, dict], str]:
+    if args.cron_list_file:
+        payload = json.loads(Path(args.cron_list_file).read_text(encoding="utf-8"))
+    else:
+        result = subprocess.run(
+            ["openclaw", "cron", "list", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=args.tasks_timeout,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError((result.stderr or result.stdout or "openclaw cron list failed").strip())
+        payload = json.loads(result.stdout)
+    jobs = payload.get("jobs", []) if isinstance(payload, dict) else payload
+    if not isinstance(jobs, list):
+        raise ValueError("official cron list payload does not contain jobs")
+    return {
+        str(job.get("name")): job
+        for job in jobs
+        if isinstance(job, dict) and str(job.get("name") or "").strip()
+    }, "official_cron_list"
+
+
 def resolve_job_name(task: dict[str, object], jobs_by_name: dict[str, dict]) -> str:
     jobs_by_id = {
         str(job.get("id")): name
@@ -103,6 +127,7 @@ def parse_official_task_failures(
                 "task_id": task_id,
                 "task_status": status,
                 "delivery_status": str(task.get("deliveryStatus") or ""),
+                "ended_at": str(task.get("endedAt") or ""),
                 "run_id": str(task.get("runId") or ""),
                 "flow_id": str(task.get("parentFlowId") or ""),
             }
@@ -326,19 +351,24 @@ def run_recovery_guard(
     events: list[dict[str, str]],
     tasks: list[dict[str, object]],
     jobs_by_name: dict[str, dict],
+    cron_catalog_source: str,
 ) -> dict[str, object]:
     if args.disable_recovery_guard:
         return {"status": "disabled"}
     try:
         from cron_recovery_guard import run_guard
-        from official_runtime_shadow_bridge import cron_contract
+        from official_runtime_shadow_bridge import cron_contract, cron_contract_from_jobs
 
         state_file = (
             Path(args.recovery_state_file)
             if args.recovery_state_file
             else Path(args.root) / "cron_recovery_guard_state.json"
         )
-        before_contract = cron_contract(Path(args.jobs_file)) if args.jobs_file else {}
+        before_contract = (
+            cron_contract_from_jobs(list(jobs_by_name.values()))
+            if cron_catalog_source == "official_cron_list"
+            else (cron_contract(Path(args.jobs_file)) if args.jobs_file else {})
+        )
         result = run_guard(
             events=events,
             tasks=[task for task in tasks if isinstance(task, dict)],
@@ -348,16 +378,31 @@ def run_recovery_guard(
             kernel_root=Path(args.root),
             allow_restart=not args.disable_recovery_restart,
             max_reruns=args.recovery_max_reruns,
+            official_retry_attempts=args.official_retry_attempts,
+            official_backoff_tiers=args.official_backoff_tiers,
+            official_next_run_guard_seconds=args.official_next_run_guard_seconds,
+            unknown_state_handoff_seconds=args.unknown_state_handoff_seconds,
         )
-        after_contract = cron_contract(Path(args.jobs_file)) if args.jobs_file else {}
+        integrity_error = ""
+        if cron_catalog_source == "official_cron_list":
+            try:
+                after_jobs, _source = load_official_cron_jobs(args)
+                after_contract = cron_contract_from_jobs(list(after_jobs.values()))
+            except Exception as exc:
+                after_contract = {}
+                integrity_error = f"{type(exc).__name__}: {exc}"
+        else:
+            after_contract = cron_contract(Path(args.jobs_file)) if args.jobs_file else {}
         changed = bool(before_contract and after_contract and before_contract.get("fingerprint") != after_contract.get("fingerprint"))
         return {
-            "status": "failed" if changed else "active",
+            "status": "failed" if changed or integrity_error else "active",
             "cron_integrity": {
                 "changed_during_recovery": changed,
                 "before": before_contract.get("fingerprint", ""),
                 "after": after_contract.get("fingerprint", ""),
+                "error": integrity_error,
             },
+            "cron_catalog_source": cron_catalog_source,
             **result,
         }
     except Exception as exc:
@@ -375,6 +420,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state-file")
     parser.add_argument("--source", choices=("auto", "tasks", "journal"), default="auto")
     parser.add_argument("--tasks-file")
+    parser.add_argument("--cron-list-file")
     parser.add_argument("--tasks-timeout", type=int, default=20)
     parser.add_argument("--official-max-age-seconds", type=int, default=900)
     parser.add_argument("--disable-shadow-bridge", action="store_true")
@@ -388,6 +434,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-recovery-restart", action="store_true")
     parser.add_argument("--recovery-state-file")
     parser.add_argument("--recovery-max-reruns", type=int, default=2)
+    parser.add_argument("--official-retry-attempts", type=int, default=3)
+    parser.add_argument("--official-backoff-tiers", type=int, default=5)
+    parser.add_argument("--official-next-run-guard-seconds", type=int, default=300)
+    parser.add_argument("--unknown-state-handoff-seconds", type=int, default=3600)
     return parser.parse_args()
 
 
@@ -399,6 +449,13 @@ def main() -> int:
     state_path = Path(args.state_file) if args.state_file else args.root / "cron_failure_watch_state.json"
 
     jobs_by_name = load_jobs_by_name(jobs_path)
+    cron_catalog_source = "jobs_file_fallback"
+    try:
+        official_jobs, cron_catalog_source = load_official_cron_jobs(args)
+        if official_jobs:
+            jobs_by_name = official_jobs
+    except Exception:
+        pass
     tasks: list[dict[str, object]] = []
     source = "journal"
     fallback_reason = ""
@@ -433,7 +490,7 @@ def main() -> int:
             seen[legacy_event_key] = payload.get("gap_id", "")
 
     save_seen_state(state_path, seen)
-    recovery_guard = run_recovery_guard(args, events, tasks, jobs_by_name)
+    recovery_guard = run_recovery_guard(args, events, tasks, jobs_by_name, cron_catalog_source)
     shadow_bridge = run_shadow_bridge(args, jobs_path)
     log_retention = run_daily_log_retention(args)
     print(

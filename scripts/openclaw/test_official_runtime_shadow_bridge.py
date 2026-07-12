@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -9,7 +10,8 @@ SCRIPTS = Path(__file__).resolve().parent
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from cron_failure_self_heal import parse_official_task_failures
+from cron_failure_self_heal import load_official_cron_jobs, parse_official_task_failures
+from official_runtime_shadow_bridge import cron_contract, cron_contract_from_jobs
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -99,9 +101,43 @@ def test_migration_config_forbids_public_test_delivery() -> None:
     assert cfg["test_delivery_policy"] == "owner_dm_only"
     assert cfg["public_test_delivery_forbidden"] is True
     assert cfg["recovery_guard"]["enabled"] is True
+    assert cfg["recovery_guard"]["mode"] == "official_first_extension"
     assert cfg["recovery_guard"]["max_reruns_per_incident"] == 2
+    assert cfg["recovery_guard"]["official_retry_attempts"] == 3
+    assert cfg["recovery_guard"]["official_recurring_backoff_tiers"] == 5
+    assert cfg["recovery_guard"]["run_official_doctor_fix_before_custom_repair"] is True
     assert cfg["recovery_guard"]["preserve_cron_contract"] is True
     assert set(cfg["owner_discord_dm_channel_ids"]).isdisjoint(cfg["public_discord_channel_ids"])
+
+
+def test_official_job_list_contract_matches_file_contract(tmp_path: Path) -> None:
+    jobs = [
+        {
+            "id": "job-1",
+            "name": "daily",
+            "enabled": True,
+            "schedule": {"kind": "cron", "expr": "0 7 * * *"},
+            "delivery": {"channel": "discord", "to": "owner"},
+            "payload": {"model": "openai/gpt", "fallbacks": ["ollama/qwen"]},
+        }
+    ]
+    jobs_file = tmp_path / "jobs.json"
+    jobs_file.write_text(json.dumps({"jobs": jobs}), encoding="utf-8")
+
+    assert cron_contract_from_jobs(jobs)["fingerprint"] == cron_contract(jobs_file)["fingerprint"]
+
+
+def test_official_cron_catalog_is_loaded_from_cli_fixture(tmp_path: Path) -> None:
+    cron_list = tmp_path / "cron-list.json"
+    cron_list.write_text(
+        json.dumps({"jobs": [{"id": "job-1", "name": "daily", "status": "error", "state": {"consecutiveErrors": 5}}]}),
+        encoding="utf-8",
+    )
+
+    jobs, source = load_official_cron_jobs(argparse.Namespace(cron_list_file=str(cron_list), tasks_timeout=1))
+
+    assert source == "official_cron_list"
+    assert jobs["daily"]["state"]["consecutiveErrors"] == 5
 
 
 def test_official_task_parser_ignores_retained_historical_failures() -> None:

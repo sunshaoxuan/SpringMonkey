@@ -12,10 +12,12 @@ state: `/var/lib/openclaw/.openclaw/workspace/agent_society_kernel/cron_recovery
 
 success_contract:
 
-1. Every failure has ordered point results.
-2. Every automatic repair has a verification result.
-3. The original job ID is used for bounded rerun.
-4. The new official run is reconciled as recovered, diagnosing, blocked or exhausted.
-5. The cron contract fingerprint does not change.
+1. Official retry, recurring backoff, in-flight task ownership, Tasks maintenance and Doctor repair execute first.
+2. Every remaining failure has ordered point results.
+3. Every fallback repair has a verification result.
+4. A fresh official state check immediately precedes custom rerun.
+5. The original job ID is used for bounded rerun.
+6. The new official run is reconciled as recovered, waiting_official, diagnosing, blocked or exhausted.
+7. The cron contract fingerprint does not change.
 
 rollback: add `--disable-recovery-guard` to the existing self-heal service while retaining official observation, gap recording, log retention and all existing cron definitions.

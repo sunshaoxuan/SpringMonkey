@@ -61,6 +61,10 @@ def canonical_job_contract(job: dict[str, Any]) -> dict[str, Any]:
 def cron_contract(jobs_file: Path) -> dict[str, Any]:
     data = json.loads(jobs_file.read_text(encoding="utf-8"))
     jobs = data.get("jobs", []) if isinstance(data, dict) else []
+    return cron_contract_from_jobs(jobs)
+
+
+def cron_contract_from_jobs(jobs: list[dict[str, Any]]) -> dict[str, Any]:
     contracts = [canonical_job_contract(job) for job in jobs if isinstance(job, dict)]
     contracts.sort(key=lambda item: (str(item.get("name") or ""), str(item.get("id") or "")))
     encoded = json.dumps(contracts, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

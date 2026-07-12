@@ -12,9 +12,11 @@ The missing production path was a durable owner that continued across timer scan
 
 ## Implemented flow
 
-`cron_recovery_guard.py` owns a persistent incident state. For every terminal official cron failure it evaluates the cron contract, Gateway Health, Doctor, model runtime, credentials, configuration drift and delivery safety in order. It records every point result, applies bounded repair, calls official `openclaw cron run` by unchanged job ID, and reconciles the returned `runId` on later scans.
+`cron_recovery_guard.py` owns a persistent incident state while OpenClaw remains the primary runtime owner. It reads official cron status and retry state, waits through official retry and backoff, delegates lost reconciliation to Tasks maintenance, delegates supported repair to Doctor, then evaluates the remaining cron contract, Gateway Health, model runtime, credentials, configuration drift and delivery safety.
 
-The guard performs at most two reruns. Credential blockers, already completed delivery, disabled jobs, failed verification and exhausted attempts remain terminal incidents.
+SpringMonkey calls official `openclaw cron run` only after official ownership is exhausted and a fresh pre-rerun check proves that no official run or imminent retry slot exists. It reconciles the returned `runId` on later scans.
+
+The guard performs at most two custom reruns per job generation. Multiple official task IDs for the same failing job collapse into that single generation. Credential blockers, already completed delivery, disabled jobs, failed verification and exhausted attempts remain terminal incidents.
 
 ## Safety
 
