@@ -64,6 +64,12 @@ def target_window(now: datetime | None = None) -> tuple[datetime, datetime]:
     return start, end
 
 
+def parse_reference_date(raw: str | None) -> datetime | None:
+    if not raw:
+        return None
+    return datetime.strptime(raw, "%Y-%m-%d").replace(tzinfo=TZ)
+
+
 def is_login(page) -> bool:
     return bool(page.locator("#cardNo1").count() and page.locator("#tpPassword").count())
 
@@ -104,9 +110,9 @@ def find_model_value(page) -> str:
     raise BookingError(f"failed: station has no {TARGET_MODEL}")
 
 
-def existing_reservation_for_target() -> dict | None:
+def existing_reservation_for_target(reference_now: datetime | None = None) -> dict | None:
     data = json.loads(subprocess.check_output(["python3", str(WORKSPACE / "scripts" / "timescar_fetch_reservations.py")], text=True))
-    start, _ = target_window()
+    start, _ = target_window(reference_now)
     target_prefix = start.strftime("%Y-%m-%dT09:00")
     matches = [
         reservation
@@ -189,18 +195,20 @@ def confirm_attention_if_present(page, body: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--reference-date", help="Anchor date in JST, format YYYY-MM-DD")
     args = ap.parse_args()
 
     runtime = TimesCarTaskRuntime(JOB_NAME, "write", ttl_seconds=1800)
+    reference_now = parse_reference_date(args.reference_date)
     phase = "init"
     try:
         runtime.start("load-credentials")
         p1, p2, password = load_credentials()
         runtime.record_step(step="load-credentials", status="ok", tool="secret.sh", detail="loaded TimesCar credentials")
-        target_start, target_end = target_window()
+        target_start, target_end = target_window(reference_now)
         if target_start.weekday() != 5:
             raise BookingError(f"failed: computed target is not Saturday ({target_start.date()})")
-        existing = existing_reservation_for_target()
+        existing = existing_reservation_for_target(reference_now)
         runtime.record_step(step="check-existing-reservation", status="ok", tool="timescar_fetch_reservations.py", detail="checked for existing target reservation")
         if existing:
             keep_same_car = "是" if TARGET_IDENT in (existing.get("carIdentifier") or "") and TARGET_COLOR == existing.get("carColor") else "否"
@@ -273,7 +281,7 @@ def main() -> int:
                     detail="completion text not found; verifying reservation list",
                 )
 
-        result = existing_reservation_for_target()
+        result = existing_reservation_for_target(reference_now)
         if not result:
             raise BookingError("failed: reservation completed page appeared, but reservation list verification failed")
         keep_same_car = "是" if TARGET_IDENT in (result.get("carIdentifier") or "") and TARGET_COLOR == result.get("carColor") else "否"

@@ -28,3 +28,7 @@ Register `openai-codex` as a custom `openai-completions` provider backed by `htt
 ## Rollback
 
 Restore the previous guard script and systemd drop-in from version control, then run `systemctl daemon-reload` and restart `openclaw.service`.
+
+## Missed TimesCar task replay
+
+The Saturday booking script accepts `--reference-date YYYY-MM-DD` so a missed scheduled run can calculate its original three-week target date. This mirrors the existing replay support in the Sunday extension script and prevents a delayed manual run from booking a date based on the current day.
