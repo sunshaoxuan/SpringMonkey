@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -221,6 +222,47 @@ def run_shadow_bridge(
     }
 
 
+def run_daily_log_retention(args: argparse.Namespace) -> dict[str, object]:
+    if args.disable_log_retention:
+        return {"status": "disabled"}
+    if os.name == "nt" and not args.log_retention_force:
+        return {"status": "skipped_non_posix"}
+    script = Path(args.repo_root) / "scripts" / "openclaw" / "scheduled_log_retention.py"
+    if not script.is_file():
+        return {"status": "unavailable", "reason": f"missing {script}"}
+    state_file = (
+        Path(args.log_retention_state_file)
+        if args.log_retention_state_file
+        else Path(args.root) / "log_retention_run_state.json"
+    )
+    command = [
+        sys.executable,
+        str(script),
+        "--repo-root",
+        str(args.repo_root),
+        "--state-file",
+        str(state_file),
+        "--archive-root",
+        str(args.log_archive_root),
+        "--min-free-percent",
+        str(args.log_min_free_percent),
+    ]
+    if args.log_retention_force:
+        command.append("--force")
+    result = subprocess.run(command, capture_output=True, text=True, timeout=900, check=False)
+    try:
+        payload = json.loads(result.stdout)
+    except Exception:
+        payload = {}
+    if result.returncode != 0:
+        return {
+            "status": "failed",
+            "returncode": result.returncode,
+            "reason": (result.stderr or result.stdout or "scheduled log retention failed").strip()[-2000:],
+        }
+    return payload if isinstance(payload, dict) else {"status": "completed"}
+
+
 def infer_prompt(job_name: str, jobs_by_name: dict[str, dict]) -> str:
     job = jobs_by_name.get(job_name)
     if job:
@@ -292,6 +334,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--official-max-age-seconds", type=int, default=900)
     parser.add_argument("--disable-shadow-bridge", action="store_true")
     parser.add_argument("--shadow-state-file")
+    parser.add_argument("--disable-log-retention", action="store_true")
+    parser.add_argument("--log-retention-force", action="store_true")
+    parser.add_argument("--log-retention-state-file")
+    parser.add_argument("--log-archive-root", default="/var/backups/openclaw-log-archive")
+    parser.add_argument("--log-min-free-percent", type=float, default=10.0)
     return parser.parse_args()
 
 
@@ -337,6 +384,7 @@ def main() -> int:
 
     save_seen_state(state_path, seen)
     shadow_bridge = run_shadow_bridge(args, jobs_path)
+    log_retention = run_daily_log_retention(args)
     print(
         json.dumps(
             {
@@ -345,6 +393,7 @@ def main() -> int:
                 "signal_source": source,
                 "fallback_reason": fallback_reason,
                 "shadow_bridge": shadow_bridge,
+                "log_retention": log_retention,
             },
             ensure_ascii=False,
             indent=2,
