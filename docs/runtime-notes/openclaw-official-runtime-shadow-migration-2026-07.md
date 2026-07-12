@@ -15,6 +15,7 @@ Move SpringMonkey runtime observation toward official OpenClaw Tasks, Task audit
 5. `official_runtime_shadow_bridge.py` captures Tasks, Task audit, Doctor, Health, and the complete cron contract fingerprint.
 6. The bridge performs no task mutation and no message delivery.
 7. `openclaw-long-task-supervisor.timer` and every existing cron definition remain active during the shadow phase.
+8. The existing cron-failure timer also writes the shadow snapshot after each scan, so repository auto-sync can activate the phase without changing systemd or waiting for a separate timer installation.
 
 ## Delivery safety
 

@@ -171,6 +171,56 @@ def save_seen_state(path: Path, payload: dict[str, str]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def run_shadow_bridge(
+    args: argparse.Namespace,
+    jobs_path: Path | None,
+) -> dict[str, object]:
+    if args.disable_shadow_bridge or jobs_path is None or not jobs_path.is_file():
+        return {"status": "skipped"}
+    script = Path(args.repo_root) / "scripts" / "openclaw" / "official_runtime_shadow_bridge.py"
+    if not script.is_file():
+        return {"status": "unavailable", "reason": f"missing {script}"}
+    state_file = (
+        Path(args.shadow_state_file)
+        if args.shadow_state_file
+        else Path(args.root) / "official_runtime_shadow.json"
+    )
+    cmd = [
+        sys.executable,
+        str(script),
+        "--jobs-file",
+        str(jobs_path),
+        "--state-file",
+        str(state_file),
+        "--timeout",
+        str(args.tasks_timeout),
+        "--enforce-cron-integrity",
+    ]
+    if args.tasks_file:
+        cmd.extend(["--tasks-file", str(args.tasks_file)])
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max(60, args.tasks_timeout * 4), check=False)
+    if result.returncode != 0:
+        return {
+            "status": "failed",
+            "returncode": result.returncode,
+            "reason": (result.stderr or result.stdout or "shadow bridge failed").strip()[-2000:],
+        }
+    try:
+        snapshot = json.loads(result.stdout)
+    except Exception:
+        snapshot = {}
+    official = snapshot.get("official", {}) if isinstance(snapshot, dict) else {}
+    return {
+        "status": "captured",
+        "state_file": str(state_file),
+        "cron_fingerprint": str(snapshot.get("cron_contract", {}).get("fingerprint") or ""),
+        "tasks_ok": bool(official.get("tasks", {}).get("ok")),
+        "audit_ok": bool(official.get("audit", {}).get("ok")),
+        "doctor_ok": bool(official.get("doctor", {}).get("ok")),
+        "health_ok": bool(official.get("health", {}).get("ok")),
+    }
+
+
 def infer_prompt(job_name: str, jobs_by_name: dict[str, dict]) -> str:
     job = jobs_by_name.get(job_name)
     if job:
@@ -240,6 +290,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tasks-file")
     parser.add_argument("--tasks-timeout", type=int, default=20)
     parser.add_argument("--official-max-age-seconds", type=int, default=900)
+    parser.add_argument("--disable-shadow-bridge", action="store_true")
+    parser.add_argument("--shadow-state-file")
     return parser.parse_args()
 
 
@@ -284,6 +336,7 @@ def main() -> int:
             seen[legacy_event_key] = payload.get("gap_id", "")
 
     save_seen_state(state_path, seen)
+    shadow_bridge = run_shadow_bridge(args, jobs_path)
     print(
         json.dumps(
             {
@@ -291,6 +344,7 @@ def main() -> int:
                 "processed_count": len(processed),
                 "signal_source": source,
                 "fallback_reason": fallback_reason,
+                "shadow_bridge": shadow_bridge,
             },
             ensure_ascii=False,
             indent=2,
