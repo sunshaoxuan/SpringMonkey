@@ -73,6 +73,11 @@
   - 用途：在宿主机安装每日 recovery bundle 定时备份与自动清理，默认每日生成恢复包，并只保留最新 1 个恢复包。
   - 典型用法：`python SpringMonkey/scripts/remote_install_openclaw_recovery_timer.py`
 
+- `remote_install_official_runtime_shadow.py`
+  - 用途：安装只读影子 timer，采集官方 Tasks、Task audit、Doctor、Health，并验证探针前后 cron 文件和标准化任务契约完全一致。
+  - 迁移约束：保留现有 cron、`openclaw-long-task-supervisor.timer` 和 `openclaw-cron-failure-self-heal.timer`；脚本自身不发送消息。
+  - 测试投递约束：如后续执行真实投递 smoke，只允许 Discord owner DM，禁止公共频道。
+
 - `local_sync_openclaw_recovery_bundle.py`
   - 用途：在本地机器调用远程恢复包导出脚本，并按本地保留策略自动清理旧包。
   - 典型用法：`python SpringMonkey/scripts/local_sync_openclaw_recovery_bundle.py`

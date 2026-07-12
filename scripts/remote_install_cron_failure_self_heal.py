@@ -35,13 +35,13 @@ install -d -m 755 /var/lib/openclaw/.openclaw/workspace/agent_society_kernel
 
 cat >/etc/systemd/system/openclaw-cron-failure-self-heal.service <<'EOF'
 [Unit]
-Description=Record OpenClaw cron failures into agent society self-improvement loop
+Description=Record official OpenClaw cron task failures into agent society self-improvement loop
 After=openclaw.service
 
 [Service]
 Type=oneshot
 User=root
-ExecStart=/usr/bin/python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/cron_failure_self_heal.py --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel --repo-root /var/lib/openclaw/repos/SpringMonkey --jobs-file /var/lib/openclaw/.openclaw/cron/jobs.json --journal-unit openclaw.service --tail 800
+ExecStart=/usr/bin/python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/cron_failure_self_heal.py --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel --repo-root /var/lib/openclaw/repos/SpringMonkey --jobs-file /var/lib/openclaw/.openclaw/cron/jobs.json --source auto --journal-unit openclaw.service --tail 800
 EOF
 
 cat >/etc/systemd/system/openclaw-cron-failure-self-heal.timer <<'EOF'

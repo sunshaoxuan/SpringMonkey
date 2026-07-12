@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "mode": "shadow",
+  "preserve_existing_cron_jobs": true,
+  "preserve_existing_timers": true,
+  "signal_priority": [
+    "openclaw_tasks",
+    "openclaw_task_audit",
+    "openclaw_doctor",
+    "openclaw_health",
+    "journal_fallback"
+  ],
+  "owner_discord_user_id": "999666719356354610",
+  "owner_discord_dm_channel_ids": [
+    "1497009159940608020"
+  ],
+  "public_discord_channel_ids": [
+    "1483636573235843072"
+  ],
+  "test_delivery_policy": "owner_dm_only",
+  "public_test_delivery_forbidden": true,
+  "legacy_components": {
+    "openclaw-long-task-supervisor.timer": "keep_enabled_during_shadow",
+    "openclaw-cron-failure-self-heal.timer": "keep_enabled_official_tasks_first",
+    "openclaw-agent-society-runtime-guard": "degraded_non_blocking_only",
+    "preemptive_compaction_bundle_patch": "frozen_no_new_changes"
+  }
+}

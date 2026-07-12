@@ -6,10 +6,106 @@ import hashlib
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
 FAILURE_RE = r'Cron job "(?P<job>[^"]+)" failed: (?P<reason>.+)$'
+TERMINAL_FAILURE_STATUSES = {"failed", "timed_out", "lost"}
+
+
+def load_official_tasks(args: argparse.Namespace) -> tuple[list[dict[str, object]], str]:
+    if args.tasks_file:
+        payload = json.loads(Path(args.tasks_file).read_text(encoding="utf-8"))
+    else:
+        result = subprocess.run(
+            ["openclaw", "tasks", "list", "--runtime", "cron", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=args.tasks_timeout,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError((result.stderr or result.stdout or "openclaw tasks failed").strip())
+        payload = json.loads(result.stdout)
+    tasks = payload.get("tasks", []) if isinstance(payload, dict) else payload
+    if not isinstance(tasks, list):
+        raise ValueError("official tasks payload does not contain a task list")
+    return [task for task in tasks if isinstance(task, dict)], "official_tasks"
+
+
+def resolve_job_name(task: dict[str, object], jobs_by_name: dict[str, dict]) -> str:
+    jobs_by_id = {
+        str(job.get("id")): name
+        for name, job in jobs_by_name.items()
+        if str(job.get("id") or "").strip()
+    }
+    candidates = [
+        str(task.get("label") or "").strip(),
+        str(task.get("sourceId") or "").strip(),
+        str(task.get("ownerKey") or "").strip(),
+        str(task.get("task") or "").strip(),
+    ]
+    for candidate in candidates:
+        if candidate in jobs_by_name:
+            return candidate
+        if candidate in jobs_by_id:
+            return jobs_by_id[candidate]
+        for name, job in jobs_by_name.items():
+            job_id = str(job.get("id") or "").strip()
+            if name and name in candidate:
+                return name
+            if job_id and job_id in candidate:
+                return name
+    return candidates[0] or candidates[1] or str(task.get("taskId") or "unknown-cron-task")
+
+
+def parse_official_task_failures(
+    tasks: list[dict[str, object]],
+    jobs_by_name: dict[str, dict],
+    *,
+    max_age_seconds: int = 900,
+    now_ms: int | None = None,
+) -> list[dict[str, str]]:
+    events: list[dict[str, str]] = []
+    current_ms = now_ms if now_ms is not None else int(time.time() * 1000)
+    for task in tasks:
+        if str(task.get("runtime") or "") != "cron":
+            continue
+        status = str(task.get("status") or "")
+        if status not in TERMINAL_FAILURE_STATUSES:
+            continue
+        ended_at = task.get("endedAt")
+        if isinstance(ended_at, (int, float)) and max_age_seconds > 0:
+            if current_ms - int(ended_at) > max_age_seconds * 1000:
+                continue
+        job_name = resolve_job_name(task, jobs_by_name)
+        reason = str(
+            task.get("error")
+            or task.get("terminalSummary")
+            or task.get("progressSummary")
+            or f"official task ended with status {status}"
+        ).strip()
+        task_id = str(task.get("taskId") or "").strip()
+        event_key = task_id or hashlib.sha1(
+            f"official_tasks|{job_name}|{status}|{reason}".encode("utf-8")
+        ).hexdigest()
+        legacy_event_key = hashlib.sha1(f"{job_name}|{reason}".encode("utf-8")).hexdigest()
+        events.append(
+            {
+                "job_name": job_name,
+                "reason": reason,
+                "event_key": event_key,
+                "legacy_event_key": legacy_event_key,
+                "raw_line": json.dumps(task, ensure_ascii=False, sort_keys=True),
+                "source": "official_tasks",
+                "task_id": task_id,
+                "task_status": status,
+                "run_id": str(task.get("runId") or ""),
+                "flow_id": str(task.get("parentFlowId") or ""),
+            }
+        )
+    return events
 
 
 def load_journal_text(args: argparse.Namespace) -> str:
@@ -124,6 +220,10 @@ def record_event(args: argparse.Namespace, event: dict[str, str], jobs_by_name: 
     payload["reason"] = event["reason"]
     payload["event_key"] = event["event_key"]
     payload["channel"] = channel
+    payload["signal_source"] = event.get("source", "journal")
+    payload["official_task_id"] = event.get("task_id", "")
+    payload["official_run_id"] = event.get("run_id", "")
+    payload["official_flow_id"] = event.get("flow_id", "")
     return payload
 
 
@@ -136,6 +236,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--journal-unit", default="openclaw.service")
     parser.add_argument("--tail", type=int, default=600)
     parser.add_argument("--state-file")
+    parser.add_argument("--source", choices=("auto", "tasks", "journal"), default="auto")
+    parser.add_argument("--tasks-file")
+    parser.add_argument("--tasks-timeout", type=int, default=20)
+    parser.add_argument("--official-max-age-seconds", type=int, default=900)
     return parser.parse_args()
 
 
@@ -146,21 +250,52 @@ def main() -> int:
     jobs_path = Path(args.jobs_file) if args.jobs_file else None
     state_path = Path(args.state_file) if args.state_file else args.root / "cron_failure_watch_state.json"
 
-    journal_text = load_journal_text(args)
-    events = parse_failure_events(journal_text)
     jobs_by_name = load_jobs_by_name(jobs_path)
+    source = "journal"
+    fallback_reason = ""
+    if args.source in {"auto", "tasks"}:
+        try:
+            tasks, source = load_official_tasks(args)
+            events = parse_official_task_failures(
+                tasks,
+                jobs_by_name,
+                max_age_seconds=args.official_max_age_seconds,
+            )
+        except Exception as exc:
+            if args.source == "tasks":
+                raise
+            fallback_reason = f"{type(exc).__name__}: {exc}"
+            journal_text = load_journal_text(args)
+            events = parse_failure_events(journal_text)
+    else:
+        journal_text = load_journal_text(args)
+        events = parse_failure_events(journal_text)
     seen = load_seen_state(state_path)
 
     processed: list[dict[str, object]] = []
     for event in events:
-        if event["event_key"] in seen:
+        legacy_event_key = event.get("legacy_event_key", "")
+        if event["event_key"] in seen or (legacy_event_key and legacy_event_key in seen):
             continue
         payload = record_event(args, event, jobs_by_name)
         processed.append(payload)
         seen[event["event_key"]] = payload.get("gap_id", "")
+        if legacy_event_key:
+            seen[legacy_event_key] = payload.get("gap_id", "")
 
     save_seen_state(state_path, seen)
-    print(json.dumps({"processed": processed, "processed_count": len(processed)}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "processed": processed,
+                "processed_count": len(processed),
+                "signal_source": source,
+                "fallback_reason": fallback_reason,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 

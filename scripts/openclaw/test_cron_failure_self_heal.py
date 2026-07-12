@@ -73,7 +73,65 @@ def main() -> int:
         if second_payload["processed_count"] != 0:
             raise AssertionError(f"expected deduped second run, got {second_payload['processed_count']}")
 
+        official_root = Path(tmp) / "official-kernel"
+        official_tasks = Path(tmp) / "tasks.json"
+        official_tasks.write_text(
+            json.dumps(
+                {
+                    "count": 1,
+                    "runtime": "cron",
+                    "status": None,
+                    "tasks": [
+                        {
+                            "taskId": "task-official-1",
+                            "runtime": "cron",
+                            "sourceId": "timescar-ask-cancel-next24h-0700",
+                            "label": "timescar-ask-cancel-next24h-0700",
+                            "task": "check reservation",
+                            "status": "timed_out",
+                            "deliveryStatus": "failed",
+                            "error": "official cron execution timed out",
+                            "endedAt": 1773888000000,
+                            "runId": "run-official-1",
+                            "parentFlowId": "flow-official-1"
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+                indent=2,
+            ) + "\n",
+            encoding="utf-8",
+        )
+        official_cmd = [
+            sys.executable,
+            str(repo_root / "scripts" / "openclaw" / "cron_failure_self_heal.py"),
+            "--root",
+            str(official_root),
+            "--repo-root",
+            str(repo_root),
+            "--jobs-file",
+            str(jobs_path),
+            "--tasks-file",
+            str(official_tasks),
+            "--source",
+            "tasks",
+            "--official-max-age-seconds",
+            "0",
+        ]
+        official = subprocess.run(official_cmd, capture_output=True, text=True, check=True)
+        official_payload = json.loads(official.stdout)
+        if official_payload["signal_source"] != "official_tasks":
+            raise AssertionError(f"expected official task signal, got {official_payload['signal_source']}")
+        official_item = official_payload["processed"][0]
+        if official_item["official_task_id"] != "task-official-1":
+            raise AssertionError(f"official task id missing: {official_item}")
+        if official_item["official_flow_id"] != "flow-official-1":
+            raise AssertionError(f"official flow id missing: {official_item}")
+
         print(json.dumps(payload, ensure_ascii=False, indent=2))
+        generated_helper = repo_root / "scripts" / "openclaw" / "helpers" / "check_timescar_next_24h_reservat_repair.py"
+        if generated_helper.is_file():
+            generated_helper.unlink()
     return 0
 
 
