@@ -21,7 +21,7 @@
 
 - [ ] OpenClaw 已安装
 - [ ] ChatGPT 订阅 OAuth 已完成
-- [ ] 默认模型为 `openai-codex/gpt-5.6`
+- [ ] 默认模型为 `openai-codex/gpt-5.6-sol`
 - [ ] 默认思考强度为 `low`
 
 ---

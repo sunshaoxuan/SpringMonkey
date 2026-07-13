@@ -203,7 +203,7 @@
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-supervisor`
 
 - `remote_fix_xhs_cron_model.py`
-  - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.6`，保留 schedule/message/delivery。
+  - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.6-sol`，保留 schedule/message/delivery。
   - 典型用法：`python SpringMonkey/scripts/remote_fix_xhs_cron_model.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py xhs-cron-model`
 
@@ -304,7 +304,7 @@
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
 - `openclaw/intent_tool_router.py`：Discord owner DM Harness CLI wrapper；默认执行路径为 `harness_dispatcher -> intentAgent -> tool binder -> governance -> worker -> evaluator -> reporter`。文件内旧 `classify()` / `model_classify_intent()` / TimesCar guard 仅保留为 diagnostic-only，不作为默认语义路由。
-- `openclaw/model_fallback_client.py`：统一模型调用兜底层。Python 侧 intent、blocker、web research 等模型调用默认先走 gpt-5.6/OpenAI-compatible endpoint，失败时落到 ccnode Ollama `qwen3:14b`。
+- `openclaw/model_fallback_client.py`：统一模型调用兜底层。Python 侧 intent、blocker、web research 等模型调用默认先走 gpt-5.6-sol/OpenAI-compatible endpoint，失败时落到 ccnode Ollama `qwen3:14b`。
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/verify_harness_registry.py`：校验 OpenClaw Harness manifest、skill registry、tool registry 的 SubAgent/权限/输出契约字段

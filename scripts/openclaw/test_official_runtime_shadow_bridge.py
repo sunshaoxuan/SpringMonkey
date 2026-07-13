@@ -34,7 +34,7 @@ def test_shadow_bridge_uses_official_surfaces_without_changing_cron(tmp_path: Pa
                 "enabled": True,
                 "schedule": {"expr": "0 7 * * 6", "tz": "Asia/Tokyo"},
                 "delivery": {"channel": "discord", "to": "1497009159940608020"},
-                "payload": {"model": "openai-codex/gpt-5.6"},
+                "payload": {"model": "openai-codex/gpt-5.6-sol"},
                 "sessionTarget": "isolated",
             }
         ]

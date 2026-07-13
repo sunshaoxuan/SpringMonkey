@@ -14,7 +14,7 @@
 
 模型分工
 --------
-- Codex (openai-codex/gpt-5.6) → 默认主模型：编排、逐条处理、终稿格式化
+- Codex (openai-codex/gpt-5.6-sol) → 默认主模型：编排、逐条处理、终稿格式化
 - Qwen (qwen3:14b)             → 兜底处理器：仅在 Codex 不可用时尝试
 
 环境变量（常用）
@@ -1575,16 +1575,16 @@ def main() -> int:
 
     worker_model_raw = os.environ.get(
         "NEWS_WORKER_MODEL",
-        model_cfg.get("newsWorker", "openai-codex/gpt-5.6"),
+        model_cfg.get("newsWorker", "openai-codex/gpt-5.6-sol"),
     )
     fallback_model_raw = os.environ.get(
         "NEWS_FALLBACK_MODEL",
         model_cfg.get("chatFallback", "ollama/qwen3:14b"),
     )
-    finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.6")
+    finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.6-sol")
     orch_model = os.environ.get(
         "NEWS_ORCHESTRATOR_MODEL",
-        model_cfg.get("newsOrchestrator", "openai-codex/gpt-5.6"),
+        model_cfg.get("newsOrchestrator", "openai-codex/gpt-5.6-sol"),
     )
 
     ollama_worker_model = ollama_api_model_name(worker_model_raw)

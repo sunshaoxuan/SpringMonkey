@@ -22,7 +22,7 @@ from long_task_supervisor import ACTIVE_STATUSES, DEFAULT_STATE_PATH, read_state
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
 DEFAULT_RUN_DIR = Path("/var/lib/openclaw/.openclaw/workspace/state/domain_implementation_runs")
 DEFAULT_TIMEOUT_SECONDS = 7200
-DEFAULT_MODEL = "openai-codex/gpt-5.6"
+DEFAULT_MODEL = "openai-codex/gpt-5.6-sol"
 SERVICE_STATE_DIR = Path("/var/lib/openclaw/.openclaw")
 SERVICE_CONFIG_PATH = SERVICE_STATE_DIR / "openclaw.json"
 FINAL_STAGES = {"final_succeeded", "final_failed"}

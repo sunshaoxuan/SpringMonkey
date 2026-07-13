@@ -7,8 +7,8 @@ from pathlib import Path
 import domain_implementation_runner as runner
 
 
-def test_default_model_uses_codex_gpt_5_6_provider() -> None:
-    assert runner.DEFAULT_MODEL == "openai-codex/gpt-5.6"
+def test_default_model_uses_codex_gpt_5_6_sol_provider() -> None:
+    assert runner.DEFAULT_MODEL == "openai-codex/gpt-5.6-sol"
 
 
 def write_package(root: Path) -> Path:

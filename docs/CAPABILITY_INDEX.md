@@ -42,7 +42,7 @@
 | HTTP 监听 | 默认 **127.0.0.1:18789**（本机 `/line/webhook` 诊断用） | `scripts/remote_diag_openclaw_webhook.py`、运维对话记录 |
 | Gateway / Discord 通道配置修复 | 当服务卡在 `Invalid config` 或日志出现 `Unsupported channel: discord` 时，先修复 `agents.defaults.llm`、不可用 `brave` provider、不可用 `memory-lancedb` slot、缺失的 Discord plugin load path，再重启和查 `/healthz` | `scripts/openclaw/repair_legacy_gateway_config.py`、`scripts/remote_repair_openclaw_gateway_config.py` |
 | 共享能力入口 | `openclaw.service` 通过 drop-in 加载 `/etc/openclaw/openclaw.env`；Discord / LINE 共用同一套 provider secret 与 `tools.elevated.allowFrom` | `scripts/remote_enable_shared_channel_capabilities.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
-| 聊天与任务总控主模型 | `openai-codex/gpt-5.6` 主力，ccnode `ollama/qwen3:14b` 全局兜底 | `scripts/openclaw/model_fallback_client.py`、`config/news/broadcast.json`、`docs/runtime-notes/openclaw-gpt-5.6-migration-2026-07.md` |
+| 聊天与任务总控主模型 | `openai-codex/gpt-5.6-sol` 主力，ccnode `ollama/qwen3:14b` 全局兜底 | `scripts/openclaw/model_fallback_client.py`、`config/news/broadcast.json`、`docs/runtime-notes/openclaw-gpt-5.6-migration-2026-07.md` |
 | qwen 兜底策略 | `http://ccnode.briconbric.com:22545` 的 `qwen3:14b` 覆盖 Python 侧 intent、blocker、web research、news pipeline 等模型调用；只在主链路不可用时启用 | `scripts/openclaw/model_fallback_client.py`、`scripts/remote_install_public_model_resources.py`、`docs/runtime-notes/qwen-timeout-retry-policy-2026-04.md` |
 | 当前环境运行基线 | 当前 SpringMonkey 宿主机的真实服务、compaction、patch family、LINE/Discord/news 约束 | `docs/runtime-notes/openclaw-current-environment-baseline-2026-04.md` |
 | 分层故障模型 | 将 LINE/Discord/news/runtime 失败拆成 Host/Channel/Artifact/Run/Reply/Orchestration 六层 | `docs/runtime-notes/openclaw-failure-layer-model-2026-04.md` |
