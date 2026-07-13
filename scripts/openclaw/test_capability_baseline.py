@@ -75,14 +75,14 @@ def test_news_cron_status_tool_reads_news_jobs() -> None:
                             "name": "news-digest-jst-1700",
                             "enabled": True,
                             "cron": "0 17 * * *",
-                            "payload": {"model": "openai-codex/gpt-5.5"},
+                            "payload": {"model": "openai-codex/gpt-5.6"},
                         },
                         {
                             "id": "job_xhs",
                             "name": "xhs-recommendation-every-3-days",
                             "enabled": True,
                             "cron": "0 10 */3 * *",
-                            "payload": {"model": "openai-codex/gpt-5.5"},
+                            "payload": {"model": "openai-codex/gpt-5.6"},
                         },
                     ]
                 },
@@ -142,7 +142,7 @@ def test_cron_status_tool_reads_jobs_json() -> None:
                             "name": "xhs-recommendation-every-3-days",
                             "enabled": True,
                             "cron": "0 10 */3 * *",
-                            "payload": {"model": "openai-codex/gpt-5.5"},
+                            "payload": {"model": "openai-codex/gpt-5.6"},
                         }
                     ]
                 },
@@ -153,7 +153,7 @@ def test_cron_status_tool_reads_jobs_json() -> None:
         output = format_status("检查小红书任务", "xhs", jobs)
     assert "匹配数量：1" in output
     assert "xhs-recommendation-every-3-days" in output
-    assert "openai-codex/gpt-5.5" in output
+    assert "openai-codex/gpt-5.6" in output
 
 
 def test_cron_status_reports_direct_cron_as_effective_public_schedule() -> None:
@@ -211,7 +211,7 @@ def test_cron_status_reports_today_direct_cron_delivery_evidence() -> None:
                             "name": "news-digest-jst-1700",
                             "enabled": False,
                             "schedule": "0 17 * * *",
-                            "payload": {"model": "openai-codex/gpt-5.5"},
+                            "payload": {"model": "openai-codex/gpt-5.6"},
                         }
                     ]
                 },
@@ -271,7 +271,7 @@ def test_cron_status_explains_unescaped_percent_as_root_cause() -> None:
                             "name": "news-digest-jst-0900",
                             "enabled": False,
                             "schedule": "0 9 * * *",
-                            "payload": {"model": "openai-codex/gpt-5.5"},
+                            "payload": {"model": "openai-codex/gpt-5.6"},
                         }
                     ]
                 },
@@ -310,7 +310,7 @@ def test_cron_status_explains_historical_syslog_truncation_after_config_fixed() 
                             "name": "news-digest-jst-1700",
                             "enabled": False,
                             "schedule": "0 17 * * *",
-                            "payload": {"model": "openai-codex/gpt-5.5"},
+                            "payload": {"model": "openai-codex/gpt-5.6"},
                         }
                     ]
                 },

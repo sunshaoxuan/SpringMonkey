@@ -91,6 +91,14 @@ for path in config_paths:
         "baseUrl": "http://ccnode.briconbric.com:49530/v1",
         "models": [
             {
+                "id": "gpt-5.6",
+                "name": "GPT-5.6 via ccnode",
+                "reasoning": True,
+                "input": ["text", "image"],
+                "contextWindow": 196000,
+                "maxTokens": 32768,
+            },
+            {
                 "id": "gpt-5.5",
                 "name": "GPT-5.5 via ccnode",
                 "reasoning": True,
@@ -109,8 +117,9 @@ for path in config_paths:
         ],
     }
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
-    defaults["primary"] = "openai-codex/gpt-5.5"
+    defaults["primary"] = "openai-codex/gpt-5.6"
     configured_models = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("models", {})
+    configured_models.setdefault("openai-codex/gpt-5.6", {})
     configured_models.setdefault("openai-codex/gpt-5.5", {})
     configured_models.setdefault("openai-codex/gpt-5.4", {})
     fallbacks = defaults.setdefault("fallbacks", [])
@@ -134,7 +143,7 @@ for path in profile_paths:
         "provider": "openai",
         "type": "api_key",
         "key": secret,
-        "displayName": "ccnode gpt-5.5",
+        "displayName": "ccnode gpt-5.6",
         "copyToAgents": True,
     }
     profiles["ollama:default"] = {

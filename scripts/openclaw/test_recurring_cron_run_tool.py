@@ -27,7 +27,7 @@ def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path)
                     "topic_aliases": ["内容任务"],
                     "run_aliases": ["开始执行"],
                     "allow_manual_run": True,
-                    "expected_model": "openai-codex/gpt-5.5",
+                    "expected_model": "openai-codex/gpt-5.6",
                     "expected_delivery_channel_id": "channel-1",
                 }
             ],
@@ -41,7 +41,7 @@ def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path)
                     "id": "job_1",
                     "name": "content-job",
                     "enabled": True,
-                    "payload": {"model": "openai-codex/gpt-5.5"},
+                    "payload": {"model": "openai-codex/gpt-5.6"},
                     "delivery": {"to": "channel-1"},
                 }
             ]
@@ -197,7 +197,7 @@ def test_recurring_cron_run_rejects_model_drift(tmp_path: Path) -> None:
                     "topic_aliases": ["内容任务"],
                     "run_aliases": ["执行"],
                     "allow_manual_run": True,
-                    "expected_model": "openai-codex/gpt-5.5",
+                    "expected_model": "openai-codex/gpt-5.6",
                 }
             ],
         },

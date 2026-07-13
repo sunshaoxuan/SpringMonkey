@@ -15,7 +15,7 @@ RUNTIME_ENV_FILES = (
     Path("/etc/openclaw/openclaw.env"),
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
-DEFAULT_PRIMARY_MODEL = "gpt-5.5"
+DEFAULT_PRIMARY_MODEL = "gpt-5.6"
 DEFAULT_FALLBACK_BASE_URL = "http://ccnode.briconbric.com:22545"
 DEFAULT_FALLBACK_MODEL = "qwen3:14b"
 

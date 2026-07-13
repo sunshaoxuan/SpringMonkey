@@ -24,7 +24,7 @@
         "重试"
       ],
       "allow_manual_run": true,
-      "expected_model": "openai-codex/gpt-5.5",
+      "expected_model": "openai-codex/gpt-5.6",
       "expected_delivery_channel_id": "1497009159940608020",
       "permission_scope": "owner_dm_write",
       "write_operation": true

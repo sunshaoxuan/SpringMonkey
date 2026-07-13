@@ -5,6 +5,10 @@ from unittest.mock import patch
 import model_fallback_client as client
 
 
+def test_default_primary_model_is_gpt_5_6() -> None:
+    assert client.DEFAULT_PRIMARY_MODEL == "gpt-5.6"
+
+
 def test_chat_with_fallback_uses_primary_when_available() -> None:
     primary = client.ChatEndpoint("openai_compatible", "http://primary/v1", "gpt-5.5", "key")
     fallback = client.ChatEndpoint("ollama", "http://ccnode.briconbric.com:22545", "qwen3:14b")
