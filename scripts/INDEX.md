@@ -203,7 +203,7 @@
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-supervisor`
 
 - `remote_fix_xhs_cron_model.py`
-  - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.5`，保留 schedule/message/delivery。
+  - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.6-sol`，保留 schedule/message/delivery。
   - 典型用法：`python SpringMonkey/scripts/remote_fix_xhs_cron_model.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py xhs-cron-model`
 
@@ -304,7 +304,7 @@
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
 - `openclaw/intent_tool_router.py`：Discord owner DM Harness CLI wrapper；默认执行路径为 `harness_dispatcher -> intentAgent -> tool binder -> governance -> worker -> evaluator -> reporter`。文件内旧 `classify()` / `model_classify_intent()` / TimesCar guard 仅保留为 diagnostic-only，不作为默认语义路由。
-- `openclaw/model_fallback_client.py`：统一模型调用兜底层。Python 侧 intent、blocker、web research 等模型调用默认先走 gpt-5.5/OpenAI-compatible endpoint，失败时落到 ccnode Ollama `qwen3:14b`。
+- `openclaw/model_fallback_client.py`：统一模型调用兜底层。Python 侧 intent、blocker、web research 等模型调用默认先走 gpt-5.6-sol/OpenAI-compatible endpoint，失败时落到 ccnode Ollama `qwen3:14b`。
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/verify_harness_registry.py`：校验 OpenClaw Harness manifest、skill registry、tool registry 的 SubAgent/权限/输出契约字段
@@ -318,6 +318,9 @@
 - `openclaw/patch_memory_lancedb_raw_embeddings_current.py`：修复当前 `memory-lancedb` 插件，强制 `baseUrl` 场景改走原始 HTTP `/v1/embeddings`，避免 SDK 兼容性导致向量维度漂移
 - `openclaw/agent_society_runtime_record_gap.py`：把真实 direct-task 失败写进 durable kernel，并在可复用时自动落 bounded executable helper 到 `scripts/openclaw/helpers/`；对 DM 只读能力 gap 可返回注册表工具候选，避免业务查询继续生成 generic repair helper
 - `openclaw/cron_failure_self_heal.py`：扫描宿主机 journal 里的 cron failure，去重后写入 durable kernel；同样走 `gap -> helper -> pattern -> promotion` 闭环，而不是只给用户发一条失败通知
+- `openclaw/cron_recovery_guard.py`：官方优先的 cron 恢复增益；等待官方 retry/backoff/watchdog、Tasks maintenance 和 Doctor repair，按 job 合并失败，重跑前刷新官方状态，只有官方处理耗尽或未覆盖时才逐点修复并调用官方 cron run
+- `openclaw/model_runtime_probe.py`：对主模型与配置的 fallback 做真实最小文本调用；cron 恢复守护只有在模型链实际可响应后才允许重跑模型类失败任务
+- `openclaw/scheduled_log_retention.py`：复用现有五分钟 root 扫描，每日最多执行一次按月日志归档、journald 月归档和 10% 剩余空间保护，不改动业务 cron
 - `openclaw/job_orchestrator.py`：cron/pipeline job 的通用执行包装器；把脚本命令作为 kernel step 的 action/tool 执行，成功保持 stdout 契约，失败写 gap、触发 helper、自修复后 bounded retry
 - `openclaw/agent_society_kernel.py`：durable `goal -> intent -> task -> step` 内核；记录 order/dependency/parallel/shared-context 元数据，并可通过 `tree-report` 输出长流程树状报告
 - `openclaw/test_agent_society_tree_report.py`：验证 orchestrated job 不再被拆成 metadata 平铺项，而是保留 intent/task/step 树、依赖和共享上下文

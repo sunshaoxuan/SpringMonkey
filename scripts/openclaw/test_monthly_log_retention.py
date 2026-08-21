@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from zipfile import ZipFile
 
-from monthly_log_retention import archive_source, month_key, source_slug
+from monthly_log_retention import archive_source, month_key, prune_oldest_archives, source_slug
 
 
 def test_month_key_and_source_slug() -> None:
@@ -32,3 +32,22 @@ def test_archives_previous_month_and_keeps_current_month(tmp_path: Path) -> None
     assert len(written) == 1
     with ZipFile(written[0]) as archive:
         assert archive.read("old.log") == b"old"
+
+
+def test_disk_guard_deletes_oldest_archive_first(tmp_path: Path, monkeypatch) -> None:
+    archive_root = tmp_path / "archives"
+    archive_root.mkdir()
+    oldest = archive_root / "2026-04.zip"
+    newer = archive_root / "2026-05.zip"
+    oldest.write_bytes(b"oldest")
+    newer.write_bytes(b"newer")
+    os.utime(oldest, (1, 1))
+    os.utime(newer, (2, 2))
+    free_values = iter((5.0, 12.0))
+    monkeypatch.setattr("monthly_log_retention.free_percent", lambda _path: next(free_values))
+
+    deleted = prune_oldest_archives(archive_root, 10.0)
+
+    assert deleted == [oldest]
+    assert not oldest.exists()
+    assert newer.exists()

@@ -143,12 +143,15 @@ def display_summary(envelope: ReportEnvelope) -> str:
 
 def structured_tool_summary(text: str) -> str:
     raw = (text or "").strip()
-    if not raw.startswith("{"):
+    if not raw.startswith(("{", "[")):
         return text
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:
         return text
+    if isinstance(payload, list):
+        extracted = extract_presentable_text(payload)
+        return "\n".join(extracted) if extracted else text
     if not isinstance(payload, dict):
         return text
     result = str(payload.get("result") or payload.get("final_report") or "").strip()
@@ -160,7 +163,49 @@ def structured_tool_summary(text: str) -> str:
         return f"工具执行失败：{code}\n下一步：{action}"
     if tool_id.startswith("openclaw.generated.") or "自演进状态" in result:
         return summarize_self_evolution_result(result, tool_status=status)
-    return result or text
+    if result:
+        return result
+    extracted = extract_presentable_text(payload)
+    return "\n".join(extracted) if extracted else text
+
+
+def extract_presentable_text(payload: Any, *, limit: int = 20) -> list[str]:
+    preferred_keys = ("result", "final_report", "output", "stdout", "text", "content", "message", "value")
+    ignored_keys = {
+        "trace_id",
+        "diagnostics_ref",
+        "stderr",
+        "command",
+        "log_refs",
+        "textSignature",
+    }
+    collected: list[str] = []
+
+    def visit(value: Any) -> None:
+        if len(collected) >= limit:
+            return
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned and cleaned not in collected:
+                collected.append(cleaned)
+            return
+        if isinstance(value, list):
+            for item in value:
+                visit(item)
+            return
+        if not isinstance(value, dict):
+            return
+        for key in preferred_keys:
+            if key in value:
+                visit(value[key])
+        for key, item in value.items():
+            if key in preferred_keys or key in ignored_keys:
+                continue
+            if isinstance(item, (dict, list)):
+                visit(item)
+
+    visit(payload)
+    return collected
 
 
 def summarize_self_evolution_result(result: str, *, tool_status: str = "") -> str:
@@ -211,6 +256,8 @@ def concise_operational_summary(text: str, *, max_lines: int = 5, max_chars: int
         if DIAGNOSTIC_LINE_RE.match(line) or DIAGNOSTIC_TOKEN_RE.search(line):
             continue
         if line.startswith("{") or line.startswith("}") or line.startswith('"'):
+            continue
+        if re.fullmatch(r"[\[\]{},]+", line):
             continue
         kept.append(line)
         if len(kept) >= max_lines:

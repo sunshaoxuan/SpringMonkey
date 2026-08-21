@@ -20,7 +20,9 @@ Archives are stored under `/var/backups/openclaw-log-archive`.
 
 ## Schedule
 
-`openclaw-log-retention.timer` runs daily around 02:40 JST. Daily execution allows the 10 percent disk guard to react before the next monthly boundary.
+The existing `openclaw-cron-failure-self-heal.timer` invokes the retention runner after each scan. A durable daily success marker makes the archive and disk guard execute at most once per calendar day. This path activates automatically after the repository sync and does not add, replace, disable, or reschedule any business cron job.
+
+`openclaw-log-retention.timer` remains an optional dedicated schedule and runs daily around 02:40 JST when installed. Daily execution allows the 10 percent disk guard to react before the next monthly boundary.
 
 ## Verification
 
@@ -28,6 +30,7 @@ Archives are stored under `/var/backups/openclaw-log-archive`.
 systemctl status openclaw-log-retention.timer
 systemctl status openclaw-log-retention.service
 find /var/backups/openclaw-log-archive -type f
+cat /var/lib/openclaw/.openclaw/workspace/agent_society_kernel/log_retention_run_state.json
 df -h /
 ```
 

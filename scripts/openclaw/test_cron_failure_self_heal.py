@@ -60,6 +60,8 @@ def main() -> int:
         payload = json.loads(first.stdout)
         if payload["processed_count"] != 1:
             raise AssertionError(f"expected one processed cron failure, got {payload['processed_count']}")
+        if payload.get("shadow_bridge", {}).get("status") != "captured":
+            raise AssertionError(f"expected shadow capture, got {payload.get('shadow_bridge')}")
         item = payload["processed"][0]
         if item["gap_category"] != "runtime_timeout":
             raise AssertionError(f"expected runtime_timeout cron gap, got {item['gap_category']}")
@@ -122,6 +124,8 @@ def main() -> int:
         official_payload = json.loads(official.stdout)
         if official_payload["signal_source"] != "official_tasks":
             raise AssertionError(f"expected official task signal, got {official_payload['signal_source']}")
+        if official_payload.get("shadow_bridge", {}).get("status") != "captured":
+            raise AssertionError(f"expected official shadow capture, got {official_payload.get('shadow_bridge')}")
         official_item = official_payload["processed"][0]
         if official_item["official_task_id"] != "task-official-1":
             raise AssertionError(f"official task id missing: {official_item}")
