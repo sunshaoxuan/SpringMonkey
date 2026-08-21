@@ -352,6 +352,7 @@ def run_recovery_guard(
     tasks: list[dict[str, object]],
     jobs_by_name: dict[str, dict],
     cron_catalog_source: str,
+    official_jobs_by_name: dict[str, dict] | None = None,
 ) -> dict[str, object]:
     if args.disable_recovery_guard:
         return {"status": "disabled"}
@@ -365,7 +366,7 @@ def run_recovery_guard(
             else Path(args.root) / "cron_recovery_guard_state.json"
         )
         before_contract = (
-            cron_contract_from_jobs(list(jobs_by_name.values()))
+            cron_contract_from_jobs(list((official_jobs_by_name or jobs_by_name).values()))
             if cron_catalog_source == "official_cron_list"
             else (cron_contract(Path(args.jobs_file)) if args.jobs_file else {})
         )
@@ -448,12 +449,14 @@ def main() -> int:
     jobs_path = Path(args.jobs_file) if args.jobs_file else None
     state_path = Path(args.state_file) if args.state_file else args.root / "cron_failure_watch_state.json"
 
-    jobs_by_name = load_jobs_by_name(jobs_path)
+    fallback_jobs_by_name = load_jobs_by_name(jobs_path)
+    jobs_by_name = dict(fallback_jobs_by_name)
+    official_jobs_by_name: dict[str, dict] = {}
     cron_catalog_source = "jobs_file_fallback"
     try:
-        official_jobs, cron_catalog_source = load_official_cron_jobs(args)
-        if official_jobs:
-            jobs_by_name = official_jobs
+        official_jobs_by_name, cron_catalog_source = load_official_cron_jobs(args)
+        if official_jobs_by_name:
+            jobs_by_name.update(official_jobs_by_name)
     except Exception:
         pass
     tasks: list[dict[str, object]] = []
@@ -490,7 +493,14 @@ def main() -> int:
             seen[legacy_event_key] = payload.get("gap_id", "")
 
     save_seen_state(state_path, seen)
-    recovery_guard = run_recovery_guard(args, events, tasks, jobs_by_name, cron_catalog_source)
+    recovery_guard = run_recovery_guard(
+        args,
+        events,
+        tasks,
+        jobs_by_name,
+        cron_catalog_source,
+        official_jobs_by_name,
+    )
     shadow_bridge = run_shadow_bridge(args, jobs_path)
     log_retention = run_daily_log_retention(args)
     print(

@@ -55,6 +55,8 @@ def main() -> int:
             str(jobs_path),
             "--journal-file",
             str(journal_path),
+            "--source",
+            "journal",
         ]
         first = subprocess.run(cmd, capture_output=True, text=True, check=True)
         payload = json.loads(first.stdout)
