@@ -9,6 +9,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+from systemd_secret_credentials import read_systemd_secret
+
 
 DEFAULT_CONFIG_PATH = Path("/var/lib/openclaw/.openclaw/openclaw.json")
 
@@ -34,7 +36,10 @@ def discord_token(config_path: Path = DEFAULT_CONFIG_PATH) -> str:
     except Exception:
         return ""
     discord = (data.get("channels") or {}).get("discord") if isinstance(data.get("channels"), dict) else {}
-    return str((discord or {}).get("token") or "")
+    configured = (discord or {}).get("token")
+    if isinstance(configured, str) and configured.strip():
+        return configured.strip()
+    return read_systemd_secret("channels", "discord", "token")
 
 
 def parse_media_reply(content: str) -> MediaReply | None:

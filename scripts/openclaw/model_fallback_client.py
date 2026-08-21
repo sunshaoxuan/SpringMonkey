@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from systemd_secret_credentials import read_systemd_secret
+
 
 RUNTIME_ENV_FILES = (
     Path("/etc/openclaw/openclaw.env"),
@@ -48,26 +50,6 @@ def load_runtime_env_files(paths: tuple[Path, ...] = RUNTIME_ENV_FILES) -> None:
                 os.environ[key] = value.strip().strip('"').strip("'")
 
 
-def read_systemd_credential(name: str) -> str:
-    credential_dir = Path(os.environ.get("CREDENTIALS_DIRECTORY", "/run/credentials/openclaw.service"))
-    payload_path = credential_dir / "openclaw-secrets.json"
-    supported = {
-        "OPENCLAW_INTENT_MODEL_API_KEY",
-        "OPENCLAW_PUBLIC_MODEL_API_KEY",
-        "NEWS_CODEX_API_KEY",
-        "OPENCLAW_CODEX_API_KEY",
-        "CODEX_API_KEY",
-    }
-    if name not in supported:
-        return ""
-    try:
-        payload = json.loads(payload_path.read_text(encoding="utf-8"))
-        value = payload["providers"]["openaiCodex"]["apiKey"]
-        return value.strip() if isinstance(value, str) else ""
-    except (OSError, KeyError, TypeError, json.JSONDecodeError):
-        return ""
-
-
 def read_secret_env(*names: str) -> str:
     for name in names:
         value = os.environ.get(name, "").strip()
@@ -82,7 +64,7 @@ def read_secret_env(*names: str) -> str:
             if secret:
                 return secret
     for name in names:
-        credential_value = read_systemd_credential(name)
+        credential_value = read_systemd_secret("providers", "openaiCodex", "apiKey")
         if credential_value:
             return credential_value
     return ""

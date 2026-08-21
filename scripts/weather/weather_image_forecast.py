@@ -7,6 +7,7 @@ import json
 import math
 import os
 import struct
+import sys
 import subprocess
 import time
 import urllib.parse
@@ -18,6 +19,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import discord_weather_report as report
+
+_OPENCLAW_SCRIPTS = Path(__file__).resolve().parents[1] / "openclaw"
+if str(_OPENCLAW_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_OPENCLAW_SCRIPTS))
+from systemd_secret_credentials import read_systemd_secret
 
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
@@ -386,7 +392,7 @@ def weather_image_api_key() -> str:
         path = os.environ.get(name, "").strip()
         if path and Path(path).is_file():
             return Path(path).read_text(encoding="utf-8").strip()
-    return ""
+    return read_systemd_secret("providers", "openaiCodex", "apiKey")
 
 
 def generate_model_image_http(prompt: str, path: Path, *, model: str, base_url: str) -> None:

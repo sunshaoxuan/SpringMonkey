@@ -67,3 +67,15 @@ def test_multipart_body_contains_payload_and_file(tmp_path: Path) -> None:
     assert b"<svg>weather</svg>" in body
     payload_part = body.split(b"\r\n\r\n", 1)[1].split(b"\r\n", 1)[0]
     assert json.loads(payload_part.decode("utf-8"))["content"] == "caption"
+
+
+def test_discord_token_resolves_systemd_credential_for_secretref(tmp_path, monkeypatch) -> None:
+    import json
+    from unittest.mock import patch
+    import discord_media_delivery as delivery
+
+    config = tmp_path / "openclaw.json"
+    config.write_text(json.dumps({"channels": {"discord": {"token": {"source": "file"}}}}), encoding="utf-8")
+    monkeypatch.delenv("OPENCLAW_DISCORD_TOKEN", raising=False)
+    with patch.object(delivery, "read_systemd_secret", return_value="test-token"):
+        assert delivery.discord_token(config) == "test-token"

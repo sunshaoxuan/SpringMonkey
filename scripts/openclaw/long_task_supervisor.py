@@ -13,6 +13,8 @@ import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+from systemd_secret_credentials import read_systemd_secret
 from typing import Any, Callable
 
 try:
@@ -346,7 +348,10 @@ def discord_token(config_path: Path = DEFAULT_CONFIG_PATH) -> str:
     except Exception:
         return ""
     discord = (data.get("channels") or {}).get("discord") if isinstance(data.get("channels"), dict) else {}
-    return str((discord or {}).get("token") or "")
+    configured = (discord or {}).get("token")
+    if isinstance(configured, str) and configured.strip():
+        return configured.strip()
+    return read_systemd_secret("channels", "discord", "token")
 
 
 def discord_request(token: str, path: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:

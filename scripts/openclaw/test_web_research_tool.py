@@ -18,7 +18,7 @@ def test_missing_brave_key_reports_concrete_failure() -> None:
             "OPENCLAW_BRAVE_API_KEY": "",
         },
         clear=False,
-    ), patch.object(tool, "load_runtime_env_files", return_value=None), patch.object(tool, "read_systemd_credential", return_value=""):
+    ), patch.object(tool, "load_runtime_env_files", return_value=None), patch.object(tool, "read_systemd_secret", return_value=""):
         code, reply, evidence = tool.run_research("帮我查一下 OpenClaw 最新版本")
     assert code == 4
     assert "missing_brave_api_key" in reply

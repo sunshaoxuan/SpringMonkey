@@ -57,6 +57,7 @@ if str(OPENCLAW_SCRIPTS) not in sys.path:
 
 from discord_media_delivery import send_discord_message
 from harness_reporter import append_report, build_report, format_owner_reply
+from systemd_secret_credentials import read_systemd_secret
 
 CONFIG = OPENCLAW_HOME / "openclaw.json"
 LOG_DIR = OPENCLAW_HOME / "logs" / "direct_discord_cron"
@@ -82,10 +83,13 @@ def parse_args() -> argparse.Namespace:
 
 def discord_token() -> str:
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
-    token = cfg.get("channels", {}).get("discord", {}).get("token")
-    if not token:
-        raise RuntimeError("missing channels.discord.token")
-    return str(token)
+    configured = cfg.get("channels", {}).get("discord", {}).get("token")
+    if isinstance(configured, str) and configured.strip():
+        return configured.strip()
+    credential = read_systemd_secret("channels", "discord", "token")
+    if credential:
+        return credential
+    raise RuntimeError("missing channels.discord.token")
 
 
 def read_env_file(path: Path = ENV_FILE) -> dict[str, str]:
@@ -109,6 +113,8 @@ def public_model_env() -> list[str]:
     key_file = values.get("OPENCLAW_PUBLIC_MODEL_API_KEY_FILE") or values.get("NEWS_CODEX_API_KEY_FILE")
     if not key and key_file and Path(key_file).is_file():
         key = Path(key_file).read_text(encoding="utf-8", errors="replace").strip()
+    if not key:
+        key = read_systemd_secret("providers", "openaiCodex", "apiKey")
     env_items = ["HOME=/var/lib/openclaw"]
     if base_url:
         env_items.extend([f"OPENCLAW_PUBLIC_MODEL_BASE_URL={base_url}", f"OPENAI_BASE_URL={base_url}"])
