@@ -37,6 +37,10 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert '"api": "openai-completions"' in remote
     assert '"id": "gpt-5.6-sol"' in remote
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
+    assert '"keyRef": openai_ref' in remote
+    assert '"keyRef": ollama_ref' in remote
+    assert 'missing systemd credential payload' in remote
+    assert '"apiKey": secret' not in remote
 
 
 def test_model_auth_guard_keeps_openclaw_home_readable_by_openclaw_user() -> None:

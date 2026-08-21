@@ -32,10 +32,17 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-secret_path = Path("/etc/openclaw/secrets/news_codex_api_key")
-secret = secret_path.read_text(encoding="utf-8").strip() if secret_path.is_file() else ""
-if not secret:
-    raise SystemExit("[model-auth-profile-guard] missing /etc/openclaw/secrets/news_codex_api_key")
+credential_path = Path("/run/credentials/openclaw.service/openclaw-secrets.json")
+if not credential_path.is_file():
+    raise SystemExit("[model-auth-profile-guard] missing systemd credential payload")
+file_provider = {
+    "source": "file",
+    "path": str(credential_path),
+    "mode": "json",
+    "timeoutMs": 5000,
+}
+openai_ref = {"source": "file", "provider": "systemd-credential-file", "id": "/providers/openaiCodex/apiKey"}
+ollama_ref = {"source": "file", "provider": "systemd-credential-file", "id": "/providers/ollama/apiKey"}
 
 config_paths = [
     Path("/var/lib/openclaw/.openclaw/openclaw.json"),
@@ -80,6 +87,8 @@ for path in config_paths:
         continue
     data = json.loads(path.read_text(encoding="utf-8"))
     providers = data.setdefault("models", {}).setdefault("providers", {})
+    secret_providers = data.setdefault("secrets", {}).setdefault("providers", {})
+    secret_providers["systemd-credential-file"] = file_provider
     openai = providers.get("openai")
     if isinstance(openai, dict) and "ccnode.briconbric.com:49530" in str(openai.get("baseUrl", "")):
         openai.pop("baseUrl", None)
@@ -87,7 +96,7 @@ for path in config_paths:
         openai.pop("models", None)
     providers["openai-codex"] = {
         "api": "openai-completions",
-        "apiKey": secret,
+        "apiKey": openai_ref,
         "baseUrl": "http://ccnode.briconbric.com:49530/v1",
         "models": [
             {
@@ -116,6 +125,9 @@ for path in config_paths:
             },
         ],
     }
+    ollama = providers.get("ollama")
+    if isinstance(ollama, dict):
+        ollama.pop("apiKey", None)
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
     defaults["primary"] = "openai-codex/gpt-5.6-sol"
     configured_models = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("models", {})
@@ -142,14 +154,14 @@ for path in profile_paths:
     profiles["openai:ccnode-codex"] = {
         "provider": "openai",
         "type": "api_key",
-        "key": secret,
+        "keyRef": openai_ref,
         "displayName": "ccnode gpt-5.6-sol",
         "copyToAgents": True,
     }
     profiles["ollama:default"] = {
         "provider": "ollama",
         "type": "api_key",
-        "key": "ccnode-ollama-local",
+        "keyRef": ollama_ref,
         "displayName": "ccnode ollama",
         "copyToAgents": True,
     }

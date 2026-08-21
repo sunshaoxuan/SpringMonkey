@@ -60,3 +60,12 @@ def test_default_fallback_endpoint_is_ccnode_qwen_14b(monkeypatch) -> None:
     assert endpoint.provider == "ollama"
     assert endpoint.base_url == "http://ccnode.briconbric.com:22545"
     assert endpoint.model == "qwen3:14b"
+
+
+def test_primary_secret_uses_systemd_credential(monkeypatch, tmp_path) -> None:
+    payload = tmp_path / "openclaw-secrets.json"
+    payload.write_text('{"providers":{"openaiCodex":{"apiKey":"test-key"}}}', encoding="utf-8")
+    monkeypatch.setenv("CREDENTIALS_DIRECTORY", str(tmp_path))
+    for key in ("NEWS_CODEX_API_KEY", "NEWS_CODEX_API_KEY_FILE"):
+        monkeypatch.delenv(key, raising=False)
+    assert client.read_secret_env("NEWS_CODEX_API_KEY") == "test-key"

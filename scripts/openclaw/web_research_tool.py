@@ -78,6 +78,22 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         fh.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def read_systemd_credential(name: str) -> str:
+    credential_dir = Path(os.environ.get("CREDENTIALS_DIRECTORY", "/run/credentials/openclaw.service"))
+    payload_path = credential_dir / "openclaw-secrets.json"
+    pointers = {"BRAVE_API_KEY": ("tools", "brave", "apiKey"), "OPENCLAW_BRAVE_API_KEY": ("tools", "brave", "apiKey")}
+    pointer = pointers.get(name)
+    if pointer is None:
+        return ""
+    try:
+        value: Any = json.loads(payload_path.read_text(encoding="utf-8"))
+        for segment in pointer:
+            value = value[segment]
+        return value.strip() if isinstance(value, str) else ""
+    except (OSError, KeyError, TypeError, json.JSONDecodeError):
+        return ""
+
+
 def read_secret_env(*names: str) -> str:
     load_runtime_env_files()
     for name in names:
@@ -92,6 +108,10 @@ def read_secret_env(*names: str) -> str:
                 secret = ""
             if secret:
                 return secret
+    for name in names:
+        credential_value = read_systemd_credential(name)
+        if credential_value:
+            return credential_value
     return ""
 
 
