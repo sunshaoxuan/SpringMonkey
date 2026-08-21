@@ -13,3 +13,6 @@ OpenClaw resolves supported SecretRefs from `/run/credentials/openclaw.service/o
 ## Boundary
 
 This host has no TPM and its systemd host key is stored on non-encrypted media. The ciphertext is safe to commit for repository-exposure resistance. Full-disk encryption or a TPM is required for stronger host-theft resistance. The root-mode OpenClaw process can access its own runtime credential, so SecretRefs are storage protection rather than root-process isolation.
+## OAuth cleanup
+
+On 2026-08-21, the unused `openai:default` OAuth profile and its `auth.order.openai` reference were removed. The active `openai-codex/gpt-5.5` route continues to use the encrypted ccnode API credential. The removal is implemented by the idempotent `scripts/openclaw/remove_legacy_openai_oauth.py` migration.
