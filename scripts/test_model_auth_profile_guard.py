@@ -39,8 +39,20 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
     assert '"keyRef": openai_ref' in remote
     assert '"keyRef": ollama_ref' in remote
+    assert 'profiles["openai-codex:default"]' in remote
     assert 'missing systemd credential payload' in remote
     assert '"apiKey": secret' not in remote
+
+
+def test_model_auth_guard_syncs_current_sqlite_auth_store() -> None:
+    module = load_installer_module()
+    remote = module.REMOTE
+
+    assert "openclaw --no-color models auth --agent main" in remote
+    assert "paste-token openai openai:ccnode-codex" in remote
+    assert "paste-token openai-codex openai-codex:default" in remote
+    assert "paste-api-key ollama ollama:default" in remote
+    assert "openclaw-agent.sqlite" not in remote
 
 
 def test_model_auth_guard_keeps_openclaw_home_readable_by_openclaw_user() -> None:
@@ -54,4 +66,5 @@ def test_model_auth_guard_keeps_openclaw_home_readable_by_openclaw_user() -> Non
 if __name__ == "__main__":
     test_model_auth_guard_does_not_periodically_rewrite_runtime_config()
     test_model_auth_guard_does_not_hijack_openai_image_provider()
+    test_model_auth_guard_syncs_current_sqlite_auth_store()
     print("OK")

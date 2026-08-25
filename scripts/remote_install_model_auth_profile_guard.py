@@ -158,6 +158,13 @@ for path in profile_paths:
         "displayName": "ccnode gpt-5.6-sol",
         "copyToAgents": True,
     }
+    profiles["openai-codex:default"] = {
+        "provider": "openai-codex",
+        "type": "api_key",
+        "keyRef": openai_ref,
+        "displayName": "ccnode gpt-5.6-sol",
+        "copyToAgents": True,
+    }
     profiles["ollama:default"] = {
         "provider": "ollama",
         "type": "api_key",
@@ -176,6 +183,43 @@ for path in profile_paths:
         print(f"[model-auth-profile-guard] updated profile {path}")
 print("[model-auth-profile-guard] ok")
 PY
+
+openai_tmp="$(mktemp /tmp/openclaw-codex-key.XXXXXX)"
+ollama_tmp="$(mktemp /tmp/openclaw-ollama-key.XXXXXX)"
+chmod 600 "$openai_tmp" "$ollama_tmp"
+trap 'rm -f "$openai_tmp" "$ollama_tmp"' EXIT
+python3 - "$openai_tmp" "$ollama_tmp" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+credential_path = Path("/run/credentials/openclaw.service/openclaw-secrets.json")
+data = json.loads(credential_path.read_text(encoding="utf-8"))
+Path(sys.argv[1]).write_text(str(data["providers"]["openaiCodex"]["apiKey"]), encoding="utf-8")
+Path(sys.argv[2]).write_text(str(data["providers"]["ollama"]["apiKey"]), encoding="utf-8")
+PY
+
+sync_auth_profile() {
+  local mode="$1"
+  local provider="$2"
+  local profile_id="$3"
+  local source_file="$4"
+  local command=(openclaw --no-color models auth --agent main "$mode" --provider "$provider" --profile-id "$profile_id")
+  OPENCLAW_STATE_DIR=/var/lib/openclaw/.openclaw \
+  OPENCLAW_CONFIG_PATH=/var/lib/openclaw/.openclaw/openclaw.json \
+  timeout 90 "${command[@]}" <"$source_file" >/tmp/openclaw-auth-sync-"$provider".out 2>/tmp/openclaw-auth-sync-"$provider".err \
+    || {
+      rc=$?
+      echo "[model-auth-profile-guard] sqlite auth sync failed provider=$provider rc=$rc" >&2
+      sed -E 's/[A-Za-z0-9_=-]{20,}/<redacted>/g' /tmp/openclaw-auth-sync-"$provider".err >&2 || true
+    }
+}
+
+if command -v openclaw >/dev/null 2>&1; then
+  sync_auth_profile paste-token openai openai:ccnode-codex "$openai_tmp"
+  sync_auth_profile paste-token openai-codex openai-codex:default "$openai_tmp"
+  sync_auth_profile paste-api-key ollama ollama:default "$ollama_tmp"
+fi
 EOF
 chmod 755 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
 
