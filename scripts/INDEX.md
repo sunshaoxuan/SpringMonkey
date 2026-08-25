@@ -203,7 +203,7 @@
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-supervisor`
 
 - `remote_fix_xhs_cron_model.py`
-  - 用途：把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.6-sol`，保留 schedule/message/delivery。
+  - 用途：通过官方 `openclaw cron list/edit` 把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.6-sol`，保留 schedule/message/delivery。
   - 典型用法：`python SpringMonkey/scripts/remote_fix_xhs_cron_model.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py xhs-cron-model`
 

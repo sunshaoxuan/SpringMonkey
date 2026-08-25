@@ -25,43 +25,65 @@ set -euo pipefail
 cd "$SPRINGMONKEY_REPO_PATH"
 
 TMP_MESSAGE="$(mktemp /tmp/xhs-cron-message.XXXXXX)"
-python3 - <<'PY' "$TMP_MESSAGE" "$JOB_NAME"
+TMP_JOB_ID="$(mktemp /tmp/xhs-cron-id.XXXXXX)"
+python3 - <<'PY' "$TMP_MESSAGE" "$TMP_JOB_ID" "$JOB_NAME"
 import json
+import subprocess
 import sys
-from pathlib import Path
 
-message_path = Path(sys.argv[1])
-job_name = sys.argv[2]
-jobs = json.loads(Path("/var/lib/openclaw/.openclaw/cron/jobs.json").read_text(encoding="utf-8"))
-for job in jobs.get("jobs", []):
+message_path = sys.argv[1]
+job_id_path = sys.argv[2]
+job_name = sys.argv[3]
+
+proc = subprocess.run(
+    ["openclaw", "--no-color", "cron", "list", "--json"],
+    check=True,
+    text=True,
+    encoding="utf-8",
+    errors="replace",
+    stdout=subprocess.PIPE,
+)
+data = json.loads(proc.stdout)
+jobs = data if isinstance(data, list) else data.get("jobs") or data.get("items") or data.get("data") or []
+for job in jobs:
+    if not isinstance(job, dict):
+        continue
     if job.get("name") == job_name:
-        message_path.write_text(job.get("payload", {}).get("message", ""), encoding="utf-8")
+        from pathlib import Path
+
+        Path(message_path).write_text(job.get("payload", {}).get("message", ""), encoding="utf-8")
+        Path(job_id_path).write_text(str(job.get("id") or ""), encoding="utf-8")
         print(json.dumps(job, ensure_ascii=False, indent=2))
         break
 else:
     raise SystemExit(f"job not found: {job_name}")
 PY
 
-python3 scripts/cron/upsert_generic_cron_job.py \
+JOB_ID_VALUE="$(cat "$TMP_JOB_ID")"
+MESSAGE_VALUE="$(cat "$TMP_MESSAGE")"
+
+openclaw --no-color cron edit "$JOB_ID_VALUE" \
   --name "$JOB_NAME" \
   --description "每三天产出一篇小红书推荐文，写入 Google Docs 等待确认，不自动发布" \
-  --expr "0 10 */3 * *" \
+  --cron "0 10 */3 * *" \
   --tz "Asia/Tokyo" \
-  --message-file "$TMP_MESSAGE" \
-  --delivery-channel discord \
-  --delivery-to "$TARGET_DELIVERY_TO" \
-  --delivery-mode announce \
-  --delivery-account-id default \
+  --message "$MESSAGE_VALUE" \
+  --channel discord \
+  --to "$TARGET_DELIVERY_TO" \
+  --announce \
+  --account default \
   --model "$TARGET_MODEL" \
+  --fallbacks "ollama/qwen3:14b" \
   --thinking low \
   --timeout-seconds 3600 \
-  --agent-id main \
-  --session-target isolated \
-  --wake-mode now \
-  --no-task-policy-wrap \
-  --orchestrator-mode off
+  --agent main \
+  --session isolated \
+  --wake now \
+  --light-context \
+  --enable \
+  --timeout 60000
 
-rm -f "$TMP_MESSAGE"
+rm -f "$TMP_MESSAGE" "$TMP_JOB_ID"
 
 echo "=== verify cron status ==="
 python3 scripts/openclaw/cron_status_tool.py --topic xhs
@@ -69,12 +91,23 @@ python3 scripts/openclaw/cron_status_tool.py --topic xhs
 echo "=== verify payload model ==="
 python3 - <<'PY' "$JOB_NAME" "$TARGET_MODEL" "$TARGET_DELIVERY_TO"
 import json
+import subprocess
 import sys
-from pathlib import Path
 
 job_name, target_model, target_delivery_to = sys.argv[1], sys.argv[2], sys.argv[3]
-jobs = json.loads(Path("/var/lib/openclaw/.openclaw/cron/jobs.json").read_text(encoding="utf-8"))
-for job in jobs.get("jobs", []):
+proc = subprocess.run(
+    ["openclaw", "--no-color", "cron", "list", "--json"],
+    check=True,
+    text=True,
+    encoding="utf-8",
+    errors="replace",
+    stdout=subprocess.PIPE,
+)
+data = json.loads(proc.stdout)
+jobs = data if isinstance(data, list) else data.get("jobs") or data.get("items") or data.get("data") or []
+for job in jobs:
+    if not isinstance(job, dict):
+        continue
     if job.get("name") == job_name:
         model = job.get("payload", {}).get("model")
         delivery_to = job.get("delivery", {}).get("to")
