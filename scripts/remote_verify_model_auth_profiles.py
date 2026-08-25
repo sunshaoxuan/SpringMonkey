@@ -34,12 +34,6 @@ def key_info(label: str, value: str) -> None:
     print(f"{label}: present={bool(value)} len={len(value)} sha12={digest(value)}")
 
 
-secret_path = Path("/etc/openclaw/secrets/news_codex_api_key")
-secret = secret_path.read_text(encoding="utf-8").strip() if secret_path.is_file() else ""
-key_info("secret.news_codex_api_key", secret)
-if not secret:
-    errors.append("missing shared codex key file")
-
 env_path = Path("/etc/openclaw/openclaw.env")
 env_values = {}
 if env_path.is_file():
@@ -73,6 +67,26 @@ profile_paths = [
     Path("/root/.openclaw/agents/main/agent/auth-profiles.json"),
 ]
 
+
+def read_config_codex_token() -> str:
+    for path in config_paths:
+        if not path.is_file():
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        providers = ((data.get("models") or {}).get("providers") or {})
+        for provider_id in ("openai-codex", "openai"):
+            value = str((providers.get(provider_id) or {}).get("apiKey") or "").strip()
+            if value:
+                return value
+    return ""
+
+
+secret_path = Path("/etc/openclaw/secrets/news_codex_api_key")
+secret = secret_path.read_text(encoding="utf-8").strip() if secret_path.is_file() else read_config_codex_token()
+key_info("secret_or_config.codex_token", secret)
+if not secret:
+    errors.append("missing shared codex token in secret file and OpenClaw config")
+
 for path in config_paths:
     print(f"--- config {path}")
     if not path.is_file():
@@ -80,13 +94,28 @@ for path in config_paths:
         continue
     data = json.loads(path.read_text(encoding="utf-8"))
     providers = ((data.get("models") or {}).get("providers") or {})
+    defaults = ((data.get("agents") or {}).get("defaults") or {}).get("model") or {}
+    print(f"default.primary={defaults.get('primary')}")
+    if defaults.get("primary") != "openai-codex/gpt-5.6-sol":
+        errors.append(f"unexpected primary model in {path}: {defaults.get('primary')}")
+    codex = providers.get("openai-codex") or {}
+    codex_base = str(codex.get("baseUrl") or "")
+    codex_key = str(codex.get("apiKey") or "")
+    print(f"openai-codex.baseUrl={codex_base}")
+    key_info(f"{path}.openai-codex.apiKey", codex_key)
+    if "ccnode.briconbric.com:49530/v1" not in codex_base:
+        errors.append(f"unexpected openai-codex baseUrl in {path}: {codex_base}")
+    if secret and codex_key != secret:
+        errors.append(f"openai-codex token mismatch in {path}")
+    codex_models = [item.get("id") for item in codex.get("models", []) if isinstance(item, dict)]
+    print(f"openai-codex.models={codex_models}")
+    if "gpt-5.6-sol" not in codex_models:
+        errors.append(f"missing gpt-5.6-sol model in {path}")
     openai = providers.get("openai") or {}
     base = str(openai.get("baseUrl") or "")
-    key = str(openai.get("apiKey") or "")
     print(f"openai.baseUrl={base}")
-    key_info(f"{path}.openai.apiKey", key)
-    if base and "ccnode.briconbric.com:49530" in base:
-        errors.append(f"openai provider must not point at ccnode because image generation uses ChatGPT/OAuth path in {path}")
+    if base:
+        errors.append(f"openai provider must remain empty; use openai-codex provider for ccnode in {path}")
     ollama = providers.get("ollama") or {}
     ollama_base = str(ollama.get("baseUrl") or "")
     print(f"ollama.baseUrl={ollama_base}")
@@ -109,10 +138,39 @@ for path in profile_paths:
     key_info(f"{path}.openai:ccnode-codex.key", key)
     if secret and key != secret:
         errors.append(f"openai auth profile key mismatch in {path}")
+    codex_profile = profiles.get("openai-codex:default") or {}
+    codex_key = str(codex_profile.get("key") or "")
+    key_info(f"{path}.openai-codex:default.key", codex_key)
+    if secret and codex_key != secret:
+        errors.append(f"openai-codex auth profile key mismatch in {path}")
     if "openai-codex:default" not in profiles:
         errors.append(f"openai-codex oauth profile missing in {path}")
     if last_good.get("openai") == "openai:ccnode-codex":
         errors.append(f"openai lastGood should not force ccnode api key profile in {path}")
+
+print("--- sqlite auth store")
+import subprocess
+
+auth_cmd = [
+    "openclaw",
+    "--no-color",
+    "models",
+    "auth",
+    "--agent",
+    "main",
+    "list",
+]
+env = {
+    **__import__("os").environ,
+    "OPENCLAW_STATE_DIR": "/var/lib/openclaw/.openclaw",
+    "OPENCLAW_CONFIG_PATH": "/var/lib/openclaw/.openclaw/openclaw.json",
+}
+result = subprocess.run(auth_cmd, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
+auth_output = result.stdout
+print(auth_output)
+for expected in ("openai:ccnode-codex", "openai-codex:default", "ollama:default"):
+    if expected not in auth_output:
+        errors.append(f"missing sqlite auth profile {expected}")
 
 if errors:
     print("model_auth_profiles_failed")

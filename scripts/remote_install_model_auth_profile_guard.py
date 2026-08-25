@@ -32,11 +32,6 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-secret_path = Path("/etc/openclaw/secrets/news_codex_api_key")
-secret = secret_path.read_text(encoding="utf-8").strip() if secret_path.is_file() else ""
-if not secret:
-    raise SystemExit("[model-auth-profile-guard] missing /etc/openclaw/secrets/news_codex_api_key")
-
 config_paths = [
     Path("/var/lib/openclaw/.openclaw/openclaw.json"),
     Path("/root/.openclaw/openclaw.json"),
@@ -45,6 +40,41 @@ profile_paths = [
     Path("/var/lib/openclaw/.openclaw/agents/main/agent/auth-profiles.json"),
     Path("/root/.openclaw/agents/main/agent/auth-profiles.json"),
 ]
+
+secret_path = Path("/etc/openclaw/secrets/news_codex_api_key")
+
+
+def read_existing_codex_token() -> str:
+    if secret_path.is_file():
+        return secret_path.read_text(encoding="utf-8").strip()
+    for path in config_paths:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        providers = data.get("models", {}).get("providers", {})
+        for provider_id in ("openai-codex", "openai"):
+            token = str((providers.get(provider_id) or {}).get("apiKey") or "").strip()
+            if token:
+                return token
+    return ""
+
+
+secret = read_existing_codex_token()
+if not secret:
+    raise SystemExit("[model-auth-profile-guard] missing codex token in secret file and OpenClaw config")
+
+secret_path.parent.mkdir(parents=True, exist_ok=True)
+if not secret_path.exists() or secret_path.read_text(encoding="utf-8").strip() != secret:
+    secret_path.write_text(secret + "\n", encoding="utf-8")
+    secret_path.chmod(0o640)
+    try:
+        user = pwd.getpwnam("openclaw")
+        os.chown(secret_path, 0, user.pw_gid)
+    except Exception:
+        pass
 
 
 def backup(path: Path) -> None:
@@ -141,7 +171,14 @@ for path in profile_paths:
     profiles = data.setdefault("profiles", {})
     profiles["openai:ccnode-codex"] = {
         "provider": "openai",
-        "type": "api_key",
+        "type": "token",
+        "key": secret,
+        "displayName": "ccnode gpt-5.6-sol",
+        "copyToAgents": True,
+    }
+    profiles["openai-codex:default"] = {
+        "provider": "openai-codex",
+        "type": "token",
         "key": secret,
         "displayName": "ccnode gpt-5.6-sol",
         "copyToAgents": True,
@@ -164,6 +201,55 @@ for path in profile_paths:
         print(f"[model-auth-profile-guard] updated profile {path}")
 print("[model-auth-profile-guard] ok")
 PY
+
+secret_tmp="$(mktemp /tmp/openclaw-model-auth-token.XXXXXX)"
+chmod 600 "$secret_tmp"
+trap 'rm -f "$secret_tmp"' EXIT
+python3 - "$secret_tmp" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+out = Path(sys.argv[1])
+secret_path = Path("/etc/openclaw/secrets/news_codex_api_key")
+secret = secret_path.read_text(encoding="utf-8").strip() if secret_path.is_file() else ""
+if not secret:
+    for path in [Path("/var/lib/openclaw/.openclaw/openclaw.json"), Path("/root/.openclaw/openclaw.json")]:
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        providers = data.get("models", {}).get("providers", {})
+        secret = str((providers.get("openai-codex") or {}).get("apiKey") or (providers.get("openai") or {}).get("apiKey") or "").strip()
+        if secret:
+            break
+if not secret:
+    raise SystemExit("missing codex token for sqlite auth sync")
+out.write_text(secret, encoding="utf-8")
+PY
+
+sync_auth_profile() {
+  local mode="$1"
+  local provider="$2"
+  local profile_id="$3"
+  local source_file="$4"
+  local command=(openclaw --no-color models auth --agent main "$mode" --provider "$provider" --profile-id "$profile_id")
+  OPENCLAW_STATE_DIR=/var/lib/openclaw/.openclaw \
+  OPENCLAW_CONFIG_PATH=/var/lib/openclaw/.openclaw/openclaw.json \
+  timeout 90 "${command[@]}" <"$source_file" >/tmp/openclaw-auth-sync-"$provider".out 2>/tmp/openclaw-auth-sync-"$provider".err \
+    || {
+      rc=$?
+      echo "[model-auth-profile-guard] sqlite auth sync failed provider=$provider rc=$rc" >&2
+      sed -E 's/[A-Za-z0-9_=-]{20,}/<redacted>/g' /tmp/openclaw-auth-sync-"$provider".err >&2 || true
+    }
+}
+
+if command -v openclaw >/dev/null 2>&1; then
+  sync_auth_profile paste-token openai openai:ccnode-codex "$secret_tmp"
+  sync_auth_profile paste-token openai-codex openai-codex:default "$secret_tmp"
+  printf '%s\n' 'ccnode-ollama-local' >/tmp/openclaw-ollama-auth-placeholder
+  sync_auth_profile paste-api-key ollama ollama:default /tmp/openclaw-ollama-auth-placeholder
+  rm -f /tmp/openclaw-ollama-auth-placeholder
+fi
 EOF
 chmod 755 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
 

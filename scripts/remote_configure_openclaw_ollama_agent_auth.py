@@ -19,7 +19,7 @@ DEFAULT_REPO = "/var/lib/openclaw/repos/SpringMonkey"
 DEFAULT_BASE_URL = "http://ccnode.briconbric.com:22545"
 DEFAULT_MODEL = "qwen3:14b"
 DEFAULT_CODEX_BASE_URL = "http://ccnode.briconbric.com:49530/v1"
-DEFAULT_PRIMARY = "openai/gpt-5.5"
+DEFAULT_PRIMARY = "openai-codex/gpt-5.6-sol"
 PLACEHOLDER_KEY = "ccnode-ollama-local"
 
 
@@ -53,16 +53,34 @@ codex_base_url = {codex_base_url!r}
 model = {model!r}
 primary = {primary!r}
 key = {PLACEHOLDER_KEY!r}
-codex_key_file = Path('/etc/openclaw/secrets/news_codex_api_key')
-codex_key = codex_key_file.read_text(encoding='utf-8').strip() if codex_key_file.exists() else ''
-config_paths = [
-    Path('/var/lib/openclaw/.openclaw/openclaw.json'),
-    Path('/root/.openclaw/openclaw.json'),
-]
+    config_paths = [
+        Path('/var/lib/openclaw/.openclaw/openclaw.json'),
+        Path('/root/.openclaw/openclaw.json'),
+    ]
 agent_dirs = [
     Path('/var/lib/openclaw/.openclaw/agents/main/agent'),
     Path('/root/.openclaw/agents/main/agent'),
 ]
+codex_key_file = Path('/etc/openclaw/secrets/news_codex_api_key')
+
+def read_codex_key() -> str:
+    if codex_key_file.exists():
+        return codex_key_file.read_text(encoding='utf-8').strip()
+    for config_path in config_paths:
+        if not config_path.exists():
+            continue
+        try:
+            data = json.loads(config_path.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        providers = data.get('models', {{}}).get('providers', {{}})
+        for provider_id in ('openai-codex', 'openai'):
+            key_value = str((providers.get(provider_id) or {{}}).get('apiKey') or '').strip()
+            if key_value:
+                return key_value
+    return ''
+
+codex_key = read_codex_key()
 
 def backup(path: Path) -> None:
     if path.exists():
@@ -92,9 +110,16 @@ def ensure_auth(agent_dir: Path) -> None:
     if codex_key:
         profiles['openai:ccnode-codex'] = {{
             'provider': 'openai',
-            'type': 'api_key',
+            'type': 'token',
             'key': codex_key,
-            'displayName': 'ccnode gpt-5.5',
+            'displayName': 'ccnode gpt-5.6-sol',
+            'copyToAgents': True,
+        }}
+        profiles['openai-codex:default'] = {{
+            'provider': 'openai-codex',
+            'type': 'token',
+            'key': codex_key,
+            'displayName': 'ccnode gpt-5.6-sol',
             'copyToAgents': True,
         }}
     order = data.setdefault('order', {{}})
@@ -128,22 +153,26 @@ def ensure_config(config_path: Path) -> None:
     models = data.setdefault('models', {{}})
     providers = models.setdefault('providers', {{}})
     openai = providers.setdefault('openai', {{}})
-    openai['baseUrl'] = codex_base_url
-    if codex_key:
-        openai['apiKey'] = codex_key
-    openai_known = openai.setdefault('models', [])
-    openai_model = None
-    for item in openai_known:
-        if isinstance(item, dict) and item.get('id') == 'gpt-5.5':
-            openai_model = item
+    openai.pop('baseUrl', None)
+    openai.pop('apiKey', None)
+    openai.pop('models', None)
+    codex = providers.setdefault('openai-codex', {{}})
+    codex['baseUrl'] = codex_base_url
+    codex['apiKey'] = codex_key
+    codex['api'] = 'openai-completions'
+    codex_known = codex.setdefault('models', [])
+    codex_model = None
+    for item in codex_known:
+        if isinstance(item, dict) and item.get('id') == 'gpt-5.6-sol':
+            codex_model = item
             break
-    if openai_model is None:
-        openai_model = {{'id': 'gpt-5.5'}}
-        openai_known.insert(0, openai_model)
-    openai_model.update({{
-        'name': 'GPT-5.5 via ccnode',
+    if codex_model is None:
+        codex_model = {{'id': 'gpt-5.6-sol'}}
+        codex_known.insert(0, codex_model)
+    codex_model.update({{
+        'name': 'GPT-5.6 Sol via ccnode',
         'reasoning': True,
-        'input': ['text'],
+        'input': ['text', 'image'],
         'contextWindow': 196000,
         'maxTokens': 32768,
         'api': 'openai-completions',
@@ -186,8 +215,11 @@ PY
 systemctl restart openclaw.service
 sleep 2
 systemctl is-active openclaw.service
+if [ -x /usr/local/lib/openclaw/ensure_model_auth_profiles.sh ]; then
+  OPENCLAW_AUTH_PROFILE_GUARD_DELAY=0 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
+fi
 OPENCLAW_STATE_DIR=/var/lib/openclaw/.openclaw OPENCLAW_CONFIG_PATH=/var/lib/openclaw/.openclaw/openclaw.json openclaw --no-color agent --agent main --model "ollama/{model}" --message "只回答 ok" --timeout 60 --thinking off --json >/tmp/openclaw-ollama-auth-smoke.json
-OPENCLAW_STATE_DIR=/var/lib/openclaw/.openclaw OPENCLAW_CONFIG_PATH=/var/lib/openclaw/.openclaw/openclaw.json openclaw --no-color agent --agent main --model "openai/gpt-5.5" --message "只回答 ok" --timeout 90 --thinking low --json >/tmp/openclaw-codex-http-smoke.json
+OPENCLAW_STATE_DIR=/var/lib/openclaw/.openclaw OPENCLAW_CONFIG_PATH=/var/lib/openclaw/.openclaw/openclaw.json openclaw --no-color agent --agent main --model "{primary}" --message "只回答 ok" --timeout 90 --thinking low --json >/tmp/openclaw-codex-http-smoke.json
 python - <<'PY'
 from pathlib import Path
 text = Path('/tmp/openclaw-ollama-auth-smoke.json').read_text(encoding='utf-8', errors='replace')
