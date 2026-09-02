@@ -39,8 +39,9 @@ As of 2026-04-09, the intended baseline is:
 - `openclaw.service` runs through `/usr/local/bin/openclaw-gateway-supervise`
 - `HOME=/var/lib/openclaw`
 - shared env file: `/etc/openclaw/openclaw.env`
-- chat primary: `openai-codex/gpt-5.5`
-- chat fallback only: `ollama/qwen3:14b`
+- chat primary: `openai-codex/gpt-5.3-codex-spark`
+- chat endpoint: `http://ccnode.briconbric.com:49530/v1`, the frpc mapping to sub2api at `192.168.20.54:62342`
+- chat fallback: empty unless a smoke-gated fallback installer enables one
 - Discord and LINE share one gateway and one provider-secret baseline
 - browser backend is a persistent Chrome CDP session on `127.0.0.1:18800`
 - TimesCar automation should reuse the persistent browser backend instead of launching a fresh Chrome per task
@@ -125,8 +126,9 @@ Primary tools:
 
 Hard rule:
 
-- global primary remains `openai-codex/gpt-5.5`
-- `ollama/qwen3:14b` is fallback only unless the user explicitly changes policy
+- global primary remains `openai-codex/gpt-5.3-codex-spark`
+- production traffic reaches sub2api through `http://ccnode.briconbric.com:49530/v1`, which maps to `192.168.20.54:62342`
+- `22545` Ollama/Qwen chat fallback is retired
 
 Check both repo docs and host runtime before touching task payloads.
 

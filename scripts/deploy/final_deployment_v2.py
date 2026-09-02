@@ -7,7 +7,7 @@ import sys
 def main() -> int:
     print(
         "DEPRECATED: legacy Ollama-first deployment script disabled. "
-        "Codex is primary; Qwen/Ollama is fallback only.",
+        "Current production uses openai-codex/gpt-5.3-codex-spark through sub2api.",
         file=sys.stderr,
     )
     return 2

@@ -8,7 +8,7 @@ Move active OpenClaw primary workloads from the retired GPT-5.5 baseline to the 
 
 ## Official model contract
 
-Current production OpenClaw configuration uses the explicit `openai-codex/gpt-5.3-codex-spark` model id through `http://ccnode.briconbric.com:49530/v1`. The retired `22545` Ollama/Qwen path is not part of the active fallback chain. Gemini Pro remains a smoke-gated fallback candidate through the same `49530` endpoint and is enabled only after a live chat smoke returns `ok`.
+Current production OpenClaw configuration uses the explicit `openai-codex/gpt-5.3-codex-spark` model id through `http://ccnode.briconbric.com:49530/v1`. That URL is the frpc public mapping for the active sub2api service at `192.168.20.54:62342`. The retired `22545` Ollama/Qwen path is not part of the active fallback chain. Gemini Pro remains a smoke-gated fallback candidate through the same `49530` endpoint and is enabled only after a live chat smoke returns `ok`.
 
 Runtime evidence is recorded in `docs/runtime-notes/openclaw-22545-fallback-retirement-2026-09.md`.
 

@@ -4,16 +4,18 @@ Date: 2026-04-30 (Asia/Tokyo)
 
 ## Goal
 
-OpenClaw defaults are Codex-first. `ollama/qwen3:14b` is a fallback model only
-and must not be used as the default primary model for new chat, task-control,
+OpenClaw defaults are Codex-first. This historical Qwen fallback policy has
+been superseded by the 2026-09 runtime baseline. `ollama/qwen3:14b` must not be
+used as the default primary model or active fallback for new chat, task-control,
 news, cron, routing, delivery, or self-repair behavior.
 
 ## Runtime Policy
 
-- Global primary model: `openai-codex/gpt-5.5`
-- Global fallback model: `ollama/qwen3:14b`
-- News orchestrator, worker, and finalize model default to `openai-codex/gpt-5.5`.
-- Qwen/Ollama may be attempted only after the Codex path is unavailable or explicitly rejected by a bounded gate.
+- Global primary model: `openai-codex/gpt-5.3-codex-spark`
+- Global model endpoint: `http://ccnode.briconbric.com:49530/v1`, the frpc mapping to sub2api at `192.168.20.54:62342`
+- Global fallback model: empty unless a smoke-gated fallback installer enables one
+- News orchestrator, worker, and finalize model default to `openai-codex/gpt-5.3-codex-spark`.
+- Qwen/Ollama should not be attempted in the active chat fallback path.
 
 ## Legacy Qwen-First Paths
 

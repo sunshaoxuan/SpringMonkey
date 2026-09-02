@@ -54,7 +54,7 @@ Expected behavior:
 - proactive compaction route activates before overflow
 - threshold is based on current prompt budget
 
-### Embedded Run / Qwen Fallback
+### Embedded Run / Model Backend
 
 Artifact family:
 
@@ -62,7 +62,8 @@ Artifact family:
 
 Expected behavior:
 
-- `openai-codex/gpt-5.5` is primary; `qwen3:14b` is fallback only
+- `openai-codex/gpt-5.3-codex-spark` is primary through the ccnode frpc mapping to sub2api at `192.168.20.54:62342`
+- `22545` Ollama/Qwen chat fallback is retired
 - retry markers exist in the active runner
 
 ### Agent Society Runtime

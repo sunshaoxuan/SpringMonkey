@@ -29,7 +29,7 @@
 
 - `remote_install_public_model_resources.py`
   - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL`；任务脚本优先读取 systemd credential，不应各自私藏模型密钥。
-  - 当前运行基线只使用 `http://ccnode.briconbric.com:49530/v1`。`22545` Ollama/Qwen 兜底已因宿主机 HTTP 超时退役，脚本会清空 `OPENCLAW_MODEL_FALLBACK*`。
+  - 当前运行基线只使用 `http://ccnode.briconbric.com:49530/v1`。这是 `192.168.20.54:62342` sub2api 的 frpc 外网映射；`22545` Ollama/Qwen 兜底已因宿主机 HTTP 超时退役，脚本会清空 `OPENCLAW_MODEL_FALLBACK*`。
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
   - 注意：Git 只保存 endpoint 和变量名，不保存密钥；共享 key 由宿主机 systemd credential 提供，运行时路径为 `/run/credentials/openclaw.service/openclaw-secrets.json`。
 
@@ -308,7 +308,7 @@
   - 当前运行记录：`docs/runtime-notes/openclaw-22545-fallback-retirement-2026-09.md`。
 
 - `remote_install_gemini_model_fallback.py`
-  - 用途：将 `gemini-pro-agent` 作为 49530 OpenAI-compatible 明确兜底。脚本先执行真实 chat smoke，只有返回 `ok` 才写入 `/etc/openclaw/openclaw.env`、OpenClaw 默认 fallbacks 和意图 fallback。
+  - 用途：将 sub2api 暴露的 `gemini-pro-agent` 作为 49530 OpenAI-compatible 明确兜底。脚本先执行真实 chat smoke，只有返回 `ok` 才写入 `/etc/openclaw/openclaw.env`、OpenClaw 默认 fallbacks 和意图 fallback。
   - 当前默认：`OPENCLAW_GEMINI_FALLBACK_BASE_URL=http://ccnode.briconbric.com:49530/v1`，`OPENCLAW_GEMINI_FALLBACK_MODEL=gemini-pro-agent`。
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略

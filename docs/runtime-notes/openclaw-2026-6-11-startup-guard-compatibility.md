@@ -23,7 +23,9 @@ The guard still fails for missing repository scripts, kernel bootstrap failures,
 
 OpenClaw 2026.6.11 stores active authentication state in the agent SQLite database. The previous JSON-only auth guard can therefore report success while the active database contains no profiles. The ccnode credential is a proxy credential and does not use the official OpenAI `sk` format, so the interactive OpenAI key importer rejects it.
 
-Register `openai-codex` as a custom `openai-completions` provider backed by `http://ccnode.briconbric.com:49530/v1`. Keep `openai-codex/gpt-5.5` as the primary model and retain `ollama/qwen3:14b` as the first fallback. This keeps existing cron payloads and runtime policy identifiers stable while separating the ccnode proxy from the official `openai` provider.
+Register `openai-codex` as a custom `openai-completions` provider backed by `http://ccnode.briconbric.com:49530/v1`. At the time of this incident, the migration kept `openai-codex/gpt-5.5` as the primary model and retained `ollama/qwen3:14b` as the first fallback. This kept existing cron payloads and runtime policy identifiers stable while separating the ccnode proxy from the official `openai` provider.
+
+Current state: this historical model baseline has been superseded by the 2026-09 runtime baseline. Production model calls now use `openai-codex/gpt-5.3-codex-spark` through the ccnode frpc mapping to sub2api at `192.168.20.54:62342`. The `22545` Ollama/Qwen chat fallback is retired. Do not use a local Cockpit/Antigravity sidecar for production model diagnosis.
 
 ## Rollback
 

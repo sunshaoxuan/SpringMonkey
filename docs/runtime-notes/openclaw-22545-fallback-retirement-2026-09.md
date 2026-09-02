@@ -11,6 +11,17 @@ ccnode OpenAI-compatible endpoint:
 http://ccnode.briconbric.com:49530/v1
 ```
 
+This endpoint is the frpc public mapping for the active sub2api service on the
+LAN host:
+
+```text
+http://192.168.20.54:62342/v1
+```
+
+The OpenClaw host currently reaches the model service through the ccnode public
+mapping. Do not diagnose or configure a local Cockpit/Antigravity sidecar for
+production model calls.
+
 The old Ollama/Qwen fallback on port 22545 is retired for these model calls.
 
 ## Evidence
@@ -20,6 +31,9 @@ Host checks on 2026-09-02 showed:
 - `http://ccnode.briconbric.com:49530/v1/models` is reachable and lists
   `gpt-5.3-codex-spark`, `gpt-5.5`, `gpt-5.3-codex-spark`, and `gpt-image-2`.
 - OpenClaw agent smoke with `openai-codex/gpt-5.3-codex-spark` returned `ok`.
+- Direct host access to `192.168.20.54:62342` timed out from the OpenClaw host,
+  so runtime config uses the ccnode mapping while treating sub2api as the
+  authoritative backend.
 - `http://ccnode.briconbric.com:22545/api/tags` timed out or returned an empty
   HTTP reply from client and host checks.
 - OpenClaw agent smoke with `ollama/qwen3:14b` failed with a network connection
@@ -38,8 +52,8 @@ Host checks on 2026-09-02 showed:
 
 ## Gemini Pro Candidate
 
-Gemini Pro via the ccnode 49530 OpenAI-compatible endpoint is the preferred
-future fallback. The repository includes a smoke-gated installer:
+Gemini Pro via the sub2api-backed ccnode 49530 OpenAI-compatible endpoint is the
+preferred future fallback. The repository includes a smoke-gated installer:
 
 ```text
 python scripts/remote_install_gemini_model_fallback.py

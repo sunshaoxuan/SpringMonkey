@@ -3,7 +3,8 @@
 Deprecated historical OpenClaw router patch.
 
 This v4 patch encoded Ollama-first failure counting and fallback to Codex.
-Current policy is the inverse: Codex is primary, Qwen/Ollama is fallback only.
+Current policy is Spark through sub2api; active fallback is empty unless a
+smoke-gated fallback installer enables one.
 """
 import sys
 
