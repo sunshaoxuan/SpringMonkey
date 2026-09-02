@@ -56,7 +56,10 @@ def test_model_auth_guard_syncs_current_sqlite_auth_store() -> None:
     assert "paste-token openai openai:ccnode-codex" in remote
     assert "paste-token openai-codex openai-codex:default" in remote
     assert "paste-api-key ollama ollama:default" not in remote
-    assert "openclaw-agent.sqlite" not in remote
+    assert 'profiles.pop("ollama:default", None)' in remote
+    assert 'usage.pop("ollama:default", None)' in remote
+    assert "cleaned sqlite ollama profile" in remote
+    assert "openclaw-agent.sqlite" in remote
 
 
 def test_model_auth_guard_keeps_openclaw_home_readable_by_openclaw_user() -> None:

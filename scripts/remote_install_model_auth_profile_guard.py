@@ -219,6 +219,50 @@ if command -v openclaw >/dev/null 2>&1; then
   sync_auth_profile paste-token openai openai:ccnode-codex "$openai_tmp"
   sync_auth_profile paste-token openai-codex openai-codex:default "$openai_tmp"
 fi
+
+python3 - <<'PY'
+import json
+import sqlite3
+import time
+from pathlib import Path
+
+sqlite_paths = [
+    Path("/var/lib/openclaw/.openclaw/agents/main/agent/openclaw-agent.sqlite"),
+    Path("/root/.openclaw/agents/main/agent/openclaw-agent.sqlite"),
+]
+
+for path in sqlite_paths:
+    if not path.is_file():
+        continue
+    con = sqlite3.connect(path)
+    try:
+        changed = False
+        row = con.execute("select store_json from auth_profile_store where store_key = 'primary'").fetchone()
+        if row:
+            data = json.loads(row[0])
+            profiles = data.get("profiles")
+            if isinstance(profiles, dict) and profiles.pop("ollama:default", None) is not None:
+                con.execute(
+                    "update auth_profile_store set store_json = ?, updated_at = ? where store_key = 'primary'",
+                    (json.dumps(data, ensure_ascii=False, sort_keys=True), int(time.time() * 1000)),
+                )
+                changed = True
+        row = con.execute("select state_json from auth_profile_state where state_key = 'primary'").fetchone()
+        if row:
+            data = json.loads(row[0])
+            usage = data.get("usageStats")
+            if isinstance(usage, dict) and usage.pop("ollama:default", None) is not None:
+                con.execute(
+                    "update auth_profile_state set state_json = ?, updated_at = ? where state_key = 'primary'",
+                    (json.dumps(data, ensure_ascii=False, sort_keys=True), int(time.time() * 1000)),
+                )
+                changed = True
+        if changed:
+            con.commit()
+            print(f"[model-auth-profile-guard] cleaned sqlite ollama profile {path}")
+    finally:
+        con.close()
+PY
 EOF
 chmod 755 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh
 
