@@ -130,7 +130,7 @@ for path in config_paths:
     providers = ((data.get("models") or {}).get("providers") or {})
     defaults = ((data.get("agents") or {}).get("defaults") or {}).get("model") or {}
     print(f"default.primary={defaults.get('primary')}")
-    if defaults.get("primary") != "openai-codex/gpt-5.6-sol":
+    if defaults.get("primary") != "openai-codex/gpt-5.3-codex-spark":
         errors.append(f"unexpected primary model in {path}: {defaults.get('primary')}")
     print(f"default.fallbacks={defaults.get('fallbacks')}")
     allowed_fallbacks = ([], ["openai-codex/gemini-pro-agent"])
@@ -145,8 +145,6 @@ for path in config_paths:
         errors.append(f"unexpected openai-codex baseUrl in {path}: {codex_base}")
     codex_models = [item.get("id") for item in codex.get("models", []) if isinstance(item, dict)]
     print(f"openai-codex.models={codex_models}")
-    if "gpt-5.6-sol" not in codex_models:
-        errors.append(f"missing gpt-5.6-sol model in {path}")
     if "gpt-5.3-codex-spark" not in codex_models:
         errors.append(f"missing gpt-5.3-codex-spark model in {path}")
     if "gemini-pro-agent" not in codex_models:
@@ -249,3 +247,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

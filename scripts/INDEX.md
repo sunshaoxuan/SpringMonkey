@@ -28,10 +28,10 @@
   - 约定：涉及 cron、远程安装器、任务投递、新闻/天气等可执行路径改动时，必须先通过该预检，再提交、推送、远端 pull 和远端状态验证。
 
 - `remote_install_public_model_resources.py`
-  - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL` 与共享 API key 文件别名；任务脚本只能读取公共资源层，不应各自私藏模型密钥。
+  - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL`；任务脚本优先读取 systemd credential，不应各自私藏模型密钥。
   - 当前运行基线只使用 `http://ccnode.briconbric.com:49530/v1`。`22545` Ollama/Qwen 兜底已因宿主机 HTTP 超时退役，脚本会清空 `OPENCLAW_MODEL_FALLBACK*`。
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
-  - 注意：Git 只保存 endpoint、变量名和 secret 文件路径，不保存密钥；共享 key 存放在宿主机 root-only secret 文件，例如 `/etc/openclaw/secrets/news_codex_api_key`。
+  - 注意：Git 只保存 endpoint 和变量名，不保存密钥；共享 key 由宿主机 systemd credential 提供，运行时路径为 `/run/credentials/openclaw.service/openclaw-secrets.json`。
 
 - `remote_configure_openclaw_ollama_agent_auth.py`
   - 历史工具：曾用于写入 Ollama/Qwen 兜底。当前运行基线不再使用 `22545`，新增配置应使用 `remote_install_model_auth_profile_guard.py`。
@@ -203,7 +203,7 @@
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py long-task-supervisor`
 
 - `remote_fix_xhs_cron_model.py`
-  - 用途：通过官方 `openclaw cron list/edit` 把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.6-sol`，保留 schedule/message/delivery。
+  - 用途：通过官方 `openclaw cron list/edit` 把 `xhs-recommendation-every-3-days` 的 cron payload model 固定为 `openai-codex/gpt-5.3-codex-spark`，保留 schedule/message/delivery。
   - 典型用法：`python SpringMonkey/scripts/remote_fix_xhs_cron_model.py`
   - 统一入口：`python SpringMonkey/scripts/openclaw_remote_cli.py xhs-cron-model`
 
@@ -217,7 +217,7 @@
   - 典型用法：`python SpringMonkey/scripts/remote_install_memory_lancedb_guard.py`
 
 - `remote_install_qwen_timeout_retry_policy.py`
-  - 用途：历史 qwen-first 超时策略安装器；当前默认模型策略已改为 Codex 主、Qwen/Ollama 兜底，除非在迁移旧任务时需要，不应作为新默认策略入口。
+  - 用途：历史 qwen-first 超时策略安装器；当前默认模型策略已改为 `49530` Codex 主模型，除非在迁移旧任务时需要，不应作为新默认策略入口。
   - 典型用法：`python SpringMonkey/scripts/remote_install_qwen_timeout_retry_policy.py`
 
 - `remote_install_three_phase_reply_guard.py`
@@ -304,7 +304,7 @@
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
 - `openclaw/intent_tool_router.py`：Discord owner DM Harness CLI wrapper；默认执行路径为 `harness_dispatcher -> intentAgent -> tool binder -> governance -> worker -> evaluator -> reporter`。文件内旧 `classify()` / `model_classify_intent()` / TimesCar guard 仅保留为 diagnostic-only，不作为默认语义路由。
-- `openclaw/model_fallback_client.py`：统一模型调用层。Python 侧 intent、blocker、web research 等模型调用默认只走 gpt-5.6-sol/OpenAI-compatible endpoint；只有显式配置 `OPENCLAW_MODEL_FALLBACK_BASE_URL` 与 `OPENCLAW_MODEL_FALLBACK` 时才尝试兜底。
+- `openclaw/model_fallback_client.py`：统一模型调用层。Python 侧 intent、blocker、web research 等模型调用默认只走 gpt-5.3-codex-spark/OpenAI-compatible endpoint；只有显式配置 `OPENCLAW_MODEL_FALLBACK_BASE_URL` 与 `OPENCLAW_MODEL_FALLBACK` 时才尝试兜底。
   - 当前运行记录：`docs/runtime-notes/openclaw-22545-fallback-retirement-2026-09.md`。
 
 - `remote_install_gemini_model_fallback.py`
@@ -410,3 +410,4 @@
 
 - 不在脚本里写死任何 token/secret/password。
 - 先保主流程（openclaw.service 稳定）再切换 LINE 到 `enabled=true`。
+

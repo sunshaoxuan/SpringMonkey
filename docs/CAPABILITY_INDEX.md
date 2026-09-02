@@ -42,7 +42,7 @@
 | HTTP 监听 | 默认 **127.0.0.1:18789**（本机 `/line/webhook` 诊断用） | `scripts/remote_diag_openclaw_webhook.py`、运维对话记录 |
 | Gateway / Discord 通道配置修复 | 当服务卡在 `Invalid config` 或日志出现 `Unsupported channel: discord` 时，先修复 `agents.defaults.llm`、不可用 `brave` provider、不可用 `memory-lancedb` slot、缺失的 Discord plugin load path，再重启和查 `/healthz` | `scripts/openclaw/repair_legacy_gateway_config.py`、`scripts/remote_repair_openclaw_gateway_config.py` |
 | 共享能力入口 | `openclaw.service` 通过 drop-in 加载 `/etc/openclaw/openclaw.env`；Discord / LINE 共用同一套 provider secret 与 `tools.elevated.allowFrom` | `scripts/remote_enable_shared_channel_capabilities.py`、`docs/runtime-notes/openclaw-runtime-baseline-2026-04.md` |
-| 聊天与任务总控主模型 | `openai-codex/gpt-5.6-sol` 主力，走 `http://ccnode.briconbric.com:49530/v1` | `scripts/openclaw/model_fallback_client.py`、`config/news/broadcast.json`、`docs/runtime-notes/openclaw-gpt-5.6-migration-2026-07.md` |
+| 聊天与任务总控主模型 | `openai-codex/gpt-5.3-codex-spark` 主力，走 `http://ccnode.briconbric.com:49530/v1` | `scripts/openclaw/model_fallback_client.py`、`config/news/broadcast.json`、`docs/runtime-notes/openclaw-gpt-5.6-migration-2026-07.md` |
 | 模型兜底策略 | `22545` Ollama/Qwen 兜底已退役；Gemini Pro 通过 `http://ccnode.briconbric.com:49530/v1` 的 `gemini-pro-agent` 作为 smoke-gated 显式兜底候选 | `scripts/openclaw/model_fallback_client.py`、`scripts/remote_install_public_model_resources.py`、`scripts/remote_install_gemini_model_fallback.py` |
 | 当前环境运行基线 | 当前 SpringMonkey 宿主机的真实服务、compaction、patch family、LINE/Discord/news 约束 | `docs/runtime-notes/openclaw-current-environment-baseline-2026-04.md` |
 | 分层故障模型 | 将 LINE/Discord/news/runtime 失败拆成 Host/Channel/Artifact/Run/Reply/Orchestration 六层 | `docs/runtime-notes/openclaw-failure-layer-model-2026-04.md` |
@@ -175,3 +175,4 @@
 
 - 在仓库 `rg`/语义搜索前，先扩展本表「**脚本**」与「**docs**」列表（欢迎 PR 补一行）。  
 - 外部真源：**OpenClaw 官方文档**、LINE Developers、宿主机 `openclaw.json`（不在 Git）。
+

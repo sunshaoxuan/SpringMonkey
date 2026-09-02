@@ -56,7 +56,7 @@ def main():
             fail(f"bad delivery target for {spec['name']}")
         msg = job.get("payload", {}).get("message", "")
         payload = job.get("payload", {})
-        expected_model = cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.6-sol"))
+        expected_model = cfg["model"].get("newsOrchestrator", cfg["model"].get("name", "openai-codex/gpt-5.3-codex-spark"))
         if payload.get("model") != expected_model:
             fail(f"bad model for {spec['name']}: {payload.get('model')} != {expected_model}")
         nex = cfg.get("newsExecution") or {}
@@ -138,3 +138,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -17,7 +17,7 @@ RUNTIME_ENV_FILES = (
     Path("/etc/openclaw/openclaw.env"),
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
-DEFAULT_PRIMARY_MODEL = "gpt-5.6-sol"
+DEFAULT_PRIMARY_MODEL = "gpt-5.3-codex-spark"
 
 
 @dataclass(frozen=True)
@@ -196,3 +196,4 @@ def chat_with_fallback(
         "fallback_used": True,
         "primary_error": errors[-1] if errors else "",
     }
+

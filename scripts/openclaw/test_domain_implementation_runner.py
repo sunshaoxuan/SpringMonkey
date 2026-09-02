@@ -8,7 +8,7 @@ import domain_implementation_runner as runner
 
 
 def test_default_model_uses_codex_gpt_5_6_sol_provider() -> None:
-    assert runner.DEFAULT_MODEL == "openai-codex/gpt-5.6-sol"
+    assert runner.DEFAULT_MODEL == "openai-codex/gpt-5.3-codex-spark"
 
 
 def write_package(root: Path) -> Path:
@@ -102,3 +102,20 @@ def test_implementation_subprocess_env_forces_service_config_and_key_aliases(mon
     assert env["NEWS_CODEX_API_KEY"] == "secret-value"
     assert env["OPENCLAW_PUBLIC_MODEL_API_KEY"] == "secret-value"
     assert env["OPENCLAW_CODEX_API_KEY"] == "secret-value"
+
+
+def test_implementation_subprocess_env_reads_systemd_credential(monkeypatch, tmp_path: Path) -> None:
+    env_file = tmp_path / "openclaw.env"
+    env_file.write_text(
+        "OPENCLAW_PUBLIC_MODEL_BASE_URL=http://ccnode.briconbric.com:49530/v1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(runner, "RUNTIME_ENV_FILES", (env_file,))
+    monkeypatch.setattr(runner, "read_systemd_secret", lambda *segments: "systemd-secret")
+
+    env = runner.implementation_subprocess_env({})
+
+    assert env["NEWS_CODEX_API_KEY"] == "systemd-secret"
+    assert env["OPENCLAW_PUBLIC_MODEL_API_KEY"] == "systemd-secret"
+    assert env["OPENCLAW_CODEX_API_KEY"] == "systemd-secret"
+

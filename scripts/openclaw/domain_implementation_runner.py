@@ -17,12 +17,13 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from long_task_supervisor import ACTIVE_STATUSES, DEFAULT_STATE_PATH, read_state, register_task, upsert_task
+from systemd_secret_credentials import read_systemd_secret
 
 
 DEFAULT_KERNEL_ROOT = Path("/var/lib/openclaw/.openclaw/workspace/agent_society_kernel")
 DEFAULT_RUN_DIR = Path("/var/lib/openclaw/.openclaw/workspace/state/domain_implementation_runs")
 DEFAULT_TIMEOUT_SECONDS = 7200
-DEFAULT_MODEL = "openai-codex/gpt-5.6-sol"
+DEFAULT_MODEL = "openai-codex/gpt-5.3-codex-spark"
 SERVICE_STATE_DIR = Path("/var/lib/openclaw/.openclaw")
 SERVICE_CONFIG_PATH = SERVICE_STATE_DIR / "openclaw.json"
 FINAL_STAGES = {"final_succeeded", "final_failed"}
@@ -76,7 +77,7 @@ def read_secret_from_env_file_ref(env: dict[str, str], *names: str) -> str:
                 secret = ""
             if secret:
                 return secret
-    return ""
+    return read_systemd_secret("providers", "openaiCodex", "apiKey")
 
 
 def implementation_subprocess_env(base: dict[str, str] | None = None) -> dict[str, str]:
@@ -422,3 +423,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

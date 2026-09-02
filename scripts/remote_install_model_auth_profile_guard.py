@@ -99,8 +99,8 @@ for path in config_paths:
         "baseUrl": "http://ccnode.briconbric.com:49530/v1",
         "models": [
             {
-                "id": "gpt-5.6-sol",
-                "name": "GPT-5.6 Sol via ccnode",
+                "id": "gpt-5.3-codex-spark",
+                "name": "GPT-5.3 Codex Spark via ccnode",
                 "reasoning": True,
                 "input": ["text", "image"],
                 "contextWindow": 196000,
@@ -142,10 +142,10 @@ for path in config_paths:
     }
     providers.pop("ollama", None)
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
-    defaults["primary"] = "openai-codex/gpt-5.6-sol"
+    defaults["primary"] = "openai-codex/gpt-5.3-codex-spark"
     defaults["fallbacks"] = []
     configured_models = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("models", {})
-    configured_models.setdefault("openai-codex/gpt-5.6-sol", {})
+    configured_models.setdefault("openai-codex/gpt-5.3-codex-spark", {})
     configured_models.setdefault("openai-codex/gpt-5.5", {})
     configured_models.setdefault("openai-codex/gpt-5.4", {})
     configured_models.setdefault("openai-codex/gpt-5.3-codex-spark", {})
@@ -170,14 +170,14 @@ for path in profile_paths:
         "provider": "openai",
         "type": "api_key",
         "keyRef": openai_ref,
-        "displayName": "ccnode gpt-5.6-sol",
+        "displayName": "ccnode gpt-5.3-codex-spark",
         "copyToAgents": True,
     }
     profiles["openai-codex:default"] = {
         "provider": "openai-codex",
         "type": "api_key",
         "keyRef": openai_ref,
-        "displayName": "ccnode gpt-5.6-sol",
+        "displayName": "ccnode gpt-5.3-codex-spark",
         "copyToAgents": True,
     }
     profiles.pop("ollama:default", None)
@@ -335,3 +335,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

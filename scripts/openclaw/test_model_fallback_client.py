@@ -6,7 +6,7 @@ import model_fallback_client as client
 
 
 def test_default_primary_model_is_gpt_5_6_sol() -> None:
-    assert client.DEFAULT_PRIMARY_MODEL == "gpt-5.6-sol"
+    assert client.DEFAULT_PRIMARY_MODEL == "gpt-5.3-codex-spark"
 
 
 def test_chat_with_fallback_uses_primary_when_available() -> None:
@@ -87,3 +87,4 @@ def test_primary_secret_uses_systemd_credential(monkeypatch, tmp_path) -> None:
     for key in ("NEWS_CODEX_API_KEY", "NEWS_CODEX_API_KEY_FILE"):
         monkeypatch.delenv(key, raising=False)
     assert client.read_secret_env("NEWS_CODEX_API_KEY") == "test-key"
+

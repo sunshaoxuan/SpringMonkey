@@ -31,11 +31,11 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert 'openai["apiKey"] = secret' not in remote
     assert 'openai.pop("baseUrl", None)' in remote
     assert 'openai.pop("apiKey", None)' in remote
-    assert 'defaults["primary"] = "openai-codex/gpt-5.6-sol"' in remote
+    assert 'defaults["primary"] = "openai-codex/gpt-5.3-codex-spark"' in remote
     assert 'providers["openai-codex"] = {' in remote
     assert '"baseUrl": "http://ccnode.briconbric.com:49530/v1"' in remote
     assert '"api": "openai-completions"' in remote
-    assert '"id": "gpt-5.6-sol"' in remote
+    assert '"id": "gpt-5.3-codex-spark"' in remote
     assert '"id": "gpt-5.3-codex-spark"' in remote
     assert '"id": "gemini-pro-agent"' in remote
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
@@ -76,3 +76,4 @@ if __name__ == "__main__":
     test_model_auth_guard_does_not_hijack_openai_image_provider()
     test_model_auth_guard_syncs_current_sqlite_auth_store()
     print("OK")
+

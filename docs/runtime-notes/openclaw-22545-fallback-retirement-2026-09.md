@@ -18,8 +18,8 @@ The old Ollama/Qwen fallback on port 22545 is retired for these model calls.
 Host checks on 2026-09-02 showed:
 
 - `http://ccnode.briconbric.com:49530/v1/models` is reachable and lists
-  `gpt-5.6-sol`, `gpt-5.5`, `gpt-5.3-codex-spark`, and `gpt-image-2`.
-- OpenClaw agent smoke with `openai-codex/gpt-5.6-sol` returned `ok`.
+  `gpt-5.3-codex-spark`, `gpt-5.5`, `gpt-5.3-codex-spark`, and `gpt-image-2`.
+- OpenClaw agent smoke with `openai-codex/gpt-5.3-codex-spark` returned `ok`.
 - `http://ccnode.briconbric.com:22545/api/tags` timed out or returned an empty
   HTTP reply from client and host checks.
 - OpenClaw agent smoke with `ollama/qwen3:14b` failed with a network connection
@@ -54,3 +54,4 @@ the installer leaves production fallback disabled.
 The 49530 endpoint was probed for `/v1/embeddings`. At the time of this change,
 standard embedding model names were not available through that endpoint. Memory
 embedding backend changes therefore require a separate validated provider.
+

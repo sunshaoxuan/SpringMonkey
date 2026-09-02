@@ -22,7 +22,7 @@ set -euo pipefail
 
 ENV_FILE="/etc/openclaw/openclaw.env"
 CODEX_BASE_URL="${OPENCLAW_PUBLIC_MODEL_BASE_URL:-${NEWS_CODEX_BASE_URL:-http://ccnode.briconbric.com:49530/v1}}"
-CODEX_KEY_FILE="${OPENCLAW_PUBLIC_MODEL_API_KEY_FILE:-${NEWS_CODEX_API_KEY_FILE:-/etc/openclaw/secrets/news_codex_api_key}}"
+CODEX_KEY_FILE="${OPENCLAW_PUBLIC_MODEL_API_KEY_FILE:-${NEWS_CODEX_API_KEY_FILE:-}}"
 
 install -d -m 755 /etc/openclaw
 if getent group openclaw >/dev/null 2>&1; then
@@ -42,7 +42,7 @@ from pathlib import Path
 
 path = Path("/etc/openclaw/openclaw.env")
 base_url = os.environ.get("CODEX_BASE_URL", "http://ccnode.briconbric.com:49530/v1").strip()
-key_file = os.environ.get("CODEX_KEY_FILE", "/etc/openclaw/secrets/news_codex_api_key").strip()
+key_file = os.environ.get("CODEX_KEY_FILE", "").strip()
 key_aliases = [
     "NEWS_CODEX_API_KEY",
     "OPENCLAW_PUBLIC_MODEL_API_KEY",

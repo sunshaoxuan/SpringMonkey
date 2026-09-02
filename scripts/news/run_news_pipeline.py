@@ -14,7 +14,7 @@
 
 模型分工
 --------
-- Codex (openai-codex/gpt-5.6-sol) -> 默认主模型：编排、逐条处理、终稿格式化
+- Codex (openai-codex/gpt-5.3-codex-spark) -> 默认主模型：编排、逐条处理、终稿格式化
 - Explicit fallback -> only used when OPENCLAW_MODEL_FALLBACK_BASE_URL and OPENCLAW_MODEL_FALLBACK are configured.
 
 环境变量（常用）
@@ -49,6 +49,7 @@ if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
 from staged_jobs.task_trace import StagedTaskTrace
+from openclaw.systemd_secret_credentials import read_systemd_secret
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -151,6 +152,9 @@ def resolve_codex_api_key(cfg: dict) -> str:
                 secret = ""
             if secret:
                 return secret
+    systemd_secret = read_systemd_secret("providers", "openaiCodex", "apiKey")
+    if systemd_secret:
+        return systemd_secret
     value = mc.get("codexApiKey")
     return value.strip() if isinstance(value, str) else ""
 
@@ -1578,16 +1582,16 @@ def main() -> int:
 
     worker_model_raw = os.environ.get(
         "NEWS_WORKER_MODEL",
-        model_cfg.get("newsWorker", "openai-codex/gpt-5.6-sol"),
+        model_cfg.get("newsWorker", "openai-codex/gpt-5.3-codex-spark"),
     )
     fallback_model_raw = os.environ.get(
         "NEWS_FALLBACK_MODEL",
         model_cfg.get("chatFallback", ""),
     )
-    finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.6-sol")
+    finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.3-codex-spark")
     orch_model = os.environ.get(
         "NEWS_ORCHESTRATOR_MODEL",
-        model_cfg.get("newsOrchestrator", "openai-codex/gpt-5.6-sol"),
+        model_cfg.get("newsOrchestrator", "openai-codex/gpt-5.3-codex-spark"),
     )
 
     ollama_worker_model = ollama_api_model_name(worker_model_raw)
@@ -1956,7 +1960,7 @@ def main() -> int:
 
     # 策略：merge 草稿已经包含完整格式，先直接校验；
     # 如果通过就直接用（省掉 finalize 模型调用）；
-    # 不通过才走 Codex 主模型 → Qwen/Ollama 兜底 → mechanical fallback。
+    # 不通过才走 Codex 主模型 -> 显式模型兜底 -> mechanical fallback。
     if verify_text_fn:
         ok_draft, draft_errors = verify_text_fn(draft, cfg)
         if ok_draft:
@@ -2069,3 +2073,4 @@ if __name__ == "__main__":
     except Exception:
         pass
     raise SystemExit(main())
+

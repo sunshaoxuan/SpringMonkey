@@ -181,7 +181,7 @@ Current environment assumptions that must be revalidated after upgrades:
 
 - service: `openclaw.service`
 - health endpoint: `http://127.0.0.1:18789/healthz`
-- primary model: `openai-codex/gpt-5.6-sol`
+- primary model: `openai-codex/gpt-5.3-codex-spark`
 - direct channels in active use: LINE and Discord
 - current news delivery target: Discord channel `1483636573235843072`
 - host repo path: `/var/lib/openclaw/repos/SpringMonkey`
@@ -195,3 +195,4 @@ delivered only to the owner's Discord private channel `1497009159940608020`.
 Public channels may receive only successful final publication results for tasks
 that are explicitly public-facing, such as finished news or weather broadcasts.
 A failed run must not publish any failure report to public channels.
+

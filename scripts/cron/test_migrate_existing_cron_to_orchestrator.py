@@ -23,7 +23,7 @@ def main() -> int:
                             "schedule": {"expr": "0 7 * * *", "tz": "Asia/Tokyo"},
                             "payload": {
                                 "message": "fetch weather, translate, report",
-                                "model": "openai-codex/gpt-5.6-sol",
+                                "model": "openai-codex/gpt-5.3-codex-spark",
                                 "thinking": "low",
                                 "timeoutSeconds": 1800,
                                 "lightContext": True,
@@ -60,3 +60,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

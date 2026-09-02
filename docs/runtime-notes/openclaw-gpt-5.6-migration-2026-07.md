@@ -1,30 +1,31 @@
-# OpenClaw GPT-5.6 migration
+# OpenClaw Codex primary model migration
 
 Date: 2026-07-13
 
 ## Requirement
 
-Move active OpenClaw primary workloads from GPT-5.5 to GPT-5.6 while preserving scheduled jobs, delivery destinations, reasoning effort, and the Qwen fallback.
+Move active OpenClaw primary workloads from the retired GPT-5.5 baseline to the ccnode Codex-compatible endpoint while preserving scheduled jobs, delivery destinations, and reasoning effort.
 
 ## Official model contract
 
-OpenAI documents `gpt-5.6` as an alias that currently routes to `gpt-5.6-sol`. The Codex model guide identifies `gpt-5.6-sol` as the default Power model. Production OpenClaw configuration therefore uses the explicit Sol model id. Existing GPT-5.5 reasoning effort should remain the migration baseline.
+Current production OpenClaw configuration uses the explicit `openai-codex/gpt-5.3-codex-spark` model id through `http://ccnode.briconbric.com:49530/v1`. The retired `22545` Ollama/Qwen path is not part of the active fallback chain. Gemini Pro remains a smoke-gated fallback candidate through the same `49530` endpoint and is enabled only after a live chat smoke returns `ok`.
 
-Sources: <https://developers.openai.com/api/docs/guides/latest-model.md> and <https://developers.openai.com/codex/models>
+Runtime evidence is recorded in `docs/runtime-notes/openclaw-22545-fallback-retirement-2026-09.md`.
 
 ## Repository changes
 
-- Primary OpenClaw route: `openai-codex/gpt-5.6-sol`
-- Python fallback client model id: `gpt-5.6-sol`
-- Domain implementation runner: `openai-codex/gpt-5.6-sol`
-- News orchestrator, worker, and finalizer: `openai-codex/gpt-5.6-sol`
-- Generic cron default and XHS recurring contract: `openai-codex/gpt-5.6-sol`
-- Existing `ollama/qwen3:14b` fallback remains unchanged.
+- Primary OpenClaw route: `openai-codex/gpt-5.3-codex-spark`
+- Python fallback client model id: `gpt-5.3-codex-spark`
+- Domain implementation runner: `openai-codex/gpt-5.3-codex-spark`
+- News orchestrator, worker, and finalizer: `openai-codex/gpt-5.3-codex-spark`
+- Generic cron default and XHS recurring contract: `openai-codex/gpt-5.3-codex-spark`
+- Gemini Pro fallback is configured only by `scripts/remote_install_gemini_model_fallback.py` after a live smoke test.
 
 ## Runtime acceptance
 
-Deployment is accepted only after the ccnode proxy exposes GPT-5.6, the OpenClaw auth/profile guard registers it, an owner-DM smoke request succeeds, and the XHS task completes exactly one gated retry. Public channels must not receive migration tests.
+Deployment is accepted only after the ccnode proxy exposes `gpt-5.3-codex-spark`, the OpenClaw auth/profile guard registers it, an owner-DM smoke request succeeds, and recurring jobs pass one gated retry. Public channels must not receive migration tests.
 
 ## Rollback
 
 Revert the migration commit, rerun the model auth/profile guard, restore the XHS cron model to `openai-codex/gpt-5.5`, and repeat the owner-DM smoke check.
+

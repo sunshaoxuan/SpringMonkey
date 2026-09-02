@@ -34,7 +34,7 @@ def test_shadow_bridge_uses_official_surfaces_without_changing_cron(tmp_path: Pa
                 "enabled": True,
                 "schedule": {"expr": "0 7 * * 6", "tz": "Asia/Tokyo"},
                 "delivery": {"channel": "discord", "to": "1497009159940608020"},
-                "payload": {"model": "openai-codex/gpt-5.6-sol"},
+                "payload": {"model": "openai-codex/gpt-5.3-codex-spark"},
                 "sessionTarget": "isolated",
             }
         ]
@@ -166,3 +166,4 @@ def test_official_task_parser_ignores_retained_historical_failures() -> None:
         now_ms=1_000_000,
     )
     assert [event["event_key"] for event in events] == ["new-task"]
+

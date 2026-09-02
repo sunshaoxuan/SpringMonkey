@@ -249,7 +249,7 @@ class TestPlanAndTemplate(unittest.TestCase):
         ):
             with patch.object(self.m, "openai_chat", side_effect=[RuntimeError("primary down"), "gemini ok"]) as mocked:
                 result = self.m.chat_with_model(
-                    "openai-codex/gpt-5.6-sol",
+                    "openai-codex/gpt-5.3-codex-spark",
                     ollama_host="",
                     openai_base_url="https://api.openai.com/v1",
                     openai_api_key="",
@@ -261,7 +261,7 @@ class TestPlanAndTemplate(unittest.TestCase):
                 )
 
         self.assertEqual(result, "gemini ok")
-        self.assertEqual(mocked.call_args_list[0].args[2], "gpt-5.6-sol")
+        self.assertEqual(mocked.call_args_list[0].args[2], "gpt-5.3-codex-spark")
         self.assertEqual(mocked.call_args_list[1].args[2], "gemini-pro-agent")
 
     def test_load_runtime_env_files_does_not_override_existing_env(self):
@@ -304,6 +304,31 @@ class TestPlanAndTemplate(unittest.TestCase):
                     os.environ.pop("NEWS_CODEX_API_KEY_FILE", None)
                 else:
                     os.environ["NEWS_CODEX_API_KEY_FILE"] = old
+
+    def test_resolve_codex_api_key_reads_systemd_credential(self):
+        old_values = {
+            key: os.environ.get(key)
+            for key in (
+                "NEWS_CODEX_API_KEY",
+                "OPENCLAW_CODEX_API_KEY",
+                "CODEX_API_KEY",
+                "OPENAI_CODEX_API_KEY",
+                "OPENCLAW_PUBLIC_MODEL_API_KEY",
+                "NEWS_CODEX_API_KEY_FILE",
+                "OPENCLAW_PUBLIC_MODEL_API_KEY_FILE",
+            )
+        }
+        try:
+            for key in old_values:
+                os.environ.pop(key, None)
+            with patch.object(self.m, "read_systemd_secret", return_value="systemd-secret"):
+                self.assertEqual(self.m.resolve_codex_api_key({"model": {}}), "systemd-secret")
+        finally:
+            for key, value in old_values.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     def test_archive_raw_article_items_writes_per_article_files(self):
         with tempfile.TemporaryDirectory() as td:
@@ -1436,3 +1461,4 @@ class TestFetcherDegradedFallback(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

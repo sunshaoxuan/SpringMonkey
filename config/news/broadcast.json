@@ -419,17 +419,17 @@
     }
   },
   "model": {
-    "chatPrimary": "openai-codex/gpt-5.6-sol",
+    "chatPrimary": "openai-codex/gpt-5.3-codex-spark",
     "chatFallback": "",
     "chatEscalateWhenHistoryCharsExceed": 15000,
     "codexBaseUrl": "http://ccnode.briconbric.com:49530/v1",
     "codexApiKeyEnv": "NEWS_CODEX_API_KEY",
     "ollamaBaseUrl": "",
     "ollamaNote": "22545 Ollama fallback retired after host checks showed HTTP timeout; production model calls should use the ccnode 49530 OpenAI-compatible endpoint.",
-    "newsOrchestrator": "openai-codex/gpt-5.6-sol",
-    "newsWorker": "openai-codex/gpt-5.6-sol",
-    "newsFinalize": "openai-codex/gpt-5.6-sol",
-    "newsFinalizeNote": "Codex 作为新闻编排、逐条处理与终稿格式化主模型；Qwen/Ollama 仅作为兜底。",
+    "newsOrchestrator": "openai-codex/gpt-5.3-codex-spark",
+    "newsWorker": "openai-codex/gpt-5.3-codex-spark",
+    "newsFinalize": "openai-codex/gpt-5.3-codex-spark",
+    "newsFinalizeNote": "Codex 作为新闻编排、逐条处理与终稿格式化主模型；Gemini Pro 仅在真实 smoke 通过后作为显式兜底。",
     "workerCallMode": "per-article",
     "maxWorkerItems": 40,
     "workerItemTimeoutSeconds": 75,
@@ -440,7 +440,7 @@
     "allowUnsafeExternalContent": true,
     "qwenUsagePolicy": {
       "role": "processor",
-      "summary": "Codex handles all primary tasks; Qwen/Ollama is fallback only.",
+      "summary": "Codex handles all primary tasks; fallback models are enabled only after live smoke validation.",
       "allowedScenarios": [
         "逐条新闻摘要与结构化整理",
         "单条分类与格式校验",
@@ -462,3 +462,4 @@
     "pipelineCliArgs": []
   }
 }
+
