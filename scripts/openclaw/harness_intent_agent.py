@@ -93,19 +93,17 @@ def intent_model_config() -> tuple[str, str, str]:
 def intent_model_fallback_configs() -> list[tuple[str, str, str]]:
     """Return ordered list of (base_url, api_key, model) fallbacks for the intent agent.
 
-    Falls back to OPENCLAW_OLLAMA_BASE_URL with confirmed-available models when the
-    primary codex endpoint returns HTTP 429 (quota exhausted) or is unreachable.
+    No fallback is configured by default. A fallback must be explicitly supplied
+    through OPENCLAW_INTENT_FALLBACK_BASE_URL and OPENCLAW_INTENT_FALLBACK_MODELS.
     """
     load_runtime_env_files()
-    ollama_base = (
-        os.environ.get("OPENCLAW_OLLAMA_BASE_URL", "").strip()
-        or "http://ccnode.briconbric.com:22545"
-    ).rstrip("/") + "/v1"
-    fallback_models_raw = os.environ.get(
-        "OPENCLAW_INTENT_FALLBACK_MODELS", "qwen3:14b,qwen2.5:14b-instruct"
-    ).strip()
+    base = os.environ.get("OPENCLAW_INTENT_FALLBACK_BASE_URL", "").strip().rstrip("/")
+    fallback_models_raw = os.environ.get("OPENCLAW_INTENT_FALLBACK_MODELS", "").strip()
+    if not base or not fallback_models_raw:
+        return []
     fallback_models = [m.strip() for m in fallback_models_raw.split(",") if m.strip()]
-    return [(ollama_base, "ollama-local", m) for m in fallback_models]
+    api_key = os.environ.get("OPENCLAW_INTENT_FALLBACK_API_KEY", "").strip()
+    return [(base, api_key, m) for m in fallback_models]
 
 
 def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int) -> dict[str, Any]:

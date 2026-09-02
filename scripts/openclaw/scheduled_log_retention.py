@@ -96,6 +96,8 @@ def run_retention(args: argparse.Namespace, now: datetime) -> dict[str, Any]:
         str(args.archive_root),
         "--min-free-percent",
         str(args.min_free_percent),
+        "--now",
+        now.isoformat(),
     ]
     for source in args.source or []:
         command.extend(["--source", str(source)])

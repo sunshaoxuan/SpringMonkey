@@ -127,6 +127,25 @@ def test_intent_prompt_lists_self_evolution_repair_actions() -> None:
     assert "openclaw.self_evolution.internal_repair" in system
 
 
+def test_intent_model_has_no_default_22545_fallback(monkeypatch) -> None:
+    for key in (
+        "OPENCLAW_INTENT_FALLBACK_BASE_URL",
+        "OPENCLAW_INTENT_FALLBACK_MODELS",
+        "OPENCLAW_OLLAMA_BASE_URL",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    assert agent.intent_model_fallback_configs() == []
+
+
+def test_intent_model_uses_only_explicit_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_BASE_URL", "http://fallback.example/v1")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_MODELS", "gemini-pro-agent")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_API_KEY", "test-key")
+
+    assert agent.intent_model_fallback_configs() == [("http://fallback.example/v1", "test-key", "gemini-pro-agent")]
+
+
 def test_timescar_shift_window_uses_semantic_model_frame() -> None:
     frame = agent.infer_intent_frame(
         "请把马上开始的那单预订帮我往后整体延15分钟。",

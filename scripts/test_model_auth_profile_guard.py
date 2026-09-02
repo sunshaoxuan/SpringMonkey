@@ -36,9 +36,13 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert '"baseUrl": "http://ccnode.briconbric.com:49530/v1"' in remote
     assert '"api": "openai-completions"' in remote
     assert '"id": "gpt-5.6-sol"' in remote
+    assert '"id": "gpt-5.3-codex-spark"' in remote
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
     assert '"keyRef": openai_ref' in remote
-    assert '"keyRef": ollama_ref' in remote
+    assert '"keyRef": ollama_ref' not in remote
+    assert 'providers.pop("ollama", None)' in remote
+    assert 'defaults["fallbacks"] = []' in remote
+    assert 'profiles.pop("ollama:default", None)' in remote
     assert 'profiles["openai-codex:default"]' in remote
     assert 'missing systemd credential payload' in remote
     assert '"apiKey": secret' not in remote
@@ -51,7 +55,7 @@ def test_model_auth_guard_syncs_current_sqlite_auth_store() -> None:
     assert "openclaw --no-color models auth --agent main" in remote
     assert "paste-token openai openai:ccnode-codex" in remote
     assert "paste-token openai-codex openai-codex:default" in remote
-    assert "paste-api-key ollama ollama:default" in remote
+    assert "paste-api-key ollama ollama:default" not in remote
     assert "openclaw-agent.sqlite" not in remote
 
 

@@ -220,9 +220,10 @@ class TestPlanAndTemplate(unittest.TestCase):
             5,
         )
 
-    def test_codex_http_endpoint_without_key_uses_qwen_fallback_not_gateway(self):
-        with patch.object(self.m, "openclaw_model_chat") as gateway, patch.object(self.m, "ollama_chat", return_value="qwen ok") as fallback:
-            result = self.m.chat_with_model(
+    def test_codex_http_endpoint_without_key_does_not_use_retired_qwen_fallback(self):
+        with patch.object(self.m, "openclaw_model_chat") as gateway, patch.object(self.m, "ollama_chat") as fallback:
+            with self.assertRaises(RuntimeError) as raised:
+                self.m.chat_with_model(
                 "openai-codex/gpt-5.5",
                 ollama_host="http://localhost:9",
                 openai_base_url="https://api.openai.com/v1",
@@ -233,9 +234,9 @@ class TestPlanAndTemplate(unittest.TestCase):
                 user="u",
                 timeout=5,
             )
-        self.assertEqual(result, "qwen ok")
+        self.assertIn("no model fallback is configured", str(raised.exception))
         gateway.assert_not_called()
-        fallback.assert_called_once_with("http://localhost:9", "qwen3:14b", "s", "u", 5)
+        fallback.assert_not_called()
 
     def test_load_runtime_env_files_does_not_override_existing_env(self):
         with tempfile.TemporaryDirectory() as td:
@@ -752,10 +753,10 @@ class TestPlanAndTemplate(unittest.TestCase):
         self.assertNotIn("<think>", cleaned)
         self.assertIn("• 新闻摘要条目", cleaned)
 
-    def test_broadcast_json_has_ollama_base_url(self):
+    def test_broadcast_json_does_not_use_retired_ollama_base_url(self):
         url = self.cfg.get("model", {}).get("ollamaBaseUrl", "")
-        self.assertTrue(url.startswith("http://"), "model.ollamaBaseUrl should be set for pipeline hosts")
-        self.assertNotIn("127.0.0.1", url)
+        self.assertEqual(url, "")
+        self.assertEqual(self.cfg.get("model", {}).get("chatFallback", ""), "")
 
     def test_worker_item_budget_is_configured(self):
         max_items = int(self.cfg.get("model", {}).get("maxWorkerItems", 0))

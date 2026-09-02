@@ -18,8 +18,6 @@ RUNTIME_ENV_FILES = (
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
 DEFAULT_PRIMARY_MODEL = "gpt-5.6-sol"
-DEFAULT_FALLBACK_BASE_URL = "http://ccnode.briconbric.com:22545"
-DEFAULT_FALLBACK_MODEL = "qwen3:14b"
 
 
 @dataclass(frozen=True)
@@ -117,21 +115,19 @@ def resolve_primary_chat_endpoint() -> ChatEndpoint:
     return ChatEndpoint("openai_compatible", base_url, _strip_provider(model), api_key)
 
 
-def resolve_fallback_chat_endpoint() -> ChatEndpoint:
+def resolve_fallback_chat_endpoint() -> ChatEndpoint | None:
     load_runtime_env_files()
+    provider = os.environ.get("OPENCLAW_MODEL_FALLBACK_PROVIDER", "openai_compatible").strip() or "openai_compatible"
     base_url = (
         os.environ.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", "").strip()
-        or os.environ.get("OPENCLAW_QWEN_FALLBACK_BASE_URL", "").strip()
-        or os.environ.get("OLLAMA_BASE_URL", "").strip()
-        or DEFAULT_FALLBACK_BASE_URL
     ).rstrip("/")
     model = (
         os.environ.get("OPENCLAW_MODEL_FALLBACK", "").strip()
-        or os.environ.get("OPENCLAW_QWEN_FALLBACK_MODEL", "").strip()
-        or os.environ.get("NEWS_FALLBACK_MODEL", "").strip()
-        or DEFAULT_FALLBACK_MODEL
     )
-    return ChatEndpoint("ollama", base_url, _strip_provider(model))
+    if not base_url or not model:
+        return None
+    api_key = read_secret_env("OPENCLAW_MODEL_FALLBACK_API_KEY")
+    return ChatEndpoint(provider, base_url, _strip_provider(model), api_key)
 
 
 def _openai_compatible_chat(endpoint: ChatEndpoint, messages: list[dict[str, str]], timeout: int, temperature: float) -> str:
@@ -184,8 +180,15 @@ def chat_with_fallback(
         errors.append(f"primary {primary.model}@{primary.base_url}: {type(exc).__name__}: {exc}")
         if not allow_fallback:
             raise
+    if fallback is None:
+        raise RuntimeError(errors[-1] if errors else "primary failed and no fallback endpoint is configured")
     fallback_started = time.monotonic()
-    content = _ollama_chat(fallback, messages, timeout)
+    if fallback.provider in ("openai_compatible", "openai", "openai-codex"):
+        content = _openai_compatible_chat(fallback, messages, timeout, temperature)
+    elif fallback.provider == "ollama":
+        content = _ollama_chat(fallback, messages, timeout)
+    else:
+        raise RuntimeError(f"unsupported fallback provider: {fallback.provider}")
     return content, {
         "model": fallback.model,
         "provider": fallback.provider,

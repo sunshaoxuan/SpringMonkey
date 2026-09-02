@@ -42,7 +42,6 @@ file_provider = {
     "timeoutMs": 5000,
 }
 openai_ref = {"source": "file", "provider": "systemd-credential-file", "id": "/providers/openaiCodex/apiKey"}
-ollama_ref = {"source": "file", "provider": "systemd-credential-file", "id": "/providers/ollama/apiKey"}
 
 config_paths = [
     Path("/var/lib/openclaw/.openclaw/openclaw.json"),
@@ -123,20 +122,27 @@ for path in config_paths:
                 "contextWindow": 196000,
                 "maxTokens": 32768,
             },
+            {
+                "id": "gpt-5.3-codex-spark",
+                "name": "GPT-5.3 Codex Spark via ccnode",
+                "reasoning": True,
+                "input": ["text", "image"],
+                "contextWindow": 196000,
+                "maxTokens": 32768,
+            },
         ],
     }
-    ollama = providers.get("ollama")
-    if isinstance(ollama, dict):
-        ollama.pop("apiKey", None)
+    providers.pop("ollama", None)
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
     defaults["primary"] = "openai-codex/gpt-5.6-sol"
+    defaults["fallbacks"] = []
     configured_models = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("models", {})
     configured_models.setdefault("openai-codex/gpt-5.6-sol", {})
     configured_models.setdefault("openai-codex/gpt-5.5", {})
     configured_models.setdefault("openai-codex/gpt-5.4", {})
-    fallbacks = defaults.setdefault("fallbacks", [])
-    if "ollama/qwen3:14b" not in fallbacks:
-        fallbacks.insert(0, "ollama/qwen3:14b")
+    configured_models.setdefault("openai-codex/gpt-5.3-codex-spark", {})
+    for stale_model in ("ollama/qwen3:14b", "ollama/qwen2.5:14b-instruct", "openai/gpt-5.5"):
+        configured_models.pop(stale_model, None)
     if write_json_if_changed(path, data):
         print(f"[model-auth-profile-guard] updated config {path}")
 
@@ -165,30 +171,25 @@ for path in profile_paths:
         "displayName": "ccnode gpt-5.6-sol",
         "copyToAgents": True,
     }
-    profiles["ollama:default"] = {
-        "provider": "ollama",
-        "type": "api_key",
-        "keyRef": ollama_ref,
-        "displayName": "ccnode ollama",
-        "copyToAgents": True,
-    }
+    profiles.pop("ollama:default", None)
     order = data.setdefault("order", {})
     order["openai"] = [item for item in order.get("openai", []) if item != "openai:ccnode-codex"]
-    order["ollama"] = ["ollama:default"] + [item for item in order.get("ollama", []) if item != "ollama:default"]
+    if "ollama" in order:
+        order["ollama"] = [item for item in order.get("ollama", []) if item != "ollama:default"]
     last_good = data.setdefault("lastGood", {})
     if last_good.get("openai") == "openai:ccnode-codex":
         last_good.pop("openai", None)
-    last_good["ollama"] = "ollama:default"
+    if last_good.get("ollama") == "ollama:default":
+        last_good.pop("ollama", None)
     if write_json_if_changed(path, data):
         print(f"[model-auth-profile-guard] updated profile {path}")
 print("[model-auth-profile-guard] ok")
 PY
 
 openai_tmp="$(mktemp /tmp/openclaw-codex-key.XXXXXX)"
-ollama_tmp="$(mktemp /tmp/openclaw-ollama-key.XXXXXX)"
-chmod 600 "$openai_tmp" "$ollama_tmp"
-trap 'rm -f "$openai_tmp" "$ollama_tmp"' EXIT
-python3 - "$openai_tmp" "$ollama_tmp" <<'PY'
+chmod 600 "$openai_tmp"
+trap 'rm -f "$openai_tmp"' EXIT
+python3 - "$openai_tmp" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -196,7 +197,6 @@ from pathlib import Path
 credential_path = Path("/run/credentials/openclaw.service/openclaw-secrets.json")
 data = json.loads(credential_path.read_text(encoding="utf-8"))
 Path(sys.argv[1]).write_text(str(data["providers"]["openaiCodex"]["apiKey"]), encoding="utf-8")
-Path(sys.argv[2]).write_text(str(data["providers"]["ollama"]["apiKey"]), encoding="utf-8")
 PY
 
 sync_auth_profile() {
@@ -218,7 +218,6 @@ sync_auth_profile() {
 if command -v openclaw >/dev/null 2>&1; then
   sync_auth_profile paste-token openai openai:ccnode-codex "$openai_tmp"
   sync_auth_profile paste-token openai-codex openai-codex:default "$openai_tmp"
-  sync_auth_profile paste-api-key ollama ollama:default "$ollama_tmp"
 fi
 EOF
 chmod 755 /usr/local/lib/openclaw/ensure_model_auth_profiles.sh

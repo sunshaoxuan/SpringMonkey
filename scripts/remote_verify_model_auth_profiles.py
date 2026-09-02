@@ -61,8 +61,8 @@ for key in ("NEWS_CODEX_BASE_URL", "OPENCLAW_PUBLIC_MODEL_BASE_URL"):
         errors.append(f"unexpected primary model endpoint {key}={value}")
 for key in ("OPENCLAW_MODEL_FALLBACK_BASE_URL", "OPENCLAW_QWEN_FALLBACK_BASE_URL", "OLLAMA_BASE_URL"):
     value = env_values.get(key, "")
-    if value and "ccnode.briconbric.com:22545" not in value:
-        errors.append(f"unexpected fallback model endpoint {key}={value}")
+    if value:
+        errors.append(f"fallback model endpoint must be empty after 22545 retirement: {key}={value}")
 
 config_paths = [
     Path("/var/lib/openclaw/.openclaw/openclaw.json"),
@@ -132,6 +132,9 @@ for path in config_paths:
     print(f"default.primary={defaults.get('primary')}")
     if defaults.get("primary") != "openai-codex/gpt-5.6-sol":
         errors.append(f"unexpected primary model in {path}: {defaults.get('primary')}")
+    print(f"default.fallbacks={defaults.get('fallbacks')}")
+    if defaults.get("fallbacks"):
+        errors.append(f"model fallbacks must be empty in {path}: {defaults.get('fallbacks')}")
     codex = providers.get("openai-codex") or {}
     codex_base = str(codex.get("baseUrl") or "")
     codex_key = codex.get("apiKey")
@@ -143,6 +146,8 @@ for path in config_paths:
     print(f"openai-codex.models={codex_models}")
     if "gpt-5.6-sol" not in codex_models:
         errors.append(f"missing gpt-5.6-sol model in {path}")
+    if "gpt-5.3-codex-spark" not in codex_models:
+        errors.append(f"missing gpt-5.3-codex-spark model in {path}")
     openai = providers.get("openai") or {}
     base = str(openai.get("baseUrl") or "")
     print(f"openai.baseUrl={base}")
@@ -151,8 +156,8 @@ for path in config_paths:
     ollama = providers.get("ollama") or {}
     ollama_base = str(ollama.get("baseUrl") or "")
     print(f"ollama.baseUrl={ollama_base}")
-    if ollama_base and "ccnode.briconbric.com:22545" not in ollama_base:
-        errors.append(f"unexpected ollama baseUrl in {path}: {ollama_base}")
+    if ollama_base:
+        errors.append(f"OpenClaw chat fallback must not configure ollama after 22545 retirement in {path}: {ollama_base}")
 
 for path in profile_paths:
     print(f"--- auth {path}")
@@ -171,6 +176,8 @@ for path in profile_paths:
     validate_secret_ref(f"{path}.openai-codex:default", codex_profile.get("keyRef") or codex_profile.get("key"), "/providers/openaiCodex/apiKey")
     if "openai-codex:default" not in profiles:
         errors.append(f"openai-codex oauth profile missing in {path}")
+    if "ollama:default" in profiles:
+        errors.append(f"stale ollama auth profile remains in {path}")
     if last_good.get("openai") == "openai:ccnode-codex":
         errors.append(f"openai lastGood should not force ccnode api key profile in {path}")
 
@@ -194,9 +201,11 @@ env = {
 result = subprocess.run(auth_cmd, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
 auth_output = result.stdout
 print(auth_output)
-for expected in ("openai:ccnode-codex", "openai-codex:default", "ollama:default"):
+for expected in ("openai:ccnode-codex", "openai-codex:default"):
     if expected not in auth_output:
         errors.append(f"missing sqlite auth profile {expected}")
+if "ollama:default" in auth_output:
+    errors.append("stale sqlite auth profile ollama:default remains")
 
 if errors:
     print("model_auth_profiles_failed")

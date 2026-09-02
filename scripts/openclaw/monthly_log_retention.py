@@ -105,9 +105,10 @@ def main() -> int:
     parser.add_argument("--source", action="append", type=Path)
     parser.add_argument("--min-free-percent", type=float, default=10.0)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--now", help="ISO timestamp used as the retention clock; defaults to current local time.")
     args = parser.parse_args()
 
-    current_month = datetime.now().strftime("%Y-%m")
+    current_month = (datetime.fromisoformat(args.now) if args.now else datetime.now()).strftime("%Y-%m")
     sources = tuple(args.source) if args.source else DEFAULT_SOURCES
     args.archive_root.mkdir(parents=True, exist_ok=True)
     archived: list[Path] = []

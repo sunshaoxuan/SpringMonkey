@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Ollama 连续可用性测试脚本。
-模仿用户规则：检查 ccnode 端点的 Ollama 是否响应，并记录失败状态。
+仅在显式配置 Ollama 端点时检查响应，并记录失败状态。
 """
 import json
 import os
@@ -38,7 +38,11 @@ def main():
         return 1
     
     cfg = load_json(DEFAULT_CONFIG)
-    base_url = cfg.get("model", {}).get("ollamaBaseUrl", "http://ccnode.briconbric.com:22545")
+    base_url = str(cfg.get("model", {}).get("ollamaBaseUrl", "") or "").strip()
+    if not base_url:
+        print("Ollama Status: SKIPPED")
+        print("Reason: no Ollama fallback endpoint is configured.")
+        return 0
     
     state = load_json(STATE_FILE)
     consecutive_failures = state.get("consecutive_failures", 0)

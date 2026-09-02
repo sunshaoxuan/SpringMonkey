@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
 """
-新闻多阶段流水线：RSS 发现 → HTTP 取回 → Codex 逐条整理 → Codex 终稿 → 机械校验。
+新闻多阶段流水线：RSS 发现 -> HTTP 取回 -> Codex 逐条整理 -> Codex 终稿 -> 机械校验。
 
 阶段概览
 --------
 1. plan          从 broadcast.json + job 名生成 plan.json（按地区拆批，与 1–4 大纲对齐）。
 2. discover      RSS 抓取各地区新闻源，获取真实文章链接（无需 API key）。
 3. fetch         HTTP 取回每篇文章正文内容。
-4. worker        每篇文章独立调用 Codex 主模型，输入真实正文 → 输出中文摘要+保留原链接；Qwen/Ollama 仅兜底。
+4. worker        每篇文章独立调用 Codex 主模型，输入真实正文 -> 输出中文摘要+保留原链接。
 5. merge         拼接为 draft_merged.md。
-6. finalize      Codex 主模型合并润色 → Qwen/Ollama 兜底 → 机械兜底。
+6. finalize      Codex 主模型合并润色 -> 机械兜底。
 7. verify        调用 verify_broadcast_draft 规则做机械检查。
 
 模型分工
 --------
-- Codex (openai-codex/gpt-5.6-sol) → 默认主模型：编排、逐条处理、终稿格式化
-- Qwen (qwen3:14b)             → 兜底处理器：仅在 Codex 不可用时尝试
+- Codex (openai-codex/gpt-5.6-sol) -> 默认主模型：编排、逐条处理、终稿格式化
+- Explicit fallback -> only used when OPENCLAW_MODEL_FALLBACK_BASE_URL and OPENCLAW_MODEL_FALLBACK are configured.
 
 环境变量（常用）
 --------------
 OpenClaw Codex profile   Codex 主模型通过 OpenClaw gateway/OAuth profile 调用
 NEWS_CODEX_BASE_URL      OpenAI-compatible Codex HTTP endpoint, e.g. http://ccnode.briconbric.com:49530/v1
 NEWS_CODEX_API_KEY       API key for NEWS_CODEX_BASE_URL. Required when codexBaseUrl is configured.
-OLLAMA_HOST              若设置则优先于配置，作为 Ollama HTTP 基址
-model.ollamaBaseUrl      broadcast.json 中 Ollama 基址
+OPENCLAW_MODEL_FALLBACK_BASE_URL  Optional fallback endpoint; empty by default.
+OPENCLAW_MODEL_FALLBACK           Optional fallback model; empty by default.
 """
 from __future__ import annotations
 
@@ -289,8 +289,8 @@ def chat_with_model(
     user: str,
     timeout: int,
 ) -> str:
-    fallback_model = os.environ.get("OPENCLAW_MODEL_FALLBACK", os.environ.get("OPENCLAW_QWEN_FALLBACK_MODEL", "qwen3:14b")).strip()
-    fallback_host = os.environ.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", os.environ.get("OPENCLAW_QWEN_FALLBACK_BASE_URL", ollama_host)).strip() or ollama_host
+    fallback_model = os.environ.get("OPENCLAW_MODEL_FALLBACK", "").strip()
+    fallback_host = os.environ.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", "").strip()
 
     def call_selected() -> str:
         if is_openclaw_codex_model(model_id):
@@ -298,7 +298,7 @@ def chat_with_model(
                 if not codex_api_key:
                     raise RuntimeError(
                         f"missing NEWS_CODEX_API_KEY for Codex HTTP endpoint {codex_base_url}; "
-                        "falling back to configured Qwen/Ollama endpoint"
+                        "no model fallback is configured"
                     )
                 return openai_chat(
                     codex_base_url,
@@ -326,6 +326,8 @@ def chat_with_model(
         return call_selected()
     except Exception:
         if not fallback_model or ollama_api_model_name(model_id) == ollama_api_model_name(fallback_model):
+            raise
+        if not fallback_host:
             raise
         return ollama_chat(fallback_host, ollama_api_model_name(fallback_model), system, user, timeout)
 
@@ -1579,7 +1581,7 @@ def main() -> int:
     )
     fallback_model_raw = os.environ.get(
         "NEWS_FALLBACK_MODEL",
-        model_cfg.get("chatFallback", "ollama/qwen3:14b"),
+        model_cfg.get("chatFallback", ""),
     )
     finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.6-sol")
     orch_model = os.environ.get(

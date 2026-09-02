@@ -73,7 +73,7 @@ openclaw --no-color cron edit "$JOB_ID_VALUE" \
   --announce \
   --account default \
   --model "$TARGET_MODEL" \
-  --fallbacks "ollama/qwen3:14b" \
+  --fallbacks "" \
   --thinking low \
   --timeout-seconds 3600 \
   --agent main \

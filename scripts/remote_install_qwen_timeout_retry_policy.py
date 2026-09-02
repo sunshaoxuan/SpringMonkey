@@ -7,8 +7,8 @@ import sys
 def main() -> int:
     print(
         "DEPRECATED: qwen-first timeout retry policy is disabled. "
-        "Current OpenClaw default is openai-codex/gpt-5.6-sol primary with "
-        "ollama/qwen3:14b fallback only. Update behavior through Git-delivered "
+        "Current OpenClaw default uses only the ccnode 49530 OpenAI-compatible "
+        "endpoint unless a new explicit fallback endpoint is configured. Update behavior through Git-delivered "
         "config and scripts, then let the host pull the repository.",
         file=sys.stderr,
     )
