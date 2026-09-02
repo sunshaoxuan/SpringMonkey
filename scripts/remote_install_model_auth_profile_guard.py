@@ -123,14 +123,6 @@ for path in config_paths:
                 "maxTokens": 32768,
             },
             {
-                "id": "gpt-5.3-codex-spark",
-                "name": "GPT-5.3 Codex Spark via ccnode",
-                "reasoning": True,
-                "input": ["text", "image"],
-                "contextWindow": 196000,
-                "maxTokens": 32768,
-            },
-            {
                 "id": "gemini-pro-agent",
                 "name": "Gemini Pro Agent via ccnode",
                 "reasoning": True,
