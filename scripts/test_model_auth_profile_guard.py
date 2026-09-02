@@ -37,6 +37,7 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert '"api": "openai-completions"' in remote
     assert '"id": "gpt-5.6-sol"' in remote
     assert '"id": "gpt-5.3-codex-spark"' in remote
+    assert '"id": "gemini-pro-agent"' in remote
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
     assert '"keyRef": openai_ref' in remote
     assert '"keyRef": ollama_ref' not in remote

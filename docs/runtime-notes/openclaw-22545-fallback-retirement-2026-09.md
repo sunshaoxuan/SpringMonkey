@@ -38,10 +38,16 @@ Host checks on 2026-09-02 showed:
 
 ## Gemini Pro Candidate
 
-Gemini Pro via an independent subscription may be evaluated as a future
-fallback. It must be added only after separate authentication, model discovery,
-minimal text smoke, and policy review. It is not part of the current production
-runtime baseline.
+Gemini Pro via the ccnode 49530 OpenAI-compatible endpoint is the preferred
+future fallback. The repository includes a smoke-gated installer:
+
+```text
+python scripts/remote_install_gemini_model_fallback.py
+```
+
+The installer probes `gemini-pro-agent` through `/v1/chat/completions` before
+writing runtime fallback config. If the endpoint reports no available accounts,
+the installer leaves production fallback disabled.
 
 ## Embeddings
 

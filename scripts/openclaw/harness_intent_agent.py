@@ -14,6 +14,7 @@ from typing import Any, Callable
 from model_fallback_client import (
     chat_with_fallback,
     load_runtime_env_files,
+    read_secret_env,
     resolve_primary_chat_endpoint,
 )
 from harness_contracts import contract_prompt, intent_contract_prompt
@@ -102,7 +103,7 @@ def intent_model_fallback_configs() -> list[tuple[str, str, str]]:
     if not base or not fallback_models_raw:
         return []
     fallback_models = [m.strip() for m in fallback_models_raw.split(",") if m.strip()]
-    api_key = os.environ.get("OPENCLAW_INTENT_FALLBACK_API_KEY", "").strip()
+    api_key = read_secret_env("OPENCLAW_INTENT_FALLBACK_API_KEY")
     return [(base, api_key, m) for m in fallback_models]
 
 

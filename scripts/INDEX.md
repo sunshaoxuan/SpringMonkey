@@ -306,6 +306,10 @@
 - `openclaw/intent_tool_router.py`：Discord owner DM Harness CLI wrapper；默认执行路径为 `harness_dispatcher -> intentAgent -> tool binder -> governance -> worker -> evaluator -> reporter`。文件内旧 `classify()` / `model_classify_intent()` / TimesCar guard 仅保留为 diagnostic-only，不作为默认语义路由。
 - `openclaw/model_fallback_client.py`：统一模型调用层。Python 侧 intent、blocker、web research 等模型调用默认只走 gpt-5.6-sol/OpenAI-compatible endpoint；只有显式配置 `OPENCLAW_MODEL_FALLBACK_BASE_URL` 与 `OPENCLAW_MODEL_FALLBACK` 时才尝试兜底。
   - 当前运行记录：`docs/runtime-notes/openclaw-22545-fallback-retirement-2026-09.md`。
+
+- `remote_install_gemini_model_fallback.py`
+  - 用途：将 `gemini-pro-agent` 作为 49530 OpenAI-compatible 明确兜底。脚本先执行真实 chat smoke，只有返回 `ok` 才写入 `/etc/openclaw/openclaw.env`、OpenClaw 默认 fallbacks 和意图 fallback。
+  - 当前默认：`OPENCLAW_GEMINI_FALLBACK_BASE_URL=http://ccnode.briconbric.com:49530/v1`，`OPENCLAW_GEMINI_FALLBACK_MODEL=gemini-pro-agent`。
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/verify_harness_registry.py`：校验 OpenClaw Harness manifest、skill registry、tool registry 的 SubAgent/权限/输出契约字段

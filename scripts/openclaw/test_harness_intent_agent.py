@@ -146,6 +146,17 @@ def test_intent_model_uses_only_explicit_fallback(monkeypatch) -> None:
     assert agent.intent_model_fallback_configs() == [("http://fallback.example/v1", "test-key", "gemini-pro-agent")]
 
 
+def test_intent_model_fallback_key_can_use_file(monkeypatch, tmp_path: Path) -> None:
+    key_file = tmp_path / "fallback.key"
+    key_file.write_text("file-key", encoding="utf-8")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_BASE_URL", "http://fallback.example/v1")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_MODELS", "gemini-pro-agent")
+    monkeypatch.delenv("OPENCLAW_INTENT_FALLBACK_API_KEY", raising=False)
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_API_KEY_FILE", str(key_file))
+
+    assert agent.intent_model_fallback_configs() == [("http://fallback.example/v1", "file-key", "gemini-pro-agent")]
+
+
 def test_timescar_shift_window_uses_semantic_model_frame() -> None:
     frame = agent.infer_intent_frame(
         "请把马上开始的那单预订帮我往后整体延15分钟。",

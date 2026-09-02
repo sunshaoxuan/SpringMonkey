@@ -57,14 +57,19 @@ file_aliases = [
     "NEWS_CODEX_API_KEY_FILE",
     "OPENCLAW_PUBLIC_MODEL_API_KEY_FILE",
 ]
-fallback_values = {
-    "OPENCLAW_MODEL_FALLBACK_BASE_URL": "",
-    "OPENCLAW_QWEN_FALLBACK_BASE_URL": "",
-    "OLLAMA_BASE_URL": "",
-    "OPENCLAW_MODEL_FALLBACK": "",
-    "OPENCLAW_QWEN_FALLBACK_MODEL": "",
-    "NEWS_FALLBACK_MODEL": "",
-}
+fallback_keys = [
+    "OPENCLAW_MODEL_FALLBACK_PROVIDER",
+    "OPENCLAW_MODEL_FALLBACK_BASE_URL",
+    "OPENCLAW_MODEL_FALLBACK",
+    "OPENCLAW_MODEL_FALLBACK_API_KEY_FILE",
+    "OPENCLAW_INTENT_FALLBACK_BASE_URL",
+    "OPENCLAW_INTENT_FALLBACK_MODELS",
+    "OPENCLAW_INTENT_FALLBACK_API_KEY_FILE",
+    "NEWS_FALLBACK_MODEL",
+    "OPENCLAW_QWEN_FALLBACK_BASE_URL",
+    "OLLAMA_BASE_URL",
+    "OPENCLAW_QWEN_FALLBACK_MODEL",
+]
 
 lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
 values: dict[str, str] = {}
@@ -91,8 +96,16 @@ for alias in file_aliases:
     values[alias] = key_file
     if alias not in order:
         order.append(alias)
-for alias, value in fallback_values.items():
-    values[alias] = value
+def retired_fallback_value(value: str) -> bool:
+    lowered = value.lower()
+    return "22545" in lowered or "qwen" in lowered or "ollama" in lowered
+
+
+for alias in fallback_keys:
+    if retired_fallback_value(values.get(alias, "")):
+        values[alias] = ""
+    if alias.startswith("OPENCLAW_QWEN_") or alias == "OLLAMA_BASE_URL":
+        values[alias] = ""
     if alias not in order:
         order.append(alias)
 
@@ -125,8 +138,8 @@ print("PUBLIC_MODEL_ENV_UPDATED")
 print(f"NEWS_CODEX_BASE_URL={values.get('NEWS_CODEX_BASE_URL', '')}")
 print(f"OPENCLAW_PUBLIC_MODEL_BASE_URL={values.get('OPENCLAW_PUBLIC_MODEL_BASE_URL', '')}")
 print(f"NEWS_CODEX_API_KEY_FILE={values.get('NEWS_CODEX_API_KEY_FILE', '')}")
-print("OPENCLAW_MODEL_FALLBACK_BASE_URL=")
-print("OPENCLAW_MODEL_FALLBACK=")
+print(f"OPENCLAW_MODEL_FALLBACK_BASE_URL={values.get('OPENCLAW_MODEL_FALLBACK_BASE_URL', '')}")
+print(f"OPENCLAW_MODEL_FALLBACK={values.get('OPENCLAW_MODEL_FALLBACK', '')}")
 print(f"NEWS_CODEX_API_KEY={'set' if values.get('NEWS_CODEX_API_KEY') else 'missing'}")
 print(f"OPENCLAW_PUBLIC_MODEL_API_KEY={'set' if values.get('OPENCLAW_PUBLIC_MODEL_API_KEY') else 'missing'}")
 PY

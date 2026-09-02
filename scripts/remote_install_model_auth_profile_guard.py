@@ -130,6 +130,14 @@ for path in config_paths:
                 "contextWindow": 196000,
                 "maxTokens": 32768,
             },
+            {
+                "id": "gemini-pro-agent",
+                "name": "Gemini Pro Agent via ccnode",
+                "reasoning": True,
+                "input": ["text", "image"],
+                "contextWindow": 196000,
+                "maxTokens": 32768,
+            },
         ],
     }
     providers.pop("ollama", None)
@@ -141,6 +149,7 @@ for path in config_paths:
     configured_models.setdefault("openai-codex/gpt-5.5", {})
     configured_models.setdefault("openai-codex/gpt-5.4", {})
     configured_models.setdefault("openai-codex/gpt-5.3-codex-spark", {})
+    configured_models.setdefault("openai-codex/gemini-pro-agent", {})
     for stale_model in ("ollama/qwen3:14b", "ollama/qwen2.5:14b-instruct", "openai/gpt-5.5"):
         configured_models.pop(stale_model, None)
     if write_json_if_changed(path, data):

@@ -292,44 +292,45 @@ def chat_with_model(
     fallback_model = os.environ.get("OPENCLAW_MODEL_FALLBACK", "").strip()
     fallback_host = os.environ.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", "").strip()
 
-    def call_selected() -> str:
-        if is_openclaw_codex_model(model_id):
-            if codex_base_url:
+    def call_selected(selected_model: str, selected_codex_base_url: str = "") -> str:
+        endpoint = selected_codex_base_url or codex_base_url
+        if is_openclaw_codex_model(selected_model):
+            if endpoint:
                 if not codex_api_key:
                     raise RuntimeError(
-                        f"missing NEWS_CODEX_API_KEY for Codex HTTP endpoint {codex_base_url}; "
+                        f"missing NEWS_CODEX_API_KEY for Codex HTTP endpoint {endpoint}; "
                         "no model fallback is configured"
                     )
                 return openai_chat(
-                    codex_base_url,
+                    endpoint,
                     codex_api_key,
-                    provider_api_model_name(model_id),
+                    provider_api_model_name(selected_model),
                     system,
                     user,
                     timeout,
                 )
-            return openclaw_model_chat(model_id, system, user, timeout)
-        if is_openai_model(model_id):
+            return openclaw_model_chat(selected_model, system, user, timeout)
+        if is_openai_model(selected_model):
             if not openai_api_key:
-                raise RuntimeError(f"missing OPENAI_API_KEY for {model_id}")
+                raise RuntimeError(f"missing OPENAI_API_KEY for {selected_model}")
             return openai_chat(
                 openai_base_url,
                 openai_api_key,
-                provider_api_model_name(model_id),
+                provider_api_model_name(selected_model),
                 system,
                 user,
                 timeout,
             )
-        return ollama_chat(ollama_host, ollama_api_model_name(model_id), system, user, timeout)
+        return ollama_chat(ollama_host, ollama_api_model_name(selected_model), system, user, timeout)
 
     try:
-        return call_selected()
+        return call_selected(model_id)
     except Exception:
         if not fallback_model or ollama_api_model_name(model_id) == ollama_api_model_name(fallback_model):
             raise
-        if not fallback_host:
+        if not fallback_host and not is_openclaw_codex_model(fallback_model):
             raise
-        return ollama_chat(fallback_host, ollama_api_model_name(fallback_model), system, user, timeout)
+        return call_selected(fallback_model, fallback_host)
 
 
 def save_json(path: Path, data: Any) -> None:

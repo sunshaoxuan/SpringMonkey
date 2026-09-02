@@ -238,6 +238,32 @@ class TestPlanAndTemplate(unittest.TestCase):
         gateway.assert_not_called()
         fallback.assert_not_called()
 
+    def test_codex_http_endpoint_can_fallback_to_gemini_on_same_gateway(self):
+        with patch.dict(
+            self.m.os.environ,
+            {
+                "OPENCLAW_MODEL_FALLBACK": "openai-codex/gemini-pro-agent",
+                "OPENCLAW_MODEL_FALLBACK_BASE_URL": "http://ccnode.briconbric.com:49530/v1",
+            },
+            clear=False,
+        ):
+            with patch.object(self.m, "openai_chat", side_effect=[RuntimeError("primary down"), "gemini ok"]) as mocked:
+                result = self.m.chat_with_model(
+                    "openai-codex/gpt-5.6-sol",
+                    ollama_host="",
+                    openai_base_url="https://api.openai.com/v1",
+                    openai_api_key="",
+                    codex_base_url="http://ccnode.briconbric.com:49530/v1",
+                    codex_api_key="secret",
+                    system="s",
+                    user="u",
+                    timeout=5,
+                )
+
+        self.assertEqual(result, "gemini ok")
+        self.assertEqual(mocked.call_args_list[0].args[2], "gpt-5.6-sol")
+        self.assertEqual(mocked.call_args_list[1].args[2], "gemini-pro-agent")
+
     def test_load_runtime_env_files_does_not_override_existing_env(self):
         with tempfile.TemporaryDirectory() as td:
             env_file = Path(td) / "openclaw.env"
