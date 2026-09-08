@@ -259,7 +259,7 @@ def intent_model_fallback_configs() -> list[tuple[str, str, str]]:
         or "http://ccnode.briconbric.com:22545"
     ).rstrip("/") + "/v1"
     fallback_models_raw = os.environ.get(
-        "OPENCLAW_INTENT_FALLBACK_MODELS", "qwen3:14b,qwen2.5:14b-instruct"
+        "OPENCLAW_INTENT_FALLBACK_MODELS", "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S,qwen2.5:14b-instruct"
     ).strip()
     fallback_models = [m.strip() for m in fallback_models_raw.split(",") if m.strip()]
     return [(ollama_base, "ollama-local", m) for m in fallback_models]

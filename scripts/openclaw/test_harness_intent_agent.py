@@ -8,6 +8,13 @@ from unittest.mock import patch
 import harness_intent_agent as agent
 
 
+def test_default_ollama_fallback_preserves_full_huggingface_model_id() -> None:
+    with patch.object(agent, "load_runtime_env_files"), patch.dict(agent.os.environ, {}, clear=True):
+        routes = agent.intent_model_fallback_configs()
+    assert routes[0][0] == "http://ccnode.briconbric.com:22545/v1"
+    assert routes[0][2] == "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
+
+
 def load_registry() -> dict:
     return json.loads((Path(__file__).resolve().parents[2] / "config" / "openclaw" / "intent_tools.json").read_text(encoding="utf-8"))
 

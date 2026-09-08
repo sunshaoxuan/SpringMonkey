@@ -15,7 +15,7 @@
 模型分工
 --------
 - Codex (openai-codex/gpt-5.5) → 默认主模型：编排、逐条处理、终稿格式化
-- Qwen (qwen3:14b)             → 兜底处理器：仅在 Codex 不可用时尝试
+- Qwen (hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S)             → 兜底处理器：仅在 Codex 不可用时尝试
 
 环境变量（常用）
 --------------
@@ -157,8 +157,8 @@ def resolve_codex_api_key(cfg: dict) -> str:
 
 def ollama_api_model_name(model_id: str) -> str:
     """
-    Ollama /api/chat 的 model 字段必须是裸名（如 qwen3:14b）。
-    broadcast 里常与 OpenClaw 一致写成 ollama/qwen3:14b，需去掉 provider 前缀。
+    Ollama /api/chat 的 model 字段必须是裸名（如 hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S）。
+    broadcast 里常与 OpenClaw 一致写成 ollama/hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S，需去掉 provider 前缀。
     """
     s = (model_id or "").strip()
     if s.lower().startswith("ollama/"):
@@ -1470,7 +1470,7 @@ def main() -> int:
     )
     fallback_model_raw = os.environ.get(
         "NEWS_FALLBACK_MODEL",
-        model_cfg.get("chatFallback", "ollama/qwen3:14b"),
+        model_cfg.get("chatFallback", "ollama/hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"),
     )
     finalize_model_raw = model_cfg.get("newsFinalize", "openai-codex/gpt-5.5")
     orch_model = os.environ.get(

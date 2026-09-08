@@ -420,7 +420,7 @@
   },
   "model": {
     "chatPrimary": "openai-codex/gpt-5.5",
-    "chatFallback": "ollama/qwen3:14b",
+    "chatFallback": "ollama/hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
     "chatEscalateWhenHistoryCharsExceed": 15000,
     "codexBaseUrl": "http://ccnode.briconbric.com:49530/v1",
     "codexApiKeyEnv": "NEWS_CODEX_API_KEY",

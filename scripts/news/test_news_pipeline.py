@@ -690,10 +690,10 @@ class TestPlanAndTemplate(unittest.TestCase):
 
     def test_ollama_api_model_name_strips_provider_prefix(self):
         self.assertEqual(
-            self.m.ollama_api_model_name("ollama/qwen3:14b"),
-            "qwen3:14b",
+            self.m.ollama_api_model_name("ollama/hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"),
+            "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
         )
-        self.assertEqual(self.m.ollama_api_model_name("qwen3:14b"), "qwen3:14b")
+        self.assertEqual(self.m.ollama_api_model_name("hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"), "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S")
         self.assertEqual(self.m.ollama_api_model_name("Ollama/foo:bar"), "foo:bar")
 
     def test_codex_model_uses_openclaw_profile_not_api_key(self):
