@@ -1,6 +1,6 @@
 # 湯猴 (OpenClaw) 定時任務彙總表 (完整版)
 
-最後更新：2026-04-28（補充投遞校驗）
+最後更新：2026-09-09（天氣圖片升級至 GPT Image 2.5 Flare 並更新 3D 地標提示詞）
 
 2026-07-12 新增私有批量测试规则：使用 `scripts/remote_batch_test_jobs.py --execute --deliver-owner-dm` 动态发现当前 OpenClaw cron、direct cron 和 OpenClaw systemd timers。测试器不修改正式 cron，不调用 `openclaw cron run`，公共任务移除投递后执行，新闻使用 test broadcast 且不写 published 状态，TimesCar 订车和续订强制 `--dry-run`。未知写入任务仅做契约检查并标记 blocked。测试摘要只允许发送到 owner 私聊 `1497009159940608020`。
 
@@ -28,5 +28,5 @@
 
 - **当前稳定链路（宿主机）**：`weather-report-jst-0700`、`news-digest-jst-0900`、`news-digest-jst-1700` 与 `timescar-*` 可切到 `/etc/cron.d/openclaw-direct-discord` 直投链路；该模式下对应 OpenClaw cron job 会被置为 `enabled=false` 避免重复触发。
 - **Direct Discord 权限模型**：`/etc/cron.d/openclaw-direct-discord` 中由 `root` 运行投递 helper 读取 Discord token，实际业务脚本通过 helper 的 `--run-as-openclaw` 以 `openclaw` 用户执行。不要改回由 `openclaw` 直接运行 helper，否则 `openclaw.json` 为 `600` 时会生成正文但无法投递。
-- **天氣預報 / 新聞播報**：只有成功的最终播报正文允许进入公共频道 `1483636573235843072`；执行报告、失败通知、诊断摘要、stderr/stdout、内部路径和阻塞说明必须进入私聊频道 `1497009159940608020`。天氣資料源按 `OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr` 順序兜底。正式公共天氣任務只允許完整的 `openai/gpt-image-2` 模型圖片投遞，輸出規格為 1024x1024 方圖；文字兜底、缺圖、占位圖、deterministic fallback 圖都不得投遞公共頻道，需轉為私聊失敗報告並記錄修復 gap。
+- **天氣預報 / 新聞播報**：只有成功的最终播报正文允许进入公共频道 `1483636573235843072`；执行报告、失败通知、诊断摘要、stderr/stdout、内部路径和阻塞说明必须进入私聊频道 `1497009159940608020`。天氣資料源按 `OPENCLAW_WEATHER_DATA_PROVIDERS=open-meteo,wttr` 順序兜底。正式公共天氣任務只允許完整的 `openai/gpt-image-2.5-flare` 模型圖片投遞，輸出規格為 1024x1024 方圖；視覺風格固定為高級可愛微型 3D 城市地標、柔和粉彩、精緻工藝、自然光與旅行紀念品美學，並清楚呈現真實預報天氣。文字兜底、缺圖、占位圖、deterministic fallback 圖都不得投遞公共頻道，需轉為私聊失敗報告並記錄修復 gap。
 - **TimesCar 監控**：涵蓋早間、深夜及自動訂單/續約邏輯。**務必**與宿主 `cron/jobs.json` 對照：`timescar-*` 只允許 `delivery.to = 1497009159940608020`；若發現任一誤為公共頻道 ID（例如曾出現在快照中的 ``timescar-ask-cancel-next24h-2300``），先做 `cron edit` 修正再跑上方校驗腳本。

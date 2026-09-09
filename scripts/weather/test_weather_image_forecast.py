@@ -57,7 +57,7 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert path == expected
     assert calls
     assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
-    assert "openai/gpt-image-2" in calls[0]
+    assert "openai/gpt-image-2.5-flare" in calls[0]
     assert "1024x1024" in calls[0]
 
 
@@ -93,6 +93,8 @@ def test_model_image_generation_uses_openai_compatible_http_endpoint(tmp_path: P
     assert path.is_file()
     assert requests
     assert requests[0][0].full_url == "http://ccnode.briconbric.com:49530/v1/images/generations"
+    assert json.loads(requests[0][0].data)["model"] == "gpt-image-2.5-flare"
+    assert path.name.endswith("_model.png")
 
 
 def test_model_image_http_retries_remote_disconnect(tmp_path: Path, monkeypatch) -> None:
@@ -185,9 +187,16 @@ def test_prompt_matches_square_single_city_image_contract() -> None:
     assert "1024x1024" in prompt
     assert "one city scene" in prompt
     assert "45-degree top-down isometric" in prompt
-    assert "cute 3D chibi miniature city landmark diorama" in prompt
-    assert "choose exactly one recognizable landmark per city" in prompt
-    assert "classic Japanese children's cartoon warmth" in prompt
+    assert "premium cute miniature 3D sculptural weather model" in prompt
+    assert "Choose exactly one recognizable landmark per city" in prompt
+    assert "preserve its distinctive silhouette, elegance, and local charm" in prompt
+    assert "refined collectible travel souvenir" in prompt
+    assert "soft pastel color palette" in prompt
+    assert "exquisite handcrafted details" in prompt
+    assert "gentle natural light" in prompt
+    assert "coherent 3D weather model" in prompt
+    assert "東京, Japan" in prompt
+    assert "Japanese children's cartoon sensibility" in prompt
     assert "without any copyrighted characters" in prompt
     assert "PBR materials" in prompt
     assert "minimal pure-color soft background" in prompt
@@ -287,7 +296,7 @@ def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) 
 def test_model_image_generation_uses_explicit_candidate_fallback(tmp_path: Path, monkeypatch) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
-    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/gpt-image-2,fallback")
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/gpt-image-2.5-flare,fallback")
     monkeypatch.setenv("OPENCLAW_WEATHER_ALLOW_DETERMINISTIC_FALLBACK", "1")
 
     def fake_run(cmd, **kwargs):
@@ -297,13 +306,13 @@ def test_model_image_generation_uses_explicit_candidate_fallback(tmp_path: Path,
 
     assert path.is_file()
     assert path.name.endswith(".png")
-    assert not path.name.endswith("_image2.png")
+    assert not path.name.endswith("_model.png")
 
 
 def test_candidate_fallback_is_not_delivered_without_explicit_permission(tmp_path: Path, monkeypatch) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
-    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/gpt-image-2,fallback")
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/gpt-image-2.5-flare,fallback")
     monkeypatch.delenv("OPENCLAW_WEATHER_ALLOW_DETERMINISTIC_FALLBACK", raising=False)
 
     def fake_run(cmd, **kwargs):
@@ -352,7 +361,7 @@ def test_batch_model_generation_refuses_partial_delivery(tmp_path: Path) -> None
 def test_build_media_reply_rejects_suspicious_model_placeholder(tmp_path: Path) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
-    placeholder = tmp_path / "weather_miniature_大连_20260519_070000_image2.png"
+    placeholder = tmp_path / "weather_miniature_大连_20260519_070000_model.png"
     placeholder.write_bytes(mod.render_png([cards[0]], now))
 
     try:
@@ -396,7 +405,7 @@ def test_model_image_generation_stops_retrying_non_retryable_provider_error(tmp_
             cmd,
             1,
             stdout="",
-            stderr="[image-generation] candidate failed: openai/gpt-image-2: OpenAI image generation failed (HTTP 404): endpoint not supported",
+            stderr="[image-generation] candidate failed: openai/gpt-image-2.5-flare: OpenAI image generation failed (HTTP 404): endpoint not supported",
         )
 
     try:
@@ -416,7 +425,7 @@ def test_weather_image_model_candidates_try_next_configured_model(tmp_path: Path
     generated = tmp_path / "candidate.png"
     generated.write_bytes(mod._png_bytes(1024, 1024, bytearray(os.urandom(1024 * 1024 * 3))))
     calls = []
-    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/bad-image,openai/gpt-image-2")
+    monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_MODEL_CANDIDATES", "openai/bad-image,openai/gpt-image-2.5-flare")
 
     def fake_run(cmd, **kwargs):
         calls.append(cmd)
@@ -428,12 +437,12 @@ def test_weather_image_model_candidates_try_next_configured_model(tmp_path: Path
 
     assert path == generated
     assert "openai/bad-image" in calls[0]
-    assert "openai/gpt-image-2" in calls[1]
+    assert "openai/gpt-image-2.5-flare" in calls[1]
 
 
 def test_image_error_summary_filters_plugin_noise() -> None:
     summary = mod._summarize_image_error(
-        "[image-generation] candidate failed: openai/gpt-image-2: request timed out\n"
+        "[image-generation] candidate failed: openai/gpt-image-2.5-flare: request timed out\n"
         "- plugins.allow: plugin not installed: line\n"
         "TimeoutError: request timed out\n"
     )

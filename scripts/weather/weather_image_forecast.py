@@ -27,7 +27,7 @@ from systemd_secret_credentials import read_systemd_secret
 
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
-DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
+DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-flare"
 DEFAULT_IMAGE_MODEL_CANDIDATES = (DEFAULT_IMAGE_MODEL,)
 TARGET_IMAGE_WIDTH = 1024
 TARGET_IMAGE_HEIGHT = 1024
@@ -49,6 +49,12 @@ WEATHER_IMAGE_LOCATIONS = [
     report.Location("北京", "北京", 39.9042, 116.4074),
     report.Location("大连", "大连", 38.9140, 121.6147),
 ]
+
+CITY_COUNTRIES = {
+    "東京": "Japan",
+    "北京": "China",
+    "大连": "China",
+}
 
 @dataclass(frozen=True)
 class WeatherCard:
@@ -266,22 +272,24 @@ def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -
     for card in cards:
         temp_label = temperature_range_label(card)
         summaries.append(
-            f"{card.city}: {report.weather_label(card.weather_code)}, temperature label EXACTLY \"{temp_label}\" "
+            f"{card.city}, {CITY_COUNTRIES.get(card.city, 'local country')}: {report.weather_label(card.weather_code)}, "
+            f"temperature label EXACTLY \"{temp_label}\" "
             f"(daily minimum to daily maximum only; do not show current temperature), "
             f"rain probability {_fmt(card.precipitation_probability, '%')}, wind {_fmt(card.wind_kmh, 'km/h')}; "
             f"landmark reference: {card.landmark_hint}"
         )
     scene_count = "one city scene" if len(cards) == 1 else f"{len(cards)} separate city scenes"
     return (
-        "Create a premium square weather forecast image as a single finished picture, not a UI mockup. "
+        "Create a premium cute miniature 3D sculptural weather model as a single finished square picture, not a UI mockup. "
         f"Use a 1024x1024 centered composition with {scene_count}. "
         "If multiple people are in the same city, merge them into one city forecast scene; only add another scene when a distinct city exists. "
-        "Camera and scene: clear 45-degree top-down isometric view, cute 3D chibi miniature city landmark diorama, "
-        "choose exactly one recognizable landmark per city, main building centered, simple bright toy-like architectural details, "
-        "classic Japanese children's cartoon warmth without any copyrighted characters, warm tactile PBR materials, soft realistic lighting and shadows. "
-        "Composition: clean, unified, fresh, comfortable, minimal pure-color soft background, no panels, no cards, no text boxes. "
-        "Weather integration: weather effects must be integrated into the city architecture and interact with the scene, "
-        "for example sun, clouds, rain, wind, mist, puddles, reflections, or atmospheric particles around the buildings. "
+        "Camera and scene: clear 45-degree top-down isometric view of one high-end cute miniature 3D landmark model for each city and country. "
+        "Choose exactly one recognizable landmark per city, center the main building, and preserve its distinctive silhouette, elegance, and local charm. "
+        "Style the scene as a refined collectible travel souvenir with a clean composition, soft pastel color palette, exquisite handcrafted details, "
+        "polished tactile PBR materials, gentle natural light, and soft realistic shadows. Keep a warm Japanese children's cartoon sensibility without any copyrighted characters. "
+        "Use a minimal pure-color soft background, no panels, no cards, no text boxes. "
+        "Weather integration: turn the forecast into a coherent 3D weather model. Make the exact weather condition clearly visible throughout the landmark scene "
+        "with physically plausible sun, clouds, rain, snow, wind, mist, puddles, reflections, or atmospheric particles interacting with the architecture and terrain. "
         "Typography inside the image: at the very top show a large city name in the same written language as the city name; "
         "use one unified clean modern CJK sans-serif typography system for all Japanese and Chinese city names, with consistent font family, weight, spacing, and layout across every city image. "
         "directly below or near it show a prominent weather icon; under the icon show the date in very small type and the temperature range in medium type. "
@@ -303,7 +311,7 @@ def generate_model_image(
     command_runner=subprocess.run,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
-    path = output_dir / f"weather_miniature_{_image_slug(cards)}_{now:%Y%m%d_%H%M%S}_image2.png"
+    path = output_dir / f"weather_miniature_{_image_slug(cards)}_{now:%Y%m%d_%H%M%S}_model.png"
     direct_base_url = weather_image_base_url()
     if direct_base_url:
         prompt = build_image_prompt(cards, now, day_kind)
@@ -780,7 +788,7 @@ def build_media_reply(paths: Path | list[Path], cards: list[WeatherCard], now: d
     if len(path_list) != len(cards):
         raise RuntimeError(f"weather media count mismatch: paths={len(path_list)} cards={len(cards)}")
     for path in path_list:
-        require_model_quality = path.name.endswith("_image2.png")
+        require_model_quality = path.name.endswith("_model.png")
         validate_weather_image_artifact(path, require_model_quality=require_model_quality)
     return "\n".join(f"MEDIA:{path}" for path in path_list)
 
