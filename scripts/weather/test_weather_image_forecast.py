@@ -61,6 +61,13 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert "1024x1024" in calls[0]
 
 
+def test_default_image_model_candidates_use_gpt_image_2_as_fallback() -> None:
+    assert mod.image_model_candidates() == [
+        "openai/gpt-image-2.5-flare",
+        "openai/gpt-image-2",
+    ]
+
+
 def test_model_image_generation_uses_openai_compatible_http_endpoint(tmp_path: Path, monkeypatch) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     cards, _rest_day, day_kind = mod.build_cards(now, fetch_json=fake_fetch_json)
@@ -416,7 +423,9 @@ def test_model_image_generation_stops_retrying_non_retryable_provider_error(tmp_
     else:
         raise AssertionError("non-retryable provider errors must fail clearly")
 
-    assert len(calls) == 1
+    assert len(calls) == 2
+    assert "openai/gpt-image-2.5-flare" in calls[0]
+    assert "openai/gpt-image-2" in calls[1]
 
 
 def test_weather_image_model_candidates_try_next_configured_model(tmp_path: Path, monkeypatch) -> None:
