@@ -57,12 +57,13 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert path == expected
     assert calls
     assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
-    assert "openai/gpt-image-2.5-flare" in calls[0]
+    assert "openai/gemini-3-pro-image" in calls[0]
     assert "1024x1024" in calls[0]
 
 
-def test_default_image_model_candidates_use_gpt_image_2_as_fallback() -> None:
+def test_default_image_model_candidates_prefer_gemini_with_gpt_fallbacks() -> None:
     assert mod.image_model_candidates() == [
+        "openai/gemini-3-pro-image",
         "openai/gpt-image-2.5-flare",
         "openai/gpt-image-2",
     ]
@@ -100,7 +101,7 @@ def test_model_image_generation_uses_openai_compatible_http_endpoint(tmp_path: P
     assert path.is_file()
     assert requests
     assert requests[0][0].full_url == "http://ccnode.briconbric.com:49530/v1/images/generations"
-    assert json.loads(requests[0][0].data)["model"] == "gpt-image-2.5-flare"
+    assert json.loads(requests[0][0].data)["model"] == "gemini-3-pro-image"
     assert path.name.endswith("_model.png")
 
 
@@ -423,9 +424,10 @@ def test_model_image_generation_stops_retrying_non_retryable_provider_error(tmp_
     else:
         raise AssertionError("non-retryable provider errors must fail clearly")
 
-    assert len(calls) == 2
-    assert "openai/gpt-image-2.5-flare" in calls[0]
-    assert "openai/gpt-image-2" in calls[1]
+    assert len(calls) == 3
+    assert "openai/gemini-3-pro-image" in calls[0]
+    assert "openai/gpt-image-2.5-flare" in calls[1]
+    assert "openai/gpt-image-2" in calls[2]
 
 
 def test_weather_image_model_candidates_try_next_configured_model(tmp_path: Path, monkeypatch) -> None:

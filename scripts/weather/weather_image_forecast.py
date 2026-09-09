@@ -27,8 +27,12 @@ from systemd_secret_credentials import read_systemd_secret
 
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
-DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-flare"
-DEFAULT_IMAGE_MODEL_CANDIDATES = (DEFAULT_IMAGE_MODEL, "openai/gpt-image-2")
+DEFAULT_IMAGE_MODEL = "openai/gemini-3-pro-image"
+DEFAULT_IMAGE_MODEL_CANDIDATES = (
+    DEFAULT_IMAGE_MODEL,
+    "openai/gpt-image-2.5-flare",
+    "openai/gpt-image-2",
+)
 TARGET_IMAGE_WIDTH = 1024
 TARGET_IMAGE_HEIGHT = 1024
 MIN_MODEL_IMAGE_BYTES = 100_000
