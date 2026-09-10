@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 from model_fallback_client import (
+    ChatEndpoint,
+    MAX_FALLBACK_TIMEOUT_SECONDS,
     chat_with_fallback,
     load_runtime_env_files,
-    read_secret_env,
+    read_fallback_secret_env,
     resolve_primary_chat_endpoint,
 )
 from harness_contracts import contract_prompt, intent_contract_prompt
@@ -103,8 +105,18 @@ def intent_model_fallback_configs() -> list[tuple[str, str, str]]:
     if not base or not fallback_models_raw:
         return []
     fallback_models = [m.strip() for m in fallback_models_raw.split(",") if m.strip()]
-    api_key = read_secret_env("OPENCLAW_INTENT_FALLBACK_API_KEY")
+    api_key = read_fallback_secret_env("OPENCLAW_INTENT_FALLBACK_API_KEY")
     return [(base, api_key, m) for m in fallback_models]
+
+
+def intent_model_fallback_timeout(primary_timeout: int) -> int:
+    load_runtime_env_files()
+    raw = os.environ.get("OPENCLAW_INTENT_FALLBACK_TIMEOUT_SECONDS", "180").strip()
+    try:
+        configured = int(raw)
+    except ValueError:
+        configured = 180
+    return max(1, min(max(configured, primary_timeout), MAX_FALLBACK_TIMEOUT_SECONDS))
 
 
 def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int) -> dict[str, Any]:
@@ -124,17 +136,19 @@ def http_post_json(url: str, payload: dict[str, Any], headers: dict[str, str], t
 def extract_json_object(text: str) -> dict[str, Any]:
     raw = (text or "").strip()
     start = raw.find("{")
-    end = raw.rfind("}")
-    if start < 0 or end < start:
+    if start < 0:
         raise ValueError(f"model did not return JSON: {raw[:200]}")
-    data = json.loads(raw[start : end + 1])
+    try:
+        data, _end = json.JSONDecoder().raw_decode(raw[start:])
+    except ValueError as exc:
+        raise ValueError(f"model did not return a JSON object: {raw[:200]}") from exc
     if not isinstance(data, dict):
         raise ValueError("model returned non-object JSON")
     return data
 
 
 def call_model(messages: list[dict[str, str]], *, timeout: int = 30, temperature: float = 0) -> tuple[str, dict[str, Any]]:
-    return chat_with_fallback(messages, timeout=timeout, temperature=temperature)
+    return chat_with_fallback(messages, timeout=timeout, temperature=temperature, allow_fallback=False)
 
 
 def registry_prompt(registry: dict[str, Any]) -> str:
@@ -146,6 +160,7 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
         "You are OpenClaw Harness intentAgent. You are the primary semantic decision maker. "
         "Return strict JSON only. Do not let registry hints replace semantic understanding. "
         "Schema: {conversation_mode, domain, action, canonical_text, context_refs, parameters, safety, result_contract, tool_candidates, confidence, reason}. "
+        "context_refs and tool_candidates must be JSON arrays. parameters and result_contract must be JSON objects; use [] or {} when empty and never use null or a string for these fields. "
         "conversation_mode: chat|task|clarification|gap. "
         "domain: timescar|weather|news|cron|config|web|memory|self|artifact|general|unknown. "
         "action: query|book|cancel|status|adjust|run|research|backfill|quality|clean|list|retry|access|share|update|edit|repair|implement|verify|push|chat|gap. "
@@ -203,25 +218,75 @@ def build_prompt(text: str, context: str, registry: dict[str, Any]) -> list[dict
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+REQUIRED_INTENT_FRAME_KEYS = {
+    "conversation_mode",
+    "domain",
+    "action",
+    "canonical_text",
+    "context_refs",
+    "parameters",
+    "safety",
+    "result_contract",
+    "tool_candidates",
+    "confidence",
+    "reason",
+}
+
+
 def validate_intent_frame(data: dict[str, Any]) -> IntentFrame:
-    parameters = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+    missing = sorted(REQUIRED_INTENT_FRAME_KEYS.difference(data))
+    if missing:
+        raise ValueError(f"intent frame missing required keys: {missing}")
+    context_refs = [] if data["context_refs"] is None else data["context_refs"]
+    parameters = {} if data["parameters"] is None else data["parameters"]
+    result_contract = {} if data["result_contract"] is None else data["result_contract"]
+    raw_tool_candidates = [] if data["tool_candidates"] is None else data["tool_candidates"]
+    if not isinstance(context_refs, list):
+        raise ValueError("context_refs must be a list")
+    if not isinstance(parameters, dict):
+        raise ValueError("parameters must be an object")
+    if not isinstance(result_contract, dict):
+        raise ValueError("result_contract must be an object")
+    if not isinstance(raw_tool_candidates, list):
+        raise ValueError("tool_candidates must be a list")
+    tool_candidates: list[dict[str, Any]] = []
+    for candidate in raw_tool_candidates:
+        if not isinstance(candidate, dict) or not str(candidate.get("tool_id") or "").strip():
+            raise ValueError("tool_candidates entries require a non-empty tool_id")
+        try:
+            candidate_confidence = float(candidate.get("confidence"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("tool_candidates entries require numeric confidence") from exc
+        if not 0 <= candidate_confidence <= 1:
+            raise ValueError("tool candidate confidence must be between 0 and 1")
+        normalized = dict(candidate)
+        normalized["tool_id"] = str(candidate["tool_id"]).strip()
+        normalized["confidence"] = candidate_confidence
+        normalized["reason"] = str(candidate.get("reason") or "")
+        tool_candidates.append(normalized)
+    try:
+        confidence = float(data["confidence"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("intent frame confidence must be numeric") from exc
+    if not 0 <= confidence <= 1:
+        raise ValueError("intent frame confidence must be between 0 and 1")
     time_range = parameters.get("time_range")
     if isinstance(time_range, dict):
         for key in ("duration_hours", "offset_hours", "relation"):
             if key in time_range and key not in parameters:
                 parameters[key] = time_range[key]
     frame = IntentFrame(
-        conversation_mode=str(data.get("conversation_mode") or "gap"),
-        domain=str(data.get("domain") or "unknown"),
-        action=str(data.get("action") or "gap"),
-        canonical_text=str(data.get("canonical_text") or ""),
-        context_refs=data.get("context_refs") if isinstance(data.get("context_refs"), list) else [],
+        conversation_mode=str(data["conversation_mode"]).strip(),
+        domain=str(data["domain"]).strip(),
+        action=str(data["action"]).strip(),
+        canonical_text=str(data["canonical_text"] or ""),
+        context_refs=context_refs,
         parameters=parameters,
-        safety=str(data.get("safety") or "ambiguous"),
-        result_contract=data.get("result_contract") if isinstance(data.get("result_contract"), dict) else {},
-        tool_candidates=data.get("tool_candidates") if isinstance(data.get("tool_candidates"), list) else [],
-        confidence=float(data.get("confidence") or 0.0),
-        reason=str(data.get("reason") or "model intent frame"),
+        safety=str(data["safety"]).strip(),
+        result_contract=result_contract,
+        tool_candidates=tool_candidates,
+        confidence=confidence,
+        reason=str(data["reason"] or "model intent frame"),
     )
     if frame.conversation_mode not in CONVERSATION_MODES:
         raise ValueError(f"invalid conversation_mode: {frame.conversation_mode}")
@@ -231,8 +296,8 @@ def validate_intent_frame(data: dict[str, Any]) -> IntentFrame:
         raise ValueError(f"invalid action: {frame.action}")
     if frame.safety not in SAFETY_CLASSES:
         raise ValueError(f"invalid safety: {frame.safety}")
-    if frame.conversation_mode == "task" and not frame.canonical_text:
-        raise ValueError("task intent frame requires canonical_text")
+    if frame.conversation_mode in {"task", "chat"} and not frame.canonical_text.strip():
+        raise ValueError(f"{frame.conversation_mode} intent frame requires canonical_text")
     return frame
 
 
@@ -246,13 +311,53 @@ def infer_intent_frame(
 ) -> IntentFrame:
     messages = build_prompt(text, context, registry)
     meta: dict[str, Any] = {}
+    attempts: list[dict[str, str]] = []
     try:
         if model_caller:
             content = model_caller(messages)
             meta = {"model": "test-injected", "latency_ms": 0}
+            frame = validate_intent_frame(extract_json_object(content))
         else:
-            content, meta = call_model(messages, timeout=timeout, temperature=0)
-        frame = validate_intent_frame(extract_json_object(content))
+            try:
+                content, meta = call_model(messages, timeout=timeout, temperature=0)
+                frame = validate_intent_frame(extract_json_object(content))
+            except Exception as primary_exc:
+                attempts.append(
+                    {
+                        "model": str(meta.get("model") or "primary"),
+                        "error": f"{type(primary_exc).__name__}: {primary_exc}",
+                    }
+                )
+                fallback_timeout = intent_model_fallback_timeout(timeout)
+                fallback_deadline = time.monotonic() + MAX_FALLBACK_TIMEOUT_SECONDS
+                fallback_errors: list[str] = []
+                for base_url, api_key, model in intent_model_fallback_configs():
+                    remaining = fallback_deadline - time.monotonic()
+                    if remaining <= 0:
+                        attempts.append({"model": model, "error": "intent fallback budget exhausted"})
+                        fallback_errors.append(f"{model}: intent fallback budget exhausted")
+                        break
+                    try:
+                        endpoint = ChatEndpoint("openai_compatible", base_url, model, api_key)
+                        content, meta = chat_with_fallback(
+                            messages,
+                            timeout=max(1, min(fallback_timeout, int(remaining))),
+                            temperature=0,
+                            primary=endpoint,
+                            fallback=None,
+                            allow_fallback=False,
+                        )
+                        frame = validate_intent_frame(extract_json_object(content))
+                        meta["fallback_used"] = True
+                        meta["intent_fallback"] = True
+                        break
+                    except Exception as fallback_exc:
+                        detail = f"{type(fallback_exc).__name__}: {fallback_exc}"
+                        fallback_errors.append(f"{model}: {detail}")
+                        attempts.append({"model": model, "error": detail})
+                else:
+                    details = "; ".join(fallback_errors) or "no explicit intent fallback configured"
+                    raise RuntimeError(f"intent model candidates exhausted: {details}") from primary_exc
         append_jsonl(
             model_call_log_path(),
             {
@@ -261,6 +366,8 @@ def infer_intent_frame(
                 "ok": True,
                 "model": meta.get("model"),
                 "latency_ms": meta.get("latency_ms"),
+                "fallback_used": bool(meta.get("fallback_used")),
+                "attempts": attempts,
                 "text": text,
                 "frame": asdict(frame),
             },
@@ -276,6 +383,7 @@ def infer_intent_frame(
                 "text": text,
                 "error": f"{type(exc).__name__}: {exc}",
                 "model": meta.get("model"),
+                "attempts": attempts,
             },
         )
         raise

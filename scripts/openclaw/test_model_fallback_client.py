@@ -80,6 +80,28 @@ def test_explicit_fallback_endpoint_from_env(monkeypatch) -> None:
     assert endpoint.model == "fallback-model"
 
 
+def test_fallback_uses_independent_bounded_timeout(monkeypatch) -> None:
+    monkeypatch.setenv("OPENCLAW_MODEL_FALLBACK_TIMEOUT_SECONDS", "180")
+    assert client.resolve_fallback_timeout(30) == 180
+
+    monkeypatch.setenv("OPENCLAW_MODEL_FALLBACK_TIMEOUT_SECONDS", "999")
+    assert client.resolve_fallback_timeout(30) == 300
+    assert client.resolve_fallback_timeout(600) == 300
+
+
+def test_chat_with_fallback_passes_longer_timeout_to_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("OPENCLAW_MODEL_FALLBACK_TIMEOUT_SECONDS", "180")
+    primary = client.ChatEndpoint("openai_compatible", "http://primary/v1", "primary", "key")
+    fallback = client.ChatEndpoint("openai_compatible", "http://fallback/v1", "fallback", "key")
+    with patch.object(client, "_openai_compatible_chat", side_effect=[RuntimeError("down"), "ok"]) as chat:
+        content, _meta = client.chat_with_fallback(
+            [{"role": "user", "content": "hi"}], primary=primary, fallback=fallback, timeout=30
+        )
+
+    assert content == "ok"
+    assert chat.call_args_list[1].args[2] == 180
+
+
 def test_primary_secret_uses_systemd_credential(monkeypatch, tmp_path) -> None:
     payload = tmp_path / "openclaw-secrets.json"
     payload.write_text('{"providers":{"openaiCodex":{"apiKey":"test-key"}}}', encoding="utf-8")
@@ -87,4 +109,11 @@ def test_primary_secret_uses_systemd_credential(monkeypatch, tmp_path) -> None:
     for key in ("NEWS_CODEX_API_KEY", "NEWS_CODEX_API_KEY_FILE"):
         monkeypatch.delenv(key, raising=False)
     assert client.read_secret_env("NEWS_CODEX_API_KEY") == "test-key"
+
+
+def test_fallback_secret_does_not_borrow_primary_systemd_credential(monkeypatch) -> None:
+    monkeypatch.delenv("OPENCLAW_MODEL_FALLBACK_API_KEY", raising=False)
+    monkeypatch.delenv("OPENCLAW_MODEL_FALLBACK_API_KEY_FILE", raising=False)
+    with patch.object(client, "read_systemd_secret", return_value="primary-key"):
+        assert client.read_fallback_secret_env("OPENCLAW_MODEL_FALLBACK_API_KEY") == ""
 

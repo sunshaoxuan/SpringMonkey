@@ -29,7 +29,7 @@
 
 - `remote_install_public_model_resources.py`
   - 用途：安装宿主机公共模型资源环境 `/etc/openclaw/openclaw.env`，统一暴露 `NEWS_CODEX_BASE_URL` / `OPENCLAW_PUBLIC_MODEL_BASE_URL`；任务脚本优先读取 systemd credential，不应各自私藏模型密钥。
-  - 当前运行基线只使用 `http://ccnode.briconbric.com:49530/v1`。这是 `192.168.20.54:62342` sub2api 的 frpc 外网映射；`22545` Ollama/Qwen 兜底已因宿主机 HTTP 超时退役，脚本会清空 `OPENCLAW_MODEL_FALLBACK*`。
+  - 当前运行基线只使用 `http://ccnode.briconbric.com:49530/v1`。这是 `192.168.20.54:62342` sub2api 的 frpc 外网映射；`22545` Ollama 路径已退役，`49530` 上经 smoke 验证的 Sub2API Qwen fallback 会被保留。
   - 典型用法：`python scripts/remote_install_public_model_resources.py`
   - 注意：Git 只保存 endpoint 和变量名，不保存密钥；共享 key 由宿主机 systemd credential 提供，运行时路径为 `/run/credentials/openclaw.service/openclaw-secrets.json`。
 
@@ -304,12 +304,15 @@
 
 - `openclaw/patch_news_router_v*.py`：新闻路由补丁（按版本增量）
 - `openclaw/intent_tool_router.py`：Discord owner DM Harness CLI wrapper；默认执行路径为 `harness_dispatcher -> intentAgent -> tool binder -> governance -> worker -> evaluator -> reporter`。文件内旧 `classify()` / `model_classify_intent()` / TimesCar guard 仅保留为 diagnostic-only，不作为默认语义路由。
-- `openclaw/model_fallback_client.py`：统一模型调用层。Python 侧 intent、blocker、web research 等模型调用默认只走 gpt-5.3-codex-spark/OpenAI-compatible endpoint；只有显式配置 `OPENCLAW_MODEL_FALLBACK_BASE_URL` 与 `OPENCLAW_MODEL_FALLBACK` 时才尝试兜底。
+- `openclaw/model_fallback_client.py`：统一模型调用层。Python 侧 intent、blocker、web research 等模型调用以 gpt-5.3-codex-spark/OpenAI-compatible endpoint 为主；显式 fallback 使用独立的有界超时，当前生产配置由 Sub2API Qwen 安装器写入。
   - 当前运行记录：`docs/runtime-notes/openclaw-22545-fallback-retirement-2026-09.md`。
 
 - `remote_install_gemini_model_fallback.py`
   - 用途：将 sub2api 暴露的 `gemini-pro-agent` 作为 49530 OpenAI-compatible 明确兜底。脚本先执行真实 chat smoke，只有返回 `ok` 才写入 `/etc/openclaw/openclaw.env`、OpenClaw 默认 fallbacks 和意图 fallback。
   - 当前默认：`OPENCLAW_GEMINI_FALLBACK_BASE_URL=http://ccnode.briconbric.com:49530/v1`，`OPENCLAW_GEMINI_FALLBACK_MODEL=gemini-pro-agent`。
+- `remote_install_sub2api_qwen_fallback.py`
+  - 用途：查询 49530 的实时模型目录并对完整 Qwen ID 执行严格 `IntentFrame` smoke；通过后写入通用 fallback、意图 fallback、180 秒 fallback 超时和 OpenClaw 默认 fallback，重启后再次校验。
+  - 当前模型：`hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S`。旧 `22545` Ollama/Qwen 路径仍保持退役。
 - `openclaw/dm_capability_gap_runner.py`：DM 未命中工具后的自增益入口；复用 Agent Society kernel，生成 capability plan，安全只读能力可验证并以注册表工具形态重放原始请求
 - `openclaw/verify_intent_tool_registry.py`：校验 owner DM 工具注册表、entrypoint、写操作权限、幂等和确认策略
 - `openclaw/verify_harness_registry.py`：校验 OpenClaw Harness manifest、skill registry、tool registry 的 SubAgent/权限/输出契约字段

@@ -62,9 +62,11 @@ fallback_keys = [
     "OPENCLAW_MODEL_FALLBACK_BASE_URL",
     "OPENCLAW_MODEL_FALLBACK",
     "OPENCLAW_MODEL_FALLBACK_API_KEY_FILE",
+    "OPENCLAW_MODEL_FALLBACK_TIMEOUT_SECONDS",
     "OPENCLAW_INTENT_FALLBACK_BASE_URL",
     "OPENCLAW_INTENT_FALLBACK_MODELS",
     "OPENCLAW_INTENT_FALLBACK_API_KEY_FILE",
+    "OPENCLAW_INTENT_FALLBACK_TIMEOUT_SECONDS",
     "NEWS_FALLBACK_MODEL",
     "OPENCLAW_QWEN_FALLBACK_BASE_URL",
     "OLLAMA_BASE_URL",
@@ -96,13 +98,15 @@ for alias in file_aliases:
     values[alias] = key_file
     if alias not in order:
         order.append(alias)
-def retired_fallback_value(value: str) -> bool:
-    lowered = value.lower()
-    return "22545" in lowered or "qwen" in lowered or "ollama" in lowered
-
-
+retired_generic_fallback = (
+    "22545" in values.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", "").lower()
+    or values.get("OPENCLAW_MODEL_FALLBACK_PROVIDER", "").lower() == "ollama"
+)
+retired_intent_fallback = "22545" in values.get("OPENCLAW_INTENT_FALLBACK_BASE_URL", "").lower()
 for alias in fallback_keys:
-    if retired_fallback_value(values.get(alias, "")):
+    if retired_generic_fallback and alias.startswith("OPENCLAW_MODEL_FALLBACK"):
+        values[alias] = ""
+    if retired_intent_fallback and alias.startswith("OPENCLAW_INTENT_FALLBACK"):
         values[alias] = ""
     if alias.startswith("OPENCLAW_QWEN_") or alias == "OLLAMA_BASE_URL":
         values[alias] = ""

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import harness_intent_agent as agent
+from model_fallback_client import ChatEndpoint
 
 
 def load_registry() -> dict:
@@ -127,6 +128,14 @@ def test_intent_prompt_lists_self_evolution_repair_actions() -> None:
     assert "openclaw.self_evolution.internal_repair" in system
 
 
+def test_intent_prompt_requires_structured_container_types() -> None:
+    system = agent.build_prompt("你好", context="", registry=load_registry())[0]["content"]
+
+    assert "context_refs and tool_candidates must be JSON arrays" in system
+    assert "parameters and result_contract must be JSON objects" in system
+    assert "never use null or a string" in system
+
+
 def test_intent_model_has_no_default_22545_fallback(monkeypatch) -> None:
     for key in (
         "OPENCLAW_INTENT_FALLBACK_BASE_URL",
@@ -155,6 +164,83 @@ def test_intent_model_fallback_key_can_use_file(monkeypatch, tmp_path: Path) -> 
     monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_API_KEY_FILE", str(key_file))
 
     assert agent.intent_model_fallback_configs() == [("http://fallback.example/v1", "file-key", "gemini-pro-agent")]
+
+
+def test_intent_model_uses_longer_bounded_fallback_timeout(monkeypatch) -> None:
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_TIMEOUT_SECONDS", "180")
+    assert agent.intent_model_fallback_timeout(30) == 180
+
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_TIMEOUT_SECONDS", "900")
+    assert agent.intent_model_fallback_timeout(30) == 300
+    assert agent.intent_model_fallback_timeout(600) == 300
+
+
+def test_invalid_primary_intent_frame_uses_explicit_fallback(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OPENCLAW_HARNESS_MODEL_CALL_LOG", str(tmp_path / "model.jsonl"))
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_BASE_URL", "http://fallback.example/v1")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_MODELS", "qwen-fallback")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_API_KEY", "test-key")
+    fallback_reply = model_reply(
+        {
+            "conversation_mode": "chat",
+            "domain": "general",
+            "action": "chat",
+            "canonical_text": "你好，我在。",
+            "context_refs": [],
+            "parameters": {},
+            "safety": "readonly",
+            "result_contract": {},
+            "tool_candidates": [],
+            "confidence": 0.99,
+            "reason": "greeting",
+        }
+    )
+
+    with patch.object(agent, "call_model", return_value=("not json", {"model": "primary"})), patch.object(
+        agent, "chat_with_fallback", return_value=(fallback_reply, {"model": "qwen-fallback", "latency_ms": 12})
+    ) as fallback_call:
+        frame = agent.infer_intent_frame("你好", context="", registry=load_registry())
+
+    assert frame.conversation_mode == "chat"
+    fallback_call.assert_called_once()
+    kwargs = fallback_call.call_args.kwargs
+    assert kwargs["primary"] == ChatEndpoint(
+        "openai_compatible", "http://fallback.example/v1", "qwen-fallback", "test-key"
+    )
+    assert kwargs["timeout"] == 180
+    assert kwargs["allow_fallback"] is False
+    log = json.loads((tmp_path / "model.jsonl").read_text(encoding="utf-8"))
+    assert log["fallback_used"] is True
+    assert log["model"] == "qwen-fallback"
+    assert log["attempts"][0]["model"] == "primary"
+
+
+def test_primary_transport_failure_uses_explicit_intent_fallback(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OPENCLAW_HARNESS_MODEL_CALL_LOG", str(tmp_path / "model.jsonl"))
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_BASE_URL", "http://fallback.example/v1")
+    monkeypatch.setenv("OPENCLAW_INTENT_FALLBACK_MODELS", "qwen-fallback")
+    fallback_reply = model_reply(
+        {
+            "conversation_mode": "chat",
+            "domain": "general",
+            "action": "chat",
+            "canonical_text": "在。",
+            "context_refs": [],
+            "parameters": {},
+            "safety": "readonly",
+            "result_contract": {},
+            "tool_candidates": [],
+            "confidence": 0.99,
+            "reason": "liveness",
+        }
+    )
+
+    with patch.object(agent, "call_model", side_effect=RuntimeError("primary unavailable")), patch.object(
+        agent, "chat_with_fallback", return_value=(fallback_reply, {"model": "qwen-fallback", "latency_ms": 10})
+    ):
+        frame = agent.infer_intent_frame("还活着吗", context="", registry=load_registry())
+
+    assert frame.canonical_text == "在。"
 
 
 def test_timescar_shift_window_uses_semantic_model_frame() -> None:
@@ -272,8 +358,10 @@ def test_intent_frame_normalizes_nested_time_range() -> None:
             "domain": "timescar",
             "action": "query",
             "canonical_text": "查询未来一个月内的 TimesCar 订车记录。",
+            "context_refs": [],
             "parameters": {"time_range": {"duration_hours": 720, "offset_hours": 0, "relation": "within"}},
             "safety": "readonly",
+            "result_contract": {},
             "tool_candidates": [{"tool_id": "timescar.dm.query", "confidence": 0.98, "reason": "registered query capability"}],
             "confidence": 0.98,
             "reason": "TimesCar reservation query",
@@ -350,3 +438,58 @@ def test_invalid_intent_frame_is_rejected() -> None:
         raise AssertionError("invalid domain should fail")
     except ValueError:
         pass
+
+
+def test_incomplete_intent_frame_is_rejected() -> None:
+    try:
+        agent.validate_intent_frame({})
+        raise AssertionError("incomplete frame should fail")
+    except ValueError as exc:
+        assert "missing required keys" in str(exc)
+
+
+def test_malformed_tool_candidate_is_rejected() -> None:
+    data = {
+        "conversation_mode": "task",
+        "domain": "web",
+        "action": "research",
+        "canonical_text": "查询当前信息。",
+        "context_refs": [],
+        "parameters": {},
+        "safety": "readonly",
+        "result_contract": {},
+        "tool_candidates": ["openclaw.web.research"],
+        "confidence": 0.9,
+        "reason": "research",
+    }
+    try:
+        agent.validate_intent_frame(data)
+        raise AssertionError("malformed tool candidate should fail")
+    except ValueError as exc:
+        assert "tool_candidates entries" in str(exc)
+
+
+def test_explicit_null_optional_containers_are_normalized() -> None:
+    frame = agent.validate_intent_frame(
+        {
+            "conversation_mode": "chat",
+            "domain": "general",
+            "action": "chat",
+            "canonical_text": "在。",
+            "context_refs": None,
+            "parameters": None,
+            "safety": "readonly",
+            "result_contract": None,
+            "tool_candidates": None,
+            "confidence": 0.9,
+            "reason": "liveness",
+        }
+    )
+    assert frame.context_refs == []
+    assert frame.parameters == {}
+    assert frame.result_contract == {}
+    assert frame.tool_candidates == []
+
+
+def test_extract_json_object_ignores_trailing_braces() -> None:
+    assert agent.extract_json_object('{"domain":"general"} trailing } text') == {"domain": "general"}

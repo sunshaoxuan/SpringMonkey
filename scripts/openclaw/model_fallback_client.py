@@ -18,6 +18,7 @@ RUNTIME_ENV_FILES = (
     Path("/var/lib/openclaw/.openclaw/openclaw.env"),
 )
 DEFAULT_PRIMARY_MODEL = "gpt-5.3-codex-spark"
+MAX_FALLBACK_TIMEOUT_SECONDS = 300
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,23 @@ def read_secret_env(*names: str) -> str:
         credential_value = read_systemd_secret("providers", "openaiCodex", "apiKey")
         if credential_value:
             return credential_value
+    return ""
+
+
+def read_fallback_secret_env(*names: str) -> str:
+    """Read only an explicitly configured fallback credential."""
+    for name in names:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+        file_value = os.environ.get(f"{name}_FILE", "").strip()
+        if file_value:
+            try:
+                secret = Path(file_value).read_text(encoding="utf-8").strip()
+            except OSError:
+                secret = ""
+            if secret:
+                return secret
     return ""
 
 
@@ -126,8 +144,18 @@ def resolve_fallback_chat_endpoint() -> ChatEndpoint | None:
     )
     if not base_url or not model:
         return None
-    api_key = read_secret_env("OPENCLAW_MODEL_FALLBACK_API_KEY")
+    api_key = read_fallback_secret_env("OPENCLAW_MODEL_FALLBACK_API_KEY")
     return ChatEndpoint(provider, base_url, _strip_provider(model), api_key)
+
+
+def resolve_fallback_timeout(primary_timeout: int) -> int:
+    load_runtime_env_files()
+    raw = os.environ.get("OPENCLAW_MODEL_FALLBACK_TIMEOUT_SECONDS", "180").strip()
+    try:
+        configured = int(raw)
+    except ValueError:
+        configured = 180
+    return max(1, min(max(configured, primary_timeout), MAX_FALLBACK_TIMEOUT_SECONDS))
 
 
 def _openai_compatible_chat(endpoint: ChatEndpoint, messages: list[dict[str, str]], timeout: int, temperature: float) -> str:
@@ -183,10 +211,11 @@ def chat_with_fallback(
     if fallback is None:
         raise RuntimeError(errors[-1] if errors else "primary failed and no fallback endpoint is configured")
     fallback_started = time.monotonic()
+    fallback_timeout = resolve_fallback_timeout(timeout)
     if fallback.provider in ("openai_compatible", "openai", "openai-codex"):
-        content = _openai_compatible_chat(fallback, messages, timeout, temperature)
+        content = _openai_compatible_chat(fallback, messages, fallback_timeout, temperature)
     elif fallback.provider == "ollama":
-        content = _ollama_chat(fallback, messages, timeout)
+        content = _ollama_chat(fallback, messages, fallback_timeout)
     else:
         raise RuntimeError(f"unsupported fallback provider: {fallback.provider}")
     return content, {

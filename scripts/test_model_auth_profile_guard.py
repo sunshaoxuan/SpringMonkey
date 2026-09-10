@@ -40,11 +40,15 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert '"id": "gpt-5.3-codex-spark"' in remote
     assert '"id": "gpt-5.3-codex-spark"' in remote
     assert '"id": "gemini-pro-agent"' in remote
+    assert '"id": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"' in remote
     assert 'last_good["openai"] = "openai:ccnode-codex"' not in remote
     assert '"keyRef": openai_ref' in remote
     assert '"keyRef": ollama_ref' not in remote
     assert 'providers.pop("ollama", None)' in remote
-    assert 'defaults["fallbacks"] = []' in remote
+    assert 'fallback_model = os.environ.get("OPENCLAW_MODEL_FALLBACK", "").strip()' in remote
+    assert 'fallback_model == "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"' in remote
+    assert 'defaults["fallbacks"] = [f"openai-codex/{fallback_model}"]' in remote
+    assert 'configured_models.setdefault("openai-codex/hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S", {})' in remote
     assert 'profiles.pop("ollama:default", None)' in remote
     assert 'profiles["openai-codex:default"]' in remote
     assert 'missing systemd credential payload' in remote

@@ -139,12 +139,25 @@ for path in config_paths:
                 "contextWindow": 196000,
                 "maxTokens": 32768,
             },
+            {
+                "id": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+                "name": "Qwen 3.8 27B via Sub2API",
+                "reasoning": True,
+                "input": ["text"],
+                "contextWindow": 32768,
+                "maxTokens": 8192,
+            },
         ],
     }
     providers.pop("ollama", None)
     defaults = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("model", {})
     defaults["primary"] = "openai-codex/gpt-5.3-codex-spark"
-    defaults["fallbacks"] = []
+    fallback_model = os.environ.get("OPENCLAW_MODEL_FALLBACK", "").strip()
+    fallback_base_url = os.environ.get("OPENCLAW_MODEL_FALLBACK_BASE_URL", "").strip()
+    if fallback_model == "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S" and "ccnode.briconbric.com:49530" in fallback_base_url:
+        defaults["fallbacks"] = [f"openai-codex/{fallback_model}"]
+    else:
+        defaults["fallbacks"] = []
     configured_models = data.setdefault("agents", {}).setdefault("defaults", {}).setdefault("models", {})
     configured_models.setdefault("openai-codex/gpt-5.6-sol", {})
     configured_models.setdefault("openai-codex/gpt-5.3-codex-spark", {})
@@ -152,6 +165,7 @@ for path in config_paths:
     configured_models.setdefault("openai-codex/gpt-5.4", {})
     configured_models.setdefault("openai-codex/gpt-5.3-codex-spark", {})
     configured_models.setdefault("openai-codex/gemini-pro-agent", {})
+    configured_models.setdefault("openai-codex/hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S", {})
     for stale_model in ("ollama/qwen3:14b", "ollama/qwen2.5:14b-instruct", "openai/gpt-5.5"):
         configured_models.pop(stale_model, None)
     if write_json_if_changed(path, data):
