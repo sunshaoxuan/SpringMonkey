@@ -30,4 +30,4 @@ The installer materializes the runtime key file with service-readable permission
 
 ## Acceptance
 
-Local unit tests, release preflight, remote installation, service health, effective environment, global fallback configuration, forced primary-failure intent routing, and an owner-visible direct-message retry must all pass before completion.
+Local tests passed. On the Linux target, release preflight and 141 tests passed before installation. Commit `d9baadc` was deployed, the service remained active, both configs retained the Qwen fallback, and forced primary failures succeeded through the intent and generic fallback paths. The original external write request was not replayed as part of this infrastructure acceptance.
