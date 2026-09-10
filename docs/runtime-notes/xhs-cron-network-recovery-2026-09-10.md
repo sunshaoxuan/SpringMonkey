@@ -12,9 +12,13 @@ At 19:45 JST the OpenClaw service and the cron job were enabled. Direct host pro
 
 The cron failure self-heal timer remained active. Its scans reported zero processed failures because automatic source selection trusted an empty official task list and did not supplement it with journal events. Its recurring backoff threshold also expected five official failures while this runtime stopped after four attempts.
 
+The first manual rerun reached the host after repository deployment and failed before task startup because the recovery command demoted from root to the `openclaw` user. The runtime config is root managed and rejected that read with `EACCES`.
+
 ## Repair contract
 
 Automatic scans combine official task failures with journal failures for jobs absent from the official result. The recovery guard takes ownership after four failed official attempts. The XHS capability contract and repair installer use `openai-codex/gpt-5.6-sol`.
+
+Recovery and manual recurring job tools invoke the official cron CLI under their service account. The obsolete `runuser` branch is removed so root managed runtime configuration remains readable.
 
 ## Acceptance
 

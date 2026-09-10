@@ -151,11 +151,6 @@ def validate_job(capability: dict[str, Any], cron_job: dict[str, Any]) -> tuple[
 
 
 def cron_run_command(job_id: str) -> list[str]:
-    if hasattr(os, "geteuid") and os.geteuid() == 0:
-        return ["runuser", "-u", "openclaw", "--", "env", "HOME=/var/lib/openclaw", "openclaw", "cron", "run", job_id]
-    env_home = os.environ.get("HOME")
-    if not env_home:
-        os.environ["HOME"] = "/var/lib/openclaw"
     return ["openclaw", "cron", "run", job_id]
 
 

@@ -60,7 +60,6 @@ def test_model_failure_probes_points_then_reruns_original_job(tmp_path: Path) ->
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
         refresh_official_before_rerun=False,
     )
 
@@ -97,7 +96,6 @@ def test_unhealthy_gateway_is_restarted_and_verified_before_rerun(tmp_path: Path
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=0,
     )
 
     assert incident["status"] == "rerun_started"
@@ -121,7 +119,6 @@ def test_credentials_block_rerun(tmp_path: Path) -> None:
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
         refresh_official_before_rerun=False,
     )
 
@@ -151,7 +148,6 @@ def test_config_repair_restarts_gateway_and_rechecks_doctor_and_health(tmp_path:
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
     )
 
     assert incident["status"] == "rerun_started"
@@ -200,7 +196,6 @@ def test_default_backoff_hands_off_after_four_official_failures(tmp_path: Path) 
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
         refresh_official_before_rerun=True,
     )
 
@@ -254,7 +249,6 @@ def test_waiting_official_does_not_probe_or_rerun(tmp_path: Path) -> None:
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
     )
 
     assert incident["status"] == "waiting_official"
@@ -321,7 +315,6 @@ def test_terminal_incident_starts_new_generation_for_new_official_run(tmp_path: 
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
     )
 
     assert incident["status"] == "waiting_official"
@@ -368,7 +361,6 @@ def test_guard_persists_incident_state(tmp_path: Path) -> None:
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
         refresh_official_before_rerun=False,
     )
 
@@ -418,7 +410,6 @@ def test_failed_rerun_is_repaired_and_driven_to_second_attempt(tmp_path: Path) -
         repo_root=tmp_path,
         kernel_root=tmp_path / "kernel",
         runner=runner,
-        euid=1000,
         refresh_official_before_rerun=False,
     )
 

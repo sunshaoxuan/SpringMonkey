@@ -13,6 +13,10 @@ def write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
 
+def test_cron_run_uses_runtime_service_account() -> None:
+    assert tool.cron_run_command("job_1") == ["openclaw", "cron", "run", "job_1"]
+
+
 def test_recurring_cron_run_resolves_configured_job_and_dry_runs(tmp_path: Path) -> None:
     capabilities = tmp_path / "capabilities.json"
     jobs = tmp_path / "jobs.json"

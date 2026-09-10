@@ -220,10 +220,7 @@ def find_job(jobs_by_name: dict[str, dict[str, Any]], job_name: str) -> dict[str
     return job if isinstance(job, dict) else {}
 
 
-def cron_run_command(job_id: str, *, euid: int | None = None) -> list[str]:
-    effective_uid = os.geteuid() if euid is None and hasattr(os, "geteuid") else euid
-    if effective_uid == 0:
-        return ["runuser", "-u", "openclaw", "--", "env", "HOME=/var/lib/openclaw", "openclaw", "cron", "run", job_id]
+def cron_run_command(job_id: str) -> list[str]:
     return ["openclaw", "cron", "run", job_id]
 
 
@@ -450,7 +447,6 @@ def process_event(
     runner: CommandRunner = subprocess.run,
     allow_restart: bool = True,
     max_reruns: int = 2,
-    euid: int | None = None,
     tasks: list[dict[str, Any]] | None = None,
     now_ms: int | None = None,
     official_retry_attempts: int = 3,
@@ -555,7 +551,7 @@ def process_event(
             incident["status"] = "waiting_official"
             incident["updated_at"] = utc_now()
             return incident
-    command = cron_run_command(job_id, euid=euid)
+    command = cron_run_command(job_id)
     rerun = run_command(command, runner=runner, timeout=300)
     incident["rerun_attempts"] = int(incident.get("rerun_attempts") or 0) + 1
     incident["last_rerun"] = command_evidence(rerun)
@@ -599,7 +595,6 @@ def run_guard(
     runner: CommandRunner = subprocess.run,
     allow_restart: bool = True,
     max_reruns: int = 2,
-    euid: int | None = None,
     official_retry_attempts: int = 3,
     official_backoff_tiers: int = 4,
     official_next_run_guard_seconds: int = 300,
@@ -628,7 +623,6 @@ def run_guard(
                 runner=runner,
                 allow_restart=allow_restart,
                 max_reruns=max_reruns,
-                euid=euid,
                 tasks=tasks,
                 now_ms=now_ms,
                 official_retry_attempts=official_retry_attempts,
@@ -663,7 +657,6 @@ def run_guard(
                 runner=runner,
                 allow_restart=allow_restart,
                 max_reruns=max_reruns,
-                euid=euid,
                 tasks=tasks,
                 now_ms=now_ms,
                 official_retry_attempts=official_retry_attempts,
