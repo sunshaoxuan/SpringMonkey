@@ -25,5 +25,9 @@ def test_xhs_cron_model_fix_uses_official_cron_cli() -> None:
     assert "--model \"$TARGET_MODEL\"" in remote
     assert "--fallbacks \"\"" in remote
     assert "Do not call sessions_spawn" in remote
+    assert "at most 8 product or image source page fetches" in remote
+    assert "at most 12 browser snapshots" in remote
+    assert "never copy full-page HTML or full-page text" in remote
+    assert "stop researching and write the Google Doc immediately" in remote
     assert "CURRENT_RUN_ONLY=" in remote
     assert "policy_marker not in message" in remote

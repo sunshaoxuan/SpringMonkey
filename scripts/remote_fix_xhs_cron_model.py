@@ -38,7 +38,11 @@ job_name = sys.argv[3]
 policy = (
     "[xhs-current-run-only]\n"
     "Complete this scheduled workflow in the current agent run. Do not call sessions_spawn or delegate any part to a subagent. "
-    "Research, browser work, Google Docs writing, verification, and final delivery must all remain in this run so the configured model and timeouts stay authoritative.\n"
+    "Research, browser work, Google Docs writing, verification, and final delivery must all remain in this run so the configured model and timeouts stay authoritative. "
+    "Keep research bounded: use at most 8 product or image source page fetches and at most 12 browser snapshots for the entire run. "
+    "Read only the relevant page sections and never copy full-page HTML or full-page text into the conversation. "
+    "Retry a failed page or tool at most once, then use another source. Once one real product and the required three images are verified, stop researching and write the Google Doc immediately. "
+    "Reuse one Google Docs tab and keep only concise source facts in context.\n"
 )
 
 proc = subprocess.run(
