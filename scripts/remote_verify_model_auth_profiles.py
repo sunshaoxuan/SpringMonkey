@@ -140,11 +140,16 @@ for path in config_paths:
     codex_base = str(codex.get("baseUrl") or "")
     codex_key = codex.get("apiKey")
     print(f"openai-codex.baseUrl={codex_base}")
+    print(f"openai-codex.timeoutSeconds={codex.get('timeoutSeconds')}")
     validate_secret_ref(f"{path}.openai-codex.apiKey", codex_key, "/providers/openaiCodex/apiKey")
     if "ccnode.briconbric.com:49530/v1" not in codex_base:
         errors.append(f"unexpected openai-codex baseUrl in {path}: {codex_base}")
+    if codex.get("timeoutSeconds") != 600:
+        errors.append(f"unexpected openai-codex timeoutSeconds in {path}: {codex.get('timeoutSeconds')}")
     codex_models = [item.get("id") for item in codex.get("models", []) if isinstance(item, dict)]
     print(f"openai-codex.models={codex_models}")
+    if "gpt-5.6-sol" not in codex_models:
+        errors.append(f"missing gpt-5.6-sol model in {path}")
     if "gpt-5.3-codex-spark" not in codex_models:
         errors.append(f"missing gpt-5.3-codex-spark model in {path}")
     if "gemini-pro-agent" not in codex_models:

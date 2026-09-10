@@ -14,11 +14,15 @@ The cron failure self-heal timer remained active. Its scans reported zero proces
 
 The first manual rerun reached the host after repository deployment and failed before task startup because the recovery command demoted from root to the `openclaw` user. The runtime config is root managed and rejected that read with `EACCES`.
 
+The root managed rerun entered the agent, completed read and browser tool calls, and ended after approximately 103 seconds. The provider had no explicit `timeoutSeconds`, and the outer cron run aborted the next model response at the provider idle timeout. No document write tool was called in that session.
+
 ## Repair contract
 
 Automatic scans combine official task failures with journal failures for jobs absent from the official result. The recovery guard takes ownership after four failed official attempts. The XHS capability contract and repair installer use `openai-codex/gpt-5.6-sol`.
 
 Recovery and manual recurring job tools invoke the official cron CLI under their service account. The obsolete `runuser` branch is removed so root managed runtime configuration remains readable.
+
+The `openai-codex` provider registers `gpt-5.6-sol` explicitly and uses a 600 second provider timeout. The XHS job keeps its 3600 second whole-run ceiling.
 
 ## Acceptance
 

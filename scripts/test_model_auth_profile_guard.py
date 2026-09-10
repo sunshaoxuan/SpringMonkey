@@ -35,6 +35,8 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     assert 'providers["openai-codex"] = {' in remote
     assert '"baseUrl": "http://ccnode.briconbric.com:49530/v1"' in remote
     assert '"api": "openai-completions"' in remote
+    assert '"timeoutSeconds": 600' in remote
+    assert '"id": "gpt-5.6-sol"' in remote
     assert '"id": "gpt-5.3-codex-spark"' in remote
     assert '"id": "gpt-5.3-codex-spark"' in remote
     assert '"id": "gemini-pro-agent"' in remote
