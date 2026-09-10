@@ -26,6 +26,8 @@ The `openai-codex` provider registers `gpt-5.6-sol` explicitly and uses a 600 se
 
 The first post-timeout-fix acceptance run delegated product research to a child session. That child inherited the global `gpt-5.3-codex-spark` default instead of the cron payload model and repeatedly emitted empty `exec` and `web_fetch` arguments. The XHS cron installer now appends an idempotent current-run-only policy that prohibits `sessions_spawn`, keeping research, browser work, Google Docs writing, verification, and delivery under the configured `gpt-5.6-sol` run.
 
+During deployment verification, the FRP SSH endpoint repeatedly rejected new protocol banners. A read-only connection attempt to the documented Tailscale SSH endpoint displayed an additional authentication URL. The attempt was stopped immediately, and no Tailscale authentication, device, or exposure state was changed. Further verification must use the existing FRP endpoint after its connection gate clears.
+
 ## Acceptance
 
 Run the cron failure self-heal and recovery guard unit tests. Deploy the repository to the host, reinstall the self-heal timer, manually run the XHS job once, and verify successful completion plus owner DM delivery.
