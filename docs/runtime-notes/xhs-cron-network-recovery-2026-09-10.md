@@ -28,12 +28,16 @@ The first post-timeout-fix acceptance run delegated product research to a child 
 
 The next acceptance run stayed in the configured parent model but failed at 21:54 JST with a context overflow after approximately eleven minutes. The model registration already provides a 196k context window. The task policy now bounds research to eight product or image source fetches and twelve browser snapshots, prohibits full-page text dumps, limits failed-page retries to one, and requires immediate Google Docs authoring once the product and three required images are verified.
 
-During deployment verification, the FRP SSH endpoint repeatedly rejected new protocol banners. A read-only connection attempt to the documented Tailscale SSH endpoint displayed an additional authentication URL. The attempt was stopped immediately, and no Tailscale authentication, device, or exposure state was changed. Further verification must use the existing FRP endpoint after its connection gate clears.
+During deployment verification, the FRP SSH endpoint repeatedly rejected new protocol banners. A read-only connection attempt to the documented Tailscale SSH endpoint displayed an additional authentication URL. The attempt was stopped immediately, and no Tailscale authentication, device, or exposure state was changed. Verification resumed through the existing FRP endpoint after its connection gate cleared.
 
 ## Acceptance
 
-Run the cron failure self-heal and recovery guard unit tests. Deploy the repository to the host, reinstall the self-heal timer, manually run the XHS job once, and verify successful completion plus owner DM delivery.
+The repository was deployed at commit `ee500df`, `openclaw.service` was active, and the installed XHS payload reported model `openai-codex/gpt-5.6-sol`, a 3600 second whole-run timeout, and the current-run-only policy marker.
+
+The final acceptance run `aa1c6f47-c022-49a1-8b12-590b5d33f0c4` started at 22:33 JST and completed at 22:52 JST in 1,124,152 ms. It made no `sessions_spawn` call, created and verified a Google Docs draft with the requested copy, tags, two official product images, and one local review image, then delivered the result to Discord. Final cron state was `ok`, `lastDeliveryStatus` was `delivered`, `lastDelivered` was true, `consecutiveErrors` was zero, and no context-overflow diagnostic remained.
+
+The delivered draft is [XHS-推荐文-2026-09-10-オイコス蛋白咖啡拿铁](https://docs.google.com/document/d/1AcpsZN_vz5i0DdsKEUd8FCGiKdmlpEKLu4VPRhxbjNQ/edit?tab=t.0). It remains a review draft and was not published to Xiaohongshu.
 
 ## Rollback
 
-Revert the incident repair commit, redeploy the previous repository revision, and rerun `scripts/remote_install_cron_failure_self_heal.py`.
+Revert commits `ee500df`, `5361edb`, `d4ffdbe`, `41580eb`, and `c64dede` as applicable, redeploy the selected repository revision, and rerun `scripts/remote_install_cron_failure_self_heal.py`.
