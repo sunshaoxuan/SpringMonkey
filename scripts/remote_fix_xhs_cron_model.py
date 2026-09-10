@@ -19,6 +19,7 @@ REPO = os.environ.get("SPRINGMONKEY_REPO_PATH", "/var/lib/openclaw/repos/SpringM
 JOB_NAME = os.environ.get("OPENCLAW_XHS_CRON_NAME", "xhs-recommendation-every-3-days")
 TARGET_MODEL = os.environ.get("OPENCLAW_XHS_CRON_MODEL", "openai-codex/gpt-5.6-sol")
 TARGET_DELIVERY_TO = os.environ.get("OPENCLAW_XHS_CRON_DELIVERY_TO", "1497009159940608020")
+SUBAGENT_POLICY_MARKER = "[xhs-current-run-only]"
 
 REMOTE = r"""
 set -euo pipefail
@@ -34,6 +35,11 @@ import sys
 message_path = sys.argv[1]
 job_id_path = sys.argv[2]
 job_name = sys.argv[3]
+policy = (
+    "[xhs-current-run-only]\n"
+    "Complete this scheduled workflow in the current agent run. Do not call sessions_spawn or delegate any part to a subagent. "
+    "Research, browser work, Google Docs writing, verification, and final delivery must all remain in this run so the configured model and timeouts stay authoritative.\n"
+)
 
 proc = subprocess.run(
     ["openclaw", "--no-color", "cron", "list", "--json"],
@@ -51,7 +57,11 @@ for job in jobs:
     if job.get("name") == job_name:
         from pathlib import Path
 
-        Path(message_path).write_text(job.get("payload", {}).get("message", ""), encoding="utf-8")
+        message = job.get("payload", {}).get("message", "")
+        marker = policy.splitlines()[0]
+        if marker in message:
+            message = message.split(marker, 1)[0].rstrip()
+        Path(message_path).write_text(f"{message.rstrip()}\n\n{policy}", encoding="utf-8")
         Path(job_id_path).write_text(str(job.get("id") or ""), encoding="utf-8")
         print(json.dumps(job, ensure_ascii=False, indent=2))
         break
@@ -89,12 +99,12 @@ echo "=== verify cron status ==="
 python3 scripts/openclaw/cron_status_tool.py --topic xhs
 
 echo "=== verify payload model ==="
-python3 - <<'PY' "$JOB_NAME" "$TARGET_MODEL" "$TARGET_DELIVERY_TO"
+python3 - <<'PY' "$JOB_NAME" "$TARGET_MODEL" "$TARGET_DELIVERY_TO" "$SUBAGENT_POLICY_MARKER"
 import json
 import subprocess
 import sys
 
-job_name, target_model, target_delivery_to = sys.argv[1], sys.argv[2], sys.argv[3]
+job_name, target_model, target_delivery_to, policy_marker = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 proc = subprocess.run(
     ["openclaw", "--no-color", "cron", "list", "--json"],
     check=True,
@@ -110,13 +120,17 @@ for job in jobs:
         continue
     if job.get("name") == job_name:
         model = job.get("payload", {}).get("model")
+        message = job.get("payload", {}).get("message", "")
         delivery_to = job.get("delivery", {}).get("to")
         print(f"MODEL={model}")
         print(f"DELIVERY_TO={delivery_to}")
+        print(f"CURRENT_RUN_ONLY={policy_marker in message}")
         if model != target_model:
             raise SystemExit(f"model mismatch: expected {target_model}, got {model}")
         if delivery_to != target_delivery_to:
             raise SystemExit(f"delivery mismatch: expected {target_delivery_to}, got {delivery_to}")
+        if policy_marker not in message:
+            raise SystemExit(f"missing current-run-only policy: {policy_marker}")
         break
 else:
     raise SystemExit(f"job not found: {job_name}")
@@ -145,6 +159,7 @@ def main() -> int:
             f"export JOB_NAME={JOB_NAME!r}",
             f"export TARGET_MODEL={TARGET_MODEL!r}",
             f"export TARGET_DELIVERY_TO={TARGET_DELIVERY_TO!r}",
+            f"export SUBAGENT_POLICY_MARKER={SUBAGENT_POLICY_MARKER!r}",
         ]
     )
     _, stdout, stderr = client.exec_command(exports + "\n" + REMOTE.strip(), get_pty=True, timeout=600)
@@ -154,7 +169,7 @@ def main() -> int:
     sys.stdout.buffer.write(out.encode("utf-8", errors="replace"))
     if err.strip():
         sys.stderr.buffer.write(err.encode("utf-8", errors="replace"))
-    return 0 if "DONE" in out and f"MODEL={TARGET_MODEL}" in out and f"DELIVERY_TO={TARGET_DELIVERY_TO}" in out else 1
+    return 0 if "DONE" in out and f"MODEL={TARGET_MODEL}" in out and f"DELIVERY_TO={TARGET_DELIVERY_TO}" in out and "CURRENT_RUN_ONLY=True" in out else 1
 
 
 if __name__ == "__main__":

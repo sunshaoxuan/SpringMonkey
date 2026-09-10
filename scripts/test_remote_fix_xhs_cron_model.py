@@ -18,8 +18,12 @@ def test_xhs_cron_model_fix_uses_official_cron_cli() -> None:
     remote = module.REMOTE
 
     assert module.TARGET_MODEL == "openai-codex/gpt-5.6-sol"
+    assert module.SUBAGENT_POLICY_MARKER == "[xhs-current-run-only]"
     assert "cron/jobs.json" not in remote
     assert "cron\", \"list\", \"--json\"" in remote
     assert "openclaw --no-color cron edit" in remote
     assert "--model \"$TARGET_MODEL\"" in remote
     assert "--fallbacks \"\"" in remote
+    assert "Do not call sessions_spawn" in remote
+    assert "CURRENT_RUN_ONLY=" in remote
+    assert "policy_marker not in message" in remote
