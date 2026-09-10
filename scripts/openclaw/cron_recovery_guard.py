@@ -14,8 +14,26 @@ from typing import Any, Callable
 CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 TERMINAL_FAILURES = {"failed", "timed_out", "lost"}
 TERMINAL_SUCCESSES = {"completed", "succeeded", "success"}
-TRANSIENT_TOKENS = ("timeout", "timed out", "couldn't generate", "could not generate", "temporarily", "connection reset")
-MODEL_TOKENS = ("model", "agent couldn't generate", "agent could not generate", "provider", "quota", "rate limit")
+TRANSIENT_TOKENS = (
+    "timeout",
+    "timed out",
+    "couldn't generate",
+    "could not generate",
+    "temporarily",
+    "connection reset",
+    "network connection",
+    "connection error",
+    "connection refused",
+)
+MODEL_TOKENS = (
+    "model",
+    "agent couldn't generate",
+    "agent could not generate",
+    "llm request failed",
+    "provider",
+    "quota",
+    "rate limit",
+)
 CONFIG_TOKENS = ("invalid config", "config invalid", "unsupported channel", "legacy key", "schema")
 AUTH_TOKENS = ("credential", "password", "login", "unauthorized", "forbidden", "api key", "token missing")
 DELIVERY_TOKENS = ("delivery", "deliver", "publish", "posted")
@@ -436,7 +454,7 @@ def process_event(
     tasks: list[dict[str, Any]] | None = None,
     now_ms: int | None = None,
     official_retry_attempts: int = 3,
-    official_backoff_tiers: int = 5,
+    official_backoff_tiers: int = 4,
     official_next_run_guard_ms: int = 300_000,
     unknown_state_handoff_ms: int = 3_600_000,
     refresh_official_before_rerun: bool = False,
@@ -583,7 +601,7 @@ def run_guard(
     max_reruns: int = 2,
     euid: int | None = None,
     official_retry_attempts: int = 3,
-    official_backoff_tiers: int = 5,
+    official_backoff_tiers: int = 4,
     official_next_run_guard_seconds: int = 300,
     unknown_state_handoff_seconds: int = 3600,
     now_ms: int | None = None,

@@ -21,6 +21,7 @@ def main() -> int:
                     "jobs": [
                         {
                             "name": "timescar-ask-cancel-next24h-0700",
+                            "state": {"lastRunAtMs": 1776909010000},
                             "payload": {
                                 "message": "Check TimesCar next-24h reservations, ask whether to cancel, and report the blocker if the site fails."
                             },
@@ -69,6 +70,8 @@ def main() -> int:
             raise AssertionError(f"expected runtime_timeout cron gap, got {item['gap_category']}")
         if item["channel"] != "cron:line":
             raise AssertionError(f"expected cron:line channel, got {item['channel']}")
+        if item["official_run_id"] != "cron-state:1776909010000":
+            raise AssertionError(f"expected cron state run identity, got {item['official_run_id']}")
         if not item.get("helper") or item["helper"]["status"] != "promoted":
             raise AssertionError(f"expected promoted helper payload, got {item.get('helper')}")
 
@@ -76,6 +79,34 @@ def main() -> int:
         second_payload = json.loads(second.stdout)
         if second_payload["processed_count"] != 0:
             raise AssertionError(f"expected deduped second run, got {second_payload['processed_count']}")
+
+        empty_tasks = Path(tmp) / "empty-tasks.json"
+        empty_tasks.write_text('{"tasks": []}\n', encoding="utf-8")
+        auto_cmd = [
+            sys.executable,
+            str(repo_root / "scripts" / "openclaw" / "cron_failure_self_heal.py"),
+            "--root",
+            str(Path(tmp) / "auto-kernel"),
+            "--repo-root",
+            str(repo_root),
+            "--jobs-file",
+            str(jobs_path),
+            "--tasks-file",
+            str(empty_tasks),
+            "--journal-file",
+            str(journal_path),
+            "--source",
+            "auto",
+            "--disable-recovery-guard",
+            "--disable-shadow-bridge",
+            "--disable-log-retention",
+        ]
+        auto = subprocess.run(auto_cmd, capture_output=True, text=True, check=True)
+        auto_payload = json.loads(auto.stdout)
+        if auto_payload["signal_source"] != "journal":
+            raise AssertionError(f"expected journal supplement for empty official tasks, got {auto_payload['signal_source']}")
+        if auto_payload["processed_count"] != 1:
+            raise AssertionError(f"expected journal failure to be processed in auto mode, got {auto_payload['processed_count']}")
 
         official_root = Path(tmp) / "official-kernel"
         official_tasks = Path(tmp) / "tasks.json"

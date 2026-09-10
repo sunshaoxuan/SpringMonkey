@@ -17,6 +17,7 @@ def test_xhs_cron_model_fix_uses_official_cron_cli() -> None:
     module = load_module()
     remote = module.REMOTE
 
+    assert module.TARGET_MODEL == "openai-codex/gpt-5.6-sol"
     assert "cron/jobs.json" not in remote
     assert "cron\", \"list\", \"--json\"" in remote
     assert "openclaw --no-color cron edit" in remote

@@ -178,6 +178,36 @@ def test_official_recurring_backoff_owns_failure_before_saturation() -> None:
     assert decision["reason"] == "official_recurring_backoff_not_saturated"
 
 
+def test_default_backoff_hands_off_after_four_official_failures(tmp_path: Path) -> None:
+    official_job = job()
+    official_job["state"]["consecutiveErrors"] = 4
+    runner = FakeRunner(
+        [
+            (0, json.dumps({"status": "healthy"}), ""),
+            (0, json.dumps({"warnings": []}), ""),
+            (0, json.dumps({"kind": "text", "status": "ok", "models": [{"model_ref": "openai-codex/gpt-5.6-sol"}]}), ""),
+            (0, json.dumps(official_job), ""),
+            (0, json.dumps({"tasks": []}), ""),
+            (0, json.dumps({"runId": "rerun-after-four"}), ""),
+        ]
+    )
+    state = {"schema_version": 1, "incidents": {}}
+
+    incident = process_event(
+        event("LLM request failed: network connection error"),
+        state=state,
+        jobs_by_name={"daily-job": official_job},
+        repo_root=tmp_path,
+        kernel_root=tmp_path / "kernel",
+        runner=runner,
+        euid=1000,
+        refresh_official_before_rerun=True,
+    )
+
+    assert incident["official_handoff"]["handoff"] is True
+    assert incident["status"] == "rerun_started"
+
+
 def test_official_active_run_blocks_custom_rerun() -> None:
     decision = official_handoff_decision(
         {"job_name": "daily-job", "reason": "permanent failure", "first_seen_at_ms": 1, "task_status": "failed"},

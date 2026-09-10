@@ -171,8 +171,22 @@ def parse_failure_events(text: str) -> list[dict[str, str]]:
                 "reason": reason,
                 "event_key": key,
                 "raw_line": line,
+                "source": "journal",
             }
         )
+    return events
+
+
+def attach_journal_run_identity(events: list[dict[str, str]], jobs_by_name: dict[str, dict]) -> list[dict[str, str]]:
+    for event in events:
+        if event.get("source") != "journal" or event.get("run_id"):
+            continue
+        state = jobs_by_name.get(event.get("job_name", ""), {}).get("state", {})
+        last_run_at = state.get("lastRunAtMs") if isinstance(state, dict) else None
+        if isinstance(last_run_at, (int, float)) and last_run_at > 0:
+            marker = str(int(last_run_at))
+            event["run_id"] = f"cron-state:{marker}"
+            event["ended_at"] = marker
     return events
 
 
@@ -436,7 +450,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--recovery-state-file")
     parser.add_argument("--recovery-max-reruns", type=int, default=2)
     parser.add_argument("--official-retry-attempts", type=int, default=3)
-    parser.add_argument("--official-backoff-tiers", type=int, default=5)
+    parser.add_argument("--official-backoff-tiers", type=int, default=4)
     parser.add_argument("--official-next-run-guard-seconds", type=int, default=300)
     parser.add_argument("--unknown-state-handoff-seconds", type=int, default=3600)
     return parser.parse_args()
@@ -476,9 +490,22 @@ def main() -> int:
             fallback_reason = f"{type(exc).__name__}: {exc}"
             journal_text = load_journal_text(args)
             events = parse_failure_events(journal_text)
+        else:
+            if args.source == "auto":
+                try:
+                    journal_events = parse_failure_events(load_journal_text(args))
+                except Exception as exc:
+                    fallback_reason = f"journal scan failed: {type(exc).__name__}: {exc}"
+                else:
+                    official_event_jobs = {event["job_name"] for event in events}
+                    supplemental = [event for event in journal_events if event["job_name"] not in official_event_jobs]
+                    if supplemental:
+                        events.extend(supplemental)
+                        source = "official_tasks+journal" if official_event_jobs else "journal"
     else:
         journal_text = load_journal_text(args)
         events = parse_failure_events(journal_text)
+    events = attach_journal_run_identity(events, jobs_by_name)
     seen = load_seen_state(state_path)
 
     processed: list[dict[str, object]] = []
