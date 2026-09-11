@@ -1,5 +1,11 @@
 # Test results
 
+## Explicit recipient correction
+
+Commit `f1c1d02` adds current-request recipient precedence. Focused verification passed: 11 tests across the access tool, artifact registry, and XHS installer. The initial test run encountered an inaccessible system pytest temporary directory; using a task-local `--basetemp` resolved fixture setup. `git diff --check` passed.
+
+The existing installer was invoked with the corrected recipient. SSH closed during protocol-banner negotiation before authentication, so the host default and XHS payload were not changed by this attempt. Repository push succeeded. Production synchronization and actual sharing to the corrected recipient remain unverified.
+
 ## Initial focused suite
 
 Command scope: artifact access tool, XHS installer, intent router, intent agent, Harness execution chains, and capability baseline.
