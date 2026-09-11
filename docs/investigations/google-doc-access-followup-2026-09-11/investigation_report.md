@@ -12,6 +12,7 @@ Why did TangHou reject repeated Discord requests to grant access to the Google D
 4. The access agent relied on a logged-in browser to interpret the ambiguous recipient. The repaired contract supplies one host-side email, grants Viewer only, prohibits broad link sharing, and requires post-write verification.
 5. The XHS job now applies the same contract before delivery so future documents do not require a separate repair conversation.
 6. The first production repair attempt reused the default main agent session and failed precheck with `context_overflow`. The access tool now supplies a new UUID through the documented `openclaw agent --session-id` selector for every bounded repair run.
+7. That attempt also resolved an older cached artifact URL instead of the latest XHS cron document. Resolution now prefers an explicit URL, then the latest final answer from sessions tied to configured cron job IDs, then the long-task cache.
 
 ## Boundary
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import os
 from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
@@ -70,3 +71,48 @@ def test_access_execution_requires_configured_owner_email(tmp_path: Path) -> Non
 
     assert "未配置 OPENCLAW_OWNER_GOOGLE_EMAIL" in reply
     run.assert_not_called()
+
+
+def test_explicit_document_url_wins_over_cached_artifact(tmp_path: Path) -> None:
+    cached = [{"job_name": "old", "final_report": "https://docs.google.com/document/d/old/edit"}]
+
+    task, doc_url = tool.resolve_artifact(
+        "请授权 https://docs.google.com/document/d/explicit/edit",
+        cached,
+        jobs_path=tmp_path / "missing-jobs.json",
+        sessions_dir=tmp_path / "missing-sessions",
+    )
+
+    assert task and task["job_name"] == "explicit artifact URL"
+    assert doc_url == "https://docs.google.com/document/d/explicit/edit"
+
+
+def test_latest_cron_final_artifact_wins_over_stale_task_cache(tmp_path: Path) -> None:
+    jobs = tmp_path / "jobs.json"
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    jobs.write_text(json.dumps({"jobs": [{"id": "job-new"}]}), encoding="utf-8")
+    session = sessions / "new.jsonl"
+    rows = [
+        {"sessionKey": "agent:main:cron:job-new:run:one"},
+        {
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "已写入 https://docs.google.com/document/d/current/edit",
+                        "textSignature": '{"phase":"final_answer"}',
+                    }
+                ],
+            }
+        },
+    ]
+    session.write_text("\n".join(json.dumps(row, ensure_ascii=False) for row in rows), encoding="utf-8")
+    os.utime(session, (2_000_000_000, 2_000_000_000))
+    cached = [{"job_name": "old", "final_report": "https://docs.google.com/document/d/old/edit"}]
+
+    task, doc_url = tool.resolve_artifact("给刚才的文档开权限", cached, jobs_path=jobs, sessions_dir=sessions)
+
+    assert task and task["job_name"] == "latest cron artifact"
+    assert doc_url == "https://docs.google.com/document/d/current/edit"

@@ -8,3 +8,5 @@
 - Deployed `bdac5cf`, configured the host-only owner profile, restarted the service, and verified the XHS owner-access policy.
 - Ran the access repair once. It exposed a default-main-session context overflow before browser execution.
 - Checked the current official OpenClaw CLI reference and selected explicit UUID-based `--session-id` isolation.
+- Compared the resolved repair target with the accepted XHS cron artifact and found stale long-task cache selection.
+- Added explicit URL, current cron session, and cache fallback resolution with formal-cron filtering.

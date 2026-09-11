@@ -8,3 +8,4 @@
 | The router executed the intended access path | Production intent audit records for repeated access requests show `artifact/access`, `execute_agent=true`, and passed audit | high | Tool result lacked independent account-side access verification |
 | The repaired workflow is private and role-bounded | Access tool prompt and XHS owner-access policy tests | high | Real production postcheck pending deployment |
 | Default-session reuse can block a short repair | First production repair after `bdac5cf` failed with `context_overflow` before tool work | high | Independent session retry pending |
+| Long-task cache can point at an older document | First production repair selected the older `1KA...` artifact while the accepted XHS run delivered the newer `1Ac...` artifact | high | Corrected resolver pending production retry |
