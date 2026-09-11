@@ -33,6 +33,8 @@ def test_xhs_cron_model_fix_uses_official_cron_cli() -> None:
     assert "OPENCLAW_OWNER_GOOGLE_EMAIL is required" in remote
     assert "share the Google Doc directly with {owner_email} as Viewer" in remote
     assert "Do not create an anyone-with-link permission" in remote
+    assert "artifact_registry.py record" in remote
+    assert "same helper's latest command" in remote
     assert "OWNER_ACCESS_POLICY=" in remote
     assert "CURRENT_RUN_ONLY=" in remote
     assert "policy_marker not in message" in remote

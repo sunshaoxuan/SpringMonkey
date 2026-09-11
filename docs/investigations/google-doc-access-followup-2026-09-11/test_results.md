@@ -20,4 +20,4 @@ Python compilation passed for the changed runtime scripts. `git diff --check` pa
 
 Commit `bdac5cf` deployed successfully. The owner profile, service state, and XHS owner-access policy passed verification. The real access repair failed before browser work because the default main session was already at context overflow. UUID-based session isolation was added for the retry.
 
-The same attempt selected an older cached document. Resolver tests now cover explicit URL precedence and latest formal cron final-answer precedence over stale long-task state.
+The same attempt selected an older cached document. Production showed that the formal cron session identifier was not available in the assumed transcript shape, so that scanner and the legacy cache fallback were removed. Final tests cover atomic artifact registry writes, explicit URL precedence, authoritative registry resolution, fresh UUID sessions, and explicit `gpt-5.6-sol` selection.

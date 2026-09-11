@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import uuid
-import os
 from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
@@ -14,21 +13,13 @@ def test_artifact_access_followup_reports_access_work_not_generation_status(tmp_
     state = tmp_path / "tasks.json"
     state.write_text(
         json.dumps(
-            {
-                "tasks": [
-                    {
-                        "job_name": "content-job",
-                        "status": "delivered",
-                        "final_report": "已写入 https://docs.google.com/document/d/example123/edit?usp=sharing",
-                    }
-                ]
-            },
+            {"source": "content-job", "url": "https://docs.google.com/document/d/example123/edit?usp=sharing"},
             ensure_ascii=False,
         ),
         encoding="utf-8",
     )
 
-    task, doc_url = tool.latest_artifact(tool.load_tasks(state))
+    task, doc_url = tool.resolve_artifact("刚才的文档", artifact_state=state)
     reply = tool.build_reply(task, doc_url)
 
     assert "交付物访问请求已识别" in reply
@@ -55,6 +46,7 @@ def test_run_access_agent_extracts_final_authorization_result() -> None:
     command = run.call_args.args[0]
     session_id = command[command.index("--session-id") + 1]
     assert uuid.UUID(session_id).version == 4
+    assert command[command.index("--model") + 1] == "openai-codex/gpt-5.6-sol"
     prompt = run.call_args.args[0][run.call_args.args[0].index("--message") + 1]
     assert "owner@example.com" in prompt
     assert "不要创建公开链接" in prompt
@@ -74,45 +66,31 @@ def test_access_execution_requires_configured_owner_email(tmp_path: Path) -> Non
 
 
 def test_explicit_document_url_wins_over_cached_artifact(tmp_path: Path) -> None:
-    cached = [{"job_name": "old", "final_report": "https://docs.google.com/document/d/old/edit"}]
+    state = tmp_path / "latest.json"
+    state.write_text(json.dumps({"url": "https://docs.google.com/document/d/old/edit"}), encoding="utf-8")
 
     task, doc_url = tool.resolve_artifact(
         "请授权 https://docs.google.com/document/d/explicit/edit",
-        cached,
-        jobs_path=tmp_path / "missing-jobs.json",
-        sessions_dir=tmp_path / "missing-sessions",
+        artifact_state=state,
     )
 
     assert task and task["job_name"] == "explicit artifact URL"
     assert doc_url == "https://docs.google.com/document/d/explicit/edit"
 
 
-def test_latest_cron_final_artifact_wins_over_stale_task_cache(tmp_path: Path) -> None:
-    jobs = tmp_path / "jobs.json"
-    sessions = tmp_path / "sessions"
-    sessions.mkdir()
-    jobs.write_text(json.dumps({"jobs": [{"id": "job-new"}]}), encoding="utf-8")
-    session = sessions / "new.jsonl"
-    rows = [
-        {"sessionKey": "agent:main:cron:job-new:run:one"},
-        {
-            "message": {
-                "role": "assistant",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "已写入 https://docs.google.com/document/d/current/edit",
-                        "textSignature": '{"phase":"final_answer"}',
-                    }
-                ],
+def test_authoritative_artifact_registry_resolves_implicit_followup(tmp_path: Path) -> None:
+    state = tmp_path / "latest.json"
+    state.write_text(
+        json.dumps(
+            {
+                "url": "https://docs.google.com/document/d/current/edit",
+                "source": "xhs-recommendation-every-3-days",
             }
-        },
-    ]
-    session.write_text("\n".join(json.dumps(row, ensure_ascii=False) for row in rows), encoding="utf-8")
-    os.utime(session, (2_000_000_000, 2_000_000_000))
-    cached = [{"job_name": "old", "final_report": "https://docs.google.com/document/d/old/edit"}]
+        ),
+        encoding="utf-8",
+    )
 
-    task, doc_url = tool.resolve_artifact("给刚才的文档开权限", cached, jobs_path=jobs, sessions_dir=sessions)
+    task, doc_url = tool.resolve_artifact("给刚才的文档开权限", artifact_state=state)
 
-    assert task and task["job_name"] == "latest cron artifact"
+    assert task and task["job_name"] == "xhs-recommendation-every-3-days"
     assert doc_url == "https://docs.google.com/document/d/current/edit"

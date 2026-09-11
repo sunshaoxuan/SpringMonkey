@@ -80,7 +80,8 @@ policy = (
     f"Before delivery, share the Google Doc directly with {owner_email} as Viewer. "
     "Do not create an anyone-with-link permission, grant edit access, or transfer ownership. "
     "Reopen the sharing settings and verify that exact email is listed as Viewer before reporting success. "
-    "If sharing or verification fails, report the concrete blocker and do not claim successful delivery.\n"
+    "After verification, record the exact document URL with: python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/artifact_registry.py record --source xhs-recommendation-every-3-days --url '<document-url>'. "
+    "Verify the registry with the same helper's latest command. If sharing or verification fails, report the concrete blocker and do not claim successful delivery.\n"
 )
 
 proc = subprocess.run(

@@ -40,7 +40,7 @@ The delivered draft is [XHS-推荐文-2026-09-10-オイコス蛋白咖啡拿铁]
 
 ## Owner access policy
 
-Generated Google Docs must be shared directly with the configured `OPENCLAW_OWNER_GOOGLE_EMAIL` account as Viewer before delivery. The task must reopen sharing settings and verify the exact account and role. Public link sharing, edit access, and ownership transfer are outside this workflow. The artifact access follow-up tool uses the same host-side profile so access repairs do not depend on prior chat context.
+Generated Google Docs must be shared directly with the configured `OPENCLAW_OWNER_GOOGLE_EMAIL` account as Viewer before delivery. The task must reopen sharing settings and verify the exact account and role, then record the verified URL through `scripts/openclaw/artifact_registry.py`. Public link sharing, edit access, and ownership transfer are outside this workflow. The artifact access follow-up tool reads the same host-side account profile and authoritative artifact record so access repairs do not depend on prior chat context.
 
 ## Rollback
 

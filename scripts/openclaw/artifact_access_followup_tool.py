@@ -11,12 +11,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from recurring_cron_run_tool import parse_session_final_answer
+from artifact_registry import DEFAULT_STATE_PATH as DEFAULT_ARTIFACT_STATE_PATH
+from artifact_registry import load_latest_artifact
 
 
-DEFAULT_STATE_PATH = Path("/var/lib/openclaw/.openclaw/workspace/state/long_task_supervisor/tasks.json")
-DEFAULT_CRON_JOBS_PATH = Path("/var/lib/openclaw/.openclaw/cron/jobs.json")
-DEFAULT_SESSIONS_DIR = Path("/var/lib/openclaw/.openclaw/agents/main/sessions")
 DOC_URL_RE = re.compile(r"https://docs\.google\.com/document/d/[^\s)>\"]+")
 
 try:
@@ -26,79 +24,31 @@ except Exception:
     pass
 
 
-def load_tasks(path: Path) -> list[dict[str, Any]]:
-    if not path.is_file():
-        return []
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-    tasks = data.get("tasks") if isinstance(data, dict) else []
-    return [task for task in tasks if isinstance(task, dict)]
-
-
-def latest_artifact(tasks: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, str]:
-    for task in reversed(tasks):
-        text = str(task.get("final_report") or "")
-        match = DOC_URL_RE.search(text)
-        if match:
-            return task, match.group(0).rstrip(".,，。")
-    return None, ""
-
-
-def cron_job_ids(path: Path) -> set[str]:
-    if not path.is_file():
-        return set()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return set()
-    jobs = data if isinstance(data, list) else data.get("jobs", []) if isinstance(data, dict) else []
-    return {str(job.get("id")) for job in jobs if isinstance(job, dict) and job.get("id")}
-
-
-def latest_cron_artifact(jobs_path: Path, sessions_dir: Path) -> tuple[dict[str, Any] | None, str]:
-    job_ids = cron_job_ids(jobs_path)
-    if not job_ids or not sessions_dir.is_dir():
-        return None, ""
-    candidates: list[Path] = []
-    for path in sessions_dir.glob("*.jsonl"):
-        try:
-            content = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        if any(f"cron:{job_id}:run" in content for job_id in job_ids):
-            candidates.append(path)
-    candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
-    for path in candidates[:100]:
-        final = parse_session_final_answer(path)
-        match = DOC_URL_RE.search(final)
-        if match:
-            return {"job_name": "latest cron artifact", "session_file": str(path)}, match.group(0).rstrip(".,，。")
-    return None, ""
-
-
 def resolve_artifact(
     text: str,
-    tasks: list[dict[str, Any]],
     *,
-    jobs_path: Path = DEFAULT_CRON_JOBS_PATH,
-    sessions_dir: Path = DEFAULT_SESSIONS_DIR,
+    artifact_state: Path = DEFAULT_ARTIFACT_STATE_PATH,
 ) -> tuple[dict[str, Any] | None, str]:
     explicit = DOC_URL_RE.search(text)
     if explicit:
         return {"job_name": "explicit artifact URL"}, explicit.group(0).rstrip(".,，。")
-    task, doc_url = latest_cron_artifact(jobs_path, sessions_dir)
-    if task and doc_url:
-        return task, doc_url
-    return latest_artifact(tasks)
+    artifact = load_latest_artifact(artifact_state)
+    if artifact:
+        return {"job_name": str(artifact.get("source") or "artifact registry")}, str(artifact["url"])
+    return None, ""
 
 
 def strip_ansi(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", text or "")
 
 
-def run_access_agent(doc_url: str, owner_email: str, *, timeout_seconds: int) -> tuple[bool, str]:
+def run_access_agent(
+    doc_url: str,
+    owner_email: str,
+    *,
+    timeout_seconds: int,
+    model: str = "openai-codex/gpt-5.6-sol",
+) -> tuple[bool, str]:
     session_id = str(uuid.uuid4())
     prompt = (
         "请处理最近一次已交付文档的查看权限问题。\n"
@@ -120,6 +70,8 @@ def run_access_agent(doc_url: str, owner_email: str, *, timeout_seconds: int) ->
                 "main",
                 "--session-id",
                 session_id,
+                "--model",
+                model,
                 "--message",
                 prompt,
                 "--timeout",
@@ -199,18 +151,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Classify and report follow-up access work for recent delivered artifacts.")
     parser.add_argument("--text", required=True)
     parser.add_argument("--message-timestamp", default="")
-    parser.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
-    parser.add_argument("--cron-jobs", type=Path, default=DEFAULT_CRON_JOBS_PATH)
-    parser.add_argument("--sessions-dir", type=Path, default=DEFAULT_SESSIONS_DIR)
+    parser.add_argument("--artifact-state", type=Path, default=DEFAULT_ARTIFACT_STATE_PATH)
     parser.add_argument("--execute-agent", action="store_true")
     parser.add_argument("--agent-timeout", type=int, default=900)
     parser.add_argument("--owner-email", default=os.environ.get("OPENCLAW_OWNER_GOOGLE_EMAIL", ""))
     args = parser.parse_args()
     task, doc_url = resolve_artifact(
         args.text,
-        load_tasks(args.state),
-        jobs_path=args.cron_jobs,
-        sessions_dir=args.sessions_dir,
+        artifact_state=args.artifact_state,
     )
     print(
         build_reply(

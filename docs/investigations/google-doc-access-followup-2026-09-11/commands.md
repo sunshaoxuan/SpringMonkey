@@ -10,3 +10,5 @@
 - Checked the current official OpenClaw CLI reference and selected explicit UUID-based `--session-id` isolation.
 - Compared the resolved repair target with the accepted XHS cron artifact and found stale long-task cache selection.
 - Added explicit URL, current cron session, and cache fallback resolution with formal-cron filtering.
+- Deployed `f368bfe`; its implicit resolver still selected the old cache and its UUID-isolated default-model run still failed static context precheck.
+- Removed session-format inference and legacy cache fallback. Added an atomic authoritative artifact registry and explicit `gpt-5.6-sol` selection.

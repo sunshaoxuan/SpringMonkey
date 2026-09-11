@@ -12,11 +12,12 @@ Why did TangHou reject repeated Discord requests to grant access to the Google D
 4. The access agent relied on a logged-in browser to interpret the ambiguous recipient. The repaired contract supplies one host-side email, grants Viewer only, prohibits broad link sharing, and requires post-write verification.
 5. The XHS job now applies the same contract before delivery so future documents do not require a separate repair conversation.
 6. The first production repair attempt reused the default main agent session and failed precheck with `context_overflow`. The access tool now supplies a new UUID through the documented `openclaw agent --session-id` selector for every bounded repair run.
-7. That attempt also resolved an older cached artifact URL instead of the latest XHS cron document. Resolution now prefers an explicit URL, then the latest final answer from sessions tied to configured cron job IDs, then the long-task cache.
+7. That attempt also resolved an older cached artifact URL instead of the latest XHS cron document. A first session-scanning repair did not match the live cron session format and was removed. Resolution now uses an explicit URL or one authoritative host-side artifact registry written by the producing workflow.
+8. A UUID-isolated retry still failed static prompt precheck under the default main model. Access runs now select the task-authoritative `openai-codex/gpt-5.6-sol` model explicitly.
 
 ## Boundary
 
-The account identifier stays in `/etc/openclaw/openclaw.env` on the host and is not committed. The workflow does not create public links, grant edit access, or transfer ownership.
+The account identifier stays in `/etc/openclaw/openclaw.env` on the host and is not committed. The latest artifact URL stays in the owner-controlled OpenClaw workspace state. The workflow does not create public links, grant edit access, or transfer ownership.
 
 ## Runtime evidence gap
 
