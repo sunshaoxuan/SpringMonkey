@@ -16,6 +16,15 @@ from artifact_registry import load_latest_artifact
 
 
 DOC_URL_RE = re.compile(r"https://docs\.google\.com/document/d/[^\s)>\"]+")
+EMAIL_RE = re.compile(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}")
+
+
+def resolve_recipient(text: str, configured_email: str) -> str:
+    # Only the current owner request supplies overrides, never document content.
+    emails = list(dict.fromkeys(match.lower() for match in EMAIL_RE.findall(text)))
+    if len(emails) > 1:
+        raise ValueError("消息包含多个邮箱，请明确本次需要授权的一个账号。")
+    return emails[0] if emails else configured_email.strip()
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -115,6 +124,7 @@ def build_reply(
     execute_agent: bool = False,
     agent_timeout: int = 900,
     owner_email: str = "",
+    request_text: str = "",
 ) -> str:
     lines = [
         "交付物访问请求已识别。",
@@ -138,6 +148,12 @@ def build_reply(
         ]
     )
     if execute_agent:
+        try:
+            owner_email = resolve_recipient(request_text, owner_email)
+        except ValueError as exc:
+            lines[3] = f"执行结果：未完成：{exc}"
+            lines[4] = "当前状态：等待明确授权账号。"
+            return "\n".join(lines)
         if not owner_email.strip():
             ok, result = False, "未完成：主机未配置 OPENCLAW_OWNER_GOOGLE_EMAIL。"
         else:
@@ -167,6 +183,7 @@ def main() -> int:
             execute_agent=args.execute_agent,
             agent_timeout=args.agent_timeout,
             owner_email=args.owner_email,
+            request_text=args.text,
         )
     )
     return 0

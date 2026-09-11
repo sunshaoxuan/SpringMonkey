@@ -9,6 +9,31 @@ from unittest.mock import patch
 import artifact_access_followup_tool as tool
 
 
+def test_current_account_correction_overrides_configured_recipient() -> None:
+    with patch.object(tool, "run_access_agent", return_value=(True, "已授权查看。")) as run:
+        tool.build_reply(
+            {"job_name": "content-job"}, "https://docs.google.com/document/d/example/edit",
+            execute_agent=True, owner_email="previous@example.com",
+            request_text="我又申请了一个，账号应该是correct@example.com",
+        )
+    assert run.call_args.args[1] == "correct@example.com"
+
+
+def test_multiple_accounts_require_disambiguation_without_sharing() -> None:
+    with patch.object(tool, "run_access_agent") as run:
+        reply = tool.build_reply(
+            {"job_name": "content-job"}, "https://docs.google.com/document/d/example/edit",
+            execute_agent=True, owner_email="previous@example.com",
+            request_text="previous@example.com correct@example.com",
+        )
+    run.assert_not_called()
+    assert "等待明确授权账号" in reply
+
+
+def test_missing_override_uses_configured_account() -> None:
+    assert tool.resolve_recipient("请给刚才的文档开权限", "owner@example.com") == "owner@example.com"
+
+
 def test_artifact_access_followup_reports_access_work_not_generation_status(tmp_path: Path) -> None:
     state = tmp_path / "tasks.json"
     state.write_text(

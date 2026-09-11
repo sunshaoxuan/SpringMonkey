@@ -18,6 +18,10 @@ Why did TangHou reject repeated Discord requests to grant access to the Google D
 
 ## Boundary
 
+## Recipient correction follow-up
+
+The user's Discord screenshot shows that a single-email correction was routed to the access tool but the configured recipient was reused. Code inspection confirms `main()` previously used request text only for artifact resolution and passed the configured email unchanged to execution. The tool now forwards the current owner request, gives its single explicit email precedence for that invocation, and stops without sharing when multiple emails are present. Tests cover corrected recipient execution, ambiguous requests without side effects, and requests with no override. Existing host configuration and proactive XHS sharing require a separate update to the corrected account. Deployment and actual recipient access must be verified separately.
+
 The account identifier stays in `/etc/openclaw/openclaw.env` on the host and is not committed. The latest artifact URL stays in the owner-controlled OpenClaw workspace state. The workflow does not create public links, grant edit access, or transfer ownership.
 
 ## Runtime evidence gap
