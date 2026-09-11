@@ -38,6 +38,10 @@ The final acceptance run `aa1c6f47-c022-49a1-8b12-590b5d33f0c4` started at 22:33
 
 The delivered draft is [XHS-推荐文-2026-09-10-オイコス蛋白咖啡拿铁](https://docs.google.com/document/d/1AcpsZN_vz5i0DdsKEUd8FCGiKdmlpEKLu4VPRhxbjNQ/edit?tab=t.0). It remains a review draft and was not published to Xiaohongshu.
 
+## Owner access policy
+
+Generated Google Docs must be shared directly with the configured `OPENCLAW_OWNER_GOOGLE_EMAIL` account as Viewer before delivery. The task must reopen sharing settings and verify the exact account and role. Public link sharing, edit access, and ownership transfer are outside this workflow. The artifact access follow-up tool uses the same host-side profile so access repairs do not depend on prior chat context.
+
 ## Rollback
 
 Revert commits `ee500df`, `5361edb`, `d4ffdbe`, `41580eb`, and `c64dede` as applicable, redeploy the selected repository revision, and rerun `scripts/remote_install_cron_failure_self_heal.py`.

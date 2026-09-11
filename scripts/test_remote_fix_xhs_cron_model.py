@@ -19,6 +19,7 @@ def test_xhs_cron_model_fix_uses_official_cron_cli() -> None:
 
     assert module.TARGET_MODEL == "openai-codex/gpt-5.6-sol"
     assert module.SUBAGENT_POLICY_MARKER == "[xhs-current-run-only]"
+    assert module.OWNER_ACCESS_POLICY_MARKER == "[xhs-owner-access]"
     assert "cron/jobs.json" not in remote
     assert "cron\", \"list\", \"--json\"" in remote
     assert "openclaw --no-color cron edit" in remote
@@ -29,5 +30,9 @@ def test_xhs_cron_model_fix_uses_official_cron_cli() -> None:
     assert "at most 12 browser snapshots" in remote
     assert "never copy full-page HTML or full-page text" in remote
     assert "stop researching and write the Google Doc immediately" in remote
+    assert "OPENCLAW_OWNER_GOOGLE_EMAIL is required" in remote
+    assert "share the Google Doc directly with {owner_email} as Viewer" in remote
+    assert "Do not create an anyone-with-link permission" in remote
+    assert "OWNER_ACCESS_POLICY=" in remote
     assert "CURRENT_RUN_ONLY=" in remote
     assert "policy_marker not in message" in remote

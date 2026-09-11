@@ -41,8 +41,28 @@ def test_run_access_agent_extracts_final_authorization_result() -> None:
         stdout=json.dumps({"status": "ok", "result": {"payloads": [{"text": "已授权查看。"}]}}, ensure_ascii=False),
     )
     with patch.object(tool.subprocess, "run", return_value=completed) as run:
-        ok, result = tool.run_access_agent("https://docs.google.com/document/d/example/edit", timeout_seconds=30)
+        ok, result = tool.run_access_agent(
+            "https://docs.google.com/document/d/example/edit",
+            "owner@example.com",
+            timeout_seconds=30,
+        )
 
     assert ok is True
     assert result == "已授权查看。"
     assert "--json" in run.call_args.args[0]
+    prompt = run.call_args.args[0][run.call_args.args[0].index("--message") + 1]
+    assert "owner@example.com" in prompt
+    assert "不要创建公开链接" in prompt
+
+
+def test_access_execution_requires_configured_owner_email(tmp_path: Path) -> None:
+    task = {
+        "job_name": "content-job",
+        "final_report": "https://docs.google.com/document/d/example/edit",
+    }
+
+    with patch.object(tool, "run_access_agent") as run:
+        reply = tool.build_reply(task, "https://docs.google.com/document/d/example/edit", execute_agent=True)
+
+    assert "未配置 OPENCLAW_OWNER_GOOGLE_EMAIL" in reply
+    run.assert_not_called()

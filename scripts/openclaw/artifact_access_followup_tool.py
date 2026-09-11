@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -44,13 +45,16 @@ def strip_ansi(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", text or "")
 
 
-def run_access_agent(doc_url: str, *, timeout_seconds: int) -> tuple[bool, str]:
+def run_access_agent(doc_url: str, owner_email: str, *, timeout_seconds: int) -> tuple[bool, str]:
     prompt = (
         "请处理最近一次已交付文档的查看权限问题。\n"
         f"目标文档：{doc_url}\n"
-        "用户明确要求：给 owner 查看文件的许可。不要重复报告文件生成任务成功。"
-        "请使用已登录的 Google Docs/Drive 浏览器会话打开共享设置，授予当前 owner 可查看权限；"
-        "如果无法修改权限，只报告具体阻断点。完成后用中文说明“已授权查看”或“未完成：原因”。"
+        f"授权目标账号：{owner_email}\n"
+        "用户明确要求给上述账号查看文件的许可。不要重复报告文件生成任务成功。"
+        "请使用已登录的 Google Docs/Drive 浏览器会话打开共享设置，将上述账号添加为查看者。"
+        "不要创建公开链接，不要授予编辑权限，不要转移所有权。"
+        "保存后重新检查共享设置，只有看到该邮箱且角色为查看者时才说明“已授权查看”；"
+        "如果无法修改或验证权限，只报告“未完成：”以及具体阻断点。"
     )
     try:
         proc = subprocess.run(
@@ -96,7 +100,14 @@ def run_access_agent(doc_url: str, *, timeout_seconds: int) -> tuple[bool, str]:
     return ok, text or "未完成：权限处理 agent 没有返回最终结论。"
 
 
-def build_reply(task: dict[str, Any] | None, doc_url: str, *, execute_agent: bool = False, agent_timeout: int = 900) -> str:
+def build_reply(
+    task: dict[str, Any] | None,
+    doc_url: str,
+    *,
+    execute_agent: bool = False,
+    agent_timeout: int = 900,
+    owner_email: str = "",
+) -> str:
     lines = [
         "交付物访问请求已识别。",
         "结论：这不是文件生成状态查询，不能只回复“任务成功”。",
@@ -119,7 +130,10 @@ def build_reply(task: dict[str, Any] | None, doc_url: str, *, execute_agent: boo
         ]
     )
     if execute_agent:
-        ok, result = run_access_agent(doc_url, timeout_seconds=agent_timeout)
+        if not owner_email.strip():
+            ok, result = False, "未完成：主机未配置 OPENCLAW_OWNER_GOOGLE_EMAIL。"
+        else:
+            ok, result = run_access_agent(doc_url, owner_email.strip(), timeout_seconds=agent_timeout)
         lines[3] = f"执行结果：{result}"
         lines[4] = "当前状态：已证明 Google Docs 查看权限已经授予。" if ok else "当前状态：权限处理未完成。"
     return "\n".join(lines)
@@ -132,9 +146,18 @@ def main() -> int:
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
     parser.add_argument("--execute-agent", action="store_true")
     parser.add_argument("--agent-timeout", type=int, default=900)
+    parser.add_argument("--owner-email", default=os.environ.get("OPENCLAW_OWNER_GOOGLE_EMAIL", ""))
     args = parser.parse_args()
     task, doc_url = latest_artifact(load_tasks(args.state))
-    print(build_reply(task, doc_url, execute_agent=args.execute_agent, agent_timeout=args.agent_timeout))
+    print(
+        build_reply(
+            task,
+            doc_url,
+            execute_agent=args.execute_agent,
+            agent_timeout=args.agent_timeout,
+            owner_email=args.owner_email,
+        )
+    )
     return 0
 
 

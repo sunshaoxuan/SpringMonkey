@@ -1,0 +1,21 @@
+# Google Docs access follow-up investigation
+
+## Question
+
+Why did TangHou reject repeated Discord requests to grant access to the Google Docs produced by the XHS job, and how should the workflow become durable?
+
+## Findings
+
+1. The XHS job produced and delivered a real Google Docs URL, while the connected owner Google account received `NOT_FOUND` when reading its Drive metadata. This verifies that the delivered account lacked access.
+2. The registered artifact access tool already had owner-DM write governance and `execute_agent=true`. Its execution prompt referred only to `current owner` and contained no durable Google account mapping.
+3. The repository had no `OPENCLAW_OWNER_GOOGLE_EMAIL` mapping. A new conversation therefore could not reconstruct the intended Google recipient from system state.
+4. The access agent relied on a logged-in browser to interpret the ambiguous recipient. The repaired contract supplies one host-side email, grants Viewer only, prohibits broad link sharing, and requires post-write verification.
+5. The XHS job now applies the same contract before delivery so future documents do not require a separate repair conversation.
+
+## Boundary
+
+The account identifier stays in `/etc/openclaw/openclaw.env` on the host and is not committed. The workflow does not create public links, grant edit access, or transfer ownership.
+
+## Runtime evidence gap
+
+The first production SSH read completed remotely but its local output hit a CP932 encoding failure. Subsequent FRP connections were rejected at the SSH banner during the endpoint cooldown. Exact historical Discord route records remain pending until deployment verification reconnects.
