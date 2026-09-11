@@ -14,6 +14,7 @@ Why did TangHou reject repeated Discord requests to grant access to the Google D
 6. The first production repair attempt reused the default main agent session and failed precheck with `context_overflow`. The access tool now supplies a new UUID through the documented `openclaw agent --session-id` selector for every bounded repair run.
 7. That attempt also resolved an older cached artifact URL instead of the latest XHS cron document. A first session-scanning repair did not match the live cron session format and was removed. Resolution now uses an explicit URL or one authoritative host-side artifact registry written by the producing workflow.
 8. A UUID-isolated retry still failed static prompt precheck under the default main model. Access runs now select the task-authoritative `openai-codex/gpt-5.6-sol` model explicitly.
+9. Production reached `9c8691c`, and the current XHS document was written to the authoritative artifact registry. The immediate Viewer repair did not run because the FRP SSH endpoint closed later connections before authentication at the protocol-banner stage.
 
 ## Boundary
 
@@ -22,3 +23,5 @@ The account identifier stays in `/etc/openclaw/openclaw.env` on the host and is 
 ## Runtime evidence gap
 
 The first production SSH read completed remotely but its local output hit a CP932 encoding failure. A later combined deployment recovered the historical route records. They show repeated `artifact/access` selection, `execute_agent=true`, and passed intent audit. This rules out lost conversational intent as the primary cause.
+
+The connected target Google account still receives `404 NOT_FOUND` for the current document after deployment and registry migration. Existing-document acceptance remains open until the access agent can run and the target account can read the document metadata.
