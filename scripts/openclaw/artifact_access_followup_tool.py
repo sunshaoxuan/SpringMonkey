@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,7 @@ def strip_ansi(text: str) -> str:
 
 
 def run_access_agent(doc_url: str, owner_email: str, *, timeout_seconds: int) -> tuple[bool, str]:
+    session_id = str(uuid.uuid4())
     prompt = (
         "请处理最近一次已交付文档的查看权限问题。\n"
         f"目标文档：{doc_url}\n"
@@ -64,6 +66,8 @@ def run_access_agent(doc_url: str, owner_email: str, *, timeout_seconds: int) ->
                 "agent",
                 "--agent",
                 "main",
+                "--session-id",
+                session_id,
                 "--message",
                 prompt,
                 "--timeout",

@@ -11,6 +11,7 @@ Why did TangHou reject repeated Discord requests to grant access to the Google D
 3. The repository had no `OPENCLAW_OWNER_GOOGLE_EMAIL` mapping. A new conversation therefore could not reconstruct the intended Google recipient from system state.
 4. The access agent relied on a logged-in browser to interpret the ambiguous recipient. The repaired contract supplies one host-side email, grants Viewer only, prohibits broad link sharing, and requires post-write verification.
 5. The XHS job now applies the same contract before delivery so future documents do not require a separate repair conversation.
+6. The first production repair attempt reused the default main agent session and failed precheck with `context_overflow`. The access tool now supplies a new UUID through the documented `openclaw agent --session-id` selector for every bounded repair run.
 
 ## Boundary
 
@@ -18,4 +19,4 @@ The account identifier stays in `/etc/openclaw/openclaw.env` on the host and is 
 
 ## Runtime evidence gap
 
-The first production SSH read completed remotely but its local output hit a CP932 encoding failure. Subsequent FRP connections were rejected at the SSH banner during the endpoint cooldown. Exact historical Discord route records remain pending until deployment verification reconnects.
+The first production SSH read completed remotely but its local output hit a CP932 encoding failure. A later combined deployment recovered the historical route records. They show repeated `artifact/access` selection, `execute_agent=true`, and passed intent audit. This rules out lost conversational intent as the primary cause.

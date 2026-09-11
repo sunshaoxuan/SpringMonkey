@@ -5,3 +5,6 @@
 - Queried metadata for the delivered document and observed `NOT_FOUND` for the connected owner account.
 - Attempted a read-only production SSH evidence query through the established FRP credential path. The remote read ran once; output encoding failed locally. Later attempts hit the endpoint banner cooldown.
 - Ran focused unit tests, Python compilation, and `git diff --check`.
+- Deployed `bdac5cf`, configured the host-only owner profile, restarted the service, and verified the XHS owner-access policy.
+- Ran the access repair once. It exposed a default-main-session context overflow before browser execution.
+- Checked the current official OpenClaw CLI reference and selected explicit UUID-based `--session-id` isolation.

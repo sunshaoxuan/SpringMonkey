@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
@@ -50,6 +51,9 @@ def test_run_access_agent_extracts_final_authorization_result() -> None:
     assert ok is True
     assert result == "已授权查看。"
     assert "--json" in run.call_args.args[0]
+    command = run.call_args.args[0]
+    session_id = command[command.index("--session-id") + 1]
+    assert uuid.UUID(session_id).version == 4
     prompt = run.call_args.args[0][run.call_args.args[0].index("--message") + 1]
     assert "owner@example.com" in prompt
     assert "不要创建公开链接" in prompt
