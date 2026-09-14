@@ -139,7 +139,7 @@ def test_model_image_http_retries_remote_disconnect(tmp_path: Path, monkeypatch)
     assert len(calls) == 2
 
 
-def test_generate_weather_image_reply_falls_back_to_text_on_fetch_error(monkeypatch, tmp_path: Path) -> None:
+def test_generate_weather_image_reply_falls_back_to_text_on_fetch_error(monkeypatch, tmp_path: Path, capsys) -> None:
     now = datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     monkeypatch.setenv("OPENCLAW_WEATHER_IMAGE_RETRIES", "1")
 
@@ -149,6 +149,7 @@ def test_generate_weather_image_reply_falls_back_to_text_on_fetch_error(monkeypa
     result = mod.generate_weather_image_reply(now=now, fetch_json=broken_fetch_json, output_dir=tmp_path)
     assert "天气预报" in result
     assert "天气服务暂时不可用" in result
+    assert "weather source unreachable" in capsys.readouterr().err
 
 
 def test_weather_image_locations_are_three_city_forecast_spec() -> None:

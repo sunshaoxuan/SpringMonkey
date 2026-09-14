@@ -802,7 +802,8 @@ def generate_weather_image_reply(now: datetime | None = None, *, fetch_json=repo
         cards, _rest_day, day_kind = build_cards(now, fetch_json=fetch_json)
         paths = write_weather_images_with_model(cards, now, output_dir, day_kind=day_kind)
         return build_media_reply(paths, cards, now, day_kind)
-    except Exception:
+    except Exception as exc:
+        print(f"[weather-image] {type(exc).__name__}: {exc}", file=sys.stderr)
         return report.build_text_report(now, fetch_json=fetch_json)
 
 def main() -> int:
