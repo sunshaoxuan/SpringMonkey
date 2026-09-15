@@ -27,11 +27,9 @@ from systemd_secret_credentials import read_systemd_secret
 
 TZ = ZoneInfo("Asia/Tokyo")
 DEFAULT_OUTPUT_DIR = Path("/var/lib/openclaw/.openclaw/workspace/media/weather")
-DEFAULT_IMAGE_MODEL = "openai/gemini-3-pro-image"
+DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-flare"
 DEFAULT_IMAGE_MODEL_CANDIDATES = (
     DEFAULT_IMAGE_MODEL,
-    "openai/gpt-image-2.5-flare",
-    "openai/gpt-image-2",
 )
 TARGET_IMAGE_WIDTH = 1024
 TARGET_IMAGE_HEIGHT = 1024
@@ -284,24 +282,35 @@ def build_image_prompt(cards: list[WeatherCard], now: datetime, day_kind: str) -
         )
     scene_count = "one city scene" if len(cards) == 1 else f"{len(cards)} separate city scenes"
     return (
-        "Create a premium cute miniature 3D sculptural weather model as a single finished square picture, not a UI mockup. "
-        f"Use a 1024x1024 centered composition with {scene_count}. "
-        "If multiple people are in the same city, merge them into one city forecast scene; only add another scene when a distinct city exists. "
-        "Camera and scene: clear 45-degree top-down isometric view of one high-end cute miniature 3D landmark model for each city and country. "
-        "Choose exactly one recognizable landmark per city, center the main building, and preserve its distinctive silhouette, elegance, and local charm. "
-        "Style the scene as a refined collectible travel souvenir with a clean composition, soft pastel color palette, exquisite handcrafted details, "
-        "polished tactile PBR materials, gentle natural light, and soft realistic shadows. Keep a warm Japanese children's cartoon sensibility without any copyrighted characters. "
-        "Use a minimal pure-color soft background, no panels, no cards, no text boxes. "
-        "Weather integration: turn the forecast into a coherent 3D weather model. Make the exact weather condition clearly visible throughout the landmark scene "
-        "with physically plausible sun, clouds, rain, snow, wind, mist, puddles, reflections, or atmospheric particles interacting with the architecture and terrain. "
-        "Typography inside the image: at the very top show a large city name in the same written language as the city name; "
-        "use one unified clean modern CJK sans-serif typography system for all Japanese and Chinese city names, with consistent font family, weight, spacing, and layout across every city image. "
-        "directly below or near it show a prominent weather icon; under the icon show the date in very small type and the temperature range in medium type. "
-        "Use one identical temperature format for every city: daily minimum hyphen daily maximum, for example 17-27°C. "
-        "Copy each provided temperature label exactly; do not add current temperature, high/low words, arrows, extra numbers, or mixed formats. "
-        "Weather text has no background and may overlap or blend with the buildings naturally. "
+        "Create one adorable miniature daytime city-life diorama photographed as a real tabletop model. "
+        f"Native 1024x1024 square image with {scene_count}; compose for the square from the start. "
+        "Use a gently elevated three-quarter view, moderate perspective, and believable consistent proportions. "
+        "Buildings are compact, charming and varied in height; tiny rounded human figures and toy-like vehicles "
+        "have lovingly handcrafted details. Avoid elongated towers, stretched people, extreme wide-angle distortion, "
+        "aerial megacity panoramas and monumental buildings dominating the frame. "
+        "Show a complete, lively neighborhood: foreground cafes, convenience stores, breakfast stalls and pedestrians; "
+        "middle-ground crosswalks, a bus stop, a bus arriving and orderly traffic; background modest offices, "
+        "a small park and a locally recognizable landmark integrated naturally into the neighborhood. "
+        "Select a coherent subset of everyday activities: commuters carrying coffee, delivery riders, "
+        "shopkeepers opening stores, a street cleaner, children with schoolbags, neighbors chatting and buying breakfast. "
+        "Keep streets spatially connected and people safely separated from traffic; give each activity breathing room. "
+        "Make the city feel cheerful, cute and lived-in with rounded model forms, miniature street furniture, "
+        "soft tactile materials, colorful awnings, tiny plants and readable layers of depth. "
+        "Use bright natural colors, warm highlights, cinematic daytime lighting and gentle tilt-shift depth of field; "
+        "retain clear detail in the main street scene. The model sits on a compact tabletop base with a soft unobtrusive backdrop. "
+        "Adapt architecture, shops, transit and streets to the named city and country; use the landmark reference as local context. "
+        "Weather accuracy takes priority over sunny styling: always daytime, with warm sunlight for clear weather, "
+        "soft diffuse daylight for overcast weather, and visible umbrellas, wet pavements and appropriate rain or snow "
+        "when the provided condition requires them. Never replace actual weather with sunshine. "
+        "Reserve the upper 20 percent as calm visual space for a large city name, a friendly weather icon, "
+        "a small date and a medium temperature range, all fully inside the image with generous margins. "
+        "Use one unified clean modern CJK sans-serif typography system and consistent hierarchy across all three cities. "
+        "Write city names exactly as supplied. Use one identical temperature format: daily minimum hyphen daily maximum. "
+        "Copy the supplied temperature label exactly; do not show current temperature, extra numbers or weather data tables. "
+        "Keep text clear of buildings and people; no panels, no cards, no text boxes. "
         f"Forecast date: {now:%Y-%m-%d} ({day_kind}). Forecast data: {'; '.join(summaries)}. "
-        "No extra caption outside the image, no brand logos, no watermarks, no copyrighted characters, no unreadable clutter."
+        "No brand logos, watermarks, copyrighted characters or extra captions. High-detail miniature photography; "
+        "output exactly 1024x1024 pixels without cropping, stretching or letterboxing."
     )
 
 
@@ -460,7 +469,21 @@ def validate_generated_model_image(path: Path) -> None:
         raise RuntimeError(f"image generation did not create output file: {path}")
     if path.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
         raise RuntimeError(f"image generation output is not PNG: {path}")
-    normalize_png_aspect(path, target_width=TARGET_IMAGE_WIDTH, target_height=TARGET_IMAGE_HEIGHT)
+    from PIL import Image
+
+    with Image.open(path) as source:
+        width, height = source.size
+        if width != height or width < TARGET_IMAGE_WIDTH:
+            raise RuntimeError(f"weather image size mismatch: {path} size={width}x{height}")
+        source.load()
+        if width > TARGET_IMAGE_WIDTH:
+            resized = source.resize(
+                (TARGET_IMAGE_WIDTH, TARGET_IMAGE_HEIGHT), Image.Resampling.LANCZOS
+            )
+        else:
+            resized = None
+    if resized is not None:
+        resized.save(path, format="PNG")
     validate_weather_image_artifact(path, require_model_quality=True)
 
 
@@ -511,143 +534,6 @@ def validate_weather_image_artifact(path: Path, *, require_model_quality: bool =
         raise RuntimeError(
             f"model weather image is suspiciously small, likely deterministic fallback or placeholder: {path} bytes={len(data)}"
         )
-
-
-def normalize_png_aspect(path: Path, *, target_width: int = TARGET_IMAGE_WIDTH, target_height: int = TARGET_IMAGE_HEIGHT) -> None:
-    try:
-        from PIL import Image
-    except Exception:
-        _normalize_png_aspect_stdlib(path, target_width=target_width, target_height=target_height)
-        return
-    with Image.open(path) as image:
-        if image.size == (target_width, target_height):
-            return
-        if image.width != target_width:
-            new_height = max(1, round(image.height * (target_width / image.width)))
-            image = image.resize((target_width, new_height))
-        if image.height > target_height:
-            # Keep the top typography and city landmark focal area; trim excess
-            # from the bottom when an image API returns a taller frame.
-            image = image.crop((0, 0, target_width, target_height))
-        elif image.height < target_height:
-            # Preserve generated art while adapting smaller outputs to the
-            # formal cron contract.
-            canvas = Image.new("RGB", (target_width, target_height), image.getpixel((0, image.height - 1)) if image.height else (248, 247, 244))
-            canvas.paste(image.convert("RGB"), (0, (target_height - image.height) // 2))
-            image = canvas
-        image.save(path, format="PNG")
-
-
-def _paeth(a: int, b: int, c: int) -> int:
-    p = a + b - c
-    pa = abs(p - a)
-    pb = abs(p - b)
-    pc = abs(p - c)
-    if pa <= pb and pa <= pc:
-        return a
-    if pb <= pc:
-        return b
-    return c
-
-
-def _png_chunks(data: bytes) -> list[tuple[bytes, bytes]]:
-    if data[:8] != b"\x89PNG\r\n\x1a\n":
-        return []
-    chunks: list[tuple[bytes, bytes]] = []
-    pos = 8
-    while pos + 8 <= len(data):
-        size = struct.unpack(">I", data[pos : pos + 4])[0]
-        kind = data[pos + 4 : pos + 8]
-        payload = data[pos + 8 : pos + 8 + size]
-        chunks.append((kind, payload))
-        pos += 12 + size
-        if kind == b"IEND":
-            break
-    return chunks
-
-
-def _normalize_png_aspect_stdlib(path: Path, *, target_width: int, target_height: int) -> None:
-    data = path.read_bytes()
-    chunks = _png_chunks(data)
-    if not chunks:
-        return
-    ihdr = next((payload for kind, payload in chunks if kind == b"IHDR"), None)
-    if not ihdr:
-        return
-    width, height, bit_depth, color_type, compression, filter_method, interlace = struct.unpack(">IIBBBBB", ihdr)
-    if (width, height) == (target_width, target_height):
-        return
-    if bit_depth != 8 or color_type != 2 or compression != 0 or filter_method != 0 or interlace != 0:
-        return
-    idat = b"".join(payload for kind, payload in chunks if kind == b"IDAT")
-    if not idat:
-        return
-    try:
-        raw = zlib.decompress(idat)
-    except zlib.error:
-        return
-    bpp = 3
-    row_len = width * bpp
-    expected = (row_len + 1) * height
-    if len(raw) < expected:
-        return
-    rows: list[bytearray] = []
-    prev = bytearray(row_len)
-    offset = 0
-    for _row in range(height):
-        filter_type = raw[offset]
-        encoded = bytearray(raw[offset + 1 : offset + 1 + row_len])
-        offset += row_len + 1
-        recon = bytearray(row_len)
-        for i, value in enumerate(encoded):
-            left = recon[i - bpp] if i >= bpp else 0
-            up = prev[i]
-            upper_left = prev[i - bpp] if i >= bpp else 0
-            if filter_type == 0:
-                recon[i] = value
-            elif filter_type == 1:
-                recon[i] = (value + left) & 0xFF
-            elif filter_type == 2:
-                recon[i] = (value + up) & 0xFF
-            elif filter_type == 3:
-                recon[i] = (value + ((left + up) // 2)) & 0xFF
-            elif filter_type == 4:
-                recon[i] = (value + _paeth(left, up, upper_left)) & 0xFF
-            else:
-                return
-        rows.append(recon)
-        prev = recon
-    if width != target_width:
-        resized: list[bytearray] = []
-        for row in rows:
-            new_row = bytearray(target_width * bpp)
-            for x in range(target_width):
-                src_x = min(width - 1, int(x * width / target_width))
-                new_row[x * bpp : x * bpp + bpp] = row[src_x * bpp : src_x * bpp + bpp]
-            resized.append(new_row)
-        rows = resized
-        width = target_width
-        row_len = target_width * bpp
-    if height > target_height:
-        normalized = rows[:target_height]
-    elif height < target_height:
-        top_pad = (target_height - height) // 2
-        bottom_pad = target_height - height - top_pad
-        pad_row = rows[-1] if rows else bytearray(row_len)
-        normalized = [bytearray(pad_row) for _ in range(top_pad)] + rows + [bytearray(pad_row) for _ in range(bottom_pad)]
-    else:
-        normalized = rows
-    packed = b"".join(b"\x00" + bytes(row) for row in normalized)
-    path.write_bytes(
-        b"\x89PNG\r\n\x1a\n"
-        + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", target_width, target_height, bit_depth, color_type, compression, filter_method, interlace))
-        + _png_chunk(b"IDAT", zlib.compress(packed, 6))
-        + _png_chunk(b"IEND", b"")
-    )
-
-
-def _png_chunk(kind: bytes, data: bytes) -> bytes:
-    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
 
 
 def write_weather_image_with_model(

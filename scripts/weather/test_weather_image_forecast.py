@@ -57,15 +57,13 @@ def test_model_image_generation_is_preferred(tmp_path: Path) -> None:
     assert path == expected
     assert calls
     assert calls[0][:5] == ["openclaw", "infer", "image", "generate", "--model"]
-    assert "openai/gemini-3-pro-image" in calls[0]
+    assert "openai/gpt-image-2.5-flare" in calls[0]
     assert "1024x1024" in calls[0]
 
 
-def test_default_image_model_candidates_prefer_gemini_with_gpt_fallbacks() -> None:
+def test_default_image_model_is_only_flare() -> None:
     assert mod.image_model_candidates() == [
-        "openai/gemini-3-pro-image",
         "openai/gpt-image-2.5-flare",
-        "openai/gpt-image-2",
     ]
 
 
@@ -101,7 +99,7 @@ def test_model_image_generation_uses_openai_compatible_http_endpoint(tmp_path: P
     assert path.is_file()
     assert requests
     assert requests[0][0].full_url == "http://ccnode.briconbric.com:49530/v1/images/generations"
-    assert json.loads(requests[0][0].data)["model"] == "gemini-3-pro-image"
+    assert json.loads(requests[0][0].data)["model"] == "gpt-image-2.5-flare"
     assert path.name.endswith("_model.png")
 
 
@@ -195,26 +193,13 @@ def test_prompt_matches_square_single_city_image_contract() -> None:
 
     assert "1024x1024" in prompt
     assert "one city scene" in prompt
-    assert "45-degree top-down isometric" in prompt
-    assert "premium cute miniature 3D sculptural weather model" in prompt
-    assert "Choose exactly one recognizable landmark per city" in prompt
-    assert "preserve its distinctive silhouette, elegance, and local charm" in prompt
-    assert "refined collectible travel souvenir" in prompt
-    assert "soft pastel color palette" in prompt
-    assert "exquisite handcrafted details" in prompt
-    assert "gentle natural light" in prompt
-    assert "coherent 3D weather model" in prompt
+    assert "miniature daytime city-life diorama" in prompt
+    assert "toy-like vehicles" in prompt
+    assert "breakfast stalls" in prompt
+    assert "Weather accuracy takes priority" in prompt
+    assert "upper 20 percent" in prompt
     assert "東京, Japan" in prompt
-    assert "Japanese children's cartoon sensibility" in prompt
-    assert "without any copyrighted characters" in prompt
-    assert "PBR materials" in prompt
-    assert "minimal pure-color soft background" in prompt
-    assert "no panels, no cards, no text boxes" in prompt
-    assert "large city name" in prompt
-    assert "unified clean modern CJK sans-serif typography system" in prompt
-    assert "consistent font family, weight, spacing, and layout" in prompt
-    assert "date in very small type" in prompt
-    assert "temperature range in medium type" in prompt
+    assert "without cropping, stretching or letterboxing" in prompt
     assert 'temperature label EXACTLY "17-27°C"' in prompt
     assert "daily minimum hyphen daily maximum" in prompt
     assert "do not show current temperature" in prompt
@@ -231,60 +216,36 @@ def test_temperature_label_uses_one_fixed_min_max_format() -> None:
     assert "22°C" not in prompt
 
 
-def test_model_output_is_normalized_to_formal_square_aspect(tmp_path: Path) -> None:
-    try:
-        from PIL import Image
-    except Exception:
-        return
-    path = tmp_path / "model.png"
-    Image.new("RGB", (1024, 1536), (240, 244, 250)).save(path)
-
-    mod.normalize_png_aspect(path)
-
-    with Image.open(path) as image:
-        assert image.size == (1024, 1024)
+def test_non_square_model_output_is_rejected_without_modifying_pixels(tmp_path: Path) -> None:
+    import pytest
+    for width, height in [(1024, 1536), (1536, 1024), (512, 512)]:
+        path = tmp_path / f"{width}x{height}.png"
+        original = mod._png_bytes(width, height, bytearray(os.urandom(width * height * 3)))
+        path.write_bytes(original)
+        with pytest.raises(RuntimeError, match="size mismatch"):
+            mod.validate_generated_model_image(path)
+        assert path.read_bytes() == original
 
 
-def test_stdlib_png_normalizer_crops_truecolor_png(tmp_path: Path) -> None:
-    path = tmp_path / "stdlib.png"
-    pixels = bytearray([240, 244, 250] * (1024 * 2048))
-    path.write_bytes(mod._png_bytes(1024, 2048, pixels))
-
-    mod._normalize_png_aspect_stdlib(path, target_width=1024, target_height=1024)
-
-    data = path.read_bytes()
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    import struct
-
-    assert struct.unpack(">II", data[16:24]) == (1024, 1024)
+def test_native_square_model_output_is_preserved(tmp_path: Path) -> None:
+    path = tmp_path / "square.png"
+    original = mod._png_bytes(1024, 1024, bytearray(os.urandom(1024 * 1024 * 3)))
+    path.write_bytes(original)
+    mod.validate_generated_model_image(path)
+    assert path.read_bytes() == original
 
 
-def test_stdlib_png_normalizer_pads_short_truecolor_png(tmp_path: Path) -> None:
-    path = tmp_path / "stdlib_short.png"
-    pixels = bytearray([240, 244, 250] * (1024 * 768))
-    path.write_bytes(mod._png_bytes(1024, 768, pixels))
+def test_larger_square_is_uniformly_resized_without_cropping(tmp_path: Path) -> None:
+    from PIL import Image
 
-    mod._normalize_png_aspect_stdlib(path, target_width=1024, target_height=1024)
-
-    data = path.read_bytes()
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    import struct
-
-    assert struct.unpack(">II", data[16:24]) == (1024, 1024)
-
-
-def test_stdlib_png_normalizer_resizes_square_truecolor_png(tmp_path: Path) -> None:
-    path = tmp_path / "stdlib_large_square.png"
-    pixels = bytearray([240, 244, 250] * (1254 * 1254))
-    path.write_bytes(mod._png_bytes(1254, 1254, pixels))
-
-    mod._normalize_png_aspect_stdlib(path, target_width=1024, target_height=1024)
-
-    data = path.read_bytes()
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    import struct
-
-    assert struct.unpack(">II", data[16:24]) == (1024, 1024)
+    path = tmp_path / "square1254.png"
+    original = Image.frombytes("RGB", (1254, 1254), os.urandom(1254 * 1254 * 3))
+    original.save(path)
+    expected = original.resize((1024, 1024), Image.Resampling.LANCZOS)
+    mod.validate_generated_model_image(path)
+    with Image.open(path) as result:
+        assert result.size == (1024, 1024)
+        assert result.tobytes() == expected.tobytes()
 
 
 def test_model_image_generation_falls_back_to_deterministic_png(tmp_path: Path) -> None:
@@ -425,10 +386,8 @@ def test_model_image_generation_stops_retrying_non_retryable_provider_error(tmp_
     else:
         raise AssertionError("non-retryable provider errors must fail clearly")
 
-    assert len(calls) == 3
-    assert "openai/gemini-3-pro-image" in calls[0]
-    assert "openai/gpt-image-2.5-flare" in calls[1]
-    assert "openai/gpt-image-2" in calls[2]
+    assert len(calls) == 1
+    assert "openai/gpt-image-2.5-flare" in calls[0]
 
 
 def test_weather_image_model_candidates_try_next_configured_model(tmp_path: Path, monkeypatch) -> None:
