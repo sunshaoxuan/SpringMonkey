@@ -1,0 +1,12 @@
+{
+  "before": "1aaeb4dff5000470ff7ec9dc416668fc8345c4af",
+  "deployed": "28a3f273560fd2856de5bfb5312126aadd2f5089",
+  "pillow": "11.3.0",
+  "activation": "WEATHER_MODEL=flare",
+  "idempotence": "WEATHER_MODEL=already-flare",
+  "three_image_gate": "passed",
+  "schedule": "07:00 Asia/Tokyo daily",
+  "cron": "active",
+  "model": "openai/gpt-image-2.5-flare",
+  "public_delivery": "not sent by this validation"
+}

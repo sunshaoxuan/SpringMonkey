@@ -1,0 +1,29 @@
+{
+  "model": "openai/gpt-image-2.5-flare",
+  "city": "東京",
+  "path": "/var/lib/openclaw/.openclaw/workspace/media/weather/weather_miniature_東京_20260915_123156_model.png",
+  "dimensions": [
+    1024,
+    1024
+  ],
+  "sha256": "805bd816820afa7eee14f9a23d1f21120bf088f05cc45e0857396bd5afbf43b8",
+  "forecast": {
+    "label": "東京",
+    "area": "東京",
+    "city": "東京",
+    "landmark_hint": "Tokyo Tower or Tokyo Skytree, compact Tokyo skyline, neighborhood streets, riverside bridges, and station plaza",
+    "temperature_c": 25.6,
+    "weather_code": 3,
+    "precipitation_probability": 100,
+    "wind_kmh": 5.5,
+    "uv_index": 0.35,
+    "aqi": 53,
+    "temp_max_c": 26.6,
+    "temp_min_c": 23.6,
+    "advice": "建议携带雨具，路面可能湿滑，出行时间尽量留出余量。"
+  },
+  "prompt": "Create one adorable miniature daytime city-life diorama photographed as a real tabletop model. Native 1024x1024 square image with one city scene; compose for the square from the start. Use a gently elevated three-quarter view, moderate perspective, and believable consistent proportions. Buildings are compact, charming and varied in height; tiny rounded human figures and toy-like vehicles have lovingly handcrafted details. Avoid elongated towers, stretched people, extreme wide-angle distortion, aerial megacity panoramas and monumental buildings dominating the frame. Show a complete, lively neighborhood: foreground cafes, convenience stores, breakfast stalls and pedestrians; middle-ground crosswalks, a bus stop, a bus arriving and orderly traffic; background modest offices, a small park and a locally recognizable landmark integrated naturally into the neighborhood. Select a coherent subset of everyday activities: commuters carrying coffee, delivery riders, shopkeepers opening stores, a street cleaner, children with schoolbags, neighbors chatting and buying breakfast. Keep streets spatially connected and people safely separated from traffic; give each activity breathing room. Make the city feel cheerful, cute and lived-in with rounded model forms, miniature street furniture, soft tactile materials, colorful awnings, tiny plants and readable layers of depth. Use bright natural colors, warm highlights, cinematic daytime lighting and gentle tilt-shift depth of field; retain clear detail in the main street scene. The model sits on a compact tabletop base with a soft unobtrusive backdrop. Adapt architecture, shops, transit and streets to the named city and country; use the landmark reference as local context. Weather accuracy takes priority over sunny styling: always daytime, with warm sunlight for clear weather, soft diffuse daylight for overcast weather, and visible umbrellas, wet pavements and appropriate rain or snow when the provided condition requires them. Never replace actual weather with sunshine. Reserve the upper 20 percent as calm visual space for a large city name, a friendly weather icon, a small date and a medium temperature range, all fully inside the image with generous margins. Use one unified clean modern CJK sans-serif typography system and consistent hierarchy across all three cities. Write city names exactly as supplied. Use one identical temperature format: daily minimum hyphen daily maximum. Copy the supplied temperature label exactly; do not show current temperature, extra numbers or weather data tables. Keep text clear of buildings and people; no panels, no cards, no text boxes. Forecast date: 2026-09-15 (平日). Forecast data: 東京, Japan: 多云, temperature label EXACTLY \"24-27°C\" (daily minimum to daily maximum only; do not show current temperature), rain probability 100%, wind 6km/h; landmark reference: Tokyo Tower or Tokyo Skytree, compact Tokyo skyline, neighborhood streets, riverside bridges, and station plaza. No brand logos, watermarks, copyrighted characters or extra captions. High-detail miniature photography; output exactly 1024x1024 pixels without cropping, stretching or letterboxing.",
+  "deployed": "28a3f273560fd2856de5bfb5312126aadd2f5089",
+  "gate": true,
+  "file": "weather_miniature_東京_20260915_123156_model.png"
+}

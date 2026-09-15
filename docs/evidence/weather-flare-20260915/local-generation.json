@@ -1,0 +1,96 @@
+{
+  "generated_at": "2026-09-15T12:22:28.794537+09:00",
+  "channel": "existing local Sub2API bridge",
+  "images": [
+    {
+      "city": "東京",
+      "model": "gpt-image-2.5-flare",
+      "file": "weather_miniature_東京_20260915_122228_model.png",
+      "raw_dimensions": [
+        1254,
+        1254
+      ],
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "sha256": "200ab415f61d047075a8083f4e3423a4f46a39581f86bd97c5644ea449c18b48",
+      "forecast": {
+        "label": "東京",
+        "area": "東京",
+        "city": "東京",
+        "landmark_hint": "Tokyo Tower or Tokyo Skytree, compact Tokyo skyline, neighborhood streets, riverside bridges, and station plaza",
+        "temperature_c": 25.3,
+        "weather_code": 3,
+        "precipitation_probability": 100,
+        "wind_kmh": 5.5,
+        "uv_index": 0.15,
+        "aqi": 53,
+        "temp_max_c": 26.6,
+        "temp_min_c": 23.6,
+        "advice": "建议携带雨具，路面可能湿滑，出行时间尽量留出余量。"
+      },
+      "prompt": "Create one adorable miniature daytime city-life diorama photographed as a real tabletop model. Native 1024x1024 square image with one city scene; compose for the square from the start. Use a gently elevated three-quarter view, moderate perspective, and believable consistent proportions. Buildings are compact, charming and varied in height; tiny rounded human figures and toy-like vehicles have lovingly handcrafted details. Avoid elongated towers, stretched people, extreme wide-angle distortion, aerial megacity panoramas and monumental buildings dominating the frame. Show a complete, lively neighborhood: foreground cafes, convenience stores, breakfast stalls and pedestrians; middle-ground crosswalks, a bus stop, a bus arriving and orderly traffic; background modest offices, a small park and a locally recognizable landmark integrated naturally into the neighborhood. Select a coherent subset of everyday activities: commuters carrying coffee, delivery riders, shopkeepers opening stores, a street cleaner, children with schoolbags, neighbors chatting and buying breakfast. Keep streets spatially connected and people safely separated from traffic; give each activity breathing room. Make the city feel cheerful, cute and lived-in with rounded model forms, miniature street furniture, soft tactile materials, colorful awnings, tiny plants and readable layers of depth. Use bright natural colors, warm highlights, cinematic daytime lighting and gentle tilt-shift depth of field; retain clear detail in the main street scene. The model sits on a compact tabletop base with a soft unobtrusive backdrop. Adapt architecture, shops, transit and streets to the named city and country; use the landmark reference as local context. Weather accuracy takes priority over sunny styling: always daytime, with warm sunlight for clear weather, soft diffuse daylight for overcast weather, and visible umbrellas, wet pavements and appropriate rain or snow when the provided condition requires them. Never replace actual weather with sunshine. Reserve the upper 20 percent as calm visual space for a large city name, a friendly weather icon, a small date and a medium temperature range, all fully inside the image with generous margins. Use one unified clean modern CJK sans-serif typography system and consistent hierarchy across all three cities. Write city names exactly as supplied. Use one identical temperature format: daily minimum hyphen daily maximum. Copy the supplied temperature label exactly; do not show current temperature, extra numbers or weather data tables. Keep text clear of buildings and people; no panels, no cards, no text boxes. Forecast date: 2026-09-15 (平日). Forecast data: 東京, Japan: 多云, temperature label EXACTLY \"24-27°C\" (daily minimum to daily maximum only; do not show current temperature), rain probability 100%, wind 6km/h; landmark reference: Tokyo Tower or Tokyo Skytree, compact Tokyo skyline, neighborhood streets, riverside bridges, and station plaza. No brand logos, watermarks, copyrighted characters or extra captions. High-detail miniature photography; output exactly 1024x1024 pixels without cropping, stretching or letterboxing."
+    },
+    {
+      "city": "北京",
+      "model": "gpt-image-2.5-flare",
+      "file": "weather_miniature_北京_20260915_122228_model.png",
+      "raw_dimensions": [
+        1254,
+        1254
+      ],
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "sha256": "5c65be69570749338ff45a320fb64244cdd4e9f38dfce09fa88c029be7b5c2db",
+      "forecast": {
+        "label": "北京",
+        "area": "北京",
+        "city": "北京",
+        "landmark_hint": "Temple of Heaven or Forbidden City-inspired Beijing landmark architecture, broad avenues, and classic northern city colors",
+        "temperature_c": 25.2,
+        "weather_code": 0,
+        "precipitation_probability": 0,
+        "wind_kmh": 2.1,
+        "uv_index": 5.6,
+        "aqi": 144,
+        "temp_max_c": 28.6,
+        "temp_min_c": 17.3,
+        "advice": "预计通勤和出行影响较小，可按常规安排。"
+      },
+      "prompt": "Create one adorable miniature daytime city-life diorama photographed as a real tabletop model. Native 1024x1024 square image with one city scene; compose for the square from the start. Use a gently elevated three-quarter view, moderate perspective, and believable consistent proportions. Buildings are compact, charming and varied in height; tiny rounded human figures and toy-like vehicles have lovingly handcrafted details. Avoid elongated towers, stretched people, extreme wide-angle distortion, aerial megacity panoramas and monumental buildings dominating the frame. Show a complete, lively neighborhood: foreground cafes, convenience stores, breakfast stalls and pedestrians; middle-ground crosswalks, a bus stop, a bus arriving and orderly traffic; background modest offices, a small park and a locally recognizable landmark integrated naturally into the neighborhood. Select a coherent subset of everyday activities: commuters carrying coffee, delivery riders, shopkeepers opening stores, a street cleaner, children with schoolbags, neighbors chatting and buying breakfast. Keep streets spatially connected and people safely separated from traffic; give each activity breathing room. Make the city feel cheerful, cute and lived-in with rounded model forms, miniature street furniture, soft tactile materials, colorful awnings, tiny plants and readable layers of depth. Use bright natural colors, warm highlights, cinematic daytime lighting and gentle tilt-shift depth of field; retain clear detail in the main street scene. The model sits on a compact tabletop base with a soft unobtrusive backdrop. Adapt architecture, shops, transit and streets to the named city and country; use the landmark reference as local context. Weather accuracy takes priority over sunny styling: always daytime, with warm sunlight for clear weather, soft diffuse daylight for overcast weather, and visible umbrellas, wet pavements and appropriate rain or snow when the provided condition requires them. Never replace actual weather with sunshine. Reserve the upper 20 percent as calm visual space for a large city name, a friendly weather icon, a small date and a medium temperature range, all fully inside the image with generous margins. Use one unified clean modern CJK sans-serif typography system and consistent hierarchy across all three cities. Write city names exactly as supplied. Use one identical temperature format: daily minimum hyphen daily maximum. Copy the supplied temperature label exactly; do not show current temperature, extra numbers or weather data tables. Keep text clear of buildings and people; no panels, no cards, no text boxes. Forecast date: 2026-09-15 (平日). Forecast data: 北京, China: 晴朗, temperature label EXACTLY \"17-29°C\" (daily minimum to daily maximum only; do not show current temperature), rain probability 0%, wind 2km/h; landmark reference: Temple of Heaven or Forbidden City-inspired Beijing landmark architecture, broad avenues, and classic northern city colors. No brand logos, watermarks, copyrighted characters or extra captions. High-detail miniature photography; output exactly 1024x1024 pixels without cropping, stretching or letterboxing."
+    },
+    {
+      "city": "大连",
+      "model": "gpt-image-2.5-flare",
+      "file": "weather_miniature_大连_20260915_122228_model.png",
+      "raw_dimensions": [
+        1254,
+        1254
+      ],
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "sha256": "51a9b1179595bde3254ff94f13ea8ff20562a2680b16ddc2d59f192e65980de1",
+      "forecast": {
+        "label": "大连",
+        "area": "大连",
+        "city": "大连",
+        "landmark_hint": "Dalian Xinghai Square or coastal landmark architecture, ocean breeze, seaside plaza, and clean modern streets",
+        "temperature_c": 24.2,
+        "weather_code": 0,
+        "precipitation_probability": 0,
+        "wind_kmh": 13.7,
+        "uv_index": 5.95,
+        "aqi": 51,
+        "temp_max_c": 24.4,
+        "temp_min_c": 16.0,
+        "advice": "预计通勤和出行影响较小，可按常规安排。"
+      },
+      "prompt": "Create one adorable miniature daytime city-life diorama photographed as a real tabletop model. Native 1024x1024 square image with one city scene; compose for the square from the start. Use a gently elevated three-quarter view, moderate perspective, and believable consistent proportions. Buildings are compact, charming and varied in height; tiny rounded human figures and toy-like vehicles have lovingly handcrafted details. Avoid elongated towers, stretched people, extreme wide-angle distortion, aerial megacity panoramas and monumental buildings dominating the frame. Show a complete, lively neighborhood: foreground cafes, convenience stores, breakfast stalls and pedestrians; middle-ground crosswalks, a bus stop, a bus arriving and orderly traffic; background modest offices, a small park and a locally recognizable landmark integrated naturally into the neighborhood. Select a coherent subset of everyday activities: commuters carrying coffee, delivery riders, shopkeepers opening stores, a street cleaner, children with schoolbags, neighbors chatting and buying breakfast. Keep streets spatially connected and people safely separated from traffic; give each activity breathing room. Make the city feel cheerful, cute and lived-in with rounded model forms, miniature street furniture, soft tactile materials, colorful awnings, tiny plants and readable layers of depth. Use bright natural colors, warm highlights, cinematic daytime lighting and gentle tilt-shift depth of field; retain clear detail in the main street scene. The model sits on a compact tabletop base with a soft unobtrusive backdrop. Adapt architecture, shops, transit and streets to the named city and country; use the landmark reference as local context. Weather accuracy takes priority over sunny styling: always daytime, with warm sunlight for clear weather, soft diffuse daylight for overcast weather, and visible umbrellas, wet pavements and appropriate rain or snow when the provided condition requires them. Never replace actual weather with sunshine. Reserve the upper 20 percent as calm visual space for a large city name, a friendly weather icon, a small date and a medium temperature range, all fully inside the image with generous margins. Use one unified clean modern CJK sans-serif typography system and consistent hierarchy across all three cities. Write city names exactly as supplied. Use one identical temperature format: daily minimum hyphen daily maximum. Copy the supplied temperature label exactly; do not show current temperature, extra numbers or weather data tables. Keep text clear of buildings and people; no panels, no cards, no text boxes. Forecast date: 2026-09-15 (平日). Forecast data: 大连, China: 晴朗, temperature label EXACTLY \"16-24°C\" (daily minimum to daily maximum only; do not show current temperature), rain probability 0%, wind 14km/h; landmark reference: Dalian Xinghai Square or coastal landmark architecture, ocean breeze, seaside plaza, and clean modern streets. No brand logos, watermarks, copyrighted characters or extra captions. High-detail miniature photography; output exactly 1024x1024 pixels without cropping, stretching or letterboxing."
+    }
+  ]
+}
