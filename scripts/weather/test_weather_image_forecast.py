@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import json
 import subprocess
 import http.client
+import pytest
 
 import weather_image_forecast as mod
 
@@ -214,6 +215,27 @@ def test_temperature_label_uses_one_fixed_min_max_format() -> None:
     prompt = mod.build_image_prompt([card], datetime(2026, 5, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo")), "weekday")
     assert 'temperature label EXACTLY "17-27°C"' in prompt
     assert "22°C" not in prompt
+
+
+@pytest.mark.parametrize("month,temperature,code,rain,wind", [
+    (1, -5, 73, 80, 12), (4, 14, 61, 90, 10),
+    (7, 34, 0, 0, 8), (9, 9, 3, 70, 50), (12, None, None, None, None),
+])
+def test_prompt_supplies_live_wardrobe_context_and_conditional_rules(month, temperature, code, rain, wind):
+    card = mod.WeatherCard("東京", "東京", "東京", "tokyo tower", temperature, code, rain, wind, 4, 36, 27, 17, "ok")
+    now = datetime(2026, month, 19, 7, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    prompt = mod.build_image_prompt([card], now, "weekday")
+    assert f"Forecast date: {now:%Y-%m-%d}" in prompt
+    assert f"ambient air temperature {mod._fmt(temperature)} degrees Celsius (wardrobe context only; never print this value)" in prompt
+    assert f"rain probability {mod._fmt(rain, '%')}, wind {mod._fmt(wind, 'km/h')}" in prompt
+    assert mod.report.weather_label(code) in prompt
+    for rule in ("city and hemisphere", "Actual temperature takes priority", "layered coats",
+                 "ear-covering hats", "light jackets", "breathable light clothing",
+                 "hooded raincoats", "both hands available for riding", "when wind permits",
+                 "instead of open umbrellas", "Rain probability alone", "avoid automatic spring blossoms",
+                 "when ambient temperature is unavailable"):
+        assert rule in prompt
+    assert 'temperature label EXACTLY "17-27°C"' in prompt
 
 
 def test_non_square_model_output_is_rejected_without_modifying_pixels(tmp_path: Path) -> None:

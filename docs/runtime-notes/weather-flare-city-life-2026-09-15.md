@@ -23,3 +23,9 @@ Validation commands: `python -m pytest scripts/weather scripts/test_remote_insta
 No extra public-channel weather message was sent during these checks. The next scheduled delivery remains subject to upstream model and weather-data availability.
 
 Rollback: restore the prior weather source commit and the backed-up weather cron entry, then verify the previous generator and public delivery gate together.
+
+## Seasonal Wardrobe Update (2026-09-17)
+
+User requested season- and weather-aware clothing for the next scheduled broadcast. The prompt now includes current ambient temperature exclusively as scene context; the visible temperature label remains the daily minimum-maximum range. Local date and city determine the seasonal context, with actual temperature taking priority. Explicit conditional rules cover cold-weather layers, freezing/snow protection, transitional jackets, breathable hot-weather clothing, rain gear, safe cyclist behavior, strong-wind shelter, individual outfits and indoor layer removal. Rain probability alone does not imply active rain. Foliage follows local season instead of defaulting to spring blossoms.
+
+Validation covers cold snow, mild rain, summer heat, windy autumn and unavailable measurements, preserving the existing daily temperature label. Model, image geometry, schedule and channel remain unchanged. No extra image generation or public broadcast is requested; next-image appearance remains to be reviewed after the scheduled run.
