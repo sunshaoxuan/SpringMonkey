@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import uuid
-from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,7 +8,7 @@ import artifact_access_followup_tool as tool
 
 
 def test_current_account_correction_overrides_configured_recipient() -> None:
-    with patch.object(tool, "run_access_agent", return_value=(True, "已授权查看。")) as run:
+    with patch.object(tool, "run_access_verification", return_value=(True, "已授权查看。")) as run:
         tool.build_reply(
             {"job_name": "content-job"}, "https://docs.google.com/document/d/example/edit",
             execute_agent=True, owner_email="previous@example.com",
@@ -20,7 +18,7 @@ def test_current_account_correction_overrides_configured_recipient() -> None:
 
 
 def test_multiple_accounts_require_disambiguation_without_sharing() -> None:
-    with patch.object(tool, "run_access_agent") as run:
+    with patch.object(tool, "run_access_verification") as run:
         reply = tool.build_reply(
             {"job_name": "content-job"}, "https://docs.google.com/document/d/example/edit",
             execute_agent=True, owner_email="previous@example.com",
@@ -53,28 +51,30 @@ def test_artifact_access_followup_reports_access_work_not_generation_status(tmp_
     assert "尚未证明 Google Docs 查看权限已经授予" in reply
 
 
-def test_run_access_agent_extracts_final_authorization_result() -> None:
-    completed = SimpleNamespace(
-        returncode=0,
-        stdout=json.dumps({"status": "ok", "result": {"payloads": [{"text": "已授权查看。"}]}}, ensure_ascii=False),
-    )
-    with patch.object(tool.subprocess, "run", return_value=completed) as run:
-        ok, result = tool.run_access_agent(
+def test_permission_success_requires_saved_restricted_viewer_receipt() -> None:
+    with patch.object(tool, "authorize_document", return_value={"viewer_verified":True,"general_access":"restricted"}) as run:
+        ok, result = tool.run_access_verification(
             "https://docs.google.com/document/d/example/edit",
             "owner@example.com",
             timeout_seconds=30,
         )
 
     assert ok is True
-    assert result == "已授权查看。"
-    assert "--json" in run.call_args.args[0]
-    command = run.call_args.args[0]
-    session_id = command[command.index("--session-id") + 1]
-    assert uuid.UUID(session_id).version == 4
-    assert command[command.index("--model") + 1] == "openai-codex/gpt-5.6-sol"
-    prompt = run.call_args.args[0][run.call_args.args[0].index("--message") + 1]
-    assert "owner@example.com" in prompt
-    assert "不要创建公开链接" in prompt
+    assert "已重新打开文档核验" in result
+    assert run.call_args.args[1] == "owner@example.com"
+
+
+def test_model_text_alone_cannot_prove_permission() -> None:
+    with patch.object(tool, "authorize_document", return_value={"text":"已授权查看"}):
+        ok, _ = tool.run_access_verification('https://docs.google.com/document/d/example/edit','owner@example.com',timeout_seconds=30)
+    assert not ok
+
+
+def test_permission_exception_is_redacted() -> None:
+    with patch.object(tool, "authorize_document", side_effect=ValueError('private@example.com secret')):
+        ok, result = tool.run_access_verification('https://docs.google.com/document/d/example/edit','owner@example.com',timeout_seconds=30)
+    assert not ok
+    assert 'private@example.com' not in result and 'secret' not in result
 
 
 def test_access_execution_requires_configured_owner_email(tmp_path: Path) -> None:
@@ -83,7 +83,7 @@ def test_access_execution_requires_configured_owner_email(tmp_path: Path) -> Non
         "final_report": "https://docs.google.com/document/d/example/edit",
     }
 
-    with patch.object(tool, "run_access_agent") as run:
+    with patch.object(tool, "run_access_verification") as run:
         reply = tool.build_reply(task, "https://docs.google.com/document/d/example/edit", execute_agent=True)
 
     assert "未配置 OPENCLAW_OWNER_GOOGLE_EMAIL" in reply

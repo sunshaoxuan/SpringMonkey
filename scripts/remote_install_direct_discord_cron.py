@@ -358,15 +358,16 @@ def main() -> int:
             safe_notify_dm(args.name, "成功", f"已执行完成，结果如下：\n{message}")
             result_payload["sentChunks"] = 0
             return 0
-        safe_notify_dm(args.name, "失败", public_failure_message(args.name, proc.returncode, stdout, stderr))
+        failure_chunks = safe_notify_dm(args.name, "失败", public_failure_message(args.name, proc.returncode, stdout, stderr))
         result_payload["repairGap"] = record_direct_failure_gap(args.name, command, proc.returncode, stdout, stderr)
-        result_payload["delivery"] = "failure-delivered-to-dm"
-        result_payload["sentChunks"] = 0
+        result_payload["delivery"] = "failure-delivered-to-dm" if failure_chunks else "failure-notification-failed"
+        result_payload["sentChunks"] = failure_chunks
         return proc.returncode or 1
     except subprocess.TimeoutExpired as exc:
         result_payload.update({"returncode": "timeout", "stderr": str(exc)})
         result_payload["repairGap"] = record_direct_failure_gap(args.name, args.command, "timeout", "", str(exc))
-        safe_notify_dm(args.name, "失败", public_failure_message(args.name, "timeout", "", str(exc)))
+        chunks = safe_notify_dm(args.name, "失败", public_failure_message(args.name, "timeout", "", str(exc)))
+        result_payload.update(delivery="failure-delivered-to-dm" if chunks else "failure-notification-failed", sentChunks=chunks)
         return 124
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
@@ -443,6 +444,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 0 9 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-0900 --channel-id 1483636573235843072 --timeout 7200 --command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/scripts/news/jobs/news_digest_jst_0900.py); DIR=$(echo "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
 0 17 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name news-digest-jst-1700 --channel-id 1483636573235843072 --timeout 7200 --command bash -lc 'set -e; OUT=$(python3 /var/lib/openclaw/repos/SpringMonkey/scripts/news/jobs/news_digest_jst_1700.py); DIR=$(echo "$OUT" | sed -n "s/^PIPELINE_OK //p" | tail -n1); test -n "$DIR"; cat "$DIR/final_broadcast.md"'
+
+0 10 */3 * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name xhs-recommendation-every-3-days --channel-id 1497009159940608020 --timeout 2400 --command env HOME=/var/lib/openclaw /var/lib/openclaw/venvs/xhs/bin/python /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/xhs_delivery_pipeline.py
 
 0 22 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-daily-report-2200 --channel-id 1497009159940608020 --timeout 900 --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_daily_report_render.py
 0 23 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-ask-cancel-next24h-2300 --channel-id 1497009159940608020 --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_next24h_notice.py

@@ -34,7 +34,7 @@ def load_jobs(path: Path) -> list[dict[str, Any]]:
                 return [item for item in jobs if isinstance(item, dict)]
     try:
         proc = subprocess.run(
-            ["openclaw", "cron", "list", "--json"],
+            ["openclaw", "cron", "list", "--all", "--json"],
             text=True,
             encoding="utf-8",
             errors="replace",

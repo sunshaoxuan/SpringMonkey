@@ -101,8 +101,8 @@ def parse_official_task_failures(
         if status not in TERMINAL_FAILURE_STATUSES:
             continue
         ended_at = task.get("endedAt")
-        if isinstance(ended_at, (int, float)) and max_age_seconds > 0:
-            if current_ms - int(ended_at) > max_age_seconds * 1000:
+        if max_age_seconds > 0:
+            if not isinstance(ended_at, (int, float)) or current_ms - int(ended_at) > max_age_seconds * 1000:
                 continue
         job_name = resolve_job_name(task, jobs_by_name)
         reason = str(
@@ -511,12 +511,12 @@ def main() -> int:
     processed: list[dict[str, object]] = []
     for event in events:
         legacy_event_key = event.get("legacy_event_key", "")
-        if event["event_key"] in seen or (legacy_event_key and legacy_event_key in seen):
+        if event["event_key"] in seen or (not event.get("task_id") and legacy_event_key and legacy_event_key in seen):
             continue
         payload = record_event(args, event, jobs_by_name)
         processed.append(payload)
         seen[event["event_key"]] = payload.get("gap_id", "")
-        if legacy_event_key:
+        if legacy_event_key and not event.get("task_id"):
             seen[legacy_event_key] = payload.get("gap_id", "")
 
     save_seen_state(state_path, seen)

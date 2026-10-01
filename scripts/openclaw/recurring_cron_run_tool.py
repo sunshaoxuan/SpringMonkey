@@ -325,6 +325,16 @@ def run_capability(
     job_name = str(capability.get("job_name") or "")
     if not job_name:
         return 2, {"status": "error", "error": "matched capability has no job_name", "capability_id": capability.get("capability_id")}
+    if capability.get("executor") == "direct_xhs_delivery":
+        command = ["python3", "/usr/local/lib/openclaw/direct_cron_to_discord.py", "--name", job_name,
+                   "--channel-id", str(capability["expected_delivery_channel_id"]), "--timeout", "2400", "--command",
+                   "env", "HOME=/var/lib/openclaw", "/var/lib/openclaw/venvs/xhs/bin/python",
+                   str(REPO / "scripts/openclaw/xhs_delivery_pipeline.py")]
+        if dry_run:
+            return 0, {"status":"dry_run", "job_name":job_name, "command":command}
+        proc = subprocess.run(command, text=True, encoding="utf-8", errors="replace", capture_output=True, timeout=timeout)
+        return proc.returncode, {"status":"success" if proc.returncode == 0 else "failed",
+                                "job_name":job_name, "summary":"草稿交付流程已结束，请查看私聊结果。"}
     if not jobs_path.is_file():
         return 2, {"status": "error", "error": f"cron jobs file not found: {jobs_path}", "job_name": job_name}
     cron_job = find_cron_job(job_name, load_json(jobs_path))

@@ -1,0 +1,102 @@
+from __future__ import annotations
+import io
+import json
+import zipfile
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import pytest
+import google_doc_delivery as delivery
+import xhs_delivery_pipeline as pipeline
+import install_xhs_delivery as installer
+import cron_failure_self_heal as recovery
+import recurring_cron_run_tool as manual
+
+
+def docx(text='draft', images=3):
+    stream=io.BytesIO()
+    with zipfile.ZipFile(stream,'w') as archive:
+        archive.writestr('word/document.xml',f'<w:document xmlns:w="{delivery.W[1:-1]}"><w:body><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:body></w:document>')
+        for i in range(images):
+            archive.writestr(f'word/media/image{i}.png',bytes([i])*100)
+    return stream.getvalue()
+
+
+def test_export_requires_full_body_and_three_distinct_embedded_images():
+    assert delivery.verify_export(docx(),docx())['body_verified']
+    for actual in (docx('truncated'),docx(images=2)):
+        with pytest.raises(ValueError):
+            delivery.verify_export(docx(),actual)
+
+
+def test_duplicate_embedded_images_are_rejected():
+    data=io.BytesIO()
+    with zipfile.ZipFile(data,'w') as archive:
+        archive.writestr('word/document.xml',f'<w:document xmlns:w="{delivery.W[1:-1]}"><w:t>draft</w:t></w:document>')
+        for i in range(3):
+            archive.writestr(f'word/media/image{i}.png',b'same')
+    with pytest.raises(ValueError):
+        delivery.verify_export(data.getvalue(),data.getvalue())
+
+
+def test_document_url_cannot_target_another_origin():
+    assert delivery.document_id('https://docs.google.com/document/d/test/edit')=='test'
+    for url in ('http://docs.google.com/document/d/test','https://evil.example/document/d/test','https://docs.google.com.evil.test/document/d/test'):
+        with pytest.raises(ValueError): delivery.document_id(url)
+
+
+def test_image_url_disallows_private_targets_and_plain_http():
+    with patch.object(pipeline.socket,'getaddrinfo',return_value=[(0,0,0,'',('127.0.0.1',443))]):
+        with pytest.raises(ValueError): pipeline.validate_public_url('https://localhost/image')
+    with pytest.raises(ValueError): pipeline.validate_public_url('http://example.com/image')
+    with pytest.raises(ValueError): pipeline.validate_public_url('https://user:pass@example.com/image')
+
+
+def test_atomic_receipt_is_readable_and_replaces_previous(tmp_path):
+    path=tmp_path/'receipt.json'
+    delivery.atomic_json(path,{'status':'created'})
+    delivery.atomic_json(path,{'status':'verified'})
+    assert json.loads(path.read_text())=={'status':'verified'}
+    assert len(list(tmp_path.iterdir()))==1
+
+
+def test_recovery_catches_missed_failures_with_bounded_history():
+    now=10_000_000
+    task={'runtime':'cron','status':'failed','taskId':'one','label':'xhs','error':'overflow','endedAt':now-3600_000}
+    assert recovery.parse_official_task_failures([task],{},now_ms=now)==[]
+    assert len(recovery.parse_official_task_failures([task],{},max_age_seconds=604800,now_ms=now))==1
+    task['endedAt']=now-604801_000
+    assert recovery.parse_official_task_failures([task],{},max_age_seconds=604800,now_ms=now)==[]
+
+
+def test_repeated_failures_retain_independent_task_identity():
+    tasks=[{'runtime':'cron','status':'failed','taskId':str(i),'label':'xhs','error':'overflow','endedAt':10_000_000} for i in range(2)]
+    events=recovery.parse_official_task_failures(tasks,{},now_ms=10_000_001)
+    assert len({e['event_key'] for e in events})==2
+
+
+def test_installer_reuses_git_pinned_dispatcher():
+    source=installer.dispatcher_source()
+    compile(source,'dispatcher','exec')
+    assert 'failure-notification-failed' in source
+    assert '--timeout 2400' in installer.DIRECT_LINE
+    assert 'HOME=/var/lib/openclaw' in installer.DIRECT_LINE
+
+
+def test_direct_manual_trigger_works_without_obsolete_jobs_file(tmp_path):
+    capabilities=tmp_path/'caps.json'
+    capabilities.write_text(json.dumps({'jobs':[{'capability_id':'xhs','job_name':pipeline.JOB,'allow_manual_run':True,'executor':'direct_xhs_delivery','expected_delivery_channel_id':'private-channel'}]}))
+    code,payload=manual.run_capability(text='run',capabilities_path=capabilities,jobs_path=tmp_path/'absent.json',dry_run=True,timeout=2400,capability_id='xhs')
+    assert code==0 and payload['status']=='dry_run'
+    assert 'private-channel' in payload['command']
+    assert 'openclaw' not in payload['command']
+
+
+def test_draft_failure_never_updates_latest_artifact(tmp_path):
+    workspace=tmp_path/'workspace'
+    flock=SimpleNamespace(LOCK_EX=1,LOCK_NB=2,flock=lambda *args:None)
+    with patch.dict(pipeline.sys.modules,{'fcntl':flock}), patch.object(pipeline,'WORKSPACE',workspace), patch.object(pipeline,'configured_recipient',return_value='owner@example.com'), patch.object(pipeline,'prepare_manifest',side_effect=ValueError()) as research, patch.object(pipeline,'record_artifact') as registry, patch.object(pipeline.sys,'argv',['pipeline','--run-date','2026-10-01']):
+        assert pipeline.main()==1
+    research.assert_called_once()
+    registry.assert_not_called()

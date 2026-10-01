@@ -5,14 +5,13 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
-import uuid
 from pathlib import Path
 from typing import Any
 
 from artifact_registry import DEFAULT_STATE_PATH as DEFAULT_ARTIFACT_STATE_PATH
 from artifact_registry import load_latest_artifact
+from google_doc_delivery import authorize_document
 
 
 DOC_URL_RE = re.compile(r"https://docs\.google\.com/document/d/[^\s)>\"]+")
@@ -51,70 +50,18 @@ def strip_ansi(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", text or "")
 
 
-def run_access_agent(
+def run_access_verification(
     doc_url: str,
     owner_email: str,
     *,
     timeout_seconds: int,
-    model: str = "openai-codex/gpt-5.6-sol",
 ) -> tuple[bool, str]:
-    session_id = str(uuid.uuid4())
-    prompt = (
-        "请处理最近一次已交付文档的查看权限问题。\n"
-        f"目标文档：{doc_url}\n"
-        f"授权目标账号：{owner_email}\n"
-        "用户明确要求给上述账号查看文件的许可。不要重复报告文件生成任务成功。"
-        "请使用已登录的 Google Docs/Drive 浏览器会话打开共享设置，将上述账号添加为查看者。"
-        "不要创建公开链接，不要授予编辑权限，不要转移所有权。"
-        "保存后重新检查共享设置，只有看到该邮箱且角色为查看者时才说明“已授权查看”；"
-        "如果无法修改或验证权限，只报告“未完成：”以及具体阻断点。"
-    )
     try:
-        proc = subprocess.run(
-            [
-                "openclaw",
-                "--no-color",
-                "agent",
-                "--agent",
-                "main",
-                "--session-id",
-                session_id,
-                "--model",
-                model,
-                "--message",
-                prompt,
-                "--timeout",
-                str(timeout_seconds),
-                "--thinking",
-                "medium",
-                "--json",
-            ],
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=timeout_seconds + 60,
-        )
+        receipt = authorize_document(doc_url, owner_email)
     except Exception as exc:
-        return False, f"未完成：无法启动权限处理 agent：{type(exc).__name__}: {exc}"
-    output = strip_ansi(proc.stdout or "").strip()
-    if proc.returncode != 0:
-        return False, f"未完成：权限处理 agent 退出码 {proc.returncode}。"
-    try:
-        payload = json.loads(output)
-    except json.JSONDecodeError:
-        return ("已授权查看" in output), output[-700:] or "未完成：权限处理 agent 没有返回可读结果。"
-    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
-    text = ""
-    payloads = result.get("payloads") if isinstance(result.get("payloads"), list) else []
-    for item in payloads:
-        if isinstance(item, dict) and str(item.get("text") or "").strip():
-            text = str(item.get("text") or "").strip()
-            break
-    text = text or str((result.get("meta") or {}).get("finalAssistantVisibleText") or "").strip()
-    ok = str(payload.get("status") or "") == "ok" and "已授权查看" in text
-    return ok, text or "未完成：权限处理 agent 没有返回最终结论。"
+        return False, f"未完成：权限核验失败（{type(exc).__name__}）。请检查浏览器登录和共享设置。"
+    ok = receipt.get("viewer_verified") is True and receipt.get("general_access") == "restricted"
+    return ok, "已授权查看，已重新打开文档核验，常规访问为受限。" if ok else "未完成：缺少已保存的查看权限凭据。"
 
 
 def build_reply(
@@ -157,7 +104,7 @@ def build_reply(
         if not owner_email.strip():
             ok, result = False, "未完成：主机未配置 OPENCLAW_OWNER_GOOGLE_EMAIL。"
         else:
-            ok, result = run_access_agent(doc_url, owner_email.strip(), timeout_seconds=agent_timeout)
+            ok, result = run_access_verification(doc_url, owner_email.strip(), timeout_seconds=agent_timeout)
         lines[3] = f"执行结果：{result}"
         lines[4] = "当前状态：已证明 Google Docs 查看权限已经授予。" if ok else "当前状态：权限处理未完成。"
     return "\n".join(lines)
@@ -176,8 +123,7 @@ def main() -> int:
         args.text,
         artifact_state=args.artifact_state,
     )
-    print(
-        build_reply(
+    reply = build_reply(
             task,
             doc_url,
             execute_agent=args.execute_agent,
@@ -185,8 +131,8 @@ def main() -> int:
             owner_email=args.owner_email,
             request_text=args.text,
         )
-    )
-    return 0
+    print(reply)
+    return 0 if not args.execute_agent or "当前状态：已证明 Google Docs 查看权限已经授予。" in reply else 1
 
 
 if __name__ == "__main__":

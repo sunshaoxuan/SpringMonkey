@@ -41,7 +41,8 @@ After=openclaw.service
 [Service]
 Type=oneshot
 User=root
-ExecStart=/usr/bin/python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/cron_failure_self_heal.py --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel --repo-root /var/lib/openclaw/repos/SpringMonkey --jobs-file /var/lib/openclaw/.openclaw/cron/jobs.json --source auto --journal-unit openclaw.service --tail 800
+Environment=HOME=/var/lib/openclaw
+ExecStart=/usr/bin/python3 /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/cron_failure_self_heal.py --root /var/lib/openclaw/.openclaw/workspace/agent_society_kernel --repo-root /var/lib/openclaw/repos/SpringMonkey --source tasks --official-max-age-seconds 604800 --journal-unit openclaw.service --tail 800
 EOF
 
 cat >/etc/systemd/system/openclaw-cron-failure-self-heal.timer <<'EOF'

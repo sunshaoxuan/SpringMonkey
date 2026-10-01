@@ -4,6 +4,7 @@
     {
       "capability_id": "recurring.content_writing.every_3_days",
       "job_name": "xhs-recommendation-every-3-days",
+      "executor": "direct_xhs_delivery",
       "topic_aliases": [
         "小红书",
         "小紅書",
