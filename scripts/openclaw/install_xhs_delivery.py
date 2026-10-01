@@ -45,8 +45,12 @@ def main() -> None:
         raise ValueError('direct schedule requires the verified Japan host timezone')
     if not CRON.is_file():
         raise ValueError('existing direct dispatcher schedule is missing')
-    if not PYTHON.is_file():
-        subprocess.run(['python3','-m','venv','--system-site-packages',str(PYTHON.parents[1])],check=True)
+    if importlib.util.find_spec('ensurepip') is None:
+        import sys
+        package=f'python{sys.version_info.major}.{sys.version_info.minor}-venv'
+        subprocess.run(['apt-get','install','-y','--no-install-recommends',package],check=True)
+    # Re-run bootstrap to repair a partially created virtual environment as well.
+    subprocess.run(['python3','-m','venv','--system-site-packages',str(PYTHON.parents[1])],check=True)
     subprocess.run([str(PYTHON),'-m','pip','install','-r',str(Path(__file__).with_name('requirements-xhs.txt'))],check=True)
     config_path = Path('/var/lib/openclaw/.openclaw/openclaw.json')
     config = json.loads(config_path.read_text())
