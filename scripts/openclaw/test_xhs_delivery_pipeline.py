@@ -41,6 +41,19 @@ def test_duplicate_embedded_images_are_rejected():
         delivery.verify_export(data.getvalue(),data.getvalue())
 
 
+def test_export_rejects_hashtags_merged_into_one_paragraph():
+    def tagged_document(merged):
+        data=io.BytesIO()
+        lines=['#first #second'] if merged else ['#first','#second']
+        with zipfile.ZipFile(data,'w') as archive:
+            paragraphs=''.join(f'<w:p><w:r><w:t>{line}</w:t></w:r></w:p>' for line in lines)
+            archive.writestr('word/document.xml',f'<w:document xmlns:w="{delivery.W[1:-1]}"><w:body>{paragraphs}</w:body></w:document>')
+            for i in range(3):archive.writestr(f'word/media/image{i}.png',bytes([i])*100)
+        return data.getvalue()
+    with pytest.raises(ValueError,match='one-tag-per-line'):
+        delivery.verify_export(tagged_document(False),tagged_document(True))
+
+
 def test_document_url_cannot_target_another_origin():
     assert delivery.document_id('https://docs.google.com/document/d/test/edit')=='test'
     for url in ('http://docs.google.com/document/d/test','https://evil.example/document/d/test','https://docs.google.com.evil.test/document/d/test'):
@@ -59,6 +72,7 @@ def test_source_probe_never_exposes_private_google_or_account_pages():
         for url in ('https://docs.google.com/document/d/private/edit','https://www.costco.co.jp/my-account/orders','https://example.com/source'):
             with pytest.raises(ValueError):probe.validate_source(url)
         assert probe.validate_source('https://www.costco.co.jp/product/p/123')
+        assert probe.validate_source('https://public-cdn.example/image.jpg',image=True)
 
 
 def test_manifest_image_claims_require_inspected_content_hash():

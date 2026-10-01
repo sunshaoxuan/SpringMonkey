@@ -18,15 +18,16 @@ SOURCE_DOMAINS = ('costco.co.jp','kewpie.co.jp','lindt.jp','kuzefuku.com',
                   'starbucks.co.jp','danone.co.jp','costcolover.blog','coslover.com',
                   'ultimate-setsuko.com','costco-johokan.com','marronroy-recipes.com',
                   'costco-japan.com','sweets365.jp','costco-blog.com')
-IMAGE_DOMAINS = SOURCE_DOMAINS + ('st-hatena.com','f.st-hatena.com','ameba.jp','rakuten.ne.jp')
 PROBE_ROOT = WORKSPACE / 'state/xhs-delivery/_probe'
 
 
 def validate_source(url: str, *, image: bool = False) -> str:
     validate_public_url(url)
+    # Image downloads use unauthenticated HTTP, never the logged-in browser.
+    if image:
+        return url
     host = urlparse(url).hostname.lower()
-    domains = IMAGE_DOMAINS if image else SOURCE_DOMAINS
-    if not any(host == domain or host.endswith('.'+domain) for domain in domains):
+    if not any(host == domain or host.endswith('.'+domain) for domain in SOURCE_DOMAINS):
         raise ValueError('source host is outside the public recommendation-source allowlist')
     if re.search(r'/(?:my-account|myaccount|login|logout|cart|checkout|account|admin|dashboard|settings|mypage)(?:/|$)',urlparse(url).path,re.I):
         raise ValueError('private/account source path is blocked')
@@ -45,12 +46,15 @@ def fetch_page(url: str, *, search: bool = False) -> dict:
             page.wait_for_timeout(2000)
             if not search:
                 validate_source(page.url)
-            data = page.locator('body').evaluate("""body=>({
+                for offset in (1200,2600,0):
+                    page.evaluate('(offset)=>window.scrollTo(0,offset)',offset)
+                    page.wait_for_timeout(500)
+            data = page.locator('body').evaluate("""body=>{const article=body.querySelector('article,.entry-content,.skin-entryBody,#entry-body,main')||body;return ({
               title:document.title.slice(0,300),
-              text:body.innerText.replace(/\\s+/g,' ').slice(0,3200),
-              images:Array.from(body.querySelectorAll('img')).map(e=>({url:e.currentSrc||e.src,alt:e.alt,w:e.naturalWidth,h:e.naturalHeight})).filter(e=>e.w>=200&&e.h>=200).slice(0,24),
+              text:article.innerText.replace(/\\s+/g,' ').slice(0,3200),
+              images:Array.from(article.querySelectorAll('img')).map(e=>({url:[e.currentSrc,e.getAttribute('data-src'),e.getAttribute('data-original'),e.src].find(u=>u&&u.startsWith('https://')),alt:e.alt.slice(0,120),w:e.naturalWidth,h:e.naturalHeight})).filter(e=>e.url&&(!e.w||!e.h||e.w>=80&&e.h>=80)).slice(0,24),
               links:Array.from(body.querySelectorAll('a[href]')).filter(e=>e.innerText.trim()).map(e=>({url:e.href,title:e.innerText.trim().slice(0,80)})).slice(0,40)
-            })""")
+            })}""")
             # Source navigation is public; Google account/navigation chrome is omitted.
             if search:
                 data.pop('text',None)
@@ -97,7 +101,8 @@ def main() -> int:
         print(json.dumps(result,ensure_ascii=False))
         return 0
     except Exception as exc:
-        print(json.dumps({'error':type(exc).__name__,'completed':False}))
+        reason=str(exc)[:240] if type(exc) is ValueError else ''
+        print(json.dumps({'error':type(exc).__name__,'reason':reason,'completed':False}))
         return 1
 
 

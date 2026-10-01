@@ -44,9 +44,12 @@ def docx_signature(data: bytes) -> dict:
         root = ET.fromstring(archive.read("word/document.xml"))
         # Text nodes exclude formatting metadata and survive Google import/export.
         text = "".join(node.text or "" for node in root.iter(f"{W}t"))
+        paragraphs = [''.join(node.text or '' for node in paragraph.iter(f'{W}t')).strip()
+                      for paragraph in root.findall(f'.//{W}p')]
+        tag_lines = [paragraph for paragraph in paragraphs if paragraph.startswith('#')]
         normalized = re.sub(r"\s+", "", text)
         images = [archive.read(n) for n in archive.namelist() if n.startswith("word/media/") and not n.endswith("/")]
-    return {"text": normalized, "images": len(images),
+    return {"text": normalized, "tag_lines": tag_lines, "images": len(images),
             "distinct_images": len({hashlib.sha256(b).hexdigest() for b in images})}
 
 
@@ -56,9 +59,11 @@ def verify_export(expected: bytes, actual: bytes, *, min_images: int = 3) -> dic
         raise ValueError("Google Docs exported body does not match the prepared draft")
     if source["distinct_images"] < min_images or exported["distinct_images"] < min_images:
         raise ValueError("Google Docs requires three distinct embedded images")
+    if source['tag_lines'] != exported['tag_lines']:
+        raise ValueError('Google Docs export changed the one-tag-per-line layout')
     if exported["images"] < source["images"]:
         raise ValueError("Google Docs export lost embedded images")
-    return {"body_verified": True, "embedded_images": exported["images"],
+    return {"body_verified": True, "tag_lines_verified":True, "embedded_images": exported["images"],
             "distinct_images": exported["distinct_images"]}
 
 
