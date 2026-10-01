@@ -157,6 +157,19 @@ def test_config_repair_restarts_gateway_and_rechecks_doctor_and_health(tmp_path:
     assert config_point["health"]["returncode"] == 0
 
 
+def test_disabled_native_job_is_never_recovered_after_migration() -> None:
+    official_job = job()
+    official_job['enabled'] = False
+    official_job['state']['consecutiveErrors'] = 10
+    decision = official_handoff_decision(
+        {'job_name':'daily-job','reason':'context overflow','first_seen_at_ms':1,'task_status':'failed'},
+        job=official_job, tasks=[], now_ms=10_000_000, official_retry_attempts=3,
+        official_backoff_tiers=4, official_next_run_guard_ms=300_000,
+        unknown_state_handoff_ms=3_600_000,
+    )
+    assert decision == {'handoff':False,'reason':'official_job_disabled'}
+
+
 def test_official_recurring_backoff_owns_failure_before_saturation() -> None:
     official_job = job()
     official_job["state"]["consecutiveErrors"] = 2

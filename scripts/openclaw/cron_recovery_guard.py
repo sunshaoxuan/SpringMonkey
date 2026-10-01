@@ -189,6 +189,9 @@ def official_handoff_decision(
     enabled = job.get("enabled") is not False and str(job.get("status") or "") != "disabled"
     transient = event_is_transient(incident)
 
+    if not enabled:
+        return {"handoff": False, "reason": "official_job_disabled"}
+
     if str(incident.get("task_status") or "") == "lost":
         return {"handoff": True, "reason": "official_task_lost_requires_maintenance", "schedule_kind": schedule_kind}
 

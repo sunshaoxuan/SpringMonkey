@@ -96,7 +96,7 @@ def verify_viewer(page, url: str, recipient: str) -> dict:
     role = recipient_role(frame, recipient)
     if not role.startswith("查看者") or not restricted(frame):
         raise ValueError("saved permission is not the configured Viewer with restricted general access")
-    frame.get_by_text("完成", exact=True).click()
+    frame.get_by_role("button", name="完成", exact=True).click()
     return {"viewer_verified": True, "general_access": "restricted",
             "recipient_fingerprint": hashlib.sha256(recipient.lower().encode()).hexdigest()}
 
@@ -117,16 +117,17 @@ def grant_viewer(page, url: str, recipient: str) -> dict:
         field.fill(recipient)
         # Enter commits an exact address, avoiding suggested identities.
         field.press("Enter")
-        frame.get_by_text("发送", exact=True).wait_for(timeout=30000)
-        editor = frame.locator('button').filter(has_text=re.compile(r"^编辑者$"))
+        send = frame.get_by_role("button", name="发送", exact=True)
+        send.wait_for(timeout=30000)
+        editor = frame.locator('button:visible').filter(has_text=re.compile(r"^编辑者$"))
         if editor.count():
             editor.click()
-            frame.get_by_text("查看者", exact=True).click()
-        frame.get_by_text("查看者", exact=True).wait_for(timeout=15000)
-        frame.get_by_text("发送", exact=True).click()
+            frame.get_by_text("查看者", exact=True).filter(visible=True).click()
+        frame.locator('button:visible').filter(has_text=re.compile(r"^查看者$")).wait_for(timeout=15000)
+        send.click()
         page.wait_for_timeout(1500)
     else:
-        frame.get_by_text("完成", exact=True).click()
+        frame.get_by_role("button", name="完成", exact=True).click()
     # Reload the saved document, independent of the optimistic dialog state.
     return verify_viewer(page, url, recipient)
 

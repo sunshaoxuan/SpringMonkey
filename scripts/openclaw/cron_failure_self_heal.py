@@ -40,7 +40,7 @@ def load_official_cron_jobs(args: argparse.Namespace) -> tuple[dict[str, dict], 
         payload = json.loads(Path(args.cron_list_file).read_text(encoding="utf-8"))
     else:
         result = subprocess.run(
-            ["openclaw", "cron", "list", "--json"],
+            ["openclaw", "cron", "list", "--all", "--json"],
             capture_output=True,
             text=True,
             timeout=args.tasks_timeout,
