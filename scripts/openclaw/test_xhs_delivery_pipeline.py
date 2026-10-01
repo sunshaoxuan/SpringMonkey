@@ -84,6 +84,30 @@ def test_installer_reuses_git_pinned_dispatcher():
     assert 'HOME=/var/lib/openclaw' in installer.DIRECT_LINE
 
 
+def test_browser_guard_counts_pages_and_preserves_embedded_frames():
+    fake_fcntl=SimpleNamespace(LOCK_EX=1,LOCK_NB=2,flock=lambda *args:None)
+    namespace={'__name__':'browser_guard_test'}
+    with patch.dict(pipeline.sys.modules,{'fcntl':fake_fcntl}):
+        exec(installer.browser_guard_source(),namespace)
+    pages=[{'type':'page','id':'sentinel','url':'about:blank'}, {'type':'page','id':'document','url':'https://docs.google.com/document/d/test/edit'}]
+    targets=pages+[{'type':'iframe','id':f'frame-{i}','url':'https://docs.google.com/drivesharing/driveshare'} for i in range(5)]
+    closed=[]
+    namespace.update(jget=lambda url:targets,get_chrome_rss_kb=lambda:0,close_target=closed.append)
+    assert namespace['scan_browser']()==0
+    assert closed==[]
+
+
+def test_browser_guard_yields_to_active_document_lock(tmp_path):
+    def busy(*args): raise BlockingIOError()
+    fake_fcntl=SimpleNamespace(LOCK_EX=1,LOCK_NB=2,flock=busy)
+    namespace={'__name__':'browser_guard_test'}
+    with patch.dict(pipeline.sys.modules,{'fcntl':fake_fcntl}):
+        exec(installer.browser_guard_source(),namespace)
+    namespace['Path']=lambda path:tmp_path/'lock'
+    namespace['scan_browser']=lambda:pytest.fail('cleanup ran during active document operation')
+    assert namespace['main']()==0
+
+
 def test_direct_manual_trigger_works_without_obsolete_jobs_file(tmp_path):
     capabilities=tmp_path/'caps.json'
     capabilities.write_text(json.dumps({'jobs':[{'capability_id':'xhs','job_name':pipeline.JOB,'allow_manual_run':True,'executor':'direct_xhs_delivery','expected_delivery_channel_id':'private-channel'}]}))

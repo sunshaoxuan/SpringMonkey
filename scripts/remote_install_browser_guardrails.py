@@ -27,6 +27,8 @@ import os
 import subprocess
 import sys
 import urllib.request
+import fcntl
+from pathlib import Path
 
 CDP = os.environ.get("OPENCLAW_BROWSER_CDP", "http://127.0.0.1:18800")
 SENTINEL = os.environ.get("OPENCLAW_BROWSER_SENTINEL_URL", "about:blank")
@@ -80,15 +82,15 @@ def close_target(target_id: str) -> None:
         pass
 
 
-def main() -> int:
+def scan_browser() -> int:
     try:
-        pages = jget(f"{CDP}/json/list")
+        pages = [p for p in jget(f"{CDP}/json/list") if p.get('type') == 'page']
     except Exception as exc:
         print(json.dumps({"ok": False, "reason": "cdp_unreachable", "detail": str(exc)}))
         return 0
 
     ensure_sentinel(pages)
-    pages = jget(f"{CDP}/json/list")
+    pages = [p for p in jget(f"{CDP}/json/list") if p.get('type') == 'page']
     rss_kb = get_chrome_rss_kb()
 
     keep_ids: set[str] = set()
@@ -96,10 +98,10 @@ def main() -> int:
     if sentinel and sentinel.get("id"):
         keep_ids.add(sentinel["id"])
 
-    # Keep the most recently listed non-sentinel page as the active working tab.
+    # CDP lists newly created pages first. Embedded frames are not browser tabs.
     non_sentinel = [p for p in pages if (p.get("url") or "") != SENTINEL]
-    if non_sentinel and non_sentinel[-1].get("id"):
-        keep_ids.add(non_sentinel[-1]["id"])
+    if non_sentinel and non_sentinel[0].get("id"):
+        keep_ids.add(non_sentinel[0]["id"])
 
     should_trim = len(pages) > HARD_TABS or rss_kb > MAX_RSS_KB or len(pages) > MAX_TABS
     closed = []
@@ -111,7 +113,7 @@ def main() -> int:
             close_target(page_id)
             closed.append(page_id)
 
-    pages_after = jget(f"{CDP}/json/list")
+    pages_after = [p for p in jget(f"{CDP}/json/list") if p.get('type') == 'page']
     print(json.dumps({
         "ok": True,
         "tabsBefore": len(pages),
@@ -124,6 +126,18 @@ def main() -> int:
         "maxRssKb": MAX_RSS_KB,
     }, ensure_ascii=False))
     return 0
+
+
+def main() -> int:
+    path = Path('/var/lib/openclaw/.openclaw/workspace/state/browser_document.lock')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print(json.dumps({'ok': True, 'status': 'active_document_operation'}))
+            return 0
+        return scan_browser()
 
 
 if __name__ == "__main__":

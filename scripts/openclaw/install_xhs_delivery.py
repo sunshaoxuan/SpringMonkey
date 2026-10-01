@@ -38,8 +38,26 @@ def dispatcher_source() -> str:
     return source
 
 
+def browser_guard_source() -> str:
+    path = REPO / 'scripts/remote_install_browser_guardrails.py'
+    spec = importlib.util.spec_from_file_location('browser_guard_installer',path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    source = module.REMOTE.split("cat >/usr/local/lib/openclaw/browser_guard.py <<'PY'\n",1)[1].split('\nPY\n',1)[0]
+    compile(source,str(path),'exec')
+    return source
+
+
+def install_browser_guard_source() -> None:
+    source = browser_guard_source()
+    target = Path('/usr/local/lib/openclaw/browser_guard.py')
+    target.write_text(source+'\n',encoding='utf-8')
+    target.chmod(0o755)
+
+
 def main() -> None:
     configured_recipient()
+    install_browser_guard_source()
     timezone = subprocess.check_output(['timedatectl','show','-p','Timezone','--value'], text=True).strip()
     if timezone != 'Asia/Tokyo':
         raise ValueError('direct schedule requires the verified Japan host timezone')

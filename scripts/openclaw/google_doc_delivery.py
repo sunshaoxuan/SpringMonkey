@@ -10,11 +10,22 @@ import re
 import tempfile
 import time
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 DOC_RE = re.compile(r"^https://docs\.google\.com/document/d/([A-Za-z0-9_-]+)(?:/|$)")
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+DOCUMENT_LOCK = Path('/var/lib/openclaw/.openclaw/workspace/state/browser_document.lock')
+
+
+@contextmanager
+def browser_document_lock():
+    import fcntl
+    DOCUMENT_LOCK.parent.mkdir(parents=True, exist_ok=True)
+    with DOCUMENT_LOCK.open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
 
 
 def document_id(url: str) -> str:
@@ -136,8 +147,26 @@ def import_docx(page, source: Path) -> str:
     page.get_by_role("button", name="打开文件选择器", exact=True).click(timeout=45000)
     picker = page.frame_locator('iframe[src*="/picker/"]')
     picker.get_by_text("上传", exact=True).click(timeout=45000)
+    initial_pages = set(page.context.pages)
     picker.locator('input[type="file"]').set_input_files(str(source))
-    page.wait_for_url(re.compile(r"https://docs\.google\.com/document/d/"), timeout=120000)
+    deadline = time.monotonic() + 120
+    created_pages = []
+    try:
+        while time.monotonic() < deadline:
+            created_pages = [tab for tab in page.context.pages if tab not in initial_pages]
+            target = next((tab for tab in [page, *created_pages] if DOC_RE.match(tab.url)), None)
+            if target:
+                url = f"https://docs.google.com/document/d/{document_id(target.url)}/edit"
+                if target is not page:
+                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                break
+            page.wait_for_timeout(500)
+        else:
+            raise TimeoutError('uploaded draft did not open in Google Docs')
+    finally:
+        for tab in created_pages:
+            if not tab.is_closed():
+                tab.close()
     page.locator("#docs-titlebar-share-client-button").wait_for(timeout=60000)
     return f"https://docs.google.com/document/d/{document_id(page.url)}/edit"
 
@@ -159,7 +188,7 @@ def deliver_document(source: Path, recipient: str, receipt_path: Path, *, cdp_ur
     prior = json.loads(receipt_path.read_text()) if receipt_path.is_file() else {}
     if prior and prior.get("draft_sha256") != digest:
         raise ValueError("existing receipt belongs to a different draft; use another run directory")
-    with sync_playwright() as p:
+    with browser_document_lock(), sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(cdp_url, timeout=30000)
         page = browser.contexts[0].new_page()
         try:
@@ -187,7 +216,7 @@ def deliver_document(source: Path, recipient: str, receipt_path: Path, *, cdp_ur
 
 def authorize_document(url: str, recipient: str, *, cdp_url: str = "http://127.0.0.1:18800") -> dict:
     from playwright.sync_api import sync_playwright
-    with sync_playwright() as p:
+    with browser_document_lock(), sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(cdp_url, timeout=30000)
         page = browser.contexts[0].new_page()
         try:
