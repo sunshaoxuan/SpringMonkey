@@ -65,6 +65,15 @@ def fetch_page(url: str, *, search: bool = False) -> dict:
                 except ValueError: continue
                 links.append(link)
             data['links']=links[:15]
+            if not search:
+                # Product galleries can live outside an article/main wrapper.
+                images=page.locator('img').evaluate_all("""els=>{
+                  const title=document.title.split('|')[0].replace(/\\s/g,'').toLowerCase();
+                  return els.map(e=>({url:[e.currentSrc,e.getAttribute('data-src'),e.getAttribute('data-original'),e.src].find(u=>u&&u.startsWith('https://')),alt:e.alt.slice(0,120),w:e.naturalWidth,h:e.naturalHeight}))
+                    .filter(e=>e.url&&(!e.w||!e.h||e.w>=200&&e.h>=200))
+                    .sort((a,b)=>Number(b.alt.replace(/\\s/g,'').toLowerCase()===title)-Number(a.alt.replace(/\\s/g,'').toLowerCase()===title)||(b.w*b.h-a.w*a.h)).slice(0,24);
+                }""")
+                data['images']=images
             data['text']=re.sub(r'[\w.+-]+@[\w.-]+','[private]',data.get('text',''))
             # A hard byte budget, independent of an agent's snapshot arguments.
             while len(json.dumps(data,ensure_ascii=False))>7000 and data.get('images'):

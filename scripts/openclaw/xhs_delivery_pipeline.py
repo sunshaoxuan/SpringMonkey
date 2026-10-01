@@ -141,7 +141,13 @@ def build_docx(manifest: dict, directory: Path) -> Path:
 def prepare_manifest(directory: Path) -> Path:
     manifest = directory / 'manifest.json'
     if manifest.is_file():
-        return manifest
+        try:
+            validate_manifest(json.loads(manifest.read_text(encoding='utf-8')))
+        except (ValueError,TypeError,AttributeError):
+            # Invalid or failed research is diagnostic state, never a draft checkpoint.
+            manifest.replace(directory / 'invalid-manifest.json')
+        else:
+            return manifest
     rules = (WORKSPACE / 'XHS_RECOMMENDATION_RULES.md').read_text(encoding='utf-8')
     rules = re.sub(r'[\w.+-]+@[\w.-]+', '[private]', rules)
     prompt = (

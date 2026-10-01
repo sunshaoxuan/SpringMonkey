@@ -156,3 +156,18 @@ def test_draft_failure_never_updates_latest_artifact(tmp_path):
         assert pipeline.main()==1
     research.assert_called_once()
     registry.assert_not_called()
+
+
+def test_failed_research_manifest_is_not_reused_as_a_draft(tmp_path):
+    workspace=tmp_path/'workspace'
+    workspace.mkdir()
+    (workspace/'XHS_RECOMMENDATION_RULES.md').write_text('rules',encoding='utf-8')
+    directory=workspace/'state/xhs-delivery/run'
+    directory.mkdir(parents=True)
+    (directory/'manifest.json').write_text(json.dumps({'status':'failed','reason':'insufficient evidence'}))
+    with patch.object(pipeline,'WORKSPACE',workspace), patch.object(pipeline.subprocess,'run',return_value=SimpleNamespace(returncode=1)) as generation:
+        with pytest.raises(ValueError,match='bounded product research'):
+            pipeline.prepare_manifest(directory)
+    generation.assert_called_once()
+    assert json.loads((directory/'invalid-manifest.json').read_text())['status']=='failed'
+    assert not (directory/'manifest.json').exists()

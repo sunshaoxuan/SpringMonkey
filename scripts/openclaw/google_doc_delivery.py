@@ -174,7 +174,7 @@ def import_docx(page, source: Path) -> str:
             raise TimeoutError('uploaded draft did not open in Google Docs')
     finally:
         for tab in created_pages:
-            if not tab.is_closed():
+            if not tab.is_closed() and tab.opener() is page:
                 tab.close()
     page.locator("#docs-titlebar-share-client-button").wait_for(timeout=60000)
     return f"https://docs.google.com/document/d/{document_id(page.url)}/edit"
