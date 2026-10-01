@@ -80,13 +80,13 @@ def main() -> None:
     agents = config['agents']['list']
     index = next(i for i,a in enumerate(agents) if a['id'] == 'xhs-writer')
     tools={'allow':['web_search','web_fetch','write','read','exec'], 'fs':{'workspaceOnly':True},
-           'exec':{'host':'gateway','mode':'allowlist','ask':'off','safeBins':[],'timeoutSec':120}}
+           'exec':{'host':'gateway','mode':'allowlist','safeBins':[],'timeoutSec':120}}
     cli('config','set',f'agents.list.{index}.tools',json.dumps(tools),'--strict-json')
     probe=REPO / 'scripts/openclaw/xhs_source_probe.py'
     probe.chmod(0o755)
     approvals_path=Path('/var/lib/openclaw/.openclaw/exec-approvals.json')
     approvals=json.loads(approvals_path.read_text()) if approvals_path.exists() else {'version':1}
-    approvals.setdefault('agents',{})['xhs-writer']={'mode':'allowlist','ask':'off',
+    approvals.setdefault('agents',{})['xhs-writer']={'mode':'allowlist',
         'allowlist':[{'pattern':str(probe)}]}
     from google_doc_delivery import atomic_json
     atomic_json(approvals_path,approvals)
