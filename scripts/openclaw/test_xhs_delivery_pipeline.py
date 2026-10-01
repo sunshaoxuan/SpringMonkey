@@ -167,6 +167,22 @@ def test_installer_reuses_git_pinned_dispatcher():
     assert 'HOME=/var/lib/openclaw' in installer.DIRECT_LINE
 
 
+def test_writer_initialization_is_idempotent_and_preserves_run_evidence(tmp_path):
+    (tmp_path/'BOOTSTRAP.md').write_text('first conversation onboarding')
+    (tmp_path/'AGENTS.md').write_text('starter instructions')
+    (tmp_path/'manifest.json').write_text('research evidence')
+    (tmp_path/'SOUL.md').write_text('existing soul')
+    installer.initialize_writer_workspace(tmp_path)
+    installer.initialize_writer_workspace(tmp_path)
+    assert not (tmp_path/'BOOTSTRAP.md').exists()
+    assert (tmp_path/'.setup-backup/BOOTSTRAP.md').read_text()=='first conversation onboarding'
+    assert (tmp_path/'.setup-backup/AGENTS.md').read_text()=='starter instructions'
+    assert 'unattended research worker' in (tmp_path/'AGENTS.md').read_text()
+    assert 'Name: xhs-writer' in (tmp_path/'IDENTITY.md').read_text()
+    assert (tmp_path/'manifest.json').read_text()=='research evidence'
+    assert (tmp_path/'SOUL.md').read_text()=='existing soul'
+
+
 def test_browser_guard_counts_pages_and_preserves_embedded_frames():
     fake_fcntl=SimpleNamespace(LOCK_EX=1,LOCK_NB=2,flock=lambda *args:None)
     namespace={'__name__':'browser_guard_test'}
