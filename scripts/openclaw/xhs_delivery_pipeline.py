@@ -71,6 +71,8 @@ def validate_manifest(payload: dict) -> dict:
             raise ValueError('image version/authenticity verification is missing')
         validate_public_url(str(image.get('url') or ''))
         validate_public_url(str(image.get('source') or ''))
+        if not re.fullmatch(r'[a-f0-9]{64}',str(image.get('sha256') or '')):
+            raise ValueError('image visual verification must bind to its inspected content hash')
     if len({i['url'] for i in images}) != 3:
         raise ValueError('duplicate image URLs')
     return payload
@@ -121,6 +123,8 @@ def build_docx(manifest: dict, directory: Path) -> Path:
     for index, image in enumerate(manifest['images'], 1):
         destination = directory / f'image-{index}.jpg'
         digest = fetch_image(image['url'], destination)
+        if digest != image['sha256']:
+            raise ValueError('image content changed after visual inspection')
         if digest in hashes:
             raise ValueError('image content is duplicated')
         hashes.add(digest)
@@ -142,18 +146,23 @@ def prepare_manifest(directory: Path) -> Path:
     rules = re.sub(r'[\w.+-]+@[\w.-]+', '[private]', rules)
     prompt = (
         'Prepare one review-only Xiaohongshu recommendation. Do not publish or use Google Docs. '
-        'No browser tool is available. Use web_search/web_fetch for current product and image evidence. '
-        'At most 8 source fetches, short extracts only, at most one retry per failed source. '
+        'No generic browser tool is available. For rendered source evidence use ONLY the approved executable '
+        '/var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/xhs_source_probe.py: '
+        'search "Japanese product query"; fetch "HTTPS source URL"; image "HTTPS image URL" --name image1. '
+        'Search gives real public result links; fetch gives compact rendered product facts and image URLs. '
+        'Read each downloaded image to verify exact packaging, distinct composition and absence of watermarks. '
+        'At most 4 searches and 8 source-page fetches, at most one retry per failed source. '
         'Never fabricate personal ownership or use experience. Stop with a failure if evidence is insufficient. '
         f'Follow these rules:\n{rules[:6500]}\n'
         f'Write UTF-8 JSON to {manifest}. Return only the path and a brief outcome. '
         'Schema: product:string,title:string,body:string,version:string,tags:["#tag"],'
         'images:[{kind:"official"|"real_photo",url:https_image_url,source:https_page_url,'
-        'version:exact_same_version,real:true,no_watermark:true}]. '
+        'version:exact_same_version,sha256:source_sha256_from_image_probe,real:true,no_watermark:true}]. '
         'Exactly two official and one Japanese real-photo image, distinct compositions, same packaging version. '
         'Title in Chinese, body uses コストコ, tags one per item. '
         'Retain evidence notes in a separate sources.md alongside the manifest. '
-        'Do not fetch full-page HTML, run browser/CDP code, read unrelated files or install packages.'
+        'Do not use web_fetch on search-engine result URLs. Do not fetch full-page HTML, run other commands, '
+        'write browser/CDP code, read unrelated files or install packages.'
     )
     env = dict(os.environ, HOME='/var/lib/openclaw')
     env.pop('OPENCLAW_OWNER_GOOGLE_EMAIL', None)
@@ -182,7 +191,13 @@ def main() -> int:
             except BlockingIOError:
                 raise ValueError('another XHS delivery is running')
             recipient = configured_recipient()
-            draft = args.prepared_docx or directory / 'draft.docx'
+            draft = directory / 'draft.docx'
+            if args.prepared_docx:
+                import shutil
+                if draft.is_file() and draft.read_bytes() != args.prepared_docx.read_bytes():
+                    raise ValueError('this run already has another prepared draft')
+                if args.prepared_docx.resolve() != draft.resolve():
+                    shutil.copyfile(args.prepared_docx, draft)
             if not draft.is_file():
                 payload = json.loads(prepare_manifest(directory).read_text(encoding='utf-8'))
                 draft = build_docx(payload, directory)

@@ -12,6 +12,7 @@ import xhs_delivery_pipeline as pipeline
 import install_xhs_delivery as installer
 import cron_failure_self_heal as recovery
 import recurring_cron_run_tool as manual
+import xhs_source_probe as probe
 
 
 def docx(text='draft', images=3):
@@ -51,6 +52,23 @@ def test_image_url_disallows_private_targets_and_plain_http():
         with pytest.raises(ValueError): pipeline.validate_public_url('https://localhost/image')
     with pytest.raises(ValueError): pipeline.validate_public_url('http://example.com/image')
     with pytest.raises(ValueError): pipeline.validate_public_url('https://user:pass@example.com/image')
+
+
+def test_source_probe_never_exposes_private_google_or_account_pages():
+    with patch.object(probe,'validate_public_url',side_effect=lambda url:url):
+        for url in ('https://docs.google.com/document/d/private/edit','https://www.costco.co.jp/my-account/orders','https://example.com/source'):
+            with pytest.raises(ValueError):probe.validate_source(url)
+        assert probe.validate_source('https://www.costco.co.jp/product/p/123')
+
+
+def test_manifest_image_claims_require_inspected_content_hash():
+    payload={'product':'商品','title':'标题','body':'コストコ 商品说明','version':'JP-1','tags':['#商品'],
+             'images':[{'kind':kind,'version':'JP-1','real':True,'no_watermark':True,'url':f'https://example.com/image-{i}',
+                        'source':'https://example.com/source','sha256':'a'*64} for i,kind in enumerate(['official','official','real_photo'])]}
+    with patch.object(pipeline,'validate_public_url',side_effect=lambda url:url):
+        assert pipeline.validate_manifest(payload)
+        payload['images'][0].pop('sha256')
+        with pytest.raises(ValueError):pipeline.validate_manifest(payload)
 
 
 def test_atomic_receipt_is_readable_and_replaces_previous(tmp_path):

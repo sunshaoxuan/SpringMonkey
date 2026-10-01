@@ -79,7 +79,17 @@ def main() -> None:
     config = json.loads(config_path.read_text())
     agents = config['agents']['list']
     index = next(i for i,a in enumerate(agents) if a['id'] == 'xhs-writer')
-    cli('config','set',f'agents.list.{index}.tools',json.dumps({'allow':['web_search','web_fetch','write']}),'--strict-json')
+    tools={'allow':['web_search','web_fetch','write','read','exec'], 'fs':{'workspaceOnly':True},
+           'exec':{'host':'gateway','mode':'allowlist','ask':'off','safeBins':[],'timeoutSec':120}}
+    cli('config','set',f'agents.list.{index}.tools',json.dumps(tools),'--strict-json')
+    probe=REPO / 'scripts/openclaw/xhs_source_probe.py'
+    probe.chmod(0o755)
+    approvals_path=Path('/var/lib/openclaw/.openclaw/exec-approvals.json')
+    approvals=json.loads(approvals_path.read_text()) if approvals_path.exists() else {'version':1}
+    approvals.setdefault('agents',{})['xhs-writer']={'mode':'allowlist','ask':'off',
+        'allowlist':[{'pattern':str(probe)}]}
+    from google_doc_delivery import atomic_json
+    atomic_json(approvals_path,approvals)
     cli('config','validate')
     subprocess.run(['systemctl','restart','openclaw.service'],check=True)
     subprocess.run(['systemctl','is-active','--quiet','openclaw.service'],check=True)
@@ -93,7 +103,7 @@ def main() -> None:
     CRON.write_text('\n'.join(lines+[DIRECT_LINE])+'\n')
     CRON.chmod(0o644)
     print(json.dumps({'installed':True,'native_cron_enabled':False,'direct_entries':1,
-                      'writer_tools':['web_search','web_fetch','write'],'recipient_configured':True}))
+                      'writer_tools':tools['allow'],'recipient_configured':True}))
 
 
 if __name__ == '__main__':

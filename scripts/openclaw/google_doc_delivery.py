@@ -77,7 +77,7 @@ def atomic_json(path: Path, payload: dict) -> None:
 
 
 def open_share(page):
-    page.locator("#docs-titlebar-share-client-button").click(timeout=45000)
+    page.locator("#docs-titlebar-share-client-button").get_by_role("button",name=re.compile(r"^共享")).click(timeout=45000)
     frame = page.frame_locator('iframe[src*="/drivesharing/driveshare"]')
     frame.get_by_text("有访问权限的人", exact=True).wait_for(timeout=45000)
     return frame
@@ -101,14 +101,18 @@ def restricted(frame) -> bool:
 
 
 def verify_viewer(page, url: str, recipient: str) -> dict:
-    page.goto(url, wait_until="domcontentloaded", timeout=60000)
-    frame = open_share(page)
-    role = recipient_role(frame, recipient)
-    if not role.startswith("查看者") or not restricted(frame):
-        raise ValueError("saved permission is not the configured Viewer with restricted general access")
-    frame.get_by_role("button", name="完成", exact=True).click()
-    return {"viewer_verified": True, "general_access": "restricted",
-            "recipient_fingerprint": hashlib.sha256(recipient.lower().encode()).hexdigest()}
+    verifier = page.context.new_page()
+    try:
+        verifier.goto(url, wait_until="domcontentloaded", timeout=60000)
+        frame = open_share(verifier)
+        role = recipient_role(frame, recipient)
+        if not role.startswith("查看者") or not restricted(frame):
+            raise ValueError("saved permission is not the configured Viewer with restricted general access")
+        return {"viewer_verified": True, "general_access": "restricted",
+                "recipient_fingerprint": hashlib.sha256(recipient.lower().encode()).hexdigest()}
+    finally:
+        if not verifier.is_closed():
+            verifier.close()
 
 
 def grant_viewer(page, url: str, recipient: str) -> dict:
