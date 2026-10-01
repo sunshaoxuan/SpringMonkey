@@ -73,6 +73,8 @@ def test_source_probe_never_exposes_private_google_or_account_pages():
             with pytest.raises(ValueError):probe.validate_source(url)
         assert probe.validate_source('https://www.costco.co.jp/product/p/123')
         assert probe.validate_source('https://public-cdn.example/image.jpg',image=True)
+        assert probe.validate_source('https://setu.co.jp/category/new-item/')
+        with pytest.raises(ValueError):probe.validate_source('https://ultimate-setsuko.com/monthly-costco-osusume/')
 
 
 def test_manifest_image_claims_require_inspected_content_hash():

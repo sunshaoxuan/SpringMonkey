@@ -16,11 +16,11 @@ SOURCE_DOMAINS = ('costco.co.jp','kewpie.co.jp','lindt.jp','kuzefuku.com',
                   'kuzefuku.jp','sanktgallenbrewery.com','hatenablog.com','hatenablog.jp',
                   'ameblo.jp','livedoor.blog','livedoor.jp','rakuten.co.jp','suzunoya.com',
                   'starbucks.co.jp','danone.co.jp','costcolover.blog','coslover.com',
-                  'ultimate-setsuko.com','costco-johokan.com','marronroy-recipes.com',
+                  'setu.co.jp','costco-johokan.com','marronroy-recipes.com',
                   'costco-japan.com','sweets365.jp','costco-blog.com')
 PROBE_ROOT = WORKSPACE / 'state/xhs-delivery/_probe'
 SEARCH_SITES = ('costco.co.jp', 'ameblo.jp', 'marronroy-recipes.com',
-                'ultimate-setsuko.com', 'kewpie.co.jp', 'kuzefuku.com', 'danone.co.jp')
+                'setu.co.jp', 'kewpie.co.jp', 'kuzefuku.com', 'danone.co.jp')
 
 
 def source_query(value: str) -> str:
