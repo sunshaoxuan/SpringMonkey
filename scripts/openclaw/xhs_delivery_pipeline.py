@@ -83,7 +83,8 @@ def fetch_image(url: str, destination: Path) -> str:
     from PIL import Image, ImageOps
     current = validate_public_url(url)
     for redirect in range(4):
-        with requests.get(current, timeout=(15, 45), stream=True, allow_redirects=False) as response:
+        with requests.get(current, headers={'User-Agent': 'Mozilla/5.0'},
+                          timeout=(15, 45), stream=True, allow_redirects=False) as response:
             if response.is_redirect:
                 from urllib.parse import urljoin
                 current = validate_public_url(urljoin(current, response.headers['Location']))

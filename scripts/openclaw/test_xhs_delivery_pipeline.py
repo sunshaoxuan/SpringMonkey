@@ -108,6 +108,26 @@ def test_search_filters_navigation_before_limiting_and_deduplicates():
         assert probe.source_links(blocked+[product,product])==[product]
 
 
+def test_public_image_download_uses_browser_identifier_without_credentials(tmp_path):
+    from PIL import Image
+    from unittest.mock import MagicMock
+    import requests
+    content=io.BytesIO()
+    Image.new('RGB',(300,300),'red').save(content,format='PNG')
+    response=MagicMock()
+    response.__enter__.return_value=response
+    response.is_redirect=False
+    response.headers={'Content-Type':'image/png'}
+    response.iter_content.return_value=[content.getvalue()]
+    with patch.object(pipeline,'validate_public_url',side_effect=lambda url:url), patch.object(requests,'get',return_value=response) as get:
+        digest=pipeline.fetch_image('https://example.com/photo.png',tmp_path/'photo.jpg')
+    assert len(digest)==64
+    assert get.call_args.kwargs['headers']=={'User-Agent':'Mozilla/5.0'}
+    assert 'cookies' not in get.call_args.kwargs
+    assert 'auth' not in get.call_args.kwargs
+    assert get.call_args.kwargs['allow_redirects'] is False
+
+
 def test_atomic_receipt_is_readable_and_replaces_previous(tmp_path):
     path=tmp_path/'receipt.json'
     delivery.atomic_json(path,{'status':'created'})
