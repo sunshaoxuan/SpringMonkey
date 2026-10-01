@@ -108,6 +108,14 @@ def test_search_filters_navigation_before_limiting_and_deduplicates():
         assert probe.source_links(blocked+[product,product])==[product]
 
 
+def test_search_scope_matches_approved_public_sources_and_stays_bounded():
+    query=probe.source_query('コストコ 購入品')
+    assert query.startswith('コストコ 購入品 (')
+    assert 'site:costco.co.jp' in query and 'site:ameblo.jp' in query
+    assert set(probe.SEARCH_SITES)<=set(probe.SOURCE_DOMAINS)
+    with pytest.raises(ValueError):probe.source_query('x'*201)
+
+
 def test_public_image_download_uses_browser_identifier_without_credentials(tmp_path):
     from PIL import Image
     from unittest.mock import MagicMock

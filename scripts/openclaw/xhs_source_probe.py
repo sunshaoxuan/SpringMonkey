@@ -19,6 +19,14 @@ SOURCE_DOMAINS = ('costco.co.jp','kewpie.co.jp','lindt.jp','kuzefuku.com',
                   'ultimate-setsuko.com','costco-johokan.com','marronroy-recipes.com',
                   'costco-japan.com','sweets365.jp','costco-blog.com')
 PROBE_ROOT = WORKSPACE / 'state/xhs-delivery/_probe'
+SEARCH_SITES = ('costco.co.jp', 'ameblo.jp', 'marronroy-recipes.com',
+                'ultimate-setsuko.com', 'kewpie.co.jp', 'kuzefuku.com', 'danone.co.jp')
+
+
+def source_query(value: str) -> str:
+    if len(value) > 200:
+        raise ValueError('query exceeds length limit')
+    return value + ' (' + ' OR '.join('site:' + site for site in SEARCH_SITES) + ')'
 
 
 def compact_payload(data: dict) -> dict:
@@ -108,8 +116,7 @@ def main() -> int:
     args=parser.parse_args()
     try:
         if args.action=='search':
-            if len(args.value)>200:raise ValueError('query exceeds length limit')
-            result=fetch_page('https://www.google.com/search?'+urlencode({'q':args.value}),search=True)
+            result=fetch_page('https://www.google.com/search?'+urlencode({'q':source_query(args.value)}),search=True)
         elif args.action=='fetch':
             result=fetch_page(args.value)
         else:
