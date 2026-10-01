@@ -21,6 +21,14 @@ SOURCE_DOMAINS = ('costco.co.jp','kewpie.co.jp','lindt.jp','kuzefuku.com',
 PROBE_ROOT = WORKSPACE / 'state/xhs-delivery/_probe'
 
 
+def compact_payload(data: dict) -> dict:
+    # Navigation links must not displace inspected product-gallery candidates.
+    for key in ('links', 'images'):
+        while len(json.dumps(data, ensure_ascii=False)) > 7000 and data.get(key):
+            data[key].pop()
+    return data
+
+
 def validate_source(url: str, *, image: bool = False) -> str:
     validate_public_url(url)
     # Image downloads use unauthenticated HTTP, never the logged-in browser.
@@ -75,12 +83,7 @@ def fetch_page(url: str, *, search: bool = False) -> dict:
                 }""")
                 data['images']=images
             data['text']=re.sub(r'[\w.+-]+@[\w.-]+','[private]',data.get('text',''))
-            # A hard byte budget, independent of an agent's snapshot arguments.
-            while len(json.dumps(data,ensure_ascii=False))>7000 and data.get('images'):
-                data['images'].pop()
-            while len(json.dumps(data,ensure_ascii=False))>7000 and data['links']:
-                data['links'].pop()
-            return data
+            return compact_payload(data)
         finally:
             if not page.is_closed():page.close()
 

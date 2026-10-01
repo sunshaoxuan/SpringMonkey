@@ -85,6 +85,22 @@ def test_manifest_image_claims_require_inspected_content_hash():
         with pytest.raises(ValueError):pipeline.validate_manifest(payload)
 
 
+def test_source_budget_preserves_product_images_before_navigation():
+    images=[{'url':'https://example.com/'+str(i)+'x'*250,'alt':'product','w':1200,'h':1200} for i in range(8)]
+    data={'title':'product','text':'x'*3200,'images':images.copy(),
+          'links':[{'url':'https://example.com/'+'x'*300,'title':'navigation'} for _ in range(15)]}
+    result=probe.compact_payload(data)
+    assert result['images']==images
+    assert len(result['links'])<15
+    assert len(json.dumps(result,ensure_ascii=False))<=7000
+
+
+def test_source_budget_remains_bounded_for_large_galleries_and_searches():
+    for key in ('images','links'):
+        data={'title':'source','text':'x'*3200,key:[{'url':'https://example.com/'+'x'*500} for _ in range(24)]}
+        assert len(json.dumps(probe.compact_payload(data),ensure_ascii=False))<=7000
+
+
 def test_atomic_receipt_is_readable_and_replaces_previous(tmp_path):
     path=tmp_path/'receipt.json'
     delivery.atomic_json(path,{'status':'created'})
