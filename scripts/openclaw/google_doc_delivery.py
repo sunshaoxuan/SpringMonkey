@@ -73,16 +73,15 @@ def open_share(page):
 
 
 def recipient_role(frame, recipient: str) -> str:
-    # Select the smallest row containing the exact email and a permission button.
+    # Hidden address chips also contain the email; only saved permission rows count.
     return frame.locator("body").evaluate("""(body, email) => {
-      const node = Array.from(body.querySelectorAll('*')).find(e =>
-        e.children.length === 0 && e.textContent.trim().toLowerCase() === email.toLowerCase());
-      for (let row=node; row && row!==body; row=row.parentElement) {
-        const buttons=Array.from(row.querySelectorAll('button,[role="button"]'));
-        const role=buttons.find(b=>/查看者|评论者|编辑者|所有者/.test(b.getAttribute('aria-label')||b.textContent));
-        if (role) return role.getAttribute('aria-label')||role.textContent;
-      }
-      return '';
+      const rows=Array.from(body.querySelectorAll('li[role="menuitem"]')).filter(row =>
+        row.getClientRects().length && Array.from(row.querySelectorAll('[data-hovercard-id]')).some(e =>
+          e.getAttribute('data-hovercard-id').toLowerCase() === email.toLowerCase()));
+      if(rows.length!==1) return '';
+      const roles=Array.from(rows[0].querySelectorAll('button')).filter(b=>
+        /^(查看者|评论者|编辑者|所有者)/.test(b.getAttribute('aria-label')||b.textContent));
+      return roles.length===1 ? (roles[0].getAttribute('aria-label')||roles[0].textContent) : '';
     }""", recipient)
 
 
