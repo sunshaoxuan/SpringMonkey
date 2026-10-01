@@ -101,6 +101,13 @@ def test_source_budget_remains_bounded_for_large_galleries_and_searches():
         assert len(json.dumps(probe.compact_payload(data),ensure_ascii=False))<=7000
 
 
+def test_search_filters_navigation_before_limiting_and_deduplicates():
+    blocked=[{'url':f'https://google.com/navigation/{i}','title':'navigation'} for i in range(45)]
+    product={'url':'https://www.costco.co.jp/c/product/p/123','title':'product'}
+    with patch.object(probe,'validate_public_url',side_effect=lambda url:url):
+        assert probe.source_links(blocked+[product,product])==[product]
+
+
 def test_atomic_receipt_is_readable_and_replaces_previous(tmp_path):
     path=tmp_path/'receipt.json'
     delivery.atomic_json(path,{'status':'created'})

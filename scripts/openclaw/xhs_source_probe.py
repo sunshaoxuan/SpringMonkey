@@ -29,6 +29,23 @@ def compact_payload(data: dict) -> dict:
     return data
 
 
+def source_links(links: list[dict]) -> list[dict]:
+    result = []
+    seen = set()
+    for link in links:
+        try:
+            validate_source(link['url'])
+        except ValueError:
+            continue
+        if link['url'] in seen:
+            continue
+        seen.add(link['url'])
+        result.append(link)
+        if len(result) == 15:
+            break
+    return result
+
+
 def validate_source(url: str, *, image: bool = False) -> str:
     validate_public_url(url)
     # Image downloads use unauthenticated HTTP, never the logged-in browser.
@@ -61,18 +78,13 @@ def fetch_page(url: str, *, search: bool = False) -> dict:
               title:document.title.slice(0,300),
               text:article.innerText.replace(/\\s+/g,' ').slice(0,3200),
               images:Array.from(article.querySelectorAll('img')).map(e=>({url:[e.currentSrc,e.getAttribute('data-src'),e.getAttribute('data-original'),e.src].find(u=>u&&u.startsWith('https://')),alt:e.alt.slice(0,120),w:e.naturalWidth,h:e.naturalHeight})).filter(e=>e.url&&(!e.w||!e.h||e.w>=80&&e.h>=80)).slice(0,24),
-              links:Array.from(body.querySelectorAll('a[href]')).filter(e=>e.innerText.trim()).map(e=>({url:e.href,title:e.innerText.trim().slice(0,80)})).slice(0,40)
+              links:Array.from(body.querySelectorAll('a[href]')).filter(e=>e.innerText.trim()).sort((a,b)=>Number(Boolean(b.querySelector('h3')))-Number(Boolean(a.querySelector('h3')))).map(e=>({url:e.href,title:e.innerText.trim().slice(0,80)}))
             })}""")
             # Source navigation is public; Google account/navigation chrome is omitted.
             if search:
                 data.pop('text',None)
                 data.pop('images',None)
-            links=[]
-            for link in data.get('links',[]):
-                try: validate_source(link['url'])
-                except ValueError: continue
-                links.append(link)
-            data['links']=links[:15]
+            data['links']=source_links(data.get('links',[]))
             if not search:
                 # Product galleries can live outside an article/main wrapper.
                 images=page.locator('img').evaluate_all("""els=>{
