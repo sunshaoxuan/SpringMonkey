@@ -422,7 +422,7 @@
     "chatPrimary": "openai-codex/gpt-5.3-codex-spark",
     "chatFallback": "",
     "chatEscalateWhenHistoryCharsExceed": 15000,
-    "codexBaseUrl": "http://ccnode.briconbric.com:49530/v1",
+    "codexBaseUrl": "https://ccnode.briconbric.com:49530/v1",
     "codexApiKeyEnv": "NEWS_CODEX_API_KEY",
     "ollamaBaseUrl": "",
     "ollamaNote": "22545 Ollama fallback retired after host checks showed HTTP timeout; production model calls should use the ccnode 49530 OpenAI-compatible endpoint.",

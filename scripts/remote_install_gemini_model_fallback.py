@@ -17,7 +17,7 @@ HOST = os.environ.get("OPENCLAW_SSH_HOST", "ccnode.briconbric.com")
 PORT = int(os.environ.get("OPENCLAW_SSH_PORT", "8822"))
 USER = os.environ.get("OPENCLAW_SSH_USER", "root")
 MODEL = os.environ.get("OPENCLAW_GEMINI_FALLBACK_MODEL", "gemini-pro-agent")
-BASE_URL = os.environ.get("OPENCLAW_GEMINI_FALLBACK_BASE_URL", "http://ccnode.briconbric.com:49530/v1")
+BASE_URL = os.environ.get("OPENCLAW_GEMINI_FALLBACK_BASE_URL", "https://ccnode.briconbric.com:49530/v1")
 
 
 REMOTE = r"""

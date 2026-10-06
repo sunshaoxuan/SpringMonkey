@@ -96,7 +96,7 @@ for path in config_paths:
     providers["openai-codex"] = {
         "api": "openai-completions",
         "apiKey": openai_ref,
-        "baseUrl": "http://ccnode.briconbric.com:49530/v1",
+        "baseUrl": "https://ccnode.briconbric.com:49530/v1",
         "timeoutSeconds": 600,
         "models": [
             {

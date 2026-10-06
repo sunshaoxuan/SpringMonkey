@@ -17,7 +17,7 @@ HOST = os.environ.get("OPENCLAW_SSH_HOST", "ccnode.briconbric.com")
 PORT = int(os.environ.get("OPENCLAW_SSH_PORT", "8822"))
 USER = os.environ.get("OPENCLAW_SSH_USER", "root")
 MODEL = "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
-BASE_URL = "http://ccnode.briconbric.com:49530/v1"
+BASE_URL = "https://ccnode.briconbric.com:49530/v1"
 INTENT_TIMEOUT_SECONDS = 180
 
 

@@ -18,7 +18,7 @@ def test_qwen_fallback_installer_is_exact_model_and_smoke_gated() -> None:
     remote = module.REMOTE
 
     assert module.MODEL == "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
-    assert module.BASE_URL == "http://ccnode.briconbric.com:49530/v1"
+    assert module.BASE_URL == "https://ccnode.briconbric.com:49530/v1"
     assert module.INTENT_TIMEOUT_SECONDS == 180
     assert 'base_url + "/models"' in remote
     assert 'base_url + "/chat/completions"' in remote

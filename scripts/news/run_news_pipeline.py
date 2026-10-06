@@ -20,7 +20,7 @@
 环境变量（常用）
 --------------
 OpenClaw Codex profile   Codex 主模型通过 OpenClaw gateway/OAuth profile 调用
-NEWS_CODEX_BASE_URL      OpenAI-compatible Codex HTTP endpoint, e.g. http://ccnode.briconbric.com:49530/v1
+NEWS_CODEX_BASE_URL      OpenAI-compatible Codex endpoint, e.g. https://ccnode.briconbric.com:49530/v1
 NEWS_CODEX_API_KEY       API key for NEWS_CODEX_BASE_URL. Required when codexBaseUrl is configured.
 OPENCLAW_MODEL_FALLBACK_BASE_URL  Optional fallback endpoint; empty by default.
 OPENCLAW_MODEL_FALLBACK           Optional fallback model; empty by default.

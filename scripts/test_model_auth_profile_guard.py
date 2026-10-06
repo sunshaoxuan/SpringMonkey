@@ -27,13 +27,14 @@ def test_model_auth_guard_does_not_hijack_openai_image_provider() -> None:
     module = load_installer_module()
     remote = module.REMOTE
 
-    assert 'openai["baseUrl"] = "http://ccnode.briconbric.com:49530/v1"' not in remote
+    assert 'openai["baseUrl"] = "https://ccnode.briconbric.com:49530/v1"' not in remote
+    assert 'http://ccnode.briconbric.com:49530/v1' not in remote
     assert 'openai["apiKey"] = secret' not in remote
     assert 'openai.pop("baseUrl", None)' in remote
     assert 'openai.pop("apiKey", None)' in remote
     assert 'defaults["primary"] = "openai-codex/gpt-5.3-codex-spark"' in remote
     assert 'providers["openai-codex"] = {' in remote
-    assert '"baseUrl": "http://ccnode.briconbric.com:49530/v1"' in remote
+    assert '"baseUrl": "https://ccnode.briconbric.com:49530/v1"' in remote
     assert '"api": "openai-completions"' in remote
     assert '"timeoutSeconds": 600' in remote
     assert '"id": "gpt-5.6-sol"' in remote

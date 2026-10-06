@@ -57,7 +57,7 @@ print(f"env.OPENCLAW_MODEL_FALLBACK_BASE_URL={env_values.get('OPENCLAW_MODEL_FAL
 print(f"env.OPENCLAW_QWEN_FALLBACK_BASE_URL={env_values.get('OPENCLAW_QWEN_FALLBACK_BASE_URL')}")
 for key in ("NEWS_CODEX_BASE_URL", "OPENCLAW_PUBLIC_MODEL_BASE_URL"):
     value = env_values.get(key, "")
-    if value and "ccnode.briconbric.com:49530/v1" not in value:
+    if value and value != "https://ccnode.briconbric.com:49530/v1":
         errors.append(f"unexpected primary model endpoint {key}={value}")
 for key in ("OPENCLAW_MODEL_FALLBACK_BASE_URL", "OPENCLAW_QWEN_FALLBACK_BASE_URL", "OLLAMA_BASE_URL"):
     value = env_values.get(key, "")
@@ -142,7 +142,7 @@ for path in config_paths:
     print(f"openai-codex.baseUrl={codex_base}")
     print(f"openai-codex.timeoutSeconds={codex.get('timeoutSeconds')}")
     validate_secret_ref(f"{path}.openai-codex.apiKey", codex_key, "/providers/openaiCodex/apiKey")
-    if "ccnode.briconbric.com:49530/v1" not in codex_base:
+    if codex_base != "https://ccnode.briconbric.com:49530/v1":
         errors.append(f"unexpected openai-codex baseUrl in {path}: {codex_base}")
     if codex.get("timeoutSeconds") != 600:
         errors.append(f"unexpected openai-codex timeoutSeconds in {path}: {codex.get('timeoutSeconds')}")

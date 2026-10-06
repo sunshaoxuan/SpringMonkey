@@ -23,3 +23,9 @@ def test_public_model_resources_only_retires_ollama_fallback() -> None:
     assert 'or "qwen" in lowered' not in remote
     assert 'alias.startswith("OPENCLAW_MODEL_FALLBACK")' in remote
     assert 'alias.startswith("OPENCLAW_INTENT_FALLBACK")' in remote
+
+
+def test_public_model_resources_defaults_to_https() -> None:
+    remote = load_installer_module().REMOTE
+    assert 'https://ccnode.briconbric.com:49530/v1' in remote
+    assert 'http://ccnode.briconbric.com:49530/v1' not in remote

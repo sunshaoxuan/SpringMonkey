@@ -26,7 +26,7 @@ def test_gemini_fallback_installer_is_smoke_gated() -> None:
 def test_gemini_fallback_installer_uses_49530_and_not_22545() -> None:
     module = load_installer_module()
 
-    assert module.BASE_URL == "http://ccnode.briconbric.com:49530/v1"
+    assert module.BASE_URL == "https://ccnode.briconbric.com:49530/v1"
     assert module.MODEL == "gemini-pro-agent"
     assert "22545" not in module.REMOTE
 

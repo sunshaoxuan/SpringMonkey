@@ -40,7 +40,7 @@ As of 2026-04-09, the intended baseline is:
 - `HOME=/var/lib/openclaw`
 - shared env file: `/etc/openclaw/openclaw.env`
 - chat primary: `openai-codex/gpt-5.3-codex-spark`
-- chat endpoint: `http://ccnode.briconbric.com:49530/v1`, the frpc mapping to sub2api at `192.168.20.54:62342`
+- chat endpoint: `https://ccnode.briconbric.com:49530/v1`, the frpc mapping to sub2api at `192.168.20.54:62342`
 - chat fallback: empty unless a smoke-gated fallback installer enables one
 - Discord and LINE share one gateway and one provider-secret baseline
 - browser backend is a persistent Chrome CDP session on `127.0.0.1:18800`
@@ -127,7 +127,7 @@ Primary tools:
 Hard rule:
 
 - global primary remains `openai-codex/gpt-5.3-codex-spark`
-- production traffic reaches sub2api through `http://ccnode.briconbric.com:49530/v1`, which maps to `192.168.20.54:62342`
+- production traffic reaches sub2api through `https://ccnode.briconbric.com:49530/v1`, which maps to `192.168.20.54:62342`
 - `22545` Ollama/Qwen chat fallback is retired
 
 Check both repo docs and host runtime before touching task payloads.
