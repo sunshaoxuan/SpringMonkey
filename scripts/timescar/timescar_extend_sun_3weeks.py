@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
 from task_runtime import TimesCarTaskRuntime
+from weekend_vehicle_policy import allowed_reservation
 
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
@@ -97,7 +98,7 @@ def _select_target_reservation_with_reference(reference_now: datetime) -> dict |
         reservation
         for reservation in fetch_reservations()
         if reservation.get("station") == TARGET_STATION
-        and reservation.get("vehicle") == TARGET_MODEL
+        and allowed_reservation(reservation)
         and reservation.get("start", "").startswith(target_start)
         and reservation.get("return", "").startswith(target_sat_end)
     ]

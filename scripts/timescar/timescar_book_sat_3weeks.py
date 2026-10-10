@@ -29,6 +29,7 @@ from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
 from task_runtime import TimesCarTaskRuntime
+from weekend_vehicle_policy import allowed_reservation, normalized, ordered_candidates, vehicle_rank
 
 
 WORKSPACE = Path("/var/lib/openclaw/.openclaw/workspace")
@@ -103,11 +104,59 @@ def select_first_available(page, selector: str, values: list[str]) -> None:
     raise BookingError(f"failed: option unavailable: {selector} wanted={values} options={options}") from last_error
 
 
-def find_model_value(page) -> str:
-    for item in option_texts(page, "#carId"):
-        if TARGET_MODEL in item["text"]:
-            return item["value"]
-    raise BookingError(f"failed: station has no {TARGET_MODEL}")
+def prepare_candidate(page, candidate: dict, start: datetime, end: datetime) -> str | None:
+    page.goto(RESERVE_INPUT_URL, wait_until='domcontentloaded', timeout=60000)
+    page.select_option('#carId', candidate['value'])
+    page.select_option('#dateStart', start.strftime('%Y-%m-%d 00:00:00.0'))
+    select_first_available(page, '#hourStart', ['09', '9'])
+    select_first_available(page, '#minuteStart', ['00', '0'])
+    page.select_option('#dateEnd', end.strftime('%Y-%m-%d 00:00:00.0'))
+    select_first_available(page, '#hourEnd', ['21'])
+    select_first_available(page, '#minuteEnd', ['00', '0'])
+    page.check('#exemptNocFlgYes')
+    page.locator('#doCheck').click()
+    page.wait_for_load_state('domcontentloaded')
+    text = page.locator('body').inner_text()
+    if '入力内容に誤りがあります' in text:
+        if '予約できない期間が含まれています' in text:
+            return None
+        raise BookingError('failed: booking form validation error unrelated to availability')
+    if '予約登録（確認）' not in text and '予約登録(確認)' not in text:
+        raise BookingError('failed: did not reach booking confirm page')
+    verify_candidate_confirmation(text, candidate, start, end)
+    return text
+
+
+def verify_candidate_confirmation(text: str, candidate: dict, start: datetime, end: datetime) -> None:
+    for label, expected in (('利用開始日時', start), ('返却予定日時', end)):
+        match = re.search(label + r'\s*(\d{4})年(\d{2})月(\d{2})日（[^）]+）(\d{2}):(\d{2})', text)
+        actual = ''.join(match.groups()) if match else ''
+        if actual != expected.strftime('%Y%m%d%H%M'):
+            raise BookingError(f'failed: confirm page {label} mismatch')
+    compact = normalized(text)
+    rank = vehicle_rank(candidate['text'])
+    if rank is None:
+        raise BookingError('failed: unsupported candidate')
+    model = ('ヤリスクロス', 'ライズ', 'ソリオ')[rank]
+    if model not in compact or normalized(TARGET_STATION) not in compact:
+        raise BookingError('failed: confirm page station or model mismatch')
+    if rank in (0, 1) and 'ハイブリッド' not in compact:
+        raise BookingError('failed: confirm page hybrid identity missing')
+    if rank == 0 and (not re.search(r'(?<!\d)1286(?!\d)', compact) or TARGET_COLOR not in compact):
+        raise BookingError('failed: preferred Yaris Cross plate or color mismatch')
+
+
+def prepare_first_available(page, candidates: list[dict], start: datetime, end: datetime, runtime) -> dict:
+    for candidate in candidates:
+        text = prepare_candidate(page, candidate, start, end)
+        if text is None:
+            runtime.record_step(step='candidate-unavailable', status='skipped', tool='browser',
+                                detail=candidate['text'] + ': requested period unavailable')
+            continue
+        runtime.record_step(step='validate-booking-form', status='ok', tool='browser',
+                            detail='confirmed vehicle: ' + candidate['text'])
+        return candidate
+    raise BookingError('failed: all allowed vehicles unavailable for requested period')
 
 
 def existing_reservation_for_target(reference_now: datetime | None = None) -> dict | None:
@@ -118,7 +167,7 @@ def existing_reservation_for_target(reference_now: datetime | None = None) -> di
         reservation
         for reservation in data.get("reservations", [])
         if reservation.get("station") == TARGET_STATION
-        and reservation.get("vehicle") == "ヤリスクロス"
+        and allowed_reservation(reservation)
         and reservation.get("start", "").startswith(target_prefix)
     ]
     if not matches:
@@ -229,41 +278,16 @@ def main() -> int:
                 page.goto(RESERVE_INPUT_URL, wait_until="domcontentloaded", timeout=60000)
             runtime.record_step(step=phase, status="ok", tool="browser", detail="opened reservation input page")
 
-            model_value = find_model_value(page)
-            page.select_option("#carId", model_value)
-            page.select_option("#dateStart", target_start.strftime("%Y-%m-%d 00:00:00.0"))
-            select_first_available(page, "#hourStart", ["09", "9"])
-            select_first_available(page, "#minuteStart", ["00", "0"])
-            page.select_option("#dateEnd", target_end.strftime("%Y-%m-%d 00:00:00.0"))
-            select_first_available(page, "#hourEnd", ["21"])
-            select_first_available(page, "#minuteEnd", ["00", "0"])
-            page.check("#exemptNocFlgYes")
-
+            candidates = ordered_candidates(option_texts(page, '#carId'))
+            if not candidates:
+                raise BookingError('failed: station has no allowed weekend vehicle')
             phase = "validate-booking-form"
-            page.locator("#doCheck").click()
-            page.wait_for_load_state("domcontentloaded")
-            text = page.locator("body").inner_text()
-            if "入力内容に誤りがあります" in text:
-                raise BookingError("failed: booking form validation error")
-            if "予約登録（確認）" not in text and "予約登録(確認)" not in text:
-                raise BookingError("failed: did not reach booking confirm page")
-            runtime.record_step(step=phase, status="ok", tool="browser", detail="reached booking confirm page")
-
-            confirm_match = re.search(r"利用開始日時\s*(\d{4})年(\d{2})月(\d{2})日（[^）]+）(\d{2}):(\d{2})", text)
-            if not confirm_match:
-                raise BookingError("failed: could not verify target reservation date on confirm page")
-            confirm_start = (
-                f"{confirm_match.group(1)}-{confirm_match.group(2)}-{confirm_match.group(3)}"
-                f"T{confirm_match.group(4)}:{confirm_match.group(5)}"
-            )
-            if confirm_start != target_start.strftime("%Y-%m-%dT%H:%M"):
-                raise BookingError(
-                    f'failed: target start mismatch, expected {target_start.strftime("%Y-%m-%dT%H:%M")}, got {confirm_start}'
-                )
+            chosen = prepare_first_available(page, candidates, target_start, target_end, runtime)
 
             if args.dry_run:
-                runtime.finish("ok", "dry-run", final_message="dry-run ok")
-                print("dry-run ok")
+                message = 'dry-run ok: ' + chosen['text'] + '; no booking submitted'
+                runtime.finish("ok", "dry-run", final_message=message)
+                print(message)
                 return 0
 
             phase = "submit-booking"
