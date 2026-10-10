@@ -89,7 +89,7 @@ def test_form_error_never_submits(body, unavailable):
     assert selected['#exemptNocFlgYes'] is True
 
 
-CONFIRM = '予約登録（確認）\n久我山４丁目２\nヤリスクロス（ハイブリッド） 1286 グレイッシュブルー\n利用開始日時\n2026年10月31日（土）09:00\n返却予定日時\n2026年10月31日（土）21:00'
+CONFIRM = '予約登録（確認）\nステーション\t久我山４丁目２\n車両\tヤリスクロス（ハイブリッド） 1286 グレイッシュブルー\n利用開始日時\n2026年10月31日（土）09:00\n返却予定日時\n2026年10月31日（土）21:00'
 
 
 @pytest.mark.parametrize('old,new', [('', ''), ('1286', '9999'), ('グレイッシュブルー', 'ホワイト'),
@@ -103,6 +103,29 @@ def test_primary_confirmation(old, new):
             book.verify_candidate_confirmation(CONFIRM.replace(old, new), candidate, start, end)
     else:
         book.verify_candidate_confirmation(CONFIRM, candidate, start, end)
+
+
+def test_unrelated_text_cannot_supply_hybrid_or_primary_identity():
+    start, end = book.target_window(datetime(2026, 10, 10, tzinfo=ZoneInfo('Asia/Tokyo')))
+    candidate = ordered_candidates(OPTIONS)[0]
+    text = CONFIRM.replace('車両\tヤリスクロス（ハイブリッド） 1286 グレイッシュブルー',
+                           '車両\tヤリスクロス 9999 ホワイト\nお知らせ\tハイブリッド 1286 グレイッシュブルー')
+    with pytest.raises(book.BookingError):
+        book.verify_candidate_confirmation(text, candidate, start, end)
+
+
+@pytest.mark.parametrize('vehicle,end,valid', [('ソリオ', '2026-10-31T21:00', True),
+                                             ('ライズ（ハイブリッド）', '2026-10-31T21:00', False),
+                                             ('ソリオ', '2026-10-31T20:00', False)])
+def test_submit_postcheck(vehicle, end, valid):
+    _, target_end = book.target_window(datetime(2026, 10, 10, tzinfo=ZoneInfo('Asia/Tokyo')))
+    candidate = ordered_candidates(OPTIONS)[3]
+    reservation = {'vehicle': vehicle, 'return': end}
+    if valid:
+        book.verify_submitted_reservation(reservation, candidate, target_end)
+    else:
+        with pytest.raises(book.BookingError):
+            book.verify_submitted_reservation(reservation, candidate, target_end)
 
 
 @pytest.mark.parametrize('vehicle', ['ライズ（ハイブリッド）', 'ソリオ', 'ソリオ(ハイブリッド/1200cc)'])

@@ -133,17 +133,28 @@ def verify_candidate_confirmation(text: str, candidate: dict, start: datetime, e
         actual = ''.join(match.groups()) if match else ''
         if actual != expected.strftime('%Y%m%d%H%M'):
             raise BookingError(f'failed: confirm page {label} mismatch')
-    compact = normalized(text)
+    vehicle_field = re.search(r'(?:^|\n)車両\s+([^\n]+)', text)
+    station_field = re.search(r'(?:^|\n)ステーション\s+([^\n]+)', text)
+    compact = normalized(vehicle_field.group(1)) if vehicle_field else ''
     rank = vehicle_rank(candidate['text'])
     if rank is None:
         raise BookingError('failed: unsupported candidate')
     model = ('ヤリスクロス', 'ライズ', 'ソリオ')[rank]
-    if model not in compact or normalized(TARGET_STATION) not in compact:
+    if model not in compact or not station_field or normalized(station_field.group(1)) != normalized(TARGET_STATION):
         raise BookingError('failed: confirm page station or model mismatch')
     if rank in (0, 1) and 'ハイブリッド' not in compact:
         raise BookingError('failed: confirm page hybrid identity missing')
     if rank == 0 and (not re.search(r'(?<!\d)1286(?!\d)', compact) or TARGET_COLOR not in compact):
         raise BookingError('failed: preferred Yaris Cross plate or color mismatch')
+
+
+def verify_submitted_reservation(reservation: dict, candidate: dict, end: datetime) -> None:
+    rank = vehicle_rank(candidate['text'])
+    model = ('ヤリスクロス', 'ライズ', 'ソリオ')[rank]
+    if model not in normalized(reservation.get('vehicle', '')) or reservation.get('return') != end.strftime('%Y-%m-%dT%H:%M'):
+        raise BookingError('failed: submitted reservation vehicle or end time mismatch')
+    if rank == 0 and (not re.search(r'(?<!\d)1286(?!\d)', reservation.get('carIdentifier', '')) or reservation.get('carColor') != TARGET_COLOR):
+        raise BookingError('failed: submitted preferred vehicle identity mismatch')
 
 
 def prepare_first_available(page, candidates: list[dict], start: datetime, end: datetime, runtime) -> dict:
@@ -308,6 +319,7 @@ def main() -> int:
         result = existing_reservation_for_target(reference_now)
         if not result:
             raise BookingError("failed: reservation completed page appeared, but reservation list verification failed")
+        verify_submitted_reservation(result, chosen, target_end)
         keep_same_car = "是" if TARGET_IDENT in (result.get("carIdentifier") or "") and TARGET_COLOR == result.get("carColor") else "否"
         message = format_report(result, keep_same_car)
         runtime.finish("ok", "done", final_message=message)
