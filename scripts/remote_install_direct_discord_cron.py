@@ -428,7 +428,10 @@ for job in data.get("jobs", []):
             delivery["to"] = "1483636573235843072"
         delivery["accountId"] = delivery.get("accountId") or "default"
         delivery["mode"] = delivery.get("mode") or "announce"
-        job.setdefault("state", {})["disabledReason"] = "replaced by host direct cron to Discord DM"
+        job.setdefault("state", {})["disabledReason"] = (
+            "TimesCar automation stopped at owner's request"
+            if name.startswith("timescar-") else "replaced by host direct cron to Discord DM"
+        )
         changed.append(name)
 jobs_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print("UPDATED_JOBS", ",".join(changed))
@@ -447,15 +450,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 0 10 */3 * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name xhs-recommendation-every-3-days --channel-id 1497009159940608020 --timeout 2400 --command env HOME=/var/lib/openclaw /var/lib/openclaw/venvs/xhs/bin/python /var/lib/openclaw/repos/SpringMonkey/scripts/openclaw/xhs_delivery_pipeline.py
 
-0 22 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-daily-report-2200 --channel-id 1497009159940608020 --timeout 900 --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_daily_report_render.py
-0 23 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-ask-cancel-next24h-2300 --channel-id 1497009159940608020 --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_next24h_notice.py
-0 0 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-ask-cancel-next24h-0000 --channel-id 1497009159940608020 --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_next24h_notice.py
-0 1 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-ask-cancel-next24h-0100 --channel-id 1497009159940608020 --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_next24h_notice.py
-0 7 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-ask-cancel-next24h-0700 --channel-id 1497009159940608020 --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_next24h_notice.py
-0 8 * * * root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-ask-cancel-next24h-0800 --channel-id 1497009159940608020 --timeout 900 --skip-output NO_REPLY --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_next24h_notice.py
-
-15 0 * * 6 root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-book-sat-3weeks --channel-id 1497009159940608020 --timeout 1800 --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_book_sat_3weeks.py
-15 0 * * 0 root /usr/local/lib/openclaw/direct_cron_to_discord.py --name timescar-extend-sun-3weeks --channel-id 1497009159940608020 --timeout 1800 --run-as-openclaw --command python3 /var/lib/openclaw/repos/SpringMonkey/scripts/timescar/timescar_extend_sun_3weeks.py
 EOF
 chmod 644 "${CRON_FILE}"
 

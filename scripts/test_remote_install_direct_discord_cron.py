@@ -14,6 +14,16 @@ def load_installer_module():
     return module
 
 
+def test_installer_does_not_reschedule_timescar() -> None:
+    remote = load_installer_module().REMOTE
+    cron = remote.split('cat >"${CRON_FILE}" <<\'EOF\'\n', 1)[1].split('\nEOF', 1)[0]
+    assert 'timescar-' not in cron
+    assert 'scripts/timescar/' not in cron
+    for name in ('weather-report-jst-0700', 'news-digest-jst-0900', 'news-digest-jst-1700',
+                 'xhs-recommendation-every-3-days'):
+        assert f'--name {name} ' in cron
+
+
 def test_news_cron_preserves_command_substitution_for_helper() -> None:
     module = load_installer_module()
     remote = module.REMOTE
