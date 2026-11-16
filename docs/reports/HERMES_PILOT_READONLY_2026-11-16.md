@@ -1,5 +1,7 @@
 # SpringMonkey 重装后 Hermes Agent 试点部署计划
 
+最新选型结论见 [三候选深入比较](AGENT_FINAL_COMPARISON_2026-11-16.md)：按当前单机资源与首批研究/文件任务，研究推荐 nanobot 第一、Hermes 第二、Agent Zero 第三。用户尚未发起安装或切换，本文保留为 Hermes 候选计划。固定 Hermes v0.23.1 的部分内容拒绝处理存在备用切换路径，与在线说明有差异；下文“拒绝保持终态”继续作为验收要求，当前未获源码/运行通过。
+
 更新：2026-11-16，Asia/Tokyo。状态：B0 只读核查完成，入口及额度条件未满足，总体 HOLD，实际部署未开始。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新版本绑定、主机条件、接口与 Skills 审查以 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md) 为准。
 
 用户追加要求的 [替代方案调查](AGENT_ALTERNATIVES_2026-11-16.md) 已比较 nanobot、Agent Zero、goose、QwenPaw 等现行候选。建议未来与 Hermes 做统一样例对照，当前没有决定替换或安装。SpringMonkey 始终指本次重装的 ubuntu-2625 主机，非另一套软件。

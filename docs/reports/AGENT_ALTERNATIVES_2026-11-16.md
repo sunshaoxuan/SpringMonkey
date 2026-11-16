@@ -1,5 +1,7 @@
 # SpringMonkey 自托管 Agent 替代方案调查
 
+后续已完成 [Hermes、nanobot、Agent Zero 固定稳定版深入比较](AGENT_FINAL_COMPARISON_2026-11-16.md)，最终研究推荐 nanobot 为 SpringMonkey 首选。本文保留广泛候选调查；下文“三者对照”的建议现由该深入比较补齐，实际部署和 B1 测试仍未执行。
+
 日期：2026-11-16，Asia/Tokyo。范围：近期 News、官方技术文章、GitHub 及本机适配分析。仅调查，无主机连接、安装、部署、推理请求或 Discord 接入。Hermes 原计划继续保留，本文不代表已决定更换。
 
 ## 1. 当前结论
