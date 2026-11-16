@@ -1,0 +1,14 @@
+[Unit]
+Description=Verify network SSH access and firewall before recovery tunnels
+Wants=NetworkManager-wait-online.service cloud-config.service
+After=NetworkManager.service network-online.target ssh.service cloud-config.service
+Before=frpc.service tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/sbin/reset-network-ready.py
+TimeoutStartSec=180
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
