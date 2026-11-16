@@ -1,0 +1,39 @@
+{
+  "fallback_chain": [
+    {
+      "model": "deepseek-flash",
+      "base_url": "https://api.deepseek.com",
+      "key_resolved": true
+    },
+    {
+      "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+      "base_url": "https://ccnode.briconbric.com:49530/v1",
+      "key_resolved": true
+    }
+  ],
+  "single_task_lock_enforced": true,
+  "post_restart_cli_exit": 0,
+  "post_restart_marker": true,
+  "resource_samples": [
+    "24.5MiB / 3GiB CPU=98.71% PIDs=3",
+    "61.76MiB / 3GiB CPU=100.61% PIDs=6",
+    "90.74MiB / 3GiB CPU=103.72% PIDs=5",
+    "133.1MiB / 3GiB CPU=100.72% PIDs=8",
+    "170.2MiB / 3GiB CPU=102.10% PIDs=10",
+    "197.8MiB / 3GiB CPU=104.47% PIDs=11",
+    "238.1MiB / 3GiB CPU=133.41% PIDs=13",
+    "254.3MiB / 3GiB CPU=149.36% PIDs=17",
+    "272.9MiB / 3GiB CPU=118.76% PIDs=18",
+    "289.7MiB / 3GiB CPU=104.05% PIDs=20",
+    "305.3MiB / 3GiB CPU=102.65% PIDs=29",
+    "346.1MiB / 3GiB CPU=102.19% PIDs=35",
+    "355.3MiB / 3GiB CPU=13.40% PIDs=36",
+    "355.6MiB / 3GiB CPU=3.05% PIDs=36",
+    "359.9MiB / 3GiB CPU=16.54% PIDs=41",
+    "359.8MiB / 3GiB CPU=2.02% PIDs=41",
+    "373.3MiB / 3GiB CPU=64.32% PIDs=39",
+    "254.6MiB / 3GiB CPU=2.80% PIDs=35"
+  ],
+  "seconds": 35.1,
+  "pnpm_warning_present": true
+}

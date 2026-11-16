@@ -1,0 +1,36 @@
+{
+  "name": "hermes-pilot",
+  "image_id": "sha256:9fb9594e7cb3ce4332230104ec8a1fd6996448e227d9ffa0f17ee6f2234735fa",
+  "running": true,
+  "memory": 3221225472,
+  "memory_swap": 3221225472,
+  "nano_cpus": 1500000000,
+  "pids_limit": 512,
+  "restart_policy": "unless-stopped",
+  "port_bindings": {},
+  "security_opt": [
+    "no-new-privileges:true"
+  ],
+  "mounts": [
+    {
+      "destination": "/workspace",
+      "rw": true
+    },
+    {
+      "destination": "/opt/data",
+      "rw": true
+    },
+    {
+      "destination": "/workspace/AGENTS.md",
+      "rw": false
+    },
+    {
+      "destination": "/opt/data/config.yaml",
+      "rw": false
+    },
+    {
+      "destination": "/opt/data/skills",
+      "rw": false
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "running": true,
+  "oom_killed": false,
+  "restart_policy": "unless-stopped",
+  "user": "10000:10000",
+  "ports": {},
+  "persistent_output_sha256": "b2bf8a9ee4c03cab22b022d94d08a72c62bb828d248db8fd4f68e519e6c133b4",
+  "output_survived_restart": true,
+  "services": {
+    "ssh": "active",
+    "tailscaled": "active",
+    "frpc": "active"
+  },
+  "wifi_connected": true,
+  "container": {
+    "uid": 10000,
+    "config_sha256": "6ae8953e891e5143cc4edeff407c2bd75257c9a973f6ca0092d6f7533f0072a9",
+    "max_sessions": 2,
+    "api_max_retries": 2,
+    "safe_write_root": "/workspace:/opt/data",
+    "tool_facts_readable": true,
+    "skills": [
+      "arxiv",
+      "document-to-action-items",
+      "grounded-citations",
+      "meeting-action-items",
+      "microsoft-office",
+      "pdf"
+    ],
+    "process_names": [
+      "sleep",
+      "python"
+    ]
+  },
+  "docker_stats": "500KiB / 3GiB CPU=0.00% PIDs=1"
+}

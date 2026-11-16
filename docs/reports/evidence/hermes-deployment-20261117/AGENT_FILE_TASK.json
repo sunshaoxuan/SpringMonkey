@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "output_exists": true,
+  "marker_match": true,
+  "owners_preserved": true,
+  "dates_preserved": true,
+  "diagnostic_tail": "tance/meeting-actions.md\n\n决定：发布试点说明。\n责任人与期限：Alex 起草，2026-11-18；Sam 审阅，2026-11-19。\n文件包含来源引用及标记 HERMES_PILOT_READY，未明确的发布责任人与期限已注明。\n\n未联网、未发送消息、未改配置。\n⚠ install out of sync (pnpm: not installed or outdated) — this docker-managed install must rebuild the artifact to fix\n\nsession_id: local-f152018f48df999f668ade4230cbe6cd1facca9b944db4b0d55d861b900f41cb\n"
+}

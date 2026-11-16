@@ -1,0 +1,32 @@
+{
+  "python_ast": [
+    "acceptance_routing.py",
+    "acceptance_runtime.py",
+    "install_docker.py",
+    "refusal_patch.py",
+    "start_container.py",
+    "verify_image.py"
+  ],
+  "json": [
+    "scripts\\hermes-pilot\\pilot-config.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\AGENT_FILE_TASK.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\BUILD_CONTEXT.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\CONTAINER_STARTED.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\CUSTOM_IMAGE.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\DOCUMENT_FUNCTIONS.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\FRP_AFTER_DOCKER.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\INSTALLED_ROUTING.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\MODEL_GENERATION.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\POST_RESTART_FUNCTION.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\RESTART_HOST_FINAL.json",
+    "docs\\reports\\evidence\\hermes-deployment-20261117\\RUNTIME_CHECK.json"
+  ],
+  "relative_links": [
+    "../../docs/reports/HERMES_DEPLOYMENT_2026-11-17.md",
+    "HERMES_FIRST_BATCH_SKILLS_2026-11-16.md",
+    "evidence/hermes-deployment-20261117",
+    "../../scripts/hermes-pilot/README.md"
+  ],
+  "credential_pattern_hits": [],
+  "runtime_config_matches": true
+}

@@ -1,0 +1,41 @@
+{
+  "_config_version": 53,
+  "model": {
+    "provider": "custom",
+    "default": "gpt-6-astra",
+    "base_url": "https://ccnode.briconbric.com:49530/v1",
+    "api_key": "${HERMES_GATEWAY_API_KEY}",
+    "api_mode": "chat_completions",
+    "context_length": 64000
+  },
+  "fallback_providers": [
+    {
+      "provider": "custom",
+      "model": "deepseek-flash",
+      "base_url": "https://api.deepseek.com",
+      "key_env": "HERMES_DEEPSEEK_API_KEY",
+      "api_mode": "chat_completions"
+    },
+    {
+      "provider": "custom",
+      "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+      "base_url": "https://ccnode.briconbric.com:49530/v1",
+      "key_env": "HERMES_GATEWAY_API_KEY",
+      "api_mode": "chat_completions"
+    }
+  ],
+  "toolsets": ["terminal", "file", "web", "skills", "memory"],
+  "max_concurrent_sessions": 2,
+  "max_live_sessions": 1,
+  "agent": {"max_turns": 30, "api_max_retries": 2, "auto_recovery_cycles": 1, "run_budget_seconds": 900},
+  "terminal": {"backend": "local", "cwd": "/workspace", "timeout": 120},
+  "web": {"backend": "ddgs", "search_backend": "ddgs", "keyless_fallback": true},
+  "auxiliary": {"title_generation": {"enabled": false}, "background_review": {"enabled": false}},
+  "skills": {"project_discovery": false, "guard_agent_created": true, "write_approval": true, "inline_shell": false},
+  "security": {"allow_private_urls": false, "redact_secrets": true, "protected_instruction_files": true, "allow_lazy_installs": false},
+  "approvals": {"mode": "smart", "single_query_mode": "deny", "unattended_mode": "deny", "cron_mode": "deny"},
+  "updates": {"check": false},
+  "cron": {"allow_agent_scheduling": false},
+  "hooks_auto_accept": false,
+  "timezone": "Asia/Tokyo"
+}

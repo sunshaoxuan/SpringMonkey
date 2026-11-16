@@ -1,29 +1,44 @@
-# Hermes pinned refusal patch
+# Hermes pinned CLI pilot
 
-Only the hash-bound refusal policy candidate remains active in this directory.
-The user withdrew fee reservation, the USD10 budget gate and pricing prerequisites.
-No budget service, price template or budget dependency remains. Existing upstream
-model APIs will be used directly in a future authorized deployment.
+Authorized and deployed on SpringMonkey on 2026-11-17. See the
+[deployment and acceptance report](../../docs/reports/HERMES_DEPLOYMENT_2026-11-17.md).
+No Discord connection or fee reservation service is configured.
 
-`upstream-pins.json` binds two files to Hermes v0.23.1 commit
-`3b421578588243f920886e6fe79a6faa87ea026e`. `refusal_patch.py` checks those bytes
-and prepares a new local candidate, patch and before/after manifest. The reviewed
-patch is under `patches/`; apply it with `git apply --unidiff-zero` only after
-matching the original commit and digests, then verify the resulting digests.
-An existing output directory or changed original is rejected.
+`Dockerfile` extends the immutable v0.23.1 base using its own locked build,
+applies two preverified refusal source files, verifies source/package hashes and
+versions, and narrows the catalog to six reviewed Skills. Its complete build
+context includes the retained reviewed `skills/`, `patched/agent/`, and
+`manifest.json` from formal evidence, beyond this script directory.
 
-Content and provider-policy refusals stay terminal. Availability fallback remains
-enabled. The HTTP200 handler preserves the original terminal response, history
-cleanup and accounting path. Tests execute the pinned functions with isolated
-dependency doubles and verify real patch application; full Hermes adapter/runtime
-acceptance remains a future deployment check.
+`install_docker.py` checks official signing-key identity, records network baselines,
+and installs Docker on Ubuntu26.10. `start_container.py` uses the reviewed local
+image ID, UID10000, resource limits, readonly policy/Skills and no published ports.
+It rejects an existing container and expects root-only credentials staged under
+`/etc/hermes-pilot`. The host wrapper serializes tasks and enforces a 900s timeout.
 
-The 12 existing policy/patch regression results remain valid because these files
-and their direct inputs were unchanged by withdrawing the budget implementation.
-Nothing here deploys Hermes, changes authentication, or connects Discord.
+`pilot-config.json` defines GPT, independent DeepSeek and same-gateway Qwen routes.
+Two shared session slots accommodate the CLI frontend/backend pair; the host lock
+limits top-level tasks to one. `WORKSPACE_AGENTS.md` defines scope. This trusted
+single-user container exposes its model client credentials to its own processes.
 
-Local regression command when implementation inputs change:
+On the host run `sudo hermes-pilot chat`. Work under `/workspace`, mapped to
+`/srv/hermes-pilot/workspace`. No dashboard, messaging gateway, browser, OCR,
+runtime dependency installation, delegation or scheduling is enabled.
 
-```
+`acceptance_runtime.py` checks real alternate model responses and document
+readback. `acceptance_routing.py` exercises the installed AIAgent with synthetic
+loopback providers, including SSE refusal and three-hop availability fallback.
+The report also binds real GPT file tasks, restart persistence and SSH checks.
+
+`upstream-pins.json` binds two files to commit
+`3b421578588243f920886e6fe79a6faa87ea026e`. `refusal_patch.py` rejects changed
+originals and prepares a fresh candidate. Apply the reviewed patch using
+`git apply --unidiff-zero` only after matching original digests. Content/provider
+policy refusals remain terminal and availability fallback remains enabled.
+The unchanged 12 source/patch regressions reuse their previous valid evidence.
+
+Local regression command when those implementation inputs change:
+
+```sh
 python -m pytest scripts/hermes-pilot/tests -q -p no:cacheprovider --hermes-source=<verified-source-cache> --basetemp=<task-temporary-directory>
 ```

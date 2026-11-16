@@ -1,0 +1,20 @@
+[
+  {
+    "route": "deepseek",
+    "http_status": 200,
+    "model": "deepseek-flash",
+    "content_present": true,
+    "marker_match": true,
+    "finish_reason": "stop",
+    "seconds": 1.14
+  },
+  {
+    "route": "qwen",
+    "http_status": 200,
+    "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+    "content_present": true,
+    "marker_match": true,
+    "finish_reason": "stop",
+    "seconds": 1.65
+  }
+]

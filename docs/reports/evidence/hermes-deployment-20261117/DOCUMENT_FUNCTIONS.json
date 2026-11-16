@@ -1,0 +1,8 @@
+{
+  "pdf_text": true,
+  "docx_readback": true,
+  "xlsx_readback": true,
+  "pptx_readback": true,
+  "synthetic_data": true,
+  "visual_rendering_tested": false
+}

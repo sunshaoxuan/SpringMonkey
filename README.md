@@ -1,5 +1,7 @@
 # SpringMonkey
 
+Current host, 2026-11-17: Ubuntu26.10 with a deployed Hermes CLI pilot, Tailscale and FRP. See [deployment report](docs/reports/HERMES_DEPLOYMENT_2026-11-17.md). Older OpenClaw records below are historical; Discord remains disconnected.
+
 This repository stores the non-secret operating documents for `汤猴` / `OpenClaw`.
 
 **Before searching ad hoc:** read **`docs/CAPABILITY_INDEX.md`** — known capabilities, scripts, and which document is canonical (including ops vs reports duplicates).  
