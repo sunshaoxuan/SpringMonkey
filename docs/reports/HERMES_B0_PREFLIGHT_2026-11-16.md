@@ -1,6 +1,6 @@
 # Hermes B0 前置核查记录
 
-后续固定源码复核见 [最终三候选比较](AGENT_FINAL_COMPARISON_2026-11-16.md)：Hermes v0.23.1 的部分 HTTP200 内容拒绝处理可进入备用切换路径，与在线指南有差异。原计划的拒绝终态仍是未通过的验收条件。本报告 B0 HOLD 保持，模型目录/软件包/镜像元数据有效证据继续复用；研究推荐的首选已调整为 nanobot，用户未发起部署。
+用户已确认 **Hermes 主选，Skills 生态优先**。本轮更新见 [首批 Skills 与模型接入计划](HERMES_FIRST_BATCH_SKILLS_2026-11-16.md)：九项候选已逐项审查，Office 基础读取进入首批，依赖候选闭包扩为20项；目录仍41模型，远端私有上游仍超时，路由查询走wlp4s0网关。固定 v0.23.1 的部分内容拒绝可进入备用路径，拒绝终态继续列为未通过条件。B0 HOLD 保持，未部署。
 
 日期：2026-11-16，Asia/Tokyo。关联：[试点主计划](HERMES_PILOT_READONLY_2026-11-16.md)。范围：只读核查、本地公开源码审查、文档与候选冻结。实际部署未执行，Discord 未接入。
 
@@ -105,7 +105,7 @@ Registry 实查结果：`nousresearch/hermes-agent:v0.23.1`、`:stable`、`:late
 | 内置 hermes-agent 指南 | MIT；包含配置、安装和委派指引，没有自动执行本体；框架将其视为 essential | 作为框架操作指南审查，禁止据此扩大安装/委派权限 |
 | document-to-action-items | MIT；纯流程，使用 read_file/web_extract，提取依赖 PDF/Office；原文还包含创建外部 tracker 记录 | 允许本地引用与待办草案，外部 tracker 工具不启用，无渠道凭据 |
 | pdf | MIT；Python 脚本依赖 pypdf/reportlab/pdfplumber，渲染涉及 pypdfium2 或 poppler；有按路径写文件的功能 | 首批仅文本/表格/元数据提取，输入输出限 workspace；不加载 OCR/nano-pdf 子流程 |
-| microsoft-office | MIT；python-docx/openpyxl/python-pptx，渲染/重算还会启动 LibreOffice、poppler | 已审查依赖和边界，仍安排 B2；首批不需要整套渲染环境 |
+| microsoft-office | MIT；python-docx/openpyxl/python-pptx，渲染/重算还会启动 LibreOffice、poppler | 本轮基础读取及工作区草稿纳入首批，渲染/重算仍属 B2；不装整套桌面 |
 | DDGS 搜索 provider | 官方源码在 MIT 仓库，插件声明 ddgs extra；无 API key，启动独立搜索子进程并设超时回收 | 作为无额外付费搜索 key 的候选；实际搜索可靠性及页面提取另在 B1 验收 |
 
 原始来源：[PDF Skill](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/skills/productivity/pdf/SKILL.md)、[待办 Skill](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/skills/productivity/document-to-action-items/SKILL.md)、[Office Skill](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/skills/productivity/microsoft-office/SKILL.md)。读取关联目录全部 blob，39 个 Python 文件进行了 AST 解析和风险定位索引，重点逐行审查 pdf_read.py 及安装、OCR、渲染、外部写入相关路径。AST 成功仅证明语法可解析，未执行这些脚本，不能据此宣称安全扫描或行为测试通过。
@@ -125,7 +125,7 @@ Registry 实查结果：`nousresearch/hermes-agent:v0.23.1`、`:stable`、`:late
 | openpyxl，B2 | 3.1.5 | MIT |
 | python-pptx，B2 | 1.0.2 | MIT |
 
-首批 PDF 与 DDGS 的 uv.lock 默认依赖闭包共 14 项，包含 cffi、charset-normalizer、click、cryptography、lxml、pdfminer-six、Pillow、primp、pycparser。发布声明分别为 MIT-0、MIT、BSD-3-Clause、Apache-2.0 OR BSD-3-Clause、BSD-3-Clause、MIT、MIT-CMU、MIT、BSD-3-Clause。pypdfium2 的底层 PDFium 及其第三方 notices 应随安装产物保留，不能统一标成 MIT。[pypdfium2 发布说明](https://pypi.org/project/pypdfium2/5.14.0/)
+首次 PDF 与 DDGS 的 uv.lock 默认依赖闭包为14项；本轮加入Office后并集为20项，新增元数据见首批 Skills 专项记录。原闭包的 cffi、charset-normalizer、click、cryptography、lxml、pdfminer-six、Pillow、primp、pycparser 发布声明分别为 MIT-0、MIT、BSD-3-Clause、Apache-2.0 OR BSD-3-Clause、BSD-3-Clause、MIT、MIT-CMU、MIT、BSD-3-Clause。pypdfium2 的底层 PDFium 及其第三方 notices 应随安装产物保留，不能统一标成 MIT。[pypdfium2 发布说明](https://pypi.org/project/pypdfium2/5.14.0/)
 
 这是版本绑定的许可声明审查，范围不覆盖镜像所有软件或原生库全量审计。PyPI 当前这 14 项的漏洞列表为空，只作为该源的采样结果，不等于漏洞扫描或无漏洞保证。候选安装使用冻结锁及包摘要，B1 核对实际安装列表与 notices。
 
@@ -150,7 +150,7 @@ Registry 实查结果：`nousresearch/hermes-agent:v0.23.1`、`:stable`、`:late
 | 镜像 tag、平台和 digest | PASS，元数据层面 | v0.23.1 固定 index/amd64；未拉层、未运行 |
 | 首批 Skill 源码及许可、依赖边界 | PASS，条件准入 | 已选子集与排除路径明确；运行环境和权限必须在 B1 兑现 |
 | 独立备用、硬额度及三路协议 | 未完成 | 目录不能证明配额与推理可用 |
-| B0 总体放行 | HOLD | 入口和预算条件补齐后再更新，当前禁止进入安装 |
+| B0 总体放行 | HOLD | 入口、独立备用与额度、拒绝语义及受控依赖条件补齐后再更新，当前禁止进入安装 |
 
 当前应先落实一个 SpringMonkey 可访问的安全接口入口，并明确 DeepSeek/Qwen 备用来源与额度。这涉及网关或新接口配置，保留为用户后续授权的有界变更。不得为使 B0 通过而擅自公开现有端口、修改 Sub2API、安装 FRP/Tailscale 新转发或接入 Discord。
 

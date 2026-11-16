@@ -1,12 +1,12 @@
 # SpringMonkey 自托管 Agent 替代方案调查
 
-后续已完成 [Hermes、nanobot、Agent Zero 固定稳定版深入比较](AGENT_FINAL_COMPARISON_2026-11-16.md)，最终研究推荐 nanobot 为 SpringMonkey 首选。本文保留广泛候选调查；下文“三者对照”的建议现由该深入比较补齐，实际部署和 B1 测试仍未执行。
+用户在 [三候选固定稳定版比较](AGENT_FINAL_COMPARISON_2026-11-16.md) 后明确选择 **Hermes 主选，Skills 生态优先**，当前部署准备见 [首批 Skills 与模型接入计划](HERMES_FIRST_BATCH_SKILLS_2026-11-16.md)。本文保留广泛候选事实与此前对照思路，不再构成多平台部署建议；未安装或执行 B1。
 
 日期：2026-11-16，Asia/Tokyo。范围：近期 News、官方技术文章、GitHub 及本机适配分析。仅调查，无主机连接、安装、部署、推理请求或 Discord 接入。Hermes 原计划继续保留，本文不代表已决定更换。
 
 ## 1. 当前结论
 
-建议将 **nanobot、Agent Zero、goose、QwenPaw** 纳入 Hermes 之外的实际候选。按本次需求，优先比较 **Hermes、nanobot、Agent Zero** 三者；goose 适合重视 MCP/CLI 工具生态的使用方式，QwenPaw 适合重视中文生态与可视化管理的使用方式。排序属于结合公开资料与主机约束的判断，尚无本机横向实测。
+当前按用户选择收口到 **Hermes**。此前调查将 nanobot、Agent Zero、goose、QwenPaw 纳入可比候选，相关能力事实保留。goose 适合重视 MCP/CLI 工具生态的使用方式，QwenPaw 适合重视中文生态与可视化管理的使用方式。下列分用途判断不改变当前主选，也没有本机横向实测。
 
 * 想尽快获得带 WebUI、记忆、定时任务和多模型链的个人助手：优先核查 nanobot。
 * 想要研究、浏览器、文件、终端集中在一个可视工作台：优先核查 Agent Zero。
@@ -70,7 +70,7 @@ SpringMonkey 指刚重装的物理主机 `ubuntu-2625`，沿用当日已验 Ubun
 
 ## 4. 重点候选的模型、扩展与边界
 
-### nanobot：最值得与 Hermes 并列试验
+### nanobot：保留为资源与组件收敛的比较候选
 
 当前官方文档提供 WebUI/CLI、会话、长期记忆、自动化、MCP、Skills 与 model presets。Python 3.11+，可走 Docker 或 Linux 服务。单实例配外部模型符合本机的规划方向；没有进行内存/吞吐对比。
 
@@ -121,7 +121,7 @@ Deep Agents 开源 SDK 可自托管；新闻中的 Managed Deep Agents 由 LangS
 
 ## 6. 推荐的下一轮对照方式
 
-继续保留 Hermes 已有调查，新增两个最有区分度的候选：nanobot 和 Agent Zero。前者对照轻量助手、多模型链与可维护性，后者对照完整工作台的任务体验。goose/QwenPaw 作为需求偏好发生明确变化后的候选，避免同一主机同时堆多个平台。
+前次调查建议用 nanobot 对照轻量助手、多模型链，用 Agent Zero 对照完整工作台，现已完成固定源码比较。用户当前选择 Hermes，先推进其明确的 B0 收口。其他平台比较仅在后续有独立需求时重开，不在同一主机同时安装多套系统。
 
 未来经用户授权测试时，统一使用同一个已可达、限额明确的兼容接口和相同任务样例：公开网页研究、本地脱敏 PDF 提取、带引用报告、三模型故障注入、容器重启恢复。记录正确率、来源可追溯性、请求数/费用、峰值内存、耗时、操作员干预和工具权限。先单任务，无 Discord、无生产数据、无宿主控制权。实际优胜者由该证据决定。
 
