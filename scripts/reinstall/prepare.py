@@ -89,7 +89,7 @@ def make_files(data, debs, fixture=False, keys=None):
         'payload/ssh_host_ed25519_key': host_private,
         'payload/ssh_host_ed25519_key.pub': host_public,
     }
-    for name in ['guard.py', 'install_target.py', 'bootstrap.sh', 'network_ready.py', 'reset-connectivity-ready.service', 'tailscaled-recovery.service']:
+    for name in ['guard.py', 'install_target.py', 'bootstrap.sh', 'network_ready.py', 'reset-connectivity-ready.service', 'tailscaled-recovery.service', 'initramfs-release.sh']:
         files['payload/' + name] = (HERE / name).read_bytes()
     for name, content in debs.items():
         if Path(name).name != name or not name.endswith('.deb'):

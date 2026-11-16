@@ -68,7 +68,7 @@ def main():
     prep = json.loads(command(old, 'cat /srv/springmonkey-reset-prep-20261116/PRODUCTION_BOOT_PREPARATION.json'))
     if prep.get('state') != 'BOOT_PREPARED_NOT_SCHEDULED':
         raise ValueError('boot_not_prepared')
-    if command(old, 'git -C /var/lib/openclaw/repos/SpringMonkey rev-parse HEAD') != args.commit:
+    if command(old, 'git -C /srv/springmonkey-reset-prep-20261116/source rev-parse HEAD') != args.commit:
         raise ValueError('host_source_commit_mismatch')
     staged = json.loads(command(old, 'cat /srv/springmonkey-reset-prep-20261116/production-next/payload/manifest.json'))
     for name, digest in manifest['files'].items():

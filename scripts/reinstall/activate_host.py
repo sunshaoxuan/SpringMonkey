@@ -20,7 +20,7 @@ def main():
     if os.geteuid() != 0 or subprocess.check_output(['hostname'], text=True).strip() != 'ubuntu-2625':
         raise ValueError('authorized_original_host_required')
     validation = json.loads((ROOT / 'RAM_INSTALL_VALIDATION.json').read_text())
-    if validation.get('result') != 'PASS':
+    if validation.get('result') != 'PASS' or validation.get('initramfs_release_marker') != 'PASS':
         raise ValueError('isolated_same_disk_validation_missing')
     payload = ROOT / 'production-next/payload'
     manifest = check_manifest(payload)
@@ -28,9 +28,16 @@ def main():
         raise ValueError('production_payload_required')
     fixture = ROOT / 'fixture-next/payload'
     for name in ['bootstrap.sh', 'guard.py', 'install_target.py', 'network_ready.py',
-                 'reset-connectivity-ready.service', 'tailscaled-recovery.service']:
+                 'reset-connectivity-ready.service', 'tailscaled-recovery.service', 'initramfs-release.sh']:
         if (payload / name).read_bytes() != (fixture / name).read_bytes():
             raise ValueError('tested_common_source_mismatch')
+        if validation.get('tested_common_source_hashes', {}).get(name) != manifest['files'][name]:
+            raise ValueError('validated_source_hash_mismatch')
+        if hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest() != manifest['files'][name]:
+            raise ValueError('pinned_repository_source_mismatch')
+    with (ROOT / 'vm/initrd-release').open('rb') as f:
+        if hashlib.file_digest(f, 'sha256').hexdigest() != validation['initrd_sha256']:
+            raise ValueError('tested_boot_initrd_mismatch')
     disk = manifest['disk']
     actual = {'path': disk['path'],
               'bytes': int(subprocess.check_output(['blockdev', '--getsize64', disk['path']], text=True)),
@@ -61,15 +68,16 @@ def main():
                        check=True, stdout=log, stderr=log, timeout=240)
     iso.chmod(0o600)
     boot = Path('/boot/spring-reset-live'); boot.mkdir(mode=0o755, exist_ok=False)
-    # The official signed kernel/initrd already used by the isolated RAM boot.
+    # Use the isolated boot's official signed kernel and tested initramfs.
     for name in ['vmlinuz', 'initrd']:
-        shutil.copyfile(ROOT / 'vm' / name, boot / name)
+        source = 'initrd-release' if name == 'initrd' else name
+        shutil.copyfile(ROOT / 'vm' / source, boot / name)
         (boot / name).chmod(0o644)
     grub = '''#!/bin/sh
 exec tail -n +3 $0
 menuentry 'SpringMonkey Ubuntu 26.10 reset' --id springmonkey-reset {
     search --no-floppy --file --set=root /srv/springmonkey-reset-prep-20261116/production-installer.iso
-    linux /boot/spring-reset-live/vmlinuz boot=casper iso-scan/filename=/srv/springmonkey-reset-prep-20261116/production-installer.iso toram noprompt noeject autoinstall ds=nocloud\\;s=/cdrom/spring-reset/seed/ panic=30 ---
+    linux /boot/spring-reset-live/vmlinuz boot=casper iso-scan/filename=/srv/springmonkey-reset-prep-20261116/production-installer.iso toram spring-reset-release noprompt noeject autoinstall ds=nocloud\\;s=/cdrom/spring-reset/seed/ panic=30 ---
     initrd /boot/spring-reset-live/initrd
 }
 '''
