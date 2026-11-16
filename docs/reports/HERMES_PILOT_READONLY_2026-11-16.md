@@ -1,4 +1,197 @@
-# SpringMonkey 主机只读核验与 Hermes Agent 试点方案
+# SpringMonkey 重装后 Hermes Agent 试点部署计划
+
+更新：2026-11-16，Asia/Tokyo。状态：调查与计划完成，实际部署未开始。第 1 至 8 节为现行计划，末尾保留的旧报告仅作历史证据。
+
+## 1. 目标和授权范围
+
+在 SpringMonkey 上规划单用户 Hermes Agent，主模型使用用户选定的 ChatGPT/OpenAI 兼容接口，备用依次为 DeepSeek、Qwen。首批支持公开资料研究、文件分析、带来源的报告和工作区文件生成，通过 SSH CLI 使用。Discord 连接资料保持静态保留，后续接入独立安排。
+
+本轮仅公开资料调查、一次远端资源只读探针及文档更新。未安装 Docker、Hermes、Skills 或插件，未修改远端配置，未调用付费推理。Wi-Fi、Tailscale、FRP、SSH 维持既有配置。FRP 二进制禁止下载、复制或运行到用户本机。
+
+结论：Hermes 已有框架、工具调用、状态、Skills、MCP 和原生跨模型兜底等必要组成，适合作为该主机试点基础。本机运行质量、三模型协议兼容性和故障恢复尚待实际验收。公开资料无法证明它复刻 Meta Muse.AI 的内部机制，也不足以承诺相同产品体验。
+
+主指导文档：[TASK_GUIDE](C:/workspace/codex-work/muse-selfhost-research-20261116/TASK_GUIDE.md)。重装证据见 [重装验收报告](AUTOINSTALL_PREPARATION_2026-11-16.md)。历史 Ubuntu 25.10、旧 OpenClaw、旧 Docker、旧网关和旧负载结果均不再作为部署输入。
+
+## 2. 重装后的主机基线
+
+2026-11-16 20:37 JST，经既有 Tailscale SSH 运行 stdin Python 探针，远端未落脚本。证据：[HOST_POSTRESET_PLAN.json](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/hermes-pilot-20261116/HOST_POSTRESET_PLAN.json)。正常连接可能产生系统审计日志。
+
+| 项目 | 现行证据 |
+| --- | --- |
+| 系统 / 内核 | Ubuntu 26.10 / 7.3.0-10-generic |
+| CPU | 4 逻辑线程；前序硬件证据为 i5-5200U、2 物理核 |
+| 内存 | 总计 7.14 GiB，available 6.64 GiB |
+| Swap | 4 GiB，未使用 |
+| 根盘 | 总计约 328.62 GiB，可用约 304.15 GiB |
+| 即时 load | 1/5/15 分钟均为 0.0；本次未做持续压测 |
+| 连通性 | ssh、tailscaled、frpc 均 active，本次实际 SSH 成功 |
+| Wi-Fi / 两路恢复 | 当日重装验收覆盖 Wi-Fi 自动联网及 Tailscale、FRP 两次原生启动后 SSH |
+| 应用 | 当前 Docker 不存在；重装验收确认旧 OpenClaw、Chrome/Chromium 等已移除 |
+| GPU | 前序硬件证据为 Intel HD 5500；方案全部外部推理 |
+
+资源允许规划一个受限实例。浏览器、OCR、Office 转换需单独测峰值。单次空闲采样无法证明长期稳定。旧运维索引中的应用描述属于历史，重装后的实际基线以当日验收和本节为准。
+
+## 3. 版本、容器及资源约束
+
+最新稳定发布采样为 [v0.23.1](https://github.com/NousResearch/hermes-agent/releases/tag/v0.23.1)，发布于 2026-11-10，release 元数据 target_commitish 为 `3b421578588243f920886e6fe79a6faa87ea026e`。部署冻结时须解析 tag 实际提交、验证官方 linux/amd64 镜像标签与 digest；当前未拉镜像或核验镜像清单。固定稳定版本及 digest，停用自动追踪 main。
+
+选择官方容器路径，已读取稳定 tag 的 [Dockerfile](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/Dockerfile) 与 [配置示例](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/cli-config.yaml.example)。运行时及浏览器依赖可由镜像提供。Docker 对 Ubuntu 26.10 的官方支持、软件来源和实际镜像体积列入安装前检，前检不成立则停止安装并重新评估受支持的运行路径。[官方 Docker 指南](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
+
+建议目录 `/srv/hermes-pilot/{state,workspace,policy,backups}`，按镜像 `/opt/data` 约定生成挂载。state 为私有会话与记忆，workspace 为任务输入输出，policy 为管理员维护的指令与已审核 Skills，backups 为严格权限或加密的备份。策略只读挂载和初始 Skills 播种的关系在 B0 核验，禁止假定未经验证的安装参数能实现白名单。
+
+非 root 容器内设置 `terminal.backend=local`，工具在容器中运行。不给 privileged、host network、sudo 或 docker.sock；不挂载宿主根、SSH 私钥、Tailscale/FRP 状态、Discord 备份。移除多余 capabilities，启用 no-new-privileges，写权限限于状态、工作区和必要临时路径。Docker 管理权限留给操作员。
+
+首批通过现有 SSH 使用 CLI，不新增公网端口。Hermes 对外提供的 OpenAI-compatible API server 与上游模型接口是两个方向，试点无需启动该 API server。后续 UI 如有需要，采用 loopback 加 SSH 隧道，另行做鉴权及 UI 验收。
+
+| 规划约束，当前未生效 | 建议值 / 验收 |
+| --- | --- |
+| CPU | 1.5 个逻辑 CPU，核对 cgroup 实际限制 |
+| 内存及总内存含 swap | 3 GiB / 3 GiB，禁止容器消耗宿主 swap |
+| 进程数 | 512，核对正常任务峰值 |
+| 并发 | 1 个顶层任务，首批关闭委派 |
+| 浏览器 | B2 开放，至多 2 个页面，验证超时清理 |
+| 数据 | 10 GiB 软预算及日志轮转；普通卷没有天然硬配额 |
+| 主机保护 | available 低于 1.5 GiB 持续 60 秒，或根盘可用低于 40 GiB，停止试点任务；部署时落实监测，只终止自身容器 |
+
+## 4. 三模型接入、兜底和预算
+
+调用方向：用户 → Hermes 单一任务循环 → 主 ChatGPT 兼容路由 → DeepSeek → Qwen。SpringMonkey 承担编排、工具和状态；模型在外部运行。Hermes 配置不改动用户本机 Codex 的全局 provider、模型和订阅认证。
+
+ChatGPT OAuth、OpenAI API key 和第三方兼容网关是不同接入方式。本方案按用户要求使用 `base_url + key + model ID` 的兼容路由；若后续选择 ChatGPT 订阅，改走 Hermes 独立 Codex OAuth 路径，并重新验证 Responses 协议。不能从 ChatGPT 登录状态推定兼容接口凭据已具备。[官方供应商指南](https://hermes-agent.nousresearch.com/docs/integrations/providers)
+
+部署前冻结三条实际路由的服务来源、HTTPS URL、精确 model ID、凭据引用、协议、上下文窗口、工具/流式能力、费用与配额。凭据通过安全渠道进入受限配置，不写 Git、日志或聊天。旧 OpenClaw 模型名与旧网关可达性结果不再复用。
+
+独立服务候选：DeepSeek 官方当前列出的正式模型包含 `deepseek-flash`，兼容 base URL 为 `https://api.deepseek.com`；部署时再通过该服务的 `/models` 确认账号能力，不使用旧别名。Qwen 可走阿里云 Model Studio 的 OpenAI-compatible 接口，其域名包含 workspace 与地域，API key 必须与地域匹配，不能统一拼成任意域名的 `/v1`。下方 Qwen URL 只是结构占位，实际应保留官方给出的 `/compatible-mode/v1` 路径。供应商兼容文档的北京示例与迁移说明存在地域拼写不一致，冻结时以目标 workspace 控制台和地域端点文档交叉确认。来源：[DeepSeek 接入](https://api-docs.deepseek.com/quick_start/agent_integrations/)、[模型目录](https://api-docs.deepseek.com/api/list-models/)、[Qwen 兼容接口](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope)。这些均为公开文档观察，未使用任何账号发出模型请求。
+
+以下是非执行性结构草案，占位符须替换。主路由凭据由官方设置工具生成并核验其引用。本段只表示结构，不是可直接部署的完整配置。
+
+```yaml
+model:
+  provider: custom
+  default: "<CHATGPT_EXACT_MODEL_ID>"
+  base_url: "https://<CHATGPT_GATEWAY>/v1"
+fallback_providers:
+  - provider: custom
+    model: "<DEEPSEEK_EXACT_MODEL_ID>"
+    base_url: "https://<DEEPSEEK_ENDPOINT>/v1"
+    key_env: HERMES_DEEPSEEK_API_KEY
+  - provider: custom
+    model: "<QWEN_EXACT_MODEL_ID>"
+    base_url: "https://<QWEN_ENDPOINT>/v1"
+    key_env: HERMES_QWEN_API_KEY
+```
+
+采用现行 `fallback_providers`。稳定 tag 的 [fallback_config.py](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/fallback_config.py) 确认了有序列表、逐路由 `key_env` 及去重逻辑。[官方兜底指南](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) 的详细错误语义及检查命令须在选定镜像验收，main 文档不能替代稳定镜像实测。
+
+| 情况 | 预期行为及验收 |
+| --- | --- |
+| 429、暂时性 5xx、连接中断 | 有界重试后沿链切换，记录原因、实际路由和耗时 |
+| 401 / 403 / 404 | 显示凭据、权限或模型映射故障及切换，保留修复项 |
+| 400 / 上下文超限 / schema 不兼容 | 分类定位、按已验证能力调整参数或压缩，避免无限重试 |
+| 空答或非法响应 | 验证解析及有界切换，区分 reasoning-only 与真正空答 |
+| 拒绝或 content_filter | 保留终态，禁止通过备用模型绕过 |
+| 全链失败或超预算 | 保存检查点，明确失败，停止任务 |
+| 工具已执行后模型失败 | 保留 tool-call/result 关联；本地有副作用动作不自动重放，注入测试要求动作计数一次 |
+
+三路各自验证中文、流式、JSON、工具参数/结果、reasoning 参数和上下文边界；不用一次成功掩盖另一路失败。文本备用无法替代未验证的视觉能力。模型切换可能增加上下文输入和缓存失效费用。
+
+三个模型共享同一网关时，网关、账户与网络故障域仍共享。建议至少一路备用使用独立服务和独立额度，部署时核对实际供应商。Hermes 与网关的跨模型重试只保留一个负责层，避免次数相乘。
+
+压缩、标题等辅助调用也显式绑定批准路由，按实际日志验证；首批停用图像、语音、嵌入服务。第三方备用能够接收哪些上下文需事先明确，默认不导入公司资料、私人消息或生产凭据。
+
+预算建议：每任务 15 分钟、30 次模型请求，含重试和辅助调用；首次试点总费用建议上限 USD 10，均待实施。优先供应商侧硬额度，CLI 提示不能当作硬费用限制。缺乏可靠额度或停止机制时仅开展人工在场的小样本。请求超时、重试和总期限使用统一预算，字段及效果按稳定版验证。
+
+## 5. GitHub 扩展调查
+
+公开搜索按 Stars 排序，查询 `hermes skills in:name,description` 和 `awesome hermes agent in:name,description`，补查官方及通用 Skills/MCP 项目。元数据采样为 2026-11-16 20:32 JST，共记录 37 个仓库、读取精选 12 个 README。Stars 是关注度指标，GitHub 没有统一插件评分。本轮未运行第三方代码，未完成安全审计。
+
+完整元数据：[GITHUB_REPOSITORIES](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/hermes-pilot-20261116/GITHUB_REPOSITORIES.json)；README blob SHA 及发布来源：[SOURCE_MANIFEST](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/hermes-pilot-20261116/SOURCE_MANIFEST.json)。最近推送可以包含任何分支更新。API 许可证字段为空或 NOASSERTION 时仍需查实际 LICENSE。
+
+| 仓库 | Stars | 最近推送 UTC 日期 | 类型、许可证观察及决定 |
+| --- | ---: | --- | --- |
+| [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | 263,784 | 11-16 | 官方框架及 Skills，MIT；第一优先，固定稳定版本 |
+| [0xNyk/awesome-hermes-agent](https://github.com/0xNyk/awesome-hermes-agent) | 6,027 | 10-27 | Hermes 生态索引，API 为 NOASSERTION；优先发现候选并逐项回源 |
+| [ZeroPointRepo/awesome-hermes-skills](https://github.com/ZeroPointRepo/awesome-hermes-skills) | 683 | 11-02 | Hermes Skills 索引，MIT；研究和文档候选池 |
+| [ksimback/hermes-ecosystem](https://github.com/ksimback/hermes-ecosystem) | 1,355 | 11-16 | Hermes Atlas 导航站，API 许可证未识别；交叉发现即可 |
+| [anthropics/skills](https://github.com/anthropics/skills) | 195,642 | 11-14 | 通用 Skills，README 声明 Apache 2.0、API 未识别；按目录 LICENSE 复核后适配 |
+| [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) | 37,231 | 11-15 | 通用 Skills 索引，MIT；补充来源，逐项适配工具与依赖 |
+| [obra/superpowers](https://github.com/obra/superpowers) | 318,304 | 11-03 | 开发工作流及宿主适配，MIT；后续编码阶段择取，整套接入待评估 |
+| [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | 79,619 | 09-18 | Claude Skills 索引，API 许可证未识别；补充发现，外部写连接器暂缓 |
+| [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | 39,721 | 11-15 | 浏览器 MCP，Apache-2.0；B2 备选，先比较 Hermes 自带浏览器 |
+| [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) | 92,037 | 11-12 | MCP 参考服务及索引，API 为 NOASSERTION；按需选只读服务并查目标许可 |
+| [outsourc-e/hermes-workspace](https://github.com/outsourc-e/hermes-workspace) | 6,827 | 11-05 | 独立 Web 工作台和多 Agent 能力，MIT；后续 UI 候选，首批 CLI 无需引入 |
+| [apoapostolov/hermes-agent-awesome-plugins](https://github.com/apoapostolov/hermes-agent-awesome-plugins) | 53 | 11-16 | 插件集，MIT，多数面向 Desktop；personal 树声明调用 Desktop 内部接口，暂缓 |
+| [NousResearch/hermes-agent-self-evolution](https://github.com/NousResearch/hermes-agent-self-evolution) | 5,717 | 06-17 | DSPy/GEPA 演化管线，API 许可证未识别；首批暂缓 |
+
+另查到 `mergisi/awesome-hermes-agent` 为 6 Stars、`frankxai/awesome-hermes-agents` 为 8 Stars，本轮不作为高关注来源。索引许可证不覆盖所有外链，实际内容、脚本和授权需逐项审核。
+
+Skill 是按需流程和资源，Plugin 可加载 Python/hooks，MCP 是单独工具服务，workspace/Agent 项目可能是完整系统。SKILL.md 标准提供迁移基础，工具名、宿主指令、依赖和 SDK 仍需适配。机制来源：[Skills](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)、[Plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins)、[Plugin Catalog](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugin-catalog)。
+
+## 6. 首批能力包和准入
+
+首批一个实例顺序完成资料收集、整理、核验。关闭委派、自改策略、自动安装扩展、外部写入与定时任务；允许在工作区提出技能草稿供审阅。
+
+| 能力 | 首选来源 | 纳入条件与边界 |
+| --- | --- | --- |
+| 网页研究 | Hermes 内置搜索、提取 | 给出来源和日期，事实与推断分开；搜索服务不可用时显式失败 |
+| 文档转待办 | 官方 `productivity/document-to-action-items` | 稳定 tag 已读，MIT；仅生成有定位的草案，关闭外部 tracker 工具 |
+| PDF 文本 | 官方 `productivity/pdf` 候选 | 本轮目标文件下载遇 429，脚本与依赖待 B0 补审，通过后纳入 |
+| Office 文件 | 官方 microsoft-office 或 Anthropic 对应单项 | 按需求二选一，检查依赖和实际文件渲染，后续批次 |
+| 报告核验 | 内置文件工具、任务记录及核验清单 | 输出仅在 workspace，保留引用与不确定性 |
+| 浏览器 | 优先 Hermes 自带，Playwright MCP 备选 | B2 启用，空白独立 profile，限制页面、下载与可访问目标 |
+
+目录来源：[Bundled Skills](https://hermes-agent.nousresearch.com/docs/reference/skills-catalog)、[Optional Skills](https://hermes-agent.nousresearch.com/docs/reference/optional-skills-catalog)。核验冻结版本的初始化播种和实际启用项，不使用未经验证的 `--no-skills` 安装参数。document-to-action-items 本身包含创建外部记录阶段，必须通过工具权限关闭该能力。
+
+每项记录精确 commit、路径、许可证、Hermes 版本要求、依赖/安装脚本、工具权限、网络目标、凭据与回滚。Plugin 优先采用官方目录固定审阅 SHA，检查 `requires_hermes`，审核时间范围不替代本次检查。首批无需额外记忆数据库、RAG 或常驻 hooks。
+
+审批采用 manual 方向，无人值守危险命令拒绝，具体字段按稳定版验证。[官方安全说明](https://hermes-agent.nousresearch.com/docs/user-guide/security)。命令审批、文件工具限制和容器权限分别覆盖不同边界；容器内进程可能读取自身推理凭据，使用独立低额度凭据、最小上下文与挂载限制降低影响。
+
+## 7. 后续部署批次、验收和回滚
+
+以下均为待执行计划，实际安装需用户后续发起部署指令。
+
+| 批次 | 变更及依赖 | 验收与停止条件 |
+| --- | --- | --- |
+| B0 冻结候选 | Ubuntu 的官方 Docker 安装路径、镜像身份、真实三路模型目录/协议/费用、Skills 许可证与依赖、UID/目录、预算 | 脱敏清单和生成配置完整；依赖缺证据则停止 |
+| B1 最小端到端 | 安装确认后的容器运行时，单 CLI 实例，三路模型，研究及工作区文件工具 | 逐路真实调用、受控故障注入和固定研究样例，记录实际路由与成本 |
+| B2 文档及浏览器 | B1 通过后按需增加 PDF/Office/单一浏览器方案 | CPU/内存/超时回收、文档及页面产物检查；消息渠道保持关闭 |
+| B3 可选自动化 | 独立授权的只读定时任务 | 去重、预算、无人值守拒绝、停止及恢复验证；Discord 独立安排 |
+
+B1 正式检查冻结镜像、配置、Skills commit、输入及模型映射后集中运行，预计 30 至 60 分钟，受 API 时延影响。同输入只跟踪原运行，具体失败才修复并重跑受影响项。
+
+| 必需检查 | 通过标准 |
+| --- | --- |
+| 三路协议 | 各路独立完成中文、流式、JSON/tool call，映射和辅助调用可解释 |
+| 故障链 | 主路由 429/503 切 DeepSeek，再失败切 Qwen，全失败停止；记录重试与耗时 |
+| 错误分类 | 401/404 可见，参数错误不无限重试，拒绝终止，长上下文按已验能力处理 |
+| 副作用 | 本地样例在工具完成后注入模型故障，动作计数仍为一次；真实外部写禁用 |
+| 质量 | 两个固定公开问题及一个脱敏文档，事实可回源，无法确认的内容显式标记 |
+| 状态 | 重启自身容器后会话、配置和输出恢复，主机无需重启 |
+| 隔离 | 无宿主敏感挂载、socket、提权或新增公开端口，策略写入被权限拒绝 |
+| 预算 | 重试和辅助调用计费可核对，额度及超预算停止有效 |
+| 主机保护 | 任务期间实际 SSH 重连成功，原联网配置不变，资源停止策略有效 |
+
+部署实现和模板先入 Git 分支，再由批准流程应用。秘密和会话私有数据不入库。保留镜像 digest、配置及 Skills 版本、脱敏验收、受限备份。回滚仅停止本试点容器、撤销试点凭据或额度、恢复自身状态。Docker 的卸载单独检查其他消费者，禁止全局 prune。Wi-Fi、Tailscale、FRP、SSH 和 Discord 静态保留资料不在删除范围。
+
+## 8. 本轮验收结果
+
+| 项目 | 结果 | 证据与局限 |
+| --- | --- | --- |
+| 主机只读资源核验 | PASS | HOST_POSTRESET_PLAN；自动恢复复用当日重装验收 |
+| 官方框架、稳定版本与扩展机制调查 | PASS | release、稳定 tag 配置/Dockerfile/fallback、官方文档 |
+| GitHub 候选分类 | PASS | 37 仓库元数据及 12 README；未执行代码，未完成逐项安全审计 |
+| 分批计划、预算、隔离和回滚 | PASS，文档层面 | 第 3 至 7 节，建议配置均未生效 |
+| 安装、三路推理、故障注入 | 未执行 | 等待未来 B0/B1，实际 URL/model ID/额度待冻结 |
+| PDF 及第三方逐项审查 | 未完成，安装前必需 | 目标文件 raw 下载 429，暂无可宣称已审核通过的安装清单 |
+| Discord | 范围外 | 未读取 token、未发消息，维持静态保留 |
+
+本轮完成标准为调查与计划。部署验收未开始，不能据此宣称三模型已运行成功或扩展已安全安装。
+
+## 历史报告，重装前采样，仅供追溯
+
+以下内容保留原文。环境、连接状态和拟议路径全部属于重装前历史，现行部署判断以以上第 1 至 8 节为准。
+
+# SpringMonkey 主机只读核验与 Hermes Agent 试点方案，历史
 
 日期：2026-11-16，Asia/Tokyo。主目标：在 SpringMonkey 自托管 Muse 类个人助手，外接兼容模型并具备多模型兜底。本批授权为本机连接资料调查、远端只读核验和方案细化，暂不部署。
 
