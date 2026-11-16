@@ -1,12 +1,12 @@
 # SpringMonkey 重装后 Hermes Agent 试点部署计划
 
-更新：2026-11-16，Asia/Tokyo。状态：调查与计划完成，实际部署未开始。第 1 至 8 节为现行计划，末尾保留的旧报告仅作历史证据。
+更新：2026-11-16，Asia/Tokyo。状态：B0 只读核查完成，入口及额度条件未满足，总体 HOLD，实际部署未开始。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新版本绑定、主机条件、接口与 Skills 审查以 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md) 为准。
 
 ## 1. 目标和授权范围
 
 在 SpringMonkey 上规划单用户 Hermes Agent，主模型使用用户选定的 ChatGPT/OpenAI 兼容接口，备用依次为 DeepSeek、Qwen。首批支持公开资料研究、文件分析、带来源的报告和工作区文件生成，通过 SSH CLI 使用。Discord 连接资料保持静态保留，后续接入独立安排。
 
-本轮仅公开资料调查、一次远端资源只读探针及文档更新。未安装 Docker、Hermes、Skills 或插件，未修改远端配置，未调用付费推理。Wi-Fi、Tailscale、FRP、SSH 维持既有配置。FRP 二进制禁止下载、复制或运行到用户本机。
+首轮为公开资料调查、一次远端资源只读探针及文档更新；追加 B0 获授权读取本机既有接口配置、认证查询模型目录、检查远端安装条件并读取 registry 元数据与固定源码。未安装 Docker、Hermes、Skills 或插件，未修改远端配置，未发起生成请求。Wi-Fi、Tailscale、FRP、SSH 维持既有配置。FRP 二进制禁止下载、复制或运行到用户本机。
 
 结论：Hermes 已有框架、工具调用、状态、Skills、MCP 和原生跨模型兜底等必要组成，适合作为该主机试点基础。本机运行质量、三模型协议兼容性和故障恢复尚待实际验收。公开资料无法证明它复刻 Meta Muse.AI 的内部机制，也不足以承诺相同产品体验。
 
@@ -33,13 +33,13 @@
 
 ## 3. 版本、容器及资源约束
 
-最新稳定发布采样为 [v0.23.1](https://github.com/NousResearch/hermes-agent/releases/tag/v0.23.1)，发布于 2026-11-10，release 元数据 target_commitish 为 `3b421578588243f920886e6fe79a6faa87ea026e`。部署冻结时须解析 tag 实际提交、验证官方 linux/amd64 镜像标签与 digest；当前未拉镜像或核验镜像清单。固定稳定版本及 digest，停用自动追踪 main。
+最新稳定发布采样为 [v0.23.1](https://github.com/NousResearch/hermes-agent/releases/tag/v0.23.1)，发布于 2026-11-10。B0 已解析 tag 实际 commit 为 `3b421578588243f920886e6fe79a6faa87ea026e`，并验证 registry 的 `v0.23.1`、stable、latest 指向同一 index，实际无 v 的 `0.23.1` 标签返回 404。index 与 amd64 manifest digest 已冻结在 B0 明细；只读元数据，未下载 layer 或运行镜像。固定 digest，停用自动追踪 main。
 
-选择官方容器路径，已读取稳定 tag 的 [Dockerfile](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/Dockerfile) 与 [配置示例](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/cli-config.yaml.example)。运行时及浏览器依赖可由镜像提供。Docker 对 Ubuntu 26.10 的官方支持、软件来源和实际镜像体积列入安装前检，前检不成立则停止安装并重新评估受支持的运行路径。[官方 Docker 指南](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
+选择官方容器路径，已读取稳定 tag 的 [Dockerfile](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/Dockerfile) 与 [配置示例](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/cli-config.yaml.example)。B0 确认 Docker 官方支持 Ubuntu 26.10，远端可取 stonking/amd64 包索引且签名及摘要核对通过；镜像压缩层约 1.04 GiB，解压占用待安装验收。PDF 提取库与 DDGS 并非都已烘入镜像，按 B0 清单准备依赖。[官方 Docker 指南](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
 
 建议目录 `/srv/hermes-pilot/{state,workspace,policy,backups}`，按镜像 `/opt/data` 约定生成挂载。state 为私有会话与记忆，workspace 为任务输入输出，policy 为管理员维护的指令与已审核 Skills，backups 为严格权限或加密的备份。策略只读挂载和初始 Skills 播种的关系在 B0 核验，禁止假定未经验证的安装参数能实现白名单。
 
-非 root 容器内设置 `terminal.backend=local`，工具在容器中运行。不给 privileged、host network、sudo 或 docker.sock；不挂载宿主根、SSH 私钥、Tailscale/FRP 状态、Discord 备份。移除多余 capabilities，启用 no-new-privileges，写权限限于状态、工作区和必要临时路径。Docker 管理权限留给操作员。
+官方镜像以 root 初始化 s6 和目录后，降权到 hermes 运行 Agent；不套用任意 `--user`。设置 `terminal.backend=local`，工具在容器中运行。不给 privileged、host network、sudo 或 docker.sock；不挂载宿主根、SSH 私钥、Tailscale/FRP 状态、Discord 备份。capabilities 和 no-new-privileges 与该初始化契约共同验证，不预填硬化 PASS。写权限限于状态、工作区和必要临时路径，Docker 管理权限留给操作员。
 
 首批通过现有 SSH 使用 CLI，不新增公网端口。Hermes 对外提供的 OpenAI-compatible API server 与上游模型接口是两个方向，试点无需启动该 API server。后续 UI 如有需要，采用 loopback 加 SSH 隧道，另行做鉴权及 UI 验收。
 
@@ -60,6 +60,8 @@
 ChatGPT OAuth、OpenAI API key 和第三方兼容网关是不同接入方式。本方案按用户要求使用 `base_url + key + model ID` 的兼容路由；若后续选择 ChatGPT 订阅，改走 Hermes 独立 Codex OAuth 路径，并重新验证 Responses 协议。不能从 ChatGPT 登录状态推定兼容接口凭据已具备。[官方供应商指南](https://hermes-agent.nousresearch.com/docs/integrations/providers)
 
 部署前冻结三条实际路由的服务来源、HTTPS URL、精确 model ID、凭据引用、协议、上下文窗口、工具/流式能力、费用与配额。凭据通过安全渠道进入受限配置，不写 Git、日志或聊天。旧 OpenClaw 模型名与旧网关可达性结果不再复用。
+
+B0 已从现有本机网关获取 41 个 model ID，主候选 gpt-6-astra、DeepSeek 正式 ID deepseek-flash 以及一个 Qwen GGUF 路由目录可见。网关只发布 Windows loopback，SpringMonkey 访问其私有上游 TCP 超时，尚无可填入远端的已验证安全入口。独立备用与额度也未确立，因此三路配置仍为草案，生成和故障注入保留 B1。
 
 独立服务候选：DeepSeek 官方当前列出的正式模型包含 `deepseek-flash`，兼容 base URL 为 `https://api.deepseek.com`；部署时再通过该服务的 `/models` 确认账号能力，不使用旧别名。Qwen 可走阿里云 Model Studio 的 OpenAI-compatible 接口，其域名包含 workspace 与地域，API key 必须与地域匹配，不能统一拼成任意域名的 `/v1`。下方 Qwen URL 只是结构占位，实际应保留官方给出的 `/compatible-mode/v1` 路径。供应商兼容文档的北京示例与迁移说明存在地域拼写不一致，冻结时以目标 workspace 控制台和地域端点文档交叉确认。来源：[DeepSeek 接入](https://api-docs.deepseek.com/quick_start/agent_integrations/)、[模型目录](https://api-docs.deepseek.com/api/list-models/)、[Qwen 兼容接口](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope)。这些均为公开文档观察，未使用任何账号发出模型请求。
 
@@ -135,7 +137,7 @@ Skill 是按需流程和资源，Plugin 可加载 Python/hooks，MCP 是单独�
 | --- | --- | --- |
 | 网页研究 | Hermes 内置搜索、提取 | 给出来源和日期，事实与推断分开；搜索服务不可用时显式失败 |
 | 文档转待办 | 官方 `productivity/document-to-action-items` | 稳定 tag 已读，MIT；仅生成有定位的草案，关闭外部 tracker 工具 |
-| PDF 文本 | 官方 `productivity/pdf` 候选 | 本轮目标文件下载遇 429，脚本与依赖待 B0 补审，通过后纳入 |
+| PDF 文本 | 官方 `productivity/pdf` 选定子集 | B0 已补齐固定源码、MIT 及依赖审查；仅文本/表格/元数据，侧环境与权限在 B1 实测 |
 | Office 文件 | 官方 microsoft-office 或 Anthropic 对应单项 | 按需求二选一，检查依赖和实际文件渲染，后续批次 |
 | 报告核验 | 内置文件工具、任务记录及核验清单 | 输出仅在 workspace，保留引用与不确定性 |
 | 浏览器 | 优先 Hermes 自带，Playwright MCP 备选 | B2 启用，空白独立 profile，限制页面、下载与可访问目标 |
@@ -182,7 +184,7 @@ B1 正式检查冻结镜像、配置、Skills commit、输入及模型映射后�
 | GitHub 候选分类 | PASS | 37 仓库元数据及 12 README；未执行代码，未完成逐项安全审计 |
 | 分批计划、预算、隔离和回滚 | PASS，文档层面 | 第 3 至 7 节，建议配置均未生效 |
 | 安装、三路推理、故障注入 | 未执行 | 等待未来 B0/B1，实际 URL/model ID/额度待冻结 |
-| PDF 及第三方逐项审查 | 未完成，安装前必需 | 目标文件 raw 下载 429，暂无可宣称已审核通过的安装清单 |
+| PDF 及首批依赖、许可和权限审查 | B0 条件准入 | 已补齐固定源码与首批传递依赖声明，按 B0 子集执行；运行态尚未验收，第三方整包未纳入 |
 | Discord | 范围外 | 未读取 token、未发消息，维持静态保留 |
 
 本轮完成标准为调查与计划。部署验收未开始，不能据此宣称三模型已运行成功或扩展已安全安装。
