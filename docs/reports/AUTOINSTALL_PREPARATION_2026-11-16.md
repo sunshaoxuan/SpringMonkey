@@ -1,52 +1,50 @@
-# SpringMonkey 自动重装与远程恢复准备
+# SpringMonkey 重装与远程恢复验收
 
-主记录：[TASK_GUIDE.md](C:/workspace/codex-work/muse-selfhost-research-20261116/TASK_GUIDE.md)。目标：最新 Ubuntu 26.10 amd64，清除旧业务环境，Wi-Fi 无人登录自动联网，SSH 用户/密钥/防火墙可用，Tailscale 优先且 FRP 兜底。用户已授权必需验证全部通过后执行重置升级。首轮候选通过隔离同盘验证后于19:15 JST安排真机one-shot；19:19 JST已回到原Ubuntu25.10，Tailscale SSH恢复，清盘确认未发出。当前补齐Wi-Fi等待和受保护失败诊断，整机升级尚未完成。
+2026-11-16：已重装为 Ubuntu Server 26.10，内核 `7.3.0-10-generic`，主机名保持 `ubuntu-2625`。新系统首次启动和再次重启均通过，Wi-Fi、Tailscale SSH、FRP SSH 自动恢复。主机功能验收 PASS；本机旧测试文件清理存在文末所列策略阻塞项。
 
-## 已保留的现场
+最终范围为干净 Ubuntu 及联网、SSH、防火墙、Tailscale、FRP 所需组件。OpenClaw、Docker、Chrome/Chromium 未安装。Discord 仅保留静态备份，不重连、不发送消息，不安装聊天服务或 Harness。
 
-* Wi-Fi 系统级自动连接配置及凭据：远端受保护配置，本机加密配置包；未在普通文档打印 SSID/PSK。
-* Tailscale 原设备：原先 NeedsLogin，管理页面重新认证成功后，本机 tailscale ssh 实际返回原主机名且退出码 0。认证后版本 1.104.7、Running/Online/RunSSH 均符合预期，身份快照读取稳定且 DPAPI 还原验证通过；旧失效快照另存，不作为可恢复性的有效依据。
-* Discord 当前及旧配置路径中的连接、令牌、guild/channel/DM 策略和相关绑定：已保存远端受保护副本与本机 DPAPI 副本，哈希/还原一致。不采集消息历史、不发送消息、不自动接入未来 Harness。当前配置观测为一个 guild/频道条目，包含 DM 策略；配置并不能证明未来新 Harness 的通道隔离已经验收。
-* 现有 FRP 0.61.0 服务与原操作系统保留。最新 FRP v0.72.0 仅在远端独立目录 staging，配置 verify 通过，未替换现有服务。
+## 实际验收
 
-本机正式恢复目录：[recovery](C:/workspace/codex-work/muse-selfhost-research-20261116/recovery)。远端准备根目录为 `/srv/springmonkey-reset-prep-20261116`，仅 root 可访问。真实状态/密钥不进入 Git 和外部模型上下文。
-
-## 固定输入与实现
-
-* 官方 ISO：ubuntu-26.10-live-server-amd64.iso，SHA-256 `c8e9d797f718404bdb1e282f8466fe6f5f2e9f03c814bdf11b31326d45200929`；本机和远端整文件校验均通过。
-* 目标官方镜像包含 Intel 无线固件。无线网卡实测 Intel AC 3168/iwlwifi；这项软件清单证据不等于目标内核中的实际关联成功。
-* Netplan 经实际 Ubuntu 26.10 generator 验证，使用 NetworkManager，Wi-Fi 按永久 MAC 绑定，独立生成安装环境及目标配置。networkd 不支持此 Wi-Fi match 形式的实测失败已修正。
-* SSH：独立 springadmin 密钥登录、禁止密码和 root OpenSSH 登录、密钥/目录权限、sudo、预先固定的主机公钥用于连接校验。
-* 首启实测发现 cloud-init 重建主机密钥，已加入 ssh_deletekeys:false。更新后的完整同盘候选已完成首启与再次重启，固定密钥登录均通过。
-* 新系统 first-boot gate：NetworkManager 连通、地址和路由正确，账户密钥权限检查，UFW 按连接接口及 tailscale0 允许 SSH，再启动恢复线路。
-* 两条恢复线路独立重连，Tailscale 启动不依赖 FRP 服务端 TCP 可达。安装环境中的已确认 FRP 保持运行，供安装期间诊断。
-* 同盘启动使用官方签名内核、追加 init-bottom 释放脚本的 initramfs、GRUB one-shot 和 toram。原物理主机的 shim/grub/mm 签名二进制已复制到测试 EFI 分区，实际 BootCurrent 与 Secure Boot 均通过。提前释放解决了交接后旧 ext4 引用残留；后续仍检查 RAM 介质、源分区卸载和目标盘独占访问，实测剩余内存约2.2GiB。
-* 安装前 gate：精确磁盘路径/字节数/序列号/GPT 身份、payload 校验、Secure Boot、生产无线链路与 FRP 目标可达性；需实际穿过安装环境 FRP 完成 SSH 确认才继续。
-* Tailscale 恢复材料使用重新认证后的原身份，保持原 RunSSH/WantRunning；不将生产身份启动到隔离 VM。
-
-源码：[scripts/reinstall](../../scripts/reinstall/README.md)。镜像和 schema 来源：[Ubuntu 下载](https://ubuntu.com/download/server)、[官方校验清单](https://releases.ubuntu.com/26.10/SHA256SUMS)、[autoinstall](https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html)。FRP 来源为维护者官方 release，详情见本机脱敏 [manifest](C:/workspace/codex-work/muse-selfhost-research-20261116/LATEST_FRP_REMOTE_MANIFEST.json)。
-
-## 当前验证状态
-
-| 检查 | 状态 |
+| 项目 | 结果 |
 | --- | --- |
-| 错盘、payload 篡改/越界、额外或非 SSH 代理负例 | PASS |
-| 官方 schema、Netplan 生成、SSH 主机密钥配对、bootstrap 语法 | 当前候选 PASS |
-| 本机 DPAPI 还原/破坏密文拒绝 | PASS |
-| 远端现有及最新版 FRP 配置校验 | PASS |
-| 当前原设备 Tailscale 实际 SSH 登录 | PASS |
-| Discord 连接配置备份完整性 | PASS，重连未测试 |
-| 基础隔离安装及新系统 FRP SSH | 完整更新后的同盘候选 PASS |
-| 磁盘介质未复制到内存时阻止释放/清盘负例 | PASS |
-| 同盘 GRUB one-shot、RAM 介质、完整重装与再次重启 | PASS |
-| 最新 FRP、UFW、管理用户、root 拒绝及非 SSH 入站负例 | PASS |
-| 真机 live Wi-Fi、Tailscale 身份恢复及清盘前 SSH 确认 | 未执行 |
-| 真机重置升级及清盘后最终回连 | 未执行 |
+| Ubuntu 26.10 原生启动及再次重启 | PASS，两次 boot-id 不同 |
+| 真实 Wi-Fi | PASS，已连接、系统级配置、autoconnect=yes、默认路由正确 |
+| Tailscale 原身份 | PASS，live、首次启动、再次重启均实际执行 SSH 命令 |
+| FRP 0.72.0 | PASS，安装环境及两次新系统启动均完成固定主机密钥的 SSH 登录 |
+| SSH 管理用户与 sudo | PASS，springadmin 公钥登录、免交互 sudo、权限检查通过 |
+| SSH 与防火墙 | PASS，UFW active；OpenSSH root、密码及键盘交互认证均关闭 |
+| 旧业务环境移除 | PASS，旧应用二进制及相关服务不存在 |
+| Discord 静态保留 | PASS，本机 DPAPI 与新主机 root/0600 文件哈希相同；未重连 |
+| 隔离安装与安全负例 | PASS，同盘 RAM 安装/重启、错盘、篡改、非 SSH 代理、root 登录拒绝、非 SSH 入站拦截、诊断写入边界、恢复入口拒绝等分别验证 |
 
-首轮失败的具体live阶段未保留，当前证据不能判定根因。保存的SSID/PSK与未转义源配置相同、MAC相同、磁盘四项身份均一致。guard新增150秒关联/IPv4地址/默认路由等待，避免立即状态判断；清盘前失败仅在磁盘身份与原manifest绑定均正确时将phase/code写回原root受限目录，ACK后拒绝写入。新增4项边界测试及隔离系统的真实诊断持久化、0600权限、临时挂载释放、ACK后拒绝均PASS；更新候选的同盘综合验证继续进行，既有不受影响证据复用。
+正式证据：[真机验收](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/PHYSICAL_RESET_VALIDATION.json)、[新系统范围核验](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/NATIVE_ACCEPTANCE.json)、[同盘隔离验证](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/RAM_INSTALL_VALIDATION.json)、[失败诊断边界](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/PERSISTENCE_VM_VALIDATION.json)。真实 Wi-Fi 与生产身份结论取自真机；隔离测试使用虚拟以太网，未克隆生产身份。
 
-所有必需项通过前，整机重置验收保持未通过。下载和安装仿真耗时不构成跳过网络/身份/防火墙检查的依据。单盘、无独立控制台的恢复限制仍存在，软件备份不能使卡住的固件自行重启。
+## 连接与备份
 
-## 本机 FRP 策略与清理限制
+现有 Tailscale 入口保持 `tailscale ssh root@ubuntu-2625`。FRP 使用 springadmin 的预置管理密钥，私钥保存在本机 DPAPI 恢复包，实际连接按准备时固定的主机公钥校验。原 root OpenSSH 密码入口已随重装移除。
 
-用户指出本机杀毒策略禁止 FRP 后，已停止本机 FRP 下载、复制、执行及在 WSL/Docker 中运行；加密恢复包已去掉 FRP 二进制，后续只记录远端 hash。顶层 frpc/frps 文件检查为不存在。旧 fixture/payload/frpc 的删除先被复合命令策略拦截，后以唯一实际存在的单文件缩小范围删除仍被策略拦截，未改安全设置或换工具绕过。该旧测试文件仍需由受管终端的正常安全流程处理，不能报告本机已全部清理。
+Discord 连接、认证材料、公司/私有路由相关配置、DM 策略及旧配置副本已保留。额外核查当前/旧 credentials 目录，未发现独立 Discord 配对/允许列表文件。未采集聊天历史。
+
+* 本机正式材料：[recovery](C:/workspace/codex-work/muse-selfhost-research-20261116/recovery)，包含 DPAPI 密文与公开校验元数据。
+* 新主机文件：`/srv/springmonkey-preserved/discord/DISCORD_CONNECTIONS.json`，root 所有，0600，上级保留目录0700。
+* Discord SHA-256：`e4b065c6ee5bfd20ee9393c9b26024bebb8a18277cf5a1872c6cc2cff9001179`。
+* 原 Tailscale 稳定快照已加密保留，最新归档包含15文件且 DPAPI 还原通过，首轮快照另存。
+
+## 输入与执行
+
+官方基础 ISO SHA-256 为 `c8e9d797f718404bdb1e282f8466fe6f5f2e9f03c814bdf11b31326d45200929`，本机与远端整文件校验均通过。最终生产 ISO 仅在远端制作，SHA-256 为 `6b8bcff6e094ad5351cbee81942bed232abb2731e019816abdc5ec347deabb56`，manifest 为 `d295e914d5ef2532a91a1b63bc9a159f3bf688257da7bce6b7bed4c46a5ccd57`。
+
+生产 payload 源码固定 `07c6a54ebfc63c9837d652703bff8ed1f633b1fe`；Windows 控制器固定 `04a1b618288a11a78bf1238fb584419bd088f89b`。源码已推送 `ops/ubuntu-reset-20261116`，安装前远端 Git worktree 与 payload 源码一致。控制器修复未改变有效 Linux 候选或重发重启。
+
+首轮 one-shot 在未收到清盘确认时回到原 Ubuntu25.10，具体 live 失败阶段未保留。复核凭据/MAC/磁盘身份后增加150秒 Wi-Fi 关联、地址及路由等待，以及受保护的清盘前失败记录。第二轮控制连接曾 EOF，恢复跟踪同一次启动后，实际验证两条 live SSH 线路与内存/磁盘前置，才放行重新分区。
+
+同盘启动使用原主机签名 EFI 链、官方签名内核、追加释放脚本的 initramfs、GRUB one-shot、toram。释放源 ISO 分区后仍要求精确磁盘身份、目标盘独占访问及足够内存。新系统使用独立 NetworkManager 配置，Tailscale 与 FRP 独立重连。旧系统及临时安装环境已随重新分区移除。
+
+源码：[reinstall](../../scripts/reinstall/README.md)。来源：[Ubuntu 校验清单](https://releases.ubuntu.com/26.10/SHA256SUMS)、[autoinstall](https://canonical-subiquity.readthedocs-hosted.com/en/latest/reference/autoinstall-reference.html)、[initramfs-tools](https://manpages.ubuntu.com/manpages/resolute/man7/initramfs-tools.7.html)、[Linux initramfs 格式](https://docs.kernel.org/driver-api/early-userspace/buffer-format.html)、[FRP v0.72.0](https://github.com/fatedier/frp/releases/tag/v0.72.0)。
+
+## 本机清理限制
+
+后续 FRP 下载、二进制准备与执行全部在远端完成，本机配置恢复包不含 FRP 二进制。旧文件 `C:/workspace/codex-work/muse-selfhost-research-20261116/fixture/payload/frpc` 的两次原生删除命令在执行前收到 `CreateProcess Rejected: blocked by policy`。该文件仍保留，未更改安全设置或切换工具绕过。此结果不能归因于 Windows ACL、OneDrive 或具体杀毒产品。其他临时材料的实际清理结果见 [清理回执](C:/workspace/codex-work/muse-selfhost-research-20261116/evidence/CLEANUP_RECEIPT.json)。
+
+原生 PowerShell 已清理878个临时文件、3,201,310,171逻辑字节及17个空目录；61份保护材料的哈希保持一致。上述FRP文件和两个无法读取的Linux测试链接明确排除，承载它们的目录保留。主机验收PASS，本机清理按“存在排除保留项”交付。
