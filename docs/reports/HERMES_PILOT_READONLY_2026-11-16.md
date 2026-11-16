@@ -1,10 +1,10 @@
 # SpringMonkey 重装后 Hermes Agent 试点部署计划
 
-2026-11-17 本地实现候选：[拒绝终态与USD10预算准备](HERMES_B0_POLICY_BUDGET_2026-11-17.md)。固定版补丁和独立预算入口已准备，现行模型与辅助调用必须共用持久预算账本。GPT/Qwen实际单价和容量上界未确认，模板失败关闭，B0继续HOLD。此次授权只准备和验证，未部署。
+2026-11-17 用户最新纠正：取消费用预留、预算代理和累计USD10费用停止机制，不再以价格或额度作为B0阻塞，不继续相关调查。保留已验的固定版拒绝终态补丁；原预算候选已从当前代码移除，其报告仅作历史记录。模型直接使用现有接口；暂不部署、不接Discord。
 
 当前用户已确定 **Hermes 为主选，Skills 生态优先**，以 [首批 Skills 与模型接入计划](HERMES_FIRST_BATCH_SKILLS_2026-11-16.md) 为本轮执行准备依据。[三候选深入比较](AGENT_FINAL_COMPARISON_2026-11-16.md) 保留各产品事实，前次 nanobot 排序已由用户选择取代。固定 Hermes v0.23.1 的部分内容拒绝处理存在备用切换路径，与在线说明有差异；“拒绝保持终态”继续作为未通过的放行条件，不因选型确认而省略。
 
-更新：2026-11-17，Asia/Tokyo。状态：远端公网 HTTPS 入口、目录认证以及网关账面额度查询通过，DeepSeek 官方独立入口/余额已有证据；拒绝终态、试点费用停止机制及运行候选继续 HOLD。实际部署未开始，Discord 未接入。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新接口和策略结论见 [三项阻塞补查](HERMES_B0_BLOCKERS_2026-11-17.md)，硬件/镜像/Skills 固定证据沿用 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md)。
+更新：2026-11-17，Asia/Tokyo。状态：远端公网 HTTPS 入口、目录认证以及网关账面额度查询通过，DeepSeek 官方独立入口/余额已有证据；拒绝终态本地补丁已验证，费用机制已取消；实际运行候选仍待未来部署指令后验证。实际部署未开始，Discord 未接入。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新接口和策略结论见 [三项阻塞补查](HERMES_B0_BLOCKERS_2026-11-17.md)，硬件/镜像/Skills 固定证据沿用 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md)。
 
 用户追加要求的 [替代方案调查](AGENT_ALTERNATIVES_2026-11-16.md) 已比较 nanobot、Agent Zero、goose、QwenPaw 等候选。当前按 Hermes 收口，其他产品不自动进入部署。SpringMonkey 指本次重装的 ubuntu-2625 主机。
 
@@ -59,34 +59,34 @@
 | 数据 | 10 GiB 软预算及日志轮转；普通卷没有天然硬配额 |
 | 主机保护 | available 低于 1.5 GiB 持续 60 秒，或根盘可用低于 40 GiB，停止试点任务；部署时落实监测，只终止自身容器 |
 
-## 4. 三模型接入、兜底和预算
+## 4. 三模型接入和兜底
 
 调用方向：用户 → Hermes 单一任务循环 → 主 ChatGPT 兼容路由 → DeepSeek → Qwen。SpringMonkey 承担编排、工具和状态；模型在外部运行。Hermes 配置不改动用户本机 Codex 的全局 provider、模型和订阅认证。
 
 ChatGPT OAuth、OpenAI API key 和第三方兼容网关是不同接入方式。本方案按用户要求使用 `base_url + key + model ID` 的兼容路由；若后续选择 ChatGPT 订阅，改走 Hermes 独立 Codex OAuth 路径，并重新验证 Responses 协议。不能从 ChatGPT 登录状态推定兼容接口凭据已具备。[官方供应商指南](https://hermes-agent.nousresearch.com/docs/integrations/providers)
 
-部署前冻结三条实际路由的服务来源、HTTPS URL、精确 model ID、凭据引用、协议、上下文窗口、工具/流式能力、费用与配额。凭据通过安全渠道进入受限配置，不写 Git、日志或聊天。旧 OpenClaw 模型名与旧网关可达性结果不再复用。
+部署前冻结三条实际路由的服务来源、HTTPS URL、精确 model ID、凭据引用、协议、上下文窗口、工具/流式能力。凭据通过安全渠道进入受限配置，不写 Git、日志或聊天。旧 OpenClaw 模型名与旧网关可达性结果不再复用。
 
-B0 已验证用户提供的 `https://ccnode.briconbric.com:49530/v1`：Windows 和 SpringMonkey 的 TLS/认证目录查询均通过，41个ID集合一致，含 gpt-6-astra 和 Qwen GGUF 路由。旧 loopback 的私有上游不在主机直连网段且无匹配 Tailscale 子网路由，仍超时；现行计划直接采用公网 HTTPS，不修改网络。DeepSeek 官方直连目录与余额查询通过。两处服务额度均有只读证据，试点独立硬预算未证明，生成与故障注入保留 B1。
+B0 已验证用户提供的 `https://ccnode.briconbric.com:49530/v1`：Windows 和 SpringMonkey 的 TLS/认证目录查询均通过，41个ID集合一致，含 gpt-6-astra 和 Qwen GGUF 路由。旧 loopback 的私有上游不在主机直连网段且无匹配 Tailscale 子网路由，仍超时；现行计划直接采用公网 HTTPS，不修改网络。DeepSeek 官方直连目录与余额查询通过。两处服务已有只读证据，不再核查费用预留；生成与故障注入保留B1。
 
 独立备用采用已查的 DeepSeek 官方 `https://api.deepseek.com`，正式 ID `deepseek-flash`。用户明确 Qwen 与 GPT 共用上述网关，其精确目录 ID 暂为 `hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S`，不另开 Model Studio、不在 SpringMonkey 运行权重。网关正余额属于服务记账，底层 Qwen 余额和能力未知。来源与精确余额本机证据见补查报告；未发起生成请求，也未将 DeepSeek key 分发到远端。
 
-以下是非执行性结构草案。真实上游URL与key仅供独立预算入口使用，Hermes三路和辅助调用使用同一入口凭据HERMES_PILOT_GATE_TOKEN。loopback连接须在未来隔离网络命名空间中实测；候选仅允许Chat Completions，B1核对实际api_mode。完整可运行配置尚未生成。
+以下是非执行性结构草案，恢复直接使用已有接口，不增加预算代理。主路由使用HERMES_GATEWAY_API_KEY，DeepSeek使用HERMES_DEEPSEEK_API_KEY，Qwen复用网关key；仅为环境变量引用，秘密不入Git。完整运行配置及协议在B1核验。
 
 ```yaml
 model:
   provider: custom
   default: "gpt-6-astra"
-  base_url: "http://127.0.0.1:41000/gpt/v1"
+  base_url: "https://ccnode.briconbric.com:49530/v1"
 fallback_providers:
   - provider: custom
     model: "deepseek-flash"
-    base_url: "http://127.0.0.1:41000/deepseek/v1"
-    key_env: HERMES_PILOT_GATE_TOKEN
+    base_url: "https://api.deepseek.com"
+    key_env: HERMES_DEEPSEEK_API_KEY
   - provider: custom
     model: "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
-    base_url: "http://127.0.0.1:41000/qwen/v1"
-    key_env: HERMES_PILOT_GATE_TOKEN
+    base_url: "https://ccnode.briconbric.com:49530/v1"
+    key_env: HERMES_GATEWAY_API_KEY
 ```
 
 采用现行 `fallback_providers`。稳定 tag 的 [fallback_config.py](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/fallback_config.py) 确认了有序列表、逐路由 `key_env` 及去重逻辑。[官方兜底指南](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) 的详细错误语义及检查命令须在选定镜像验收，main 文档不能替代稳定镜像实测。
@@ -98,7 +98,7 @@ fallback_providers:
 | 400 / 上下文超限 / schema 不兼容 | 分类定位、按已验证能力调整参数或压缩，避免无限重试 |
 | 空答或非法响应 | 验证解析及有界切换，区分 reasoning-only 与真正空答 |
 | 拒绝或 content_filter | 保留终态，禁止通过备用模型绕过 |
-| 全链失败或超预算 | 保存检查点，明确失败，停止任务 |
+| 全链失败 | 保存检查点，明确失败，停止任务 |
 | 工具已执行后模型失败 | 保留 tool-call/result 关联；本地有副作用动作不自动重放，注入测试要求动作计数一次 |
 
 三路各自验证中文、流式、JSON、工具参数/结果、reasoning 参数和上下文边界；不用一次成功掩盖另一路失败。文本备用无法替代未验证的视觉能力。模型切换可能增加上下文输入和缓存失效费用。
@@ -107,7 +107,7 @@ fallback_providers:
 
 压缩、标题等辅助调用也显式绑定批准路由，按实际日志验证；首批停用图像、语音、嵌入服务。第三方备用能够接收哪些上下文需事先明确，默认不导入公司资料、私人消息或生产凭据。
 
-预算要求：整个试点累计USD10，含三路、重试和辅助调用，使用独立预算入口的持久账本与调用前预留；可靠费率/执行上界缺失时拒绝付费启动。每任务15分钟、30次模型请求仍为待实施运行约束。当前模板因GPT/Qwen价格缺证据保持阻断，不发起付费样本。供应商专属key/cap作为补充，CLI提示不能替代费用限制；机制与验证边界以专项候选报告为准。
+用户已取消费用预留及USD10停止机制，不实现预算入口，不以单价或额度查询结果阻塞试点。每任务15分钟、30次模型请求仍为原有运行约束建议；本轮不新增其实现，不执行部署或模型生成。
 
 ## 5. GitHub 扩展调查
 
@@ -162,7 +162,7 @@ Skill 是按需流程和资源，Plugin 可加载 Python/hooks，MCP 是单独�
 
 | 批次 | 变更及依赖 | 验收与停止条件 |
 | --- | --- | --- |
-| B0 冻结候选 | 官方运行时/镜像、主机安全入口、真实三路模型/费用、拒绝行为一致性、六项业务 Skills 依赖、UID/目录与预算 | 当前 HOLD；入口已通过、账面额度可读，拒绝语义和试点费用停止机制未收口；保持暂不部署 |
+| B0 冻结候选 | 官方运行时/镜像、主机安全入口、真实三路模型、拒绝行为一致性、六项业务Skills依赖、UID/目录与资源限制 | 入口已通过，拒绝终态补丁本地已验证，费用阻塞已取消；运行候选留待获部署指令后验收 |
 | B1 最小端到端 | 获部署指令后，单 CLI 实例，三路模型及六项业务 Skills 的研究/文件功能 | 逐路真实调用、受控故障注入和固定样例；计费、状态、资源及SSH保护验收 |
 | B2 文档及浏览器 | 按需增加单一浏览器、RSS保护、架构图渲染、Office渲染/OCR | CPU/内存/超时回收、文档及页面产物检查；消息渠道保持关闭 |
 | B3 可选自动化 | 独立授权的只读定时任务 | 去重、预算、无人值守拒绝、停止及恢复验证；Discord 独立安排 |
@@ -178,7 +178,7 @@ B1 正式检查冻结镜像、配置、Skills commit、输入及模型映射后�
 | 质量 | 两个固定公开问题及一个脱敏文档，事实可回源，无法确认的内容显式标记 |
 | 状态 | 重启自身容器后会话、配置和输出恢复，主机无需重启 |
 | 隔离 | 无宿主敏感挂载、socket、提权或新增公开端口，策略写入被权限拒绝 |
-| 预算 | 重试和辅助调用计费可核对，额度及超预算停止有效 |
+| 费用机制 | 按用户纠正取消，不列为验收门槛 |
 | 主机保护 | 任务期间实际 SSH 重连成功，原联网配置不变，资源停止策略有效 |
 
 部署实现和模板先入 Git 分支，再由批准流程应用。秘密和会话私有数据不入库。保留镜像 digest、配置及 Skills 版本、脱敏验收、受限备份。回滚仅停止本试点容器、撤销试点凭据或额度、恢复自身状态。Docker 的卸载单独检查其他消费者，禁止全局 prune。Wi-Fi、Tailscale、FRP、SSH 和 Discord 静态保留资料不在删除范围。
