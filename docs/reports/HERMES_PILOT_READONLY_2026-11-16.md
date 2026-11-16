@@ -2,7 +2,7 @@
 
 当前用户已确定 **Hermes 为主选，Skills 生态优先**，以 [首批 Skills 与模型接入计划](HERMES_FIRST_BATCH_SKILLS_2026-11-16.md) 为本轮执行准备依据。[三候选深入比较](AGENT_FINAL_COMPARISON_2026-11-16.md) 保留各产品事实，前次 nanobot 排序已由用户选择取代。固定 Hermes v0.23.1 的部分内容拒绝处理存在备用切换路径，与在线说明有差异；“拒绝保持终态”继续作为未通过的放行条件，不因选型确认而省略。
 
-更新：2026-11-16，Asia/Tokyo。状态：B0 只读核查完成，入口及额度条件未满足，总体 HOLD，实际部署未开始。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新版本绑定、主机条件、接口与 Skills 审查以 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md) 为准。
+更新：2026-11-17，Asia/Tokyo。状态：远端公网 HTTPS 入口、目录认证以及网关账面额度查询通过，DeepSeek 官方独立入口/余额已有证据；拒绝终态、试点费用停止机制及运行候选继续 HOLD。实际部署未开始，Discord 未接入。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新接口和策略结论见 [三项阻塞补查](HERMES_B0_BLOCKERS_2026-11-17.md)，硬件/镜像/Skills 固定证据沿用 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md)。
 
 用户追加要求的 [替代方案调查](AGENT_ALTERNATIVES_2026-11-16.md) 已比较 nanobot、Agent Zero、goose、QwenPaw 等候选。当前按 Hermes 收口，其他产品不自动进入部署。SpringMonkey 指本次重装的 ubuntu-2625 主机。
 
@@ -65,26 +65,26 @@ ChatGPT OAuth、OpenAI API key 和第三方兼容网关是不同接入方式。�
 
 部署前冻结三条实际路由的服务来源、HTTPS URL、精确 model ID、凭据引用、协议、上下文窗口、工具/流式能力、费用与配额。凭据通过安全渠道进入受限配置，不写 Git、日志或聊天。旧 OpenClaw 模型名与旧网关可达性结果不再复用。
 
-B0 已从现有本机网关获取 41 个 model ID，主候选 gpt-6-astra、DeepSeek 正式 ID deepseek-flash 以及一个 Qwen GGUF 路由目录可见。网关只发布 Windows loopback，SpringMonkey 访问其私有上游 TCP 超时，尚无可填入远端的已验证安全入口。独立备用与额度也未确立，因此三路配置仍为草案，生成和故障注入保留 B1。
+B0 已验证用户提供的 `https://ccnode.briconbric.com:49530/v1`：Windows 和 SpringMonkey 的 TLS/认证目录查询均通过，41个ID集合一致，含 gpt-6-astra 和 Qwen GGUF 路由。旧 loopback 的私有上游不在主机直连网段且无匹配 Tailscale 子网路由，仍超时；现行计划直接采用公网 HTTPS，不修改网络。DeepSeek 官方直连目录与余额查询通过。两处服务额度均有只读证据，试点独立硬预算未证明，生成与故障注入保留 B1。
 
-独立服务候选：DeepSeek 官方当前列出的正式模型包含 `deepseek-flash`，兼容 base URL 为 `https://api.deepseek.com`；部署时再通过该服务的 `/models` 确认账号能力，不使用旧别名。Qwen 可走阿里云 Model Studio 的 OpenAI-compatible 接口，其域名包含 workspace 与地域，API key 必须与地域匹配，不能统一拼成任意域名的 `/v1`。下方 Qwen URL 只是结构占位，实际应保留官方给出的 `/compatible-mode/v1` 路径。供应商兼容文档的北京示例与迁移说明存在地域拼写不一致，冻结时以目标 workspace 控制台和地域端点文档交叉确认。来源：[DeepSeek 接入](https://api-docs.deepseek.com/quick_start/agent_integrations/)、[模型目录](https://api-docs.deepseek.com/api/list-models/)、[Qwen 兼容接口](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope)。这些均为公开文档观察，未使用任何账号发出模型请求。
+独立备用采用已查的 DeepSeek 官方 `https://api.deepseek.com`，正式 ID `deepseek-flash`。用户明确 Qwen 与 GPT 共用上述网关，其精确目录 ID 暂为 `hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S`，不另开 Model Studio、不在 SpringMonkey 运行权重。网关正余额属于服务记账，底层 Qwen 余额和能力未知。来源与精确余额本机证据见补查报告；未发起生成请求，也未将 DeepSeek key 分发到远端。
 
-以下是非执行性结构草案，占位符须替换。主路由凭据由官方设置工具生成并核验其引用。本段只表示结构，不是可直接部署的完整配置。
+以下是非执行性结构草案，入口和模型已按只读证据填入。主路由的 HERMES_GATEWAY_API_KEY 引用仍须在未来设置时核验，协议、环境和策略尚未冻结。本段只表示结构，完整运行配置尚未生成。
 
 ```yaml
 model:
   provider: custom
-  default: "<CHATGPT_EXACT_MODEL_ID>"
-  base_url: "https://<CHATGPT_GATEWAY>/v1"
+  default: "gpt-6-astra"
+  base_url: "https://ccnode.briconbric.com:49530/v1"
 fallback_providers:
   - provider: custom
-    model: "<DEEPSEEK_EXACT_MODEL_ID>"
-    base_url: "https://<DEEPSEEK_ENDPOINT>/v1"
+    model: "deepseek-flash"
+    base_url: "https://api.deepseek.com"
     key_env: HERMES_DEEPSEEK_API_KEY
   - provider: custom
-    model: "<QWEN_EXACT_MODEL_ID>"
-    base_url: "https://<QWEN_ENDPOINT>/v1"
-    key_env: HERMES_QWEN_API_KEY
+    model: "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
+    base_url: "https://ccnode.briconbric.com:49530/v1"
+    key_env: HERMES_GATEWAY_API_KEY
 ```
 
 采用现行 `fallback_providers`。稳定 tag 的 [fallback_config.py](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/fallback_config.py) 确认了有序列表、逐路由 `key_env` 及去重逻辑。[官方兜底指南](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) 的详细错误语义及检查命令须在选定镜像验收，main 文档不能替代稳定镜像实测。
@@ -160,7 +160,7 @@ Skill 是按需流程和资源，Plugin 可加载 Python/hooks，MCP 是单独�
 
 | 批次 | 变更及依赖 | 验收与停止条件 |
 | --- | --- | --- |
-| B0 冻结候选 | 官方运行时/镜像、主机安全入口、真实三路模型/费用、拒绝行为一致性、六项业务 Skills 依赖、UID/目录与预算 | 当前 HOLD，入口/额度/拒绝语义未满足；用户确认选型不等于部署授权 |
+| B0 冻结候选 | 官方运行时/镜像、主机安全入口、真实三路模型/费用、拒绝行为一致性、六项业务 Skills 依赖、UID/目录与预算 | 当前 HOLD；入口已通过、账面额度可读，拒绝语义和试点费用停止机制未收口；保持暂不部署 |
 | B1 最小端到端 | 获部署指令后，单 CLI 实例，三路模型及六项业务 Skills 的研究/文件功能 | 逐路真实调用、受控故障注入和固定样例；计费、状态、资源及SSH保护验收 |
 | B2 文档及浏览器 | 按需增加单一浏览器、RSS保护、架构图渲染、Office渲染/OCR | CPU/内存/超时回收、文档及页面产物检查；消息渠道保持关闭 |
 | B3 可选自动化 | 独立授权的只读定时任务 | 去重、预算、无人值守拒绝、停止及恢复验证；Discord 独立安排 |
