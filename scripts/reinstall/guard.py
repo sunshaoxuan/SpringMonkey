@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+import time
 
 
 def check_manifest(root):
@@ -26,6 +27,27 @@ def check_disk(expected, actual):
     for field in ['path', 'bytes', 'serial', 'gpt_id']:
         if expected.get(field) != actual.get(field):
             raise ValueError('disk_identity_mismatch_' + field)
+
+
+def disk_identity(path):
+    return {'path': path,
+            'bytes': int(subprocess.check_output(['blockdev', '--getsize64', path], text=True)),
+            'serial': subprocess.check_output(['lsblk', '-dn', '-o', 'SERIAL', path], text=True).strip(),
+            'gpt_id': json.loads(subprocess.check_output(['sfdisk', '--json', path], text=True))['partitiontable']['id']}
+
+
+def wait_wifi(iface, timeout=150):
+    deadline = time.monotonic() + timeout
+    while True:
+        status = subprocess.check_output(['nmcli', '-g', 'GENERAL.STATE', 'device', 'show', iface], text=True, timeout=15)
+        routes = json.loads(subprocess.check_output(['ip', '-j', 'route', 'show', 'default'], text=True, timeout=15))
+        addresses = json.loads(subprocess.check_output(['ip', '-j', '-4', 'address', 'show', 'dev', iface], text=True, timeout=15))
+        if status.startswith('100') and any(r.get('dev') == iface for r in routes) and any(
+                a.get('scope') == 'global' for d in addresses for a in d.get('addr_info', [])):
+            return
+        if time.monotonic() >= deadline:
+            raise TimeoutError('wifi_connection_address_route_timeout')
+        time.sleep(2)
 
 
 def release_install_source(disk):
@@ -70,11 +92,7 @@ def main():
     if not Path('/sys/firmware/efi').exists():
         raise ValueError('uefi_required')
     disk = manifest['disk']
-    actual = {'path': disk['path'],
-              'bytes': int(subprocess.check_output(['blockdev', '--getsize64', disk['path']], text=True)),
-              'serial': subprocess.check_output(['lsblk', '-dn', '-o', 'SERIAL', disk['path']], text=True).strip(),
-              'gpt_id': json.loads(subprocess.check_output(['sfdisk', '--json', disk['path']], text=True))['partitiontable']['id']}
-    check_disk(disk, actual)
+    check_disk(disk, disk_identity(disk['path']))
     if manifest['mode'] == 'production' or manifest.get('require_ram_media'):
         release_install_source(disk['path'])
     if manifest['mode'] == 'production':
@@ -87,10 +105,7 @@ def main():
         if len(matches) != 1 or not (matches[0] / 'wireless').exists():
             raise ValueError('expected_wifi_not_present')
         iface = matches[0].name
-        status = subprocess.check_output(['nmcli', '-g', 'GENERAL.STATE', 'device', 'show', iface], text=True)
-        routes = json.loads(subprocess.check_output(['ip', '-j', 'route', 'show', 'default'], text=True))
-        if not status.startswith('100') or not any(r.get('dev') == iface for r in routes):
-            raise ValueError('wifi_not_connected_with_route')
+        wait_wifi(iface)
     socket.getaddrinfo(manifest['frp_server'], manifest['frp_port'])
     with socket.create_connection((manifest['frp_server'], manifest['frp_port']), timeout=10):
         pass
@@ -103,5 +118,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-        print('preflight_FAIL_' + type(e).__name__, file=sys.stderr)
+        reason = str(e) if isinstance(e, (ValueError, TimeoutError)) else type(e).__name__
+        print('preflight_FAIL_' + reason, file=sys.stderr)
         raise SystemExit(1)

@@ -7,6 +7,7 @@ on_exit() {
     if test "$rc" -ne 0; then
         echo "bootstrap_FAIL_${phase}_${rc}" >&2
         if test "$rollback" = 1 && ! test -f /run/reset-live-ssh-confirmed; then
+            python3 "$payload/persist_failure.py" "$payload" "$phase" "$rc" || true
             sync
             reboot
         fi
@@ -34,7 +35,7 @@ systemctl start NetworkManager
 netplan generate
 netplan apply >/run/reset-netplan.log 2>&1
 phase=preflight
-python3 "$payload/guard.py" "$payload"
+python3 "$payload/guard.py" "$payload" >/run/reset-guard.log 2>&1
 if test -f "$payload/tailscaled"; then
     install -d -m 700 /var/lib/tailscale
     install -d -m 755 /run/tailscale

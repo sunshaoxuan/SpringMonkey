@@ -28,7 +28,7 @@ def main():
         raise ValueError('production_payload_required')
     fixture = ROOT / 'fixture-next/payload'
     for name in ['bootstrap.sh', 'guard.py', 'install_target.py', 'network_ready.py',
-                 'reset-connectivity-ready.service', 'tailscaled-recovery.service', 'initramfs-release.sh']:
+                 'reset-connectivity-ready.service', 'tailscaled-recovery.service', 'initramfs-release.sh', 'persist_failure.py']:
         if (payload / name).read_bytes() != (fixture / name).read_bytes():
             raise ValueError('tested_common_source_mismatch')
         if validation.get('tested_common_source_hashes', {}).get(name) != manifest['files'][name]:

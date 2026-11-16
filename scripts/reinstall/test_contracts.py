@@ -6,12 +6,39 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from guard import check_disk, check_manifest, release_install_source
+from guard import check_disk, check_manifest, release_install_source, wait_wifi
+from persist_failure import persist
 from prepare import frp_config
 import tomllib
 
 
 class SafetyContracts(unittest.TestCase):
+    def test_wifi_waits_for_address_and_route(self):
+        values = ['40 (connecting)\n', '[]', '[{"addr_info":[]}]',
+                  '100 (connected)\n', '[{"dev":"wlan-test"}]', '[{"addr_info":[{"scope":"global"}]}]']
+        with patch('guard.subprocess.check_output', side_effect=values), patch('guard.time.sleep') as pause:
+            wait_wifi('wlan-test')
+            pause.assert_called_once_with(2)
+
+    def test_wifi_timeout_blocks_install(self):
+        with patch('guard.subprocess.check_output', side_effect=['40\n', '[]', '[]']), patch('guard.time.monotonic', side_effect=[0, 2]):
+            with self.assertRaisesRegex(TimeoutError, 'wifi_connection_address_route_timeout'):
+                wait_wifi('wlan-test', timeout=1)
+
+    def test_failure_log_cannot_mount_after_ack(self):
+        with patch('persist_failure.Path.exists', return_value=True), patch('persist_failure.subprocess.run') as mount:
+            with self.assertRaisesRegex(ValueError, 'after_ack'):
+                persist('unused', 'preflight', 1)
+            mount.assert_not_called()
+
+    def test_failure_log_rejects_wrong_disk_before_mount(self):
+        expected = {'path':'/dev/vda','bytes':123,'serial':'expected','gpt_id':'expected'}
+        wrong = dict(expected, serial='different')
+        with patch('persist_failure.Path.exists', return_value=False), patch('persist_failure.check_manifest', return_value={'mode':'fixture','disk':expected}), patch('persist_failure.disk_identity', return_value=wrong), patch('persist_failure.subprocess.run') as mount:
+            with self.assertRaisesRegex(ValueError, 'disk_identity_mismatch_serial'):
+                persist('unused', 'preflight', 1)
+            mount.assert_not_called()
+
     def test_disk_backed_media_rejected_before_release(self):
         with patch('guard.subprocess.check_output', return_value='iso9660\n') as probe:
             with self.assertRaisesRegex(ValueError, 'installation_media_not_in_ram'):

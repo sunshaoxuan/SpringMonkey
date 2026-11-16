@@ -30,6 +30,8 @@ The prepared production package has no ARMED.json. There is no automatic host bo
 
 Production execution is a separate phase: `activate_host.py` checks isolated same-disk PASS and matching source/boot hashes, then prepares an additional boot entry with the old default preserved. `execute_reset.py` verifies off-host backups and the exact Git checkout, schedules the one-shot reboot, confirms both live remote routes before acknowledging installation, restores the saved Discord configuration as inactive migration input, and checks both remote routes after a second native boot. These entry points require the user's conditional reset authorization and completed preparation evidence. There is no independent firmware console or hardware watchdog on this host.
 
+The installer guard waits up to 150 seconds for Wi-Fi association, a global IPv4 address and the expected default route. Before acknowledgment, `persist_failure.py` can save a fixed phase/error code to the original protected staging directory. It first verifies all disk identity fields and the original manifest binding, writes a root-only diagnostic, and unmounts the source again. It refuses old-root writes after acknowledgment. Failure to save the diagnostic still allows the pre-install rollback reboot.
+
 ## Validation
 
 `validate_bundle.py` checks the official installer schema, payload hashes, actual Netplan generation, key pairing, and shell syntax. Real secrets are validated in a Linux tmpfs and never logged. FRP execution is marked remote-only unless the validator runs on the remote host with its staged binary. Safety tests reject the wrong disk, altered payloads, path traversal and non-SSH proxy additions.

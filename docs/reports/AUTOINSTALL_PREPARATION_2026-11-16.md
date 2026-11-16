@@ -1,6 +1,6 @@
 # SpringMonkey 自动重装与远程恢复准备
 
-主记录：[TASK_GUIDE.md](C:/workspace/codex-work/muse-selfhost-research-20261116/TASK_GUIDE.md)。目标：最新 Ubuntu 26.10 amd64，清除旧业务环境，Wi-Fi 无人登录自动联网，SSH 用户/密钥/防火墙可用，Tailscale 优先且 FRP 兜底。用户已授权必需验证全部通过后执行重置升级。当前仍为准备与验证阶段，未执行真机重启、清盘、启动项切换或 Ubuntu 升级。
+主记录：[TASK_GUIDE.md](C:/workspace/codex-work/muse-selfhost-research-20261116/TASK_GUIDE.md)。目标：最新 Ubuntu 26.10 amd64，清除旧业务环境，Wi-Fi 无人登录自动联网，SSH 用户/密钥/防火墙可用，Tailscale 优先且 FRP 兜底。用户已授权必需验证全部通过后执行重置升级。首轮候选通过隔离同盘验证后于19:15 JST安排真机one-shot；19:19 JST已回到原Ubuntu25.10，Tailscale SSH恢复，清盘确认未发出。当前补齐Wi-Fi等待和受保护失败诊断，整机升级尚未完成。
 
 ## 已保留的现场
 
@@ -17,10 +17,10 @@
 * 目标官方镜像包含 Intel 无线固件。无线网卡实测 Intel AC 3168/iwlwifi；这项软件清单证据不等于目标内核中的实际关联成功。
 * Netplan 经实际 Ubuntu 26.10 generator 验证，使用 NetworkManager，Wi-Fi 按永久 MAC 绑定，独立生成安装环境及目标配置。networkd 不支持此 Wi-Fi match 形式的实测失败已修正。
 * SSH：独立 springadmin 密钥登录、禁止密码和 root OpenSSH 登录、密钥/目录权限、sudo、预先固定的主机公钥用于连接校验。
-* 首启实测发现 cloud-init 重建主机密钥，已加入 ssh_deletekeys:false。旧 fixture 修复后固定密钥登录通过；更新后的完整候选还需首次启动验证。
+* 首启实测发现 cloud-init 重建主机密钥，已加入 ssh_deletekeys:false。更新后的完整同盘候选已完成首启与再次重启，固定密钥登录均通过。
 * 新系统 first-boot gate：NetworkManager 连通、地址和路由正确，账户密钥权限检查，UFW 按连接接口及 tailscale0 允许 SSH，再启动恢复线路。
 * 两条恢复线路独立重连，Tailscale 启动不依赖 FRP 服务端 TCP 可达。安装环境中的已确认 FRP 保持运行，供安装期间诊断。
-* 同盘启动候选使用官方签名内核与 initrd、GRUB one-shot 和 toram。清盘前检查内存介质、释放旧 ISO loop/分区、目标盘独占访问以及剩余内存；此路径正在隔离磁盘验证。
+* 同盘启动使用官方签名内核、追加 init-bottom 释放脚本的 initramfs、GRUB one-shot 和 toram。原物理主机的 shim/grub/mm 签名二进制已复制到测试 EFI 分区，实际 BootCurrent 与 Secure Boot 均通过。提前释放解决了交接后旧 ext4 引用残留；后续仍检查 RAM 介质、源分区卸载和目标盘独占访问，实测剩余内存约2.2GiB。
 * 安装前 gate：精确磁盘路径/字节数/序列号/GPT 身份、payload 校验、Secure Boot、生产无线链路与 FRP 目标可达性；需实际穿过安装环境 FRP 完成 SSH 确认才继续。
 * Tailscale 恢复材料使用重新认证后的原身份，保持原 RunSSH/WantRunning；不将生产身份启动到隔离 VM。
 
@@ -36,12 +36,14 @@
 | 远端现有及最新版 FRP 配置校验 | PASS |
 | 当前原设备 Tailscale 实际 SSH 登录 | PASS |
 | Discord 连接配置备份完整性 | PASS，重连未测试 |
-| 基础隔离安装及新系统 FRP SSH | 安装后最小修复通过，完整更新候选待同盘验证 |
+| 基础隔离安装及新系统 FRP SSH | 完整更新后的同盘候选 PASS |
 | 磁盘介质未复制到内存时阻止释放/清盘负例 | PASS |
-| 同盘 GRUB one-shot、RAM 介质、完整重装与再次重启 | 进行中 |
-| 最新 FRP、UFW、管理用户、root 拒绝及非 SSH 入站负例 | 待同一隔离系统的后续检查 |
+| 同盘 GRUB one-shot、RAM 介质、完整重装与再次重启 | PASS |
+| 最新 FRP、UFW、管理用户、root 拒绝及非 SSH 入站负例 | PASS |
 | 真机 live Wi-Fi、Tailscale 身份恢复及清盘前 SSH 确认 | 未执行 |
 | 真机重置升级及清盘后最终回连 | 未执行 |
+
+首轮失败的具体live阶段未保留，当前证据不能判定根因。保存的SSID/PSK与未转义源配置相同、MAC相同、磁盘四项身份均一致。guard新增150秒关联/IPv4地址/默认路由等待，避免立即状态判断；清盘前失败仅在磁盘身份与原manifest绑定均正确时将phase/code写回原root受限目录，ACK后拒绝写入。新增4项边界测试及隔离系统的真实诊断持久化、0600权限、临时挂载释放、ACK后拒绝均PASS；更新候选的同盘综合验证继续进行，既有不受影响证据复用。
 
 所有必需项通过前，整机重置验收保持未通过。下载和安装仿真耗时不构成跳过网络/身份/防火墙检查的依据。单盘、无独立控制台的恢复限制仍存在，软件备份不能使卡住的固件自行重启。
 
