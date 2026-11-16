@@ -2,6 +2,8 @@
 
 更新：2026-11-16，Asia/Tokyo。状态：B0 只读核查完成，入口及额度条件未满足，总体 HOLD，实际部署未开始。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新版本绑定、主机条件、接口与 Skills 审查以 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md) 为准。
 
+用户追加要求的 [替代方案调查](AGENT_ALTERNATIVES_2026-11-16.md) 已比较 nanobot、Agent Zero、goose、QwenPaw 等现行候选。建议未来与 Hermes 做统一样例对照，当前没有决定替换或安装。SpringMonkey 始终指本次重装的 ubuntu-2625 主机，非另一套软件。
+
 ## 1. 目标和授权范围
 
 在 SpringMonkey 上规划单用户 Hermes Agent，主模型使用用户选定的 ChatGPT/OpenAI 兼容接口，备用依次为 DeepSeek、Qwen。首批支持公开资料研究、文件分析、带来源的报告和工作区文件生成，通过 SSH CLI 使用。Discord 连接资料保持静态保留，后续接入独立安排。
