@@ -1,5 +1,7 @@
 # SpringMonkey 重装后 Hermes Agent 试点部署计划
 
+2026-11-17 本地实现候选：[拒绝终态与USD10预算准备](HERMES_B0_POLICY_BUDGET_2026-11-17.md)。固定版补丁和独立预算入口已准备，现行模型与辅助调用必须共用持久预算账本。GPT/Qwen实际单价和容量上界未确认，模板失败关闭，B0继续HOLD。此次授权只准备和验证，未部署。
+
 当前用户已确定 **Hermes 为主选，Skills 生态优先**，以 [首批 Skills 与模型接入计划](HERMES_FIRST_BATCH_SKILLS_2026-11-16.md) 为本轮执行准备依据。[三候选深入比较](AGENT_FINAL_COMPARISON_2026-11-16.md) 保留各产品事实，前次 nanobot 排序已由用户选择取代。固定 Hermes v0.23.1 的部分内容拒绝处理存在备用切换路径，与在线说明有差异；“拒绝保持终态”继续作为未通过的放行条件，不因选型确认而省略。
 
 更新：2026-11-17，Asia/Tokyo。状态：远端公网 HTTPS 入口、目录认证以及网关账面额度查询通过，DeepSeek 官方独立入口/余额已有证据；拒绝终态、试点费用停止机制及运行候选继续 HOLD。实际部署未开始，Discord 未接入。第 1 至 8 节为现行计划，末尾旧报告仅作历史证据。最新接口和策略结论见 [三项阻塞补查](HERMES_B0_BLOCKERS_2026-11-17.md)，硬件/镜像/Skills 固定证据沿用 [B0 明细](HERMES_B0_PREFLIGHT_2026-11-16.md)。
@@ -69,22 +71,22 @@ B0 已验证用户提供的 `https://ccnode.briconbric.com:49530/v1`：Windows �
 
 独立备用采用已查的 DeepSeek 官方 `https://api.deepseek.com`，正式 ID `deepseek-flash`。用户明确 Qwen 与 GPT 共用上述网关，其精确目录 ID 暂为 `hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S`，不另开 Model Studio、不在 SpringMonkey 运行权重。网关正余额属于服务记账，底层 Qwen 余额和能力未知。来源与精确余额本机证据见补查报告；未发起生成请求，也未将 DeepSeek key 分发到远端。
 
-以下是非执行性结构草案，入口和模型已按只读证据填入。主路由的 HERMES_GATEWAY_API_KEY 引用仍须在未来设置时核验，协议、环境和策略尚未冻结。本段只表示结构，完整运行配置尚未生成。
+以下是非执行性结构草案。真实上游URL与key仅供独立预算入口使用，Hermes三路和辅助调用使用同一入口凭据HERMES_PILOT_GATE_TOKEN。loopback连接须在未来隔离网络命名空间中实测；候选仅允许Chat Completions，B1核对实际api_mode。完整可运行配置尚未生成。
 
 ```yaml
 model:
   provider: custom
   default: "gpt-6-astra"
-  base_url: "https://ccnode.briconbric.com:49530/v1"
+  base_url: "http://127.0.0.1:41000/gpt/v1"
 fallback_providers:
   - provider: custom
     model: "deepseek-flash"
-    base_url: "https://api.deepseek.com"
-    key_env: HERMES_DEEPSEEK_API_KEY
+    base_url: "http://127.0.0.1:41000/deepseek/v1"
+    key_env: HERMES_PILOT_GATE_TOKEN
   - provider: custom
     model: "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
-    base_url: "https://ccnode.briconbric.com:49530/v1"
-    key_env: HERMES_GATEWAY_API_KEY
+    base_url: "http://127.0.0.1:41000/qwen/v1"
+    key_env: HERMES_PILOT_GATE_TOKEN
 ```
 
 采用现行 `fallback_providers`。稳定 tag 的 [fallback_config.py](https://github.com/NousResearch/hermes-agent/blob/v0.23.1/hermes_cli/fallback_config.py) 确认了有序列表、逐路由 `key_env` 及去重逻辑。[官方兜底指南](https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers) 的详细错误语义及检查命令须在选定镜像验收，main 文档不能替代稳定镜像实测。
@@ -105,7 +107,7 @@ fallback_providers:
 
 压缩、标题等辅助调用也显式绑定批准路由，按实际日志验证；首批停用图像、语音、嵌入服务。第三方备用能够接收哪些上下文需事先明确，默认不导入公司资料、私人消息或生产凭据。
 
-预算建议：每任务 15 分钟、30 次模型请求，含重试和辅助调用；首次试点总费用建议上限 USD 10，均待实施。优先供应商侧硬额度，CLI 提示不能当作硬费用限制。缺乏可靠额度或停止机制时仅开展人工在场的小样本。请求超时、重试和总期限使用统一预算，字段及效果按稳定版验证。
+预算要求：整个试点累计USD10，含三路、重试和辅助调用，使用独立预算入口的持久账本与调用前预留；可靠费率/执行上界缺失时拒绝付费启动。每任务15分钟、30次模型请求仍为待实施运行约束。当前模板因GPT/Qwen价格缺证据保持阻断，不发起付费样本。供应商专属key/cap作为补充，CLI提示不能替代费用限制；机制与验证边界以专项候选报告为准。
 
 ## 5. GitHub 扩展调查
 

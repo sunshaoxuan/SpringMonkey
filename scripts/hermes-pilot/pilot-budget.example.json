@@ -1,0 +1,42 @@
+{
+  "pilot_id": "springmonkey-hermes-b1-20261117",
+  "budget_micro_usd": 10000000,
+  "routes": {
+    "gpt": {
+      "base_url": "https://ccnode.briconbric.com:49530/v1",
+      "model": "gpt-6-astra",
+      "key_env": "HERMES_GATEWAY_API_KEY",
+      "price_confirmed": false,
+      "price_source": null,
+      "valid_until": null,
+      "max_input_tokens": null,
+      "max_output_tokens": 4096,
+      "input_micro_usd_per_million": null,
+      "output_micro_usd_per_million": null
+    },
+    "deepseek": {
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-flash",
+      "key_env": "HERMES_DEEPSEEK_API_KEY",
+      "price_confirmed": true,
+      "price_source": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "valid_until": "2026-11-18T00:00:00Z",
+      "max_input_tokens": 1048576,
+      "max_output_tokens": 4096,
+      "input_micro_usd_per_million": 300000,
+      "output_micro_usd_per_million": 1200000
+    },
+    "qwen": {
+      "base_url": "https://ccnode.briconbric.com:49530/v1",
+      "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+      "key_env": "HERMES_GATEWAY_API_KEY",
+      "price_confirmed": false,
+      "price_source": null,
+      "valid_until": null,
+      "max_input_tokens": null,
+      "max_output_tokens": 4096,
+      "input_micro_usd_per_million": null,
+      "output_micro_usd_per_million": null
+    }
+  }
+}

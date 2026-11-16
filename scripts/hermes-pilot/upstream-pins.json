@@ -1,0 +1,7 @@
+{
+  "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+  "sha256": {
+    "agent/chat_completion_helpers.py": "d96cb8a345b4b42535f8a5daf78a9277d1d77536089391d11ac9e10ad2f44ba0",
+    "agent/turn_truncation.py": "ad470dcff4cf0d83096cef971f7b7998018c23e3e0e9760d006acff5940006f2"
+  }
+}

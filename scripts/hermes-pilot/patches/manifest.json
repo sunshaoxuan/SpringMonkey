@@ -1,0 +1,16 @@
+{
+  "upstream_commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+  "files": [
+    {
+      "path": "agent/chat_completion_helpers.py",
+      "before_sha256": "d96cb8a345b4b42535f8a5daf78a9277d1d77536089391d11ac9e10ad2f44ba0",
+      "after_sha256": "a6add7cedb909a6ff920fd1f2bbfa732a38bd50eda501243919820cf81d5d33b"
+    },
+    {
+      "path": "agent/turn_truncation.py",
+      "before_sha256": "ad470dcff4cf0d83096cef971f7b7998018c23e3e0e9760d006acff5940006f2",
+      "after_sha256": "6a0bc167ec4e23d2885585c62b7c5b8479111cc856fcdb3dbf6254815f562e05"
+    }
+  ],
+  "patch_sha256": "632edf67329314bea677d75135e393a8be5d7fd553e8bf5302eb09d4e4f97ffd"
+}
