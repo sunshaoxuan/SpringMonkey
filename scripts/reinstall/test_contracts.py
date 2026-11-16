@@ -8,11 +8,19 @@ from unittest.mock import patch
 
 from guard import check_disk, check_manifest, release_install_source, wait_wifi
 from persist_failure import persist
+from execute_reset import validate_resume
 from prepare import frp_config
 import tomllib
 
 
 class SafetyContracts(unittest.TestCase):
+    def test_live_resume_is_only_for_matching_pending_boot(self):
+        validate_resume({'source_commit':'expected','phase':'PHYSICAL_ONE_SHOT_BOOT_SCHEDULED'}, 'expected')
+        for record in [{'source_commit':'different','phase':'PHYSICAL_ONE_SHOT_BOOT_SCHEDULED'},
+                       {'source_commit':'expected','phase':'PHYSICAL_LIVE_VERIFIED_ALLOWING_INSTALL'},
+                       {'source_commit':'expected','phase':'PHYSICAL_RESET_REBOOT_ACCESS_PASS'}]:
+            with self.assertRaises(ValueError):validate_resume(record,'expected')
+
     def test_wifi_waits_for_address_and_route(self):
         values = ['40 (connecting)\n', '[]', '[{"addr_info":[]}]',
                   '100 (connected)\n', '[{"dev":"wlan-test"}]', '[{"addr_info":[{"scope":"global"}]}]']

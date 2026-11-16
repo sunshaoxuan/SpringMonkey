@@ -25,6 +25,13 @@ def command(c, text, timeout=45):
     return data.strip()
 
 
+def validate_resume(record, commit):
+    if record.get('source_commit') != commit or record.get('phase') not in {
+            'PHYSICAL_ONE_SHOT_BOOT_SCHEDULED', 'PHYSICAL_BOOT_COMMAND_ACK_INTERRUPTED',
+            'PHYSICAL_WAITING_LIVE', 'PHYSICAL_CHECKING_LIVE', 'PHYSICAL_RESUMING_LIVE_WAIT'}:
+        raise ValueError('live_resume_not_bound_to_pending_boot')
+
+
 def main():
     import win32crypt
     ap = argparse.ArgumentParser()
@@ -34,6 +41,7 @@ def main():
     ap.add_argument('--port', type=int, default=8822)
     ap.add_argument('--commit', required=True)
     ap.add_argument('--evidence', required=True, type=Path)
+    ap.add_argument('--resume-live', action='store_true')
     args = ap.parse_args()
     if not re.fullmatch('[0-9a-f]{40}', args.commit):
         raise ValueError('exact_source_commit_required')
@@ -57,23 +65,29 @@ def main():
         result['phase'] = phase
         args.evidence.write_text(json.dumps(result, indent=2))
         print(phase, flush=True)
-    old = paramiko.SSHClient()
-    old.load_system_host_keys(str(Path.home() / '.ssh/known_hosts'))
-    old.set_missing_host_key_policy(paramiko.RejectPolicy())
-    password = args.password_file.read_text(encoding='utf-8-sig').strip().splitlines()[0]
-    old.connect(args.host, port=args.port, username='root', password=password, timeout=12,
-                auth_timeout=12, look_for_keys=False, allow_agent=False)
-    if command(old, 'hostname') != 'ubuntu-2625':
-        raise ValueError('wrong_original_host')
-    prep = json.loads(command(old, 'cat /srv/springmonkey-reset-prep-20261116/PRODUCTION_BOOT_PREPARATION.json'))
-    if prep.get('state') != 'BOOT_PREPARED_NOT_SCHEDULED':
-        raise ValueError('boot_not_prepared')
-    if command(old, 'git -C /srv/springmonkey-reset-prep-20261116/source rev-parse HEAD') != args.commit:
-        raise ValueError('host_source_commit_mismatch')
-    staged = json.loads(command(old, 'cat /srv/springmonkey-reset-prep-20261116/production-next/payload/manifest.json'))
-    for name, digest in manifest['files'].items():
-        if staged['files'].get(name) != digest:
-            raise ValueError('staged_config_mismatch')
+    if args.resume_live:
+        previous = json.loads(args.evidence.read_text())
+        validate_resume(previous, args.commit)
+        result.update(previous)
+    else:
+        old = paramiko.SSHClient()
+        old.load_system_host_keys(str(Path.home() / '.ssh/known_hosts'))
+        old.set_missing_host_key_policy(paramiko.RejectPolicy())
+        password = args.password_file.read_text(encoding='utf-8-sig').strip().splitlines()[0]
+        old.connect(args.host, port=args.port, username='root', password=password, timeout=12,
+                    auth_timeout=12, look_for_keys=False, allow_agent=False)
+        if command(old, 'hostname') != 'ubuntu-2625':
+            raise ValueError('wrong_original_host')
+        prep = json.loads(command(old, 'cat /srv/springmonkey-reset-prep-20261116/PRODUCTION_BOOT_PREPARATION.json'))
+        if prep.get('state') != 'BOOT_PREPARED_NOT_SCHEDULED':
+            raise ValueError('boot_not_prepared')
+        if command(old, 'git -C /srv/springmonkey-reset-prep-20261116/source rev-parse HEAD') != args.commit:
+            raise ValueError('host_source_commit_mismatch')
+        staged = json.loads(command(old, 'cat /srv/springmonkey-reset-prep-20261116/production-next/payload/manifest.json'))
+        for name, digest in manifest['files'].items():
+            if staged['files'].get(name) != digest:
+                raise ValueError('staged_config_mismatch')
+    result['controller_commit'] = subprocess.check_output(['git', '-C', str(Path(__file__).resolve().parents[2]), 'rev-parse', 'HEAD'], text=True).strip()
     def tailscale_probe(live=False):
         probe = 'test -s /run/reset-media-released && echo PASS' if live else 'test -s /run/reset-connectivity-ready && echo PASS'
         try:
@@ -81,9 +95,20 @@ def main():
         except subprocess.TimeoutExpired:
             return False
         return p.returncode == 0 and p.stdout.strip() == b'PASS'
-    save('PHYSICAL_ONE_SHOT_BOOT_SCHEDULED')
-    command(old, 'grub-reboot springmonkey-reset && sync && systemd-run --unit=spring-reset-reboot --on-active=5s /usr/bin/systemctl reboot')
-    old.close(); time.sleep(10)
+    if args.resume_live:
+        save('PHYSICAL_RESUMING_LIVE_WAIT')
+    else:
+        save('PHYSICAL_ONE_SHOT_BOOT_SCHEDULED')
+        try:
+            command(old, 'grub-reboot springmonkey-reset && sync && systemd-run --unit=spring-reset-reboot --on-active=5s /usr/bin/systemctl reboot')
+        except (EOFError, paramiko.SSHException, OSError):
+            # A reboot can close the transport before its command status arrives.
+            # Continue observation; all live identity/network gates still apply.
+            save('PHYSICAL_BOOT_COMMAND_ACK_INTERRUPTED')
+        finally:
+            old.close()
+        time.sleep(10)
+    save('PHYSICAL_WAITING_LIVE')
     def connect(user, seconds):
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
@@ -98,6 +123,11 @@ def main():
                 c.close(); time.sleep(4)
         raise TimeoutError('prepared_host_key_ssh_timeout_' + user)
     c = connect('root', 600)
+    save('PHYSICAL_CHECKING_LIVE')
+    staged = json.loads(command(c, 'cat /cdrom/spring-reset/payload/manifest.json'))
+    for name, digest in manifest['files'].items():
+        if staged['files'].get(name) != digest:
+            raise ValueError('live_config_mismatch')
     live = json.loads(command(c, "python3 -c 'import json,pathlib,subprocess; print(json.dumps({\"media\":subprocess.check_output([\"findmnt\",\"-n\",\"-o\",\"FSTYPE\",\"/cdrom\"],text=True).strip(),\"released\":pathlib.Path(\"/run/reset-media-released\").read_text().strip(),\"target_untouched\":not pathlib.Path(\"/target/etc/os-release\").exists()}))'"))
     if live != {'media': 'tmpfs', 'released': 'RAM_MEDIA_TARGET_DISK_EXCLUSIVE_PASS', 'target_untouched': True}:
         raise ValueError('live_disk_and_media_checks_failed')
