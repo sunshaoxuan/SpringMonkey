@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the SpringMonkey Hermes certificate twice daily
+
+[Timer]
+OnCalendar=*-*-* 03,15:23:00 UTC
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

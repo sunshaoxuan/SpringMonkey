@@ -1,6 +1,6 @@
 # SpringMonkey
 
-[Current research/dashboard status](docs/reports/HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md)：网页研究已验收；管理页及FRP已准备，公网激活待DNS和OAuth回调保存确认。原无browser/dashboard及只读单文件bind为首批历史。
+[Current research/dashboard status](docs/reports/HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md)：网页研究、HTTPS、Nous登录及桌面配置保存已验收；管理页已上线https://sm.briconbric.com/config。390px手机视口控件溢出9px，响应式验收未通过。原无browser/dashboard及只读单文件bind为首批历史。
 
 Current host, 2026-11-17: Ubuntu26.10 with a deployed Hermes CLI pilot, Tailscale and FRP. See [deployment report](docs/reports/HERMES_DEPLOYMENT_2026-11-17.md). Older OpenClaw records below are historical; Discord remains disconnected.
 

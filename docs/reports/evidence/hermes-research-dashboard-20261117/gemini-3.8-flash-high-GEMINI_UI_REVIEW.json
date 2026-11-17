@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "model": "gemini-3.8-flash-high",
+  "answer": "**视觉与排版问题审查：**\n* **截断（Clipping）**：无。各层级标题、配置项路径说明（如 `approvals.mode`）、左侧分类名称及计数徽标均完整显示。\n* **重叠（Overlap）**：无。左右分栏、表单行间距、右侧开关及下拉框控件布局规整，未见重叠。\n* **文字无法阅读（Unreadable text）**：无。暗色主题下字体对比度正常，说明文字与输入框内占位符（如 `comma-separated values`）均清晰可读。\n* **未完成加载（Unfinished loading）**：无。未见加载中骨架屏、Spinner 或断图/报错占位符。\n\n---\n\n**可用性结论：**\n**可用**。界面渲染完整，层级结构清晰，表单控件与导航区域均处于正常可交互状态。"
+}

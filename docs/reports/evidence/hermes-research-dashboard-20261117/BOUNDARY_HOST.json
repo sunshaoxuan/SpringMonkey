@@ -6,7 +6,7 @@
   "frpc_active": "active",
   "wifi_connected": true,
   "stats": [
-    "hermes-pilot 1.305MiB / 3GiB 1",
-    "hermes-dashboard 165MiB / 1GiB 8"
+    "hermes-pilot 3.852MiB / 3GiB 12",
+    "hermes-dashboard 179.3MiB / 1GiB 18"
   ]
 }

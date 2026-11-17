@@ -1,0 +1,36 @@
+{
+  "http-root": {
+    "http": 308,
+    "redirect": "https://sm.briconbric.com/"
+  },
+  "/": {
+    "http": 302,
+    "redirect": "/auth/login?provider=nous&next=%2F"
+  },
+  "/login": {
+    "http": 200
+  },
+  "/api/status": {
+    "http": 200,
+    "auth_required": true,
+    "auth_providers": [
+      "nous"
+    ]
+  },
+  "/api/config": {
+    "http": 401,
+    "redirect": null
+  },
+  "tls": {
+    "verified": true,
+    "version": "TLSv1.3",
+    "subject_alt_names": [
+      [
+        "DNS",
+        "sm.briconbric.com"
+      ]
+    ],
+    "expires": "Feb 15 09:59:30 2027 GMT"
+  },
+  "frp_port_external_blocked": true
+}

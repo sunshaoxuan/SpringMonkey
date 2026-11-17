@@ -1,0 +1,13 @@
+{
+  "dedicated_renewal_config": true,
+  "renewal_methods": [
+    "authenticator = webroot",
+    "webroot_path = /var/www/hermes-acme,"
+  ],
+  "certbot_timer": {
+    "is-active": "inactive",
+    "is-enabled": "not-found"
+  },
+  "renewal_hooks": [],
+  "existing_server_desk_http": 200
+}

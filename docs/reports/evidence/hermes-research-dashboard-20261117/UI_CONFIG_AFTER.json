@@ -1,0 +1,61 @@
+{
+  "semantic_sha256": "2f83768d66b40ebfea1d25381e38d0d7e0262825eea9ccccb6c5ff7604ba80b6",
+  "file_sha256": "94dd85b3bc953d62867511c18a62ce5ee2ddcc645cc917ef133286d1888aece4",
+  "owner": 10001,
+  "mode": "0o640",
+  "model": "gpt-6-astra",
+  "key_is_env_reference": true,
+  "fallback_models": [
+    "deepseek-flash",
+    "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
+  ],
+  "security": {
+    "allow_private_urls": false,
+    "redact_secrets": true,
+    "protected_instruction_files": true,
+    "allow_lazy_installs": false
+  },
+  "approvals": {
+    "mode": "smart",
+    "single_query_mode": "deny",
+    "unattended_mode": "deny",
+    "cron_mode": "deny"
+  },
+  "browser": {
+    "cloud_provider": "local",
+    "engine": "auto",
+    "headed": false,
+    "use_real_profile": false,
+    "user_data_dir": "",
+    "inactivity_timeout": 60,
+    "command_timeout": 60
+  },
+  "toolsets": [
+    "terminal",
+    "file",
+    "web",
+    "browser",
+    "skills",
+    "memory"
+  ],
+  "top_level_keys": [
+    "_config_version",
+    "agent",
+    "approvals",
+    "auxiliary",
+    "browser",
+    "cron",
+    "fallback_providers",
+    "hooks_auto_accept",
+    "max_concurrent_sessions",
+    "max_live_sessions",
+    "model",
+    "security",
+    "skills",
+    "terminal",
+    "timezone",
+    "toolsets",
+    "updates",
+    "web"
+  ]
+}

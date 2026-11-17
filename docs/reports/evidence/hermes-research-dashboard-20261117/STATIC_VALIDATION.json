@@ -3,6 +3,7 @@
     "acceptance_research.py",
     "acceptance_routing.py",
     "acceptance_runtime.py",
+    "install_dashboard_renewal.py",
     "install_docker.py",
     "publish_dashboard.py",
     "refusal_patch.py",
@@ -10,9 +11,15 @@
     "start_dashboard.py",
     "verify_image.py"
   ],
-  "json_count": 13,
-  "links_checked": 6,
-  "research_hashes_verified": true,
-  "public_acceptance": "PENDING_USER_CONFIRMATION",
+  "json_count": 24,
+  "links_checked": 13,
+  "config_save_semantics_unchanged": true,
+  "diff_check": "PASS",
+  "secret_identity_scan_files": 21,
+  "public_acceptance": "PASS",
+  "desktop_visual": "PASS",
+  "mobile_responsive": "FAIL: upstream 9px overflow",
+  "certificate_renewal": "PASS: timer active; not-due renew exit 0; conditional hook verified",
+  "research_and_model_checks": "REUSED: unchanged relevant inputs",
   "public_source_text_excerpted": true
 }

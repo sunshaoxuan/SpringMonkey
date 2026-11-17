@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew only the SpringMonkey Hermes dashboard certificate
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/certbot renew --cert-name sm.briconbric.com --quiet

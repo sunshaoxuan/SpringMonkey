@@ -1,0 +1,53 @@
+{
+  "events": [
+    {
+      "event": "response",
+      "path": "/api/config",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    }
+  ],
+  "truncated": false
+}

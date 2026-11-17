@@ -1,14 +1,15 @@
 {
-  "flash_image_probe": {
-    "model": "gemini-3.8-flash-high",
-    "passed": true,
-    "answer": "IMAGE_INPUT_OK",
-    "source": "Original observed tool response; generic on-disk receipt was later overwritten by the separate Pro probe."
-  },
-  "pro_image_probe": {
-    "passed": false,
-    "exit": 1,
-    "diagnostic": "advisory request failed; raw output withheld"
-  },
-  "dashboard_visual_review": "pending public activation and authenticated screenshot"
+  "official_ui_source_changed": false,
+  "desktop_functional": "PASS",
+  "desktop_visual": "PASS",
+  "desktop_viewports": [
+    "2698x1518",
+    "1024x768"
+  ],
+  "mobile_viewport": "390x844",
+  "mobile_responsive": "FAIL",
+  "mobile_issue": "switch and combobox right edge 399px exceeds viewport 390px by 9px",
+  "overall_visual": "HAS_UNRESOLVED_UPSTREAM_MOBILE_ISSUE",
+  "external_review_model": "gemini-3.8-flash-high",
+  "primary_review": "Actual screenshots inspected; normal page scrolling is not treated as a separate defect."
 }

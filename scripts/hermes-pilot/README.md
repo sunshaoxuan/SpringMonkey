@@ -25,7 +25,9 @@ single-user container exposes its model client credentials to its own processes.
 
 On the host run `sudo hermes-pilot chat`. Work under `/workspace`, mapped to
 `/srv/hermes-pilot/workspace`. The official dashboard sidecar runs as UID10001 on host loopback9119 with Nous OAuth.
-Public DNS/callback saves and HTTPS acceptance are pending. No messaging gateway, OCR,
+Public HTTPS, Nous owner login and native config Save have passed acceptance.
+The official UI has a known 9px control overflow at a 390px mobile viewport; desktop
+1024px and wider was checked. No messaging gateway, OCR,
 runtime dependency installation, delegation or scheduling is enabled.
 
 `acceptance_runtime.py` checks real alternate model responses and document
@@ -54,5 +56,11 @@ starts the official UI using the registered client in the protected env file.
 acceptance_research.py checks real search, browser and arXiv tools.
 publish_dashboard.py prepare installs only the dedicated domain's HTTP/ACME
 site and loopback-only FRP firewall unit. activate issues the dedicated
-certificate and enables HTTPS only after the pending DNS/redirect changes are
-confirmed and the domain resolves. Never include credentials in this tree.
+certificate and enables HTTPS after DNS/redirect changes are confirmed and the
+domain resolves. The approved DNS-only record and OAuth callback are now saved.
+`install_dashboard_renewal.py` installs the dedicated twice-daily certificate
+timer and conditional Nginx deploy hook from `/srv/hermes-dashboard-public`.
+It renews only sm.briconbric.com, using the existing free Let's Encrypt certificate.
+The UID10000 config-write boundary was verified for the CLI; GUI chat is outside
+this acceptance and the trusted administrator UI runs as UID10001.
+Never include credentials in this tree.

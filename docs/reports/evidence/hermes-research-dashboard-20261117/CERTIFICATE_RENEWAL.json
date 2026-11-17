@@ -1,0 +1,16 @@
+{
+  "install": {
+    "dedicated_renewal_installed": true
+  },
+  "nonmatching_hook_exit": 0,
+  "matching_hook_exit": 0,
+  "renew_start_exit": 0,
+  "renew_result": "success",
+  "renew_exit": "0",
+  "timer_active": "active",
+  "timer_enabled": "enabled",
+  "next_elapse": "Tue 2026-11-17 15:42:34 UTC",
+  "nginx_active": "active",
+  "forced_renewal": false,
+  "scope": "sm.briconbric.com only"
+}

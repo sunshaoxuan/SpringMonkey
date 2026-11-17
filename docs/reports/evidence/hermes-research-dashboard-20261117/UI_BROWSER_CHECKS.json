@@ -1,0 +1,321 @@
+{
+  "reload_network": [
+    {
+      "event": "response",
+      "path": "/config",
+      "status": 200,
+      "type": "Document"
+    },
+    {
+      "event": "response",
+      "path": "/content_main.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/default_config.content.json",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/assets/index-CXKdN8QE.css",
+      "status": 200,
+      "type": "Stylesheet"
+    },
+    {
+      "event": "response",
+      "path": "/locales.json",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/assets/rolldown-runtime-CbXtAM7H.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/vendor-BJi0XXI8.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/index-HOUkcX8I.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/utils-Clb3zQfW.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/api-DK8AACiK.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/react-vendor-R7IuHd60.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/ui-B3HvItTO.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/i18n-BdZu51Ll.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/dashboard-plugins/@default/hermes-achievements/dist/style.css",
+      "status": 200,
+      "type": "Stylesheet"
+    },
+    {
+      "event": "response",
+      "path": "/dashboard-plugins/@default/kanban/dist/style.css",
+      "status": 200,
+      "type": "Stylesheet"
+    },
+    {
+      "event": "response",
+      "path": "/assets/RulesExpanded-Bold-DZA7s8Pa.woff2",
+      "status": 200,
+      "type": "Font"
+    },
+    {
+      "event": "response",
+      "path": "/api/auth/me",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/shared-metrics/consent",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/dashboard/plugins",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/assets/usePageHeader-BSMXZs6x.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/assets/ConfigPage-m8CtzQ_R.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/dashboard-plugins/@default/hermes-achievements/dist/index.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/dashboard-plugins/@default/kanban/dist/index.js",
+      "status": 200,
+      "type": "Script"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/profiles/active",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/config",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/dashboard/font",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/dashboard/themes",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/profiles",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/content-scripts/content.css",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/images/cursor-chat.png",
+      "status": 200,
+      "type": "Image"
+    },
+    {
+      "event": "response",
+      "path": "/api/config/defaults",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/config",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/favicon.ico",
+      "status": 200,
+      "type": "Other"
+    },
+    {
+      "event": "response",
+      "path": "/api/config/raw",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/config/schema",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/assets/RulesCompressed-Regular-BSXFyF4x.woff2",
+      "status": 200,
+      "type": "Font"
+    },
+    {
+      "event": "response",
+      "path": "/assets/Mondwest-Regular-CWscgue7.woff2",
+      "status": 200,
+      "type": "Font"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    },
+    {
+      "event": "response",
+      "path": "/api/status",
+      "status": 200,
+      "type": "Fetch"
+    }
+  ],
+  "truncated": false,
+  "first_party_console": [],
+  "desktop_width_1024_switch_bounds": [
+    {
+      "right": 975.5,
+      "width": 33.75,
+      "x": 941.75
+    },
+    {
+      "right": 975.5,
+      "width": 33.75,
+      "x": 941.75
+    },
+    {
+      "right": 975.5,
+      "width": 33.75,
+      "x": 941.75
+    }
+  ],
+  "mobile_width": 390,
+  "mobile_switch_right": 399,
+  "mobile_result": "FAIL: 9px overflow in upstream UI",
+  "ui_source_changed": false
+}
