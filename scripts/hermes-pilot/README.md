@@ -7,6 +7,13 @@ See [current research/dashboard status](../../docs/reports/HERMES_RESEARCH_AND_D
 The current deployment has 70 enabled skills and eight native workflow bundles;
 see the [expansion receipt](../../docs/reports/HERMES_CAPABILITY_EXPANSION_2026-11-17.md)
 and [capability guide](CAPABILITIES.md). The original six-skill image is the r1 base.
+MoA is now configured and real-call accepted: gpt-6.1-sol aggregates DeepSeek and
+Qwen references. See the [MoA receipt](../../docs/reports/HERMES_MOA_ACCEPTANCE_2026-11-17.md).
+Use /moa followed by a task for one turn, or select the default MoA preset for a session.
+The normal main model remains gpt-6.1-sol and auxiliary slots remain auto.
+Only the acceptance fixture temporarily enabled detailed MoA traces; they are off
+in the final config. acceptance_moa.py checks the existing private trace and
+synthetic files without making more model calls. No Discord connection is added.
 `Dockerfile.capabilities` extends that exact local base with Office/OCR/rendering
 tools and a separate hash-locked Python environment. Check the r1 image ID before
 building it. Runtime skill sources are the reviewed readonly host mount, with

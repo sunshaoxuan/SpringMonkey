@@ -1,0 +1,37 @@
+{
+  "saved": true,
+  "changed_paths": [
+    "providers.springmonkey-deepseek",
+    "moa"
+  ],
+  "main_model_unchanged": true,
+  "auxiliary_unchanged": true,
+  "fallbacks_unchanged": true,
+  "uid": 10001,
+  "mode": "0o640",
+  "temporary_trace_enabled": true,
+  "preset": {
+    "enabled": true,
+    "reference_models": [
+      {
+        "provider": "custom:springmonkey-deepseek",
+        "model": "deepseek-flash",
+        "enabled": true
+      },
+      {
+        "provider": "custom",
+        "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+        "enabled": true
+      }
+    ],
+    "aggregator": {
+      "provider": "custom",
+      "model": "gpt-6.1-sol"
+    },
+    "reference_temperature": null,
+    "aggregator_temperature": null,
+    "reference_timeout": 180.0,
+    "degraded_reference_policy": "loud",
+    "fanout": "user_turn"
+  }
+}

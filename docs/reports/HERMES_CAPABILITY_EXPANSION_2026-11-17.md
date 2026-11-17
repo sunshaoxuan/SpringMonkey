@@ -1,5 +1,8 @@
 # Hermes 通用能力扩充与安装回执
 
+当前MoA已配置并真实验收：GPT-6.1 Sol汇总，DeepSeek/Qwen参考，辅助auto。见[配置与验收](HERMES_MOA_ACCEPTANCE_2026-11-17.md)。普通聊天主模型保持gpt-6.1-sol。
+
+
 当前主模型：按用户后续要求已切换为 **gpt-6.1-sol**，DeepSeek、Qwen备用顺序保持。共享网关精确目录及真实响应同名验证通过；32.294秒真实Hermes任务成功写入并读回文件，原生CLI会话记录及有效配置确认新模型。仅model.default变化，原用户配置、权限及认证不变。本页B3跨域样例是在切换前完成并保留其原始证据，未冒充全部使用新模型重跑。见[模型切换验收](evidence/hermes-model-20261117/MODEL_ACCEPTANCE.json)。
 
 

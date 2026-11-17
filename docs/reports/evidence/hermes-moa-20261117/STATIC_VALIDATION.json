@@ -1,0 +1,20 @@
+{
+  "python_ast": "PASS",
+  "json_files": 7,
+  "artifact_hashes": "PASS",
+  "source_binding": {
+    "capabilities_sha256": "9f607fe27ac4a1b7362edf364fbe59c29034b2fc9b94a86b4d06d73bc231d66e",
+    "acceptance_source_sha256": "08eed2c1a59cc4a185abb5215c43beded1c76a534b326cb7ffc07997c223b866"
+  },
+  "runtime_config": {
+    "moa_matches_template": true,
+    "named_provider_matches_template": true,
+    "trace_enabled": false
+  },
+  "secret_identity_scan_files": 16,
+  "diff_check": "PASS",
+  "actual_moa_acceptance": "PASS: both references injected; GPT file write/readback",
+  "ui_functional": "PASS: two reference models and GPT aggregator; auxiliary all auto",
+  "ui_source_changed": false,
+  "other_tools_regression": "REUSED: unchanged relevant inputs"
+}

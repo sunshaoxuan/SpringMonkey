@@ -24,6 +24,34 @@
       "api_mode": "chat_completions"
     }
   ],
+  "providers": {
+    "springmonkey-deepseek": {
+      "base_url": "https://api.deepseek.com",
+      "key_env": "HERMES_DEEPSEEK_API_KEY",
+      "api_mode": "chat_completions",
+      "default_model": "deepseek-flash",
+      "models": ["deepseek-flash"]
+    }
+  },
+  "moa": {
+    "default_preset": "default",
+    "active_preset": "",
+    "save_traces": false,
+    "privacy_filter": "full",
+    "presets": {
+      "default": {
+        "enabled": true,
+        "reference_models": [
+          {"provider": "custom:springmonkey-deepseek", "model": "deepseek-flash"},
+          {"provider": "custom", "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"}
+        ],
+        "aggregator": {"provider": "custom", "model": "gpt-6.1-sol"},
+        "fanout": "user_turn",
+        "reference_timeout": 180,
+        "degraded_reference_policy": "loud"
+      }
+    }
+  },
   "toolsets": ["terminal", "file", "web", "browser", "skills", "memory"],
   "max_concurrent_sessions": 2,
   "max_live_sessions": 1,

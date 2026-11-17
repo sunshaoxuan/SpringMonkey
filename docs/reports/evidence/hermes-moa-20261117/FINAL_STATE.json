@@ -1,0 +1,47 @@
+{
+  "trace_recording_disabled": true,
+  "only_final_changes": [
+    "moa",
+    "providers.springmonkey-deepseek"
+  ],
+  "all_other_user_configuration_unchanged": true,
+  "symlink_preserved": true,
+  "owner": 10001,
+  "mode": "0o640",
+  "containers": {
+    "hermes-pilot": {
+      "running": true,
+      "oom": false,
+      "image": "sha256:598f0583092e6d0f3441d33c3951af83da01e2ceb2b79f11d4000b0ef0c01723",
+      "memory": 3221225472,
+      "cpus": 1500000000,
+      "ports": {}
+    },
+    "hermes-dashboard": {
+      "running": true,
+      "oom": false,
+      "image": "sha256:598f0583092e6d0f3441d33c3951af83da01e2ceb2b79f11d4000b0ef0c01723",
+      "memory": 1073741824,
+      "cpus": 1000000000,
+      "ports": {
+        "9119/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "9119"
+          }
+        ]
+      }
+    }
+  },
+  "services": {
+    "ssh": "active",
+    "tailscaled": "active",
+    "frpc": "active"
+  },
+  "wifi_connected": true,
+  "anonymous_config_http": 401,
+  "auth_required": true,
+  "auth_providers": [
+    "nous"
+  ]
+}

@@ -1,5 +1,8 @@
 # SpringMonkey
 
+当前MoA已配置并真实验收：GPT-6.1 Sol汇总，DeepSeek/Qwen参考，辅助auto。见[配置与验收](docs/reports/HERMES_MOA_ACCEPTANCE_2026-11-17.md)。普通聊天主模型保持gpt-6.1-sol。
+
+
 当前扩充见[70 Skills与8工作流安装回执](docs/reports/HERMES_CAPABILITY_EXPANSION_2026-11-17.md)。私有运行home与单一policy配置替代本页旧共享home，当前源码和配置以新回执为准。
 
 

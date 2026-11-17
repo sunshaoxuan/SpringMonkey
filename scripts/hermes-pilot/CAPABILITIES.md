@@ -1,7 +1,10 @@
 # SpringMonkey installed capabilities
 
 Use ordinary language to request a task. Hermes should select relevant installed
-skills automatically. Optional native bundle commands group related workflows:
+skills automatically. For multi-model advice use /moa followed by the task:
+DeepSeek and Qwen provide references, then gpt-6.1-sol answers and calls tools.
+Normal chats and auxiliary auto routing continue to use the configured main model.
+MoA is separate from the optional native workflow bundles below.
 
 | Command | Workflow |
 | --- | --- |

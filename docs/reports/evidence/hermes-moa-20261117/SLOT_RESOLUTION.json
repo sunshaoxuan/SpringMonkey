@@ -1,0 +1,31 @@
+{
+  "slots": [
+    {
+      "role": "aggregator",
+      "model": "gpt-6.1-sol",
+      "provider": "custom",
+      "base_url": "[REDACTED]",
+      "api_mode": "chat_completions",
+      "credential_matches_existing_env": true
+    },
+    {
+      "role": "reference_deepseek",
+      "model": "deepseek-flash",
+      "provider": "custom:springmonkey-deepseek",
+      "base_url": "https://api.deepseek.com",
+      "api_mode": "chat_completions",
+      "credential_matches_existing_env": true
+    },
+    {
+      "role": "reference_qwen",
+      "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+      "provider": "custom",
+      "base_url": "[REDACTED]",
+      "api_mode": "chat_completions",
+      "credential_matches_existing_env": true
+    }
+  ],
+  "auxiliary_auto": true,
+  "main_provider": "custom",
+  "main_model": "gpt-6.1-sol"
+}

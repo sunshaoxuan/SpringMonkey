@@ -1,0 +1,10 @@
+{
+  "upstream_commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+  "files": {
+    "agent__moa_alternation.py": "93fa6ac7d77451eb6213d1436758ccb72f26a3d7c784462450af14d620119c52",
+    "agent__moa_loop.py": "4955992e2ae8cf781feb36e4d075e50c708203824d00b60a7a44374fe6e01d19",
+    "agent__moa_trace.py": "53b5541f3361dfe8b849701a90abc14d8bffead9e4332168ff3b11fb2fb4b1c1",
+    "hermes_cli__moa_cmd.py": "06ed85c43772b77a240190663d104d4cef03c92fc62c5342e1954a2d5be34050",
+    "hermes_cli__moa_config.py": "abccf4842c4a8a4d1343cdb78894c30c918fd7244404cf84056d1129adb5f5f9"
+  }
+}

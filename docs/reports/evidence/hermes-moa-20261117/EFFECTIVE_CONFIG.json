@@ -1,0 +1,36 @@
+{
+  "main_model": "gpt-6.1-sol",
+  "main_provider": "custom",
+  "auxiliary": "all auto",
+  "title_generation_enabled": false,
+  "background_review_enabled": false,
+  "trace_enabled": false,
+  "moa_preset": {
+    "enabled": true,
+    "reference_models": [
+      {
+        "provider": "custom:springmonkey-deepseek",
+        "model": "deepseek-flash",
+        "enabled": true
+      },
+      {
+        "provider": "custom",
+        "model": "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S",
+        "enabled": true
+      }
+    ],
+    "aggregator": {
+      "provider": "custom",
+      "model": "gpt-6.1-sol"
+    },
+    "reference_temperature": null,
+    "aggregator_temperature": null,
+    "reference_timeout": 180.0,
+    "degraded_reference_policy": "loud",
+    "fanout": "user_turn"
+  },
+  "fallback_models": [
+    "deepseek-flash",
+    "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
+  ]
+}

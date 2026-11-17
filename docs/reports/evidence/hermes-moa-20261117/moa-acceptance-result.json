@@ -1,0 +1,17 @@
+{
+  "limit_mib": 3072,
+  "plans": {
+    "A": {
+      "peak_mib": 400,
+      "seconds": 240,
+      "fits": true
+    },
+    "B": {
+      "peak_mib": 4800,
+      "seconds": 20,
+      "fits": false
+    }
+  },
+  "decision": "A",
+  "synthetic_data": true
+}
