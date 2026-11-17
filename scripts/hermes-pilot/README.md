@@ -4,6 +4,13 @@ Authorized and deployed on SpringMonkey on 2026-11-17. See the
 [deployment and acceptance report](../../docs/reports/HERMES_DEPLOYMENT_2026-11-17.md).
 No Discord connection or fee reservation service is configured.
 See [current research/dashboard status](../../docs/reports/HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md).
+The current deployment has 70 enabled skills and eight native workflow bundles;
+see the [expansion receipt](../../docs/reports/HERMES_CAPABILITY_EXPANSION_2026-11-17.md)
+and [capability guide](CAPABILITIES.md). The original six-skill image is the r1 base.
+`Dockerfile.capabilities` extends that exact local base with Office/OCR/rendering
+tools and a separate hash-locked Python environment. Check the r1 image ID before
+building it. Runtime skill sources are the reviewed readonly host mount, with
+the pinned source archive and licenses retained in the expansion evidence.
 
 `Dockerfile` extends the immutable v0.23.1 base using its own locked build,
 applies two preverified refusal source files, verifies source/package hashes and
@@ -49,8 +56,15 @@ python -m pytest scripts/hermes-pilot/tests -q -p no:cacheprovider --hermes-sour
 ```
 
 
-The canonical config is /srv/hermes-pilot/data/config.yaml, UID10001/GID10000,
-mode0640, inside a root-owned sticky home. Stage that file before start_container.py.
+The canonical config is /srv/hermes-pilot/policy/config.yaml, UID10001/GID10000,
+mode0640, in an administrator-owned0750 policy directory. The CLI home is
+/srv/hermes-pilot/cli-home (UID10000/0700); dashboard home is
+/srv/hermes-pilot/data (UID10001/0700). Each home config.yaml symlinks to
+../policy/config.yaml. Native atomic saving preserves the symlink. The CLI mounts
+policy readonly and uses HERMES_MANAGED_DIR=/opt/policy to pin administrator values.
+Prepare these homes, links and the policy directory before start_container.py.
+Both containers mount /srv/hermes-pilot/data/skill-bundles readonly. Old state
+remains in the dashboard home; new CLI sessions have separate state.
 The former /etc/hermes-pilot/config.json is not read at runtime. start_dashboard.py
 starts the official UI using the registered client in the protected env file.
 acceptance_research.py checks real search, browser and arXiv tools.
@@ -64,3 +78,15 @@ It renews only sm.briconbric.com, using the existing free Let's Encrypt certific
 The UID10000 config-write boundary was verified for the CLI; GUI chat is outside
 this acceptance and the trusted administrator UI runs as UID10001.
 Never include credentials in this tree.
+
+`acceptance_capabilities.py` exercises bounded synthetic CSV/analysis, Office
+conversion, formula recalculation, PDF rendering, OCR, code statistics, RSS and
+Playwright with the deployed tools. It is an acceptance fixture, not a benchmark
+or a guarantee for arbitrary documents. Reuse its PASS for the pinned image when
+its inputs and execution environment remain valid.
+
+For rollback, stop and replace only the two owned containers, restore the original
+reviewed skills mount and r1 image ID, and use the current private-home startup
+scripts. Keep the private-home/policy arrangement: the older root-sticky home
+fails native control-socket discovery. Archived stopped containers retain older
+mounts and must not be started blindly. Preserve all user state and recovery data.

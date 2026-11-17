@@ -1,5 +1,8 @@
 # Hermes 网页研究与管理页
 
+当前扩充见[70 Skills与8工作流安装回执](HERMES_CAPABILITY_EXPANSION_2026-11-17.md)。私有运行home与单一policy配置替代本页旧共享home，当前源码和配置以新回执为准。
+
+
 2026-11-17，Asia/Tokyo。用户授权补齐网页研究能力，并新增公网管理页，域名sm.briconbric.com、Nous登录，已自行注册名称SpringMonkey的客户端。Discord及预算代理保持未接入。
 
 ## 状态

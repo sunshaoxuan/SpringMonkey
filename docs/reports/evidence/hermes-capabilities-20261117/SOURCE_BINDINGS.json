@@ -1,0 +1,32 @@
+[
+  {
+    "source": "scripts/hermes-pilot/start_container.py",
+    "remote": "/srv/hermes-pilot/b3-build/start_container.py",
+    "sha256": "91c66abd6487347cd88e201618b80edf9d5437944b3e2398208501a8dbbd15ba"
+  },
+  {
+    "source": "scripts/hermes-pilot/start_dashboard.py",
+    "remote": "/srv/hermes-pilot/b3-build/start_dashboard.py",
+    "sha256": "87b8b0dc63a8364100d0d66cabb8a70cc5c976fbda8de69339b3af24aa7f1d18"
+  },
+  {
+    "source": "scripts/hermes-pilot/WORKSPACE_AGENTS.md",
+    "remote": "/etc/hermes-pilot/AGENTS.md",
+    "sha256": "6431fc35ac76a5587968be48561af80e817bd6bcb23c6e22db8e9144359e6750"
+  },
+  {
+    "source": "scripts/hermes-pilot/CAPABILITIES.md",
+    "remote": "/srv/hermes-pilot/workspace/CAPABILITIES.md",
+    "sha256": "bb4dc66cc35ee6077ec933ccc4bd269b1ac1d02a6d45371d3ca602d927cff475"
+  },
+  {
+    "source": "scripts/hermes-pilot/Dockerfile.capabilities",
+    "remote": "/srv/hermes-pilot/b3-build/Dockerfile",
+    "sha256": "b49d9eca23d298ecc2f9160d0ed855f93331d11871c82809118aff8916a6017e"
+  },
+  {
+    "source": "scripts/hermes-pilot/requirements-capabilities-lock.txt",
+    "remote": "/srv/hermes-pilot/b3-build/requirements-capabilities-lock.txt",
+    "sha256": "932b33ccff4d995d4d3f5b3ac2e1ba97ab7fecfcf0cc685ce09c5b937bcdad30"
+  }
+]

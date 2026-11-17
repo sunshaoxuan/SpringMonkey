@@ -1,0 +1,198 @@
+[
+  {
+    "name": "numpy",
+    "version": "2.5.5",
+    "license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+    "sha256": "c48960d420e90cf305cb1fde0d4e6082cc90512cda87a9acf0b6e04e91cf4abe"
+  },
+  {
+    "name": "pandas",
+    "version": "3.1.1",
+    "license_expression": "BSD-3-Clause",
+    "sha256": "326459d8a9be11b5f48c7fc1d63e38ba7cfeaebe5d41bd19e4c5f4f11dc9ac91"
+  },
+  {
+    "name": "matplotlib",
+    "version": "3.11.2",
+    "license_expression": null,
+    "sha256": "8c8255de28f986d935a64c9ca71c0ec2d2f41d355691f5ea684725dc91413f71",
+    "license_text_sha256": "11b43b00dc032aba34426bfb8f93d48714076cbad3753cacec31b9d0f522aa2f"
+  },
+  {
+    "name": "seaborn",
+    "version": "0.13.2",
+    "license_expression": null,
+    "sha256": "636f8336facf092165e27924f223d3c62ca560b1f2bb5dff7ab7fad265361987"
+  },
+  {
+    "name": "scipy",
+    "version": "1.18.1",
+    "license_expression": null,
+    "sha256": "ac0333bdf38309aa3dcbe7e3fa7ea29e7a2c37c6ea306a757b700ded8e4596ad",
+    "license_text_sha256": "2a463073ea6816d22b763c8e2f03886f4e8bf4f2a234f3c9267401d688588d17"
+  },
+  {
+    "name": "plotly",
+    "version": "7.1.0",
+    "license_expression": "MIT",
+    "sha256": "dbb7fa18afce40d0a8e80d1bf162eceb3faa0ce5a77fe741ad09a74cf78f53f3"
+  },
+  {
+    "name": "pygount",
+    "version": "3.2.0",
+    "license_expression": "BSD-3-Clause",
+    "sha256": "c037bf293d92ccc3ed5728329fe330f992901d933a7d278cb997bbbbeb0cf965"
+  },
+  {
+    "name": "debugpy",
+    "version": "1.8.22",
+    "license_expression": null,
+    "sha256": "0c1104233340196e5cbf5514e7dfdbb98968e730cfd7fdd6f3d72a082be838a9",
+    "license_text_sha256": "e5dcffe836b6ec8a58e492419b550e65fb8cbdc308503979e5dacb33ac7ea3b7"
+  },
+  {
+    "name": "playwright",
+    "version": "1.65.2",
+    "license_expression": "Apache-2.0",
+    "sha256": "58932d35f56767ab7ebcdd3d4a733bfb3e62a1a5bc43c08e28b9fa9b3e61cf33"
+  },
+  {
+    "name": "pytesseract",
+    "version": "0.3.13",
+    "license_expression": null,
+    "sha256": "7a99c6c2ac598360693d83a416e36e0b33a67638bb9d77fdcac094a3589d4b34",
+    "license_text_sha256": "e99dd4b311146507c3d0a887ca12e50387fe644c8aaa86cb500b50c068062543"
+  },
+  {
+    "name": "pytest",
+    "version": "9.2.0",
+    "license_expression": "MIT",
+    "sha256": "07acdcf88ec174f907dc01af70bf52d49b014bbab03faeeade31c96b18c2e588"
+  },
+  {
+    "name": "hypothesis",
+    "version": "6.170.15",
+    "license_expression": "MPL-2.0",
+    "sha256": "f91f27a89e8d55c7f043cb1e10705096236d4f7bcb35f3ac4f821e0c9b9bcd05"
+  },
+  {
+    "name": "nbformat",
+    "version": "5.11.1",
+    "license_expression": null,
+    "sha256": "cc6698fa75f4fab8755ead786317815f13a6fee3b53311c0abb1a8b51d52f7ec",
+    "license_text_sha256": "175d2234db876789e50b8f3a3695c5314ab9d408c420048c43f6bbcfd87fc345"
+  },
+  {
+    "name": "chardet",
+    "version": "5.2.0",
+    "license_expression": null,
+    "sha256": "e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970",
+    "license_text_sha256": "f6d6421f7657b63b261908a964d68ac5d3bab9b9d85c7ed597632ac04b74e516"
+  },
+  {
+    "name": "GitPython",
+    "version": "3.2.1",
+    "license_expression": null,
+    "sha256": "d66b0832aa8755c1a84892937282df0befb16c97e5a64aeebd68be9c5e323f53",
+    "license_text_sha256": "118dbcd2d5c9f9b296a9ede9fcc469c5840f7b98ad2c88461055bf2ceda38037"
+  },
+  {
+    "name": "gitdb",
+    "version": "4.0.12",
+    "license_expression": null,
+    "sha256": "67073e15955400952c6565cc3e707c554a4eea2e428946f7a4c162fab9bd9bcf",
+    "license_text_sha256": "170c0f4cee6fc262f8902676b7aa0e88e11f1777f1531934116898c43fd5086a"
+  },
+  {
+    "name": "greenlet",
+    "version": "3.5.6",
+    "license_expression": "MIT AND PSF-2.0",
+    "sha256": "9a09d59bef1db94f384b5bcc2d523694d338f3df6b757aeeaf7baca5d0c0be88"
+  },
+  {
+    "name": "pluggy",
+    "version": "1.7.0",
+    "license_expression": null,
+    "sha256": "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec",
+    "license_text_sha256": "e5dcffe836b6ec8a58e492419b550e65fb8cbdc308503979e5dacb33ac7ea3b7"
+  },
+  {
+    "name": "smmap",
+    "version": "5.0.3",
+    "license_expression": null,
+    "sha256": "c106e05d5a61449cf6ba9a1e650227ecfb141590d2a98412103ff35d89fc7b2f",
+    "license_text_sha256": "118dbcd2d5c9f9b296a9ede9fcc469c5840f7b98ad2c88461055bf2ceda38037"
+  },
+  {
+    "name": "sortedcontainers",
+    "version": "2.4.0",
+    "license_expression": null,
+    "sha256": "a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0",
+    "license_text_sha256": "cf989ea142f203f532233fa944ee1d8d5acfe6f6875e4d611f515ee108ba26df"
+  },
+  {
+    "name": "contourpy",
+    "version": "1.4.0",
+    "license_expression": "BSD-3-Clause",
+    "sha256": "e439ab450c93455feb0218532ded3e946ec7a9b5f459069f122cfa44b89229f6"
+  },
+  {
+    "name": "cycler",
+    "version": "0.12.1",
+    "license_expression": null,
+    "sha256": "85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30",
+    "license_text_sha256": "f1218143d766da3fea66f13396b7f15df46a83303f29bf96ba6e98eb4d42f408"
+  },
+  {
+    "name": "fastjsonschema",
+    "version": "2.22.3",
+    "license_expression": null,
+    "sha256": "f670b443830b75aca3f00b75949efa20f4b2a80302ec7a21505c28dd54cffd43",
+    "license_text_sha256": "118dbcd2d5c9f9b296a9ede9fcc469c5840f7b98ad2c88461055bf2ceda38037"
+  },
+  {
+    "name": "fonttools",
+    "version": "4.68.0",
+    "license_expression": null,
+    "sha256": "cbb63b26d33acc3eb61f544c22a0cadbe01682fc064b266bb0e33fa66cea853f",
+    "license_text_sha256": "e5dcffe836b6ec8a58e492419b550e65fb8cbdc308503979e5dacb33ac7ea3b7"
+  },
+  {
+    "name": "iniconfig",
+    "version": "2.3.1",
+    "license_expression": "MIT",
+    "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
+  },
+  {
+    "name": "jupyter_core",
+    "version": "5.9.1",
+    "license_expression": "BSD-3-Clause",
+    "sha256": "ebf87fdc6073d142e114c72c9e29a9d7ca03fad818c5d300ce2adc1fb0743407"
+  },
+  {
+    "name": "kiwisolver",
+    "version": "1.5.1",
+    "license_expression": null,
+    "sha256": "18a0cfb124546a4c2e6087c5f3029c7f44b37c85b142e0ced71f73a7599ac208",
+    "license_text_sha256": "529c40e5f67f2f88904657a9f7879ae2f8dc76bc9bfef9cb10d988b48804ed61"
+  },
+  {
+    "name": "narwhals",
+    "version": "2.28.0",
+    "license_expression": "MIT",
+    "sha256": "1f69d6385ec30e2fa6e1fdeb37c562ecabd0f713f6f3e3b58a668c5c9df9567f"
+  },
+  {
+    "name": "platformdirs",
+    "version": "4.14.5",
+    "license_expression": "MIT",
+    "sha256": "8e778c6fa421516f4d3369449f8df3b0e1b72c0e0005fe88e3ec772d0a14e750"
+  },
+  {
+    "name": "traitlets",
+    "version": "5.16.1",
+    "license_expression": null,
+    "sha256": "f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b",
+    "license_text_sha256": "6cddaa55a70b1265dedf19ac12d910cee0e1277a110fd81faa0c807011086521"
+  }
+]

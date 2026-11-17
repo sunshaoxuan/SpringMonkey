@@ -1,0 +1,47 @@
+{
+  "canonical_delete_denied": true,
+  "native_managed_overlay_blocks_shadow": true,
+  "effective_model": "gpt-6-astra",
+  "private_home_owner": 10000,
+  "private_home_mode": "0o700",
+  "e2e": {
+    "exit": 0,
+    "duration_ms": 154872,
+    "skill_views": [
+      "explore-data",
+      "validate-data",
+      "write-spec",
+      "verification-before-completion"
+    ],
+    "tool_use_count": 16,
+    "readback_files": [
+      "/workspace/capabilities-acceptance/hermes-result.json",
+      "/workspace/capabilities-acceptance/hermes-brief.md"
+    ],
+    "verified_result": {
+      "total": 45.0,
+      "mean": 15.0,
+      "monthly_increase": [
+        null,
+        5.0,
+        5.0
+      ],
+      "synthetic_data": true
+    },
+    "blocked_unsafe_attempts": 2,
+    "approvals_weakened": false
+  },
+  "native_browser_after_home_migration": {
+    "exit": 0,
+    "success": true,
+    "evidence_text_found": true,
+    "output_sha256": "09a9a3d922d3b0641ff08b39810ee067e2a7ac6f54a03409633ebff50b671d47"
+  },
+  "artifact_sha256": {
+    "hermes-result.json": "2f961089ec2c476dd60064c74cc91ef883ad46ae8512ab34b61150bd713245aa",
+    "hermes-brief.md": "a5384d21c608d5c59640ab4dfc2070908e5002fefb80cc95c76e28b7d5cf85aa",
+    "chart.png": "4ba16f512bbfdc0fc968a02aee402a211795a568460620e430d3256fd5c35473",
+    "document-render.png": "6cfd6ee84e4369614402c50884e980d9ca036977d13e64324b75223a0c33fbe6",
+    "web-qa.png": "3ea76b99a9e58173c8e6f1aac15702325d25c25ab154a467b7419d8fd0929238"
+  }
+}

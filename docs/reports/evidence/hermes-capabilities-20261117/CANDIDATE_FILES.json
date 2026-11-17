@@ -1,0 +1,4475 @@
+[
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "LICENSE",
+    "sha256": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6",
+    "bytes": 1070
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "README.md",
+    "sha256": "ca5c9f03262a10f7f996aa803b26a33f41a236f876c105da50367ff79de08271",
+    "bytes": 17496
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/autonomous-ai-agents/dynamic-workflow/SKILL.md",
+    "sha256": "a030cce5a966e68b5b283fd530416adbebd6c1dc10c7592edc8d96bcffb2edc6",
+    "bytes": 11229
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/communication/one-three-one-rule/SKILL.md",
+    "sha256": "31ae7d7c5fc127d7f49d3282c3f93e3e3c3afa295f9bbd6660cc88ca9248248b",
+    "bytes": 4579
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/ascii-art/SKILL.md",
+    "sha256": "4863e641e63ce1e2fee28b623a82264e1ad1699bc67af46f0eb4b02716a346b2",
+    "bytes": 10614
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/SKILL.md",
+    "sha256": "b0b2a36387ecdf363550a341ee6941fe4fae0443564d730c0121a6a66114f36c",
+    "bytes": 10434
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/anti-slop.md",
+    "sha256": "796a13eb2261da541bc88e998107bde05051afe98d4593067014870ddbec4622",
+    "bytes": 7223
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/exercises.md",
+    "sha256": "26d06abe06a0e9fc0777fdd1c94845bd7438d2085ebcf720b614cc4304193817",
+    "bytes": 6069
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/full-prompt-library.md",
+    "sha256": "2ff29d678fe05c5f4e3bf8cfa427fa388f04af1817820acde03d34d325ee403e",
+    "bytes": 8119
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/heuristics.md",
+    "sha256": "77e4a4e6d84d46a2032dacafce7f3aac7c84369d0567573d3f543454791ac71d",
+    "bytes": 5133
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/method-catalog.md",
+    "sha256": "7e2c3ea7a665b34e869732cc9cbe1e3fb3bcaf2775925b764c1985af8375ffc8",
+    "bytes": 4932
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/affinity-diagrams.md",
+    "sha256": "530d23c4a5318081abdb02dd9a16cdccfb710f6ff3c59ca4c655103847ca1ee5",
+    "bytes": 4661
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/analogy-and-blending.md",
+    "sha256": "c4791856bd9cfa6cc466a7afd41a6d575e8ea891f37c3f82cc5615df6acc0d36",
+    "bytes": 5330
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/biomimicry.md",
+    "sha256": "858c03f00d012274ee1dd8ecb1dcbc3f0b863dfeffc81a5aee850a013ba6afb8",
+    "bytes": 4596
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/chance-and-remix.md",
+    "sha256": "9598c9f6ebafdfa23c4066b50b6fb9ebe2c45867786095b7775d8b5e52163c94",
+    "bytes": 3839
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/compression-progress.md",
+    "sha256": "bd4950f559d03ef2a225adc73cf6452acfc3d8863e41cf82ecf518aae26c29f0",
+    "bytes": 3024
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/creative-discipline.md",
+    "sha256": "c9bb83348fd90b1315c5d78bbbe4f18d30b3c1b8378037588442cb38404fa77d",
+    "bytes": 5057
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/defamiliarization.md",
+    "sha256": "588095139e2d48ab2c1af5af74676aca0bfc922f2d294c69dcb7c8351b3f8878",
+    "bytes": 4180
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/derive-and-mapping.md",
+    "sha256": "16b88dee7743896616c4e81aa24cb736a4b85597f2527bc1094914d16108e354",
+    "bytes": 4298
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/first-principles.md",
+    "sha256": "a16641171d7c2f2174f11ebb265a62d05e4872f41fb0165d8b59b5652c82a071",
+    "bytes": 4234
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/jobs-to-be-done.md",
+    "sha256": "35572cbcb92f3281ee066821dede7d968b319be5c9c51a842f8852efa63adf27",
+    "bytes": 4014
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/lateral-provocations.md",
+    "sha256": "de8149d9e88b0caf2fed9204fdabf5aded1fca374820a79bc21e228a1be01f8f",
+    "bytes": 3780
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/leverage-points.md",
+    "sha256": "64843a765d197451c5a6b914f27ae96e1332df6196d39b52298f62609c5c3cbd",
+    "bytes": 4674
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/oblique-strategies.md",
+    "sha256": "4dfeb8b6fe9440c6432c77d8c14a680a4494fd42e8732269e18515e0b26d163a",
+    "bytes": 2916
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/oulipo.md",
+    "sha256": "939f40ca502fb462a63609ef98f8cf484b96dd57ba380cfbbd5eb4eac36eb946",
+    "bytes": 3313
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/pataphysics.md",
+    "sha256": "23440de3e5a336154c24c002a66238cd1ddce166675a479a56d505c1e157af1a",
+    "bytes": 3934
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/pattern-languages.md",
+    "sha256": "4337612cae61449b33a09417dffb4f078437c034d018d70d0bce94191a9c6040",
+    "bytes": 4608
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/polya.md",
+    "sha256": "3d2cc6a75fac4cb488ddfbf8c895d7545fe7847f8f7ee6f58e4d44e5f99bcb33",
+    "bytes": 3572
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/premortem-and-inversion.md",
+    "sha256": "188f1897e66276942bfadd0c54b1821b867487ff60ee9265583bbd439497a71f",
+    "bytes": 3756
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/scamper.md",
+    "sha256": "73ab6700be4c46723a9a0d74845ce3f7ea0f722b476046ce440481790ec0cc6b",
+    "bytes": 3575
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/story-skeletons.md",
+    "sha256": "17925ac3f62ecb730561bf118a0c2e55d509cc4c8ec85394b51506435bf73881",
+    "bytes": 6211
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/triz-principles.md",
+    "sha256": "a4c877bc84f5fec2318c7a4929b86dbf1e48186d9510aff2e9a103ba9198c7a7",
+    "bytes": 6021
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/creative-ideation/references/methods/volume-generation.md",
+    "sha256": "605a9b158a5d7f6305d61c7c14f50584e87b8201749492256c8e3d352c35e06c",
+    "bytes": 3909
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/design-md/SKILL.md",
+    "sha256": "7ed56bba40ffc9573fa51b33b2424f37fb5f774e9ecb7e76e737797afd0b62ae",
+    "bytes": 8477
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/design-md/templates/starter.md",
+    "sha256": "587571ab914ebe6c228d786aeb3b531d88b5b53dcffd5295333d609275a0b2d4",
+    "bytes": 2566
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/simple-english/SKILL.md",
+    "sha256": "9d43d7ce95a09e9e65e04e9f99d46f223d3f0d4ec620f37fd8495536bca87a42",
+    "bytes": 20542
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/simple-english/references/checklist.md",
+    "sha256": "c90c3834fa691da11e23f11ccb922ad09ddb18fbea04004ad047b5070c0ae846",
+    "bytes": 2971
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/simple-english/references/use-cases.md",
+    "sha256": "a875819fe39687282b893d92d9d5f91c89685a01e21ffed0579d8873d4de6a68",
+    "bytes": 4053
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/creative/social-media-content-calendar/SKILL.md",
+    "sha256": "f12b235ea3eedf611022c0a89a967f08a5dc25bbd1531572f1c37f7545177298",
+    "bytes": 3970
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/data-science/jupyter-notebook/SKILL.md",
+    "sha256": "d6cde84618f8c741f8f61eeb3100afdbd2a8b5485ea2e0b1a28d8b6880eefa37",
+    "bytes": 6003
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/productivity/decision-questionnaire/SKILL.md",
+    "sha256": "84a781708b86a797e41d4a0b9234d4da48f95d14fc9cee23a0eb2cf8574e8ca2",
+    "bytes": 4171
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/llm-wiki/SKILL.md",
+    "sha256": "0229e37c1783fcac5b77cfb3242703666cf4aa472d2ae85b6bd5279756b515b6",
+    "bytes": 20121
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/SKILL.md",
+    "sha256": "ad6b059c628f8dbac24a4603e62185927352f8b42fe183ff50265976165469b1",
+    "bytes": 72164
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/autoreason-methodology.md",
+    "sha256": "d3a68438f903c0ba78228ead3e2409cf17932da3390575a51aa2b9050f80a356",
+    "bytes": 19146
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/checklists.md",
+    "sha256": "f0be3d5259a7527f7b03788eacf0f3739c319f61bdd0de708ca5f5d0b9dfd62f",
+    "bytes": 13622
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/citation-workflow.md",
+    "sha256": "febafc1818a5bfe8ff051d068401233f3a14c2b03c6a14c2e772871de272853a",
+    "bytes": 15433
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/experiment-patterns.md",
+    "sha256": "a2698aef1c8aef3bcf3f36f66c20b96b99054d8b3403fec85c9b5e72cba8c94e",
+    "bytes": 25829
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/human-evaluation.md",
+    "sha256": "073275dbe8547cd55e9513ea60b2b51d27f168d9b253485b9c7a63118b8df48a",
+    "bytes": 18221
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/paper-types.md",
+    "sha256": "970956d940b7d64182c90f3efff52b641e779cfdaab9ae1f821c0d08bfee5488",
+    "bytes": 16214
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/phase5-paper-drafting.md",
+    "sha256": "dac26de5b9ec2e2e5fb8ea0431712f15f48493f5b2e7150a1efeff3faca53855",
+    "bytes": 31865
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/reviewer-guidelines.md",
+    "sha256": "c1786ab39e3d60bb745a3f5493d11a71dce0fbd1cd4a4327d95f47f5a9bdaf81",
+    "bytes": 13738
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/sources.md",
+    "sha256": "665ebbff77ed914ece70cc8f2fc8be717d394add1ddd6a9aa308547acfded6ea",
+    "bytes": 9460
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/references/writing-guide.md",
+    "sha256": "5cc19317073471d8ece264764f8b7b700772d59dd1faec99027583d12e11757f",
+    "bytes": 16292
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/README.md",
+    "sha256": "e65dc1a22cb150da124dbd4dfb08ec3a4b68978436918a880e8581d6f74e39e5",
+    "bytes": 6707
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/aaai2026/README.md",
+    "sha256": "ee2c61a8b06e1471c0df7c774074d2ff1be824e6377a9e38f6adca5c68ddbb60",
+    "bytes": 17987
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/aaai2026/aaai2026-unified-supp.tex",
+    "sha256": "35adcff419efc25a032140c520d40520d0d0fc69123e9d8e38ad161c40ad07b7",
+    "bytes": 4548
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/aaai2026/aaai2026-unified-template.tex",
+    "sha256": "bed12c50b5e027fd88097d238ec4e7ebf1ae7b450cb06d6df7c8ae126a620aea",
+    "bytes": 63140
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/aaai2026/aaai2026.bib",
+    "sha256": "d8fcf3dc09b9d489aeff13631174c5998a48cb0d0800ac8a00a2f7bdbc40295b",
+    "bytes": 4766
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/aaai2026/aaai2026.bst",
+    "sha256": "ac26e2c66047435c0ed25f21ae36ad42d731cf3d794c4a8b5f05a62141a27294",
+    "bytes": 30207
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/aaai2026/aaai2026.sty",
+    "sha256": "a39f1866a04dd1e2603613c876fa446aaea2c2f3e34d02be868fd21520bfade5",
+    "bytes": 11802
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/README.md",
+    "sha256": "e55608f9bc0b564f58d864d43197547785ef021c3ec1c5f0a6d2057aa615681e",
+    "bytes": 2126
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/acl.sty",
+    "sha256": "19dfeddc2c0e448f3926a0bef048a9db3f3611b46265b760caabd7ada4f361de",
+    "bytes": 11615
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/acl_latex.tex",
+    "sha256": "339c9ee9705c1767d44ef24b85365c0bb8619ecc3fcf66172bf1356292389614",
+    "bytes": 14533
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/acl_lualatex.tex",
+    "sha256": "c0bf91f00ecbf962d36dae7a302e577d61fbac00feee93946e869db09d2f8188",
+    "bytes": 3050
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/acl_natbib.bst",
+    "sha256": "e332fd51dcea48e2a8a89754892c3cb99674a1cd70b527b661e9aaffc235e83c",
+    "bytes": 45186
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/anthology.bib.txt",
+    "sha256": "2b78d2d9aeda62e14c4e46099e8225b5fc116387d8e0a54aad776485e249ceff",
+    "bytes": 1169
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/custom.bib",
+    "sha256": "d76ccb30ddceb70c9e1ad0be3f43dfe301ad5765aab2c960fc830ef67bf8232a",
+    "bytes": 2071
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/acl/formatting.md",
+    "sha256": "9e004a136c5dd43300d97e5bef5eb3a77d0e2a2d3502f0f2436ec011d1c49e9c",
+    "bytes": 17923
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/README.md",
+    "sha256": "7c2c585d565482357dffdf499b567929e07a9f09619608c19ce9eb2984697ea1",
+    "bytes": 51
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/colm2025_conference.bib",
+    "sha256": "c5fabf46cc7d7a6e527b82860b9a9d658eb07f63abaafa9b7beb631d8abb91bd",
+    "bytes": 496
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/colm2025_conference.bst",
+    "sha256": "2d67552db7ed38ccfccb5957b52f95656e25c249724761d3cf5f7922ad1844c5",
+    "bytes": 26973
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/colm2025_conference.pdf",
+    "sha256": "d8b3d74bc81aec9ba9d6b739b4922adc93ae002d7c82522b9c6064014bec1d16",
+    "bytes": 122635
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/colm2025_conference.sty",
+    "sha256": "79df8b2a1b142dfb324a0a7e87fabcd9d5dc2a34700e1c6c083a9bbb9e5daa8e",
+    "bytes": 7727
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/colm2025_conference.tex",
+    "sha256": "baf01cd056ccd1b35165d190019414946217de1683f8ae3ddc66b11e3c653dbc",
+    "bytes": 12830
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/fancyhdr.sty",
+    "sha256": "b56ec4434b9f4607529a4b23dc68ad8d4b94f1f631c8cddaf7da78140d53a5ea",
+    "bytes": 20521
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/math_commands.tex",
+    "sha256": "90473c4d0542070db244cea73ef962d6cddc5b2a746757e6a40ddf5fdfb90ba9",
+    "bytes": 12284
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/colm2025/natbib.sty",
+    "sha256": "88bc70c0e48461934cab5b2accef06b74a8b3ac45ad03ccd3f2a6b7e0d6d530d",
+    "bytes": 45154
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/fancyhdr.sty",
+    "sha256": "b56ec4434b9f4607529a4b23dc68ad8d4b94f1f631c8cddaf7da78140d53a5ea",
+    "bytes": 20521
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/iclr2026_conference.bib",
+    "sha256": "cdd86e7d4c31854dcf2145871657c944588a6d44c3b72e160ff4baa8df1a52fb",
+    "bytes": 629
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/iclr2026_conference.bst",
+    "sha256": "2d67552db7ed38ccfccb5957b52f95656e25c249724761d3cf5f7922ad1844c5",
+    "bytes": 26973
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/iclr2026_conference.pdf",
+    "sha256": "cb3d414cfa4702d52de94de1c8123c34b2cf46b7a5510df49dcc1014a6c266cf",
+    "bytes": 200508
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/iclr2026_conference.sty",
+    "sha256": "a4852f68e080d6c5245057ca2039100b409e31727898aa93c03d78ddb84374a3",
+    "bytes": 9025
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/iclr2026_conference.tex",
+    "sha256": "941b58de6e52f5538de0ebfe2d20425a79e1768cb271d453b7436904b5159859",
+    "bytes": 16899
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/math_commands.tex",
+    "sha256": "90473c4d0542070db244cea73ef962d6cddc5b2a746757e6a40ddf5fdfb90ba9",
+    "bytes": 12284
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/iclr2026/natbib.sty",
+    "sha256": "88bc70c0e48461934cab5b2accef06b74a8b3ac45ad03ccd3f2a6b7e0d6d530d",
+    "bytes": 45154
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/algorithm.sty",
+    "sha256": "93fd0eb31c112eb405833db8f1d7f5d238c7e691b1c05680d7276e68f36d564a",
+    "bytes": 2223
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/algorithmic.sty",
+    "sha256": "48d18794a5d97c0479a588cc2eac0917992feb9da83acc4631b8f55757d80f9b",
+    "bytes": 7414
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/example_paper.bib",
+    "sha256": "df950103d38f9cfc81b1f40d84c9be2a3525d046d2991a6973a4446922c06bd1",
+    "bytes": 2051
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/example_paper.pdf",
+    "sha256": "3e8fe0e952de8702ca4697dba09ca52e83bd649767b92a8340d34a591caa4d1b",
+    "bytes": 193509
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/example_paper.tex",
+    "sha256": "c2ca8140bf255d1ff77d1278eb3eefed4018b4b1e71065b8e1ccbc68b74c8acf",
+    "bytes": 29714
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/fancyhdr.sty",
+    "sha256": "9130c52f91087abc6d223164ffa587e207e3257fcbcd069ef09ecb5391043f14",
+    "bytes": 31715
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/icml2026.bst",
+    "sha256": "0ec3d5eb9b02efb7e0b44a32f3775882f42a743d0bdc618f34e6936309b98764",
+    "bytes": 27147
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/icml2026.sty",
+    "sha256": "7cdcf90f6a59c5219e7f15c88f7ed09fcaf598dad91e6cdddc4dc3cb0e397a95",
+    "bytes": 27344
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/icml2026/icml_numpapers.pdf",
+    "sha256": "d34e8da982296363627996e6e18850c11fbd616e6946061237051e7a8f7080bb",
+    "bytes": 2823
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/neurips2025/Makefile",
+    "sha256": "0983425d74e769f2457f6ff0654cf76fc0c95f8d158fc8eaec66c5697ba0594f",
+    "bytes": 1054
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/neurips2025/extra_pkgs.tex",
+    "sha256": "fcd6b09156fa193c347f6acd8188d430fa28f769fb6e2c2514cbbd215c39014a",
+    "bytes": 2837
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/neurips2025/main.tex",
+    "sha256": "366c093fbc3018c46de28f3fe0ecb063b4aba10a089afe037837bbf673a9c4d6",
+    "bytes": 574
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/research-paper-writing/templates/neurips2025/neurips.sty",
+    "sha256": "ef7a55f0a7c9da12fea39af7990a6a314a721b74a23b1544f252e55fcba940cd",
+    "bytes": 11625
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/rss-feeds/SKILL.md",
+    "sha256": "bdd3a7c1005cb7f1a5266b31fb464fc50d6c7b3389ad888a1e4341467be82ff8",
+    "bytes": 4557
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/research/rss-feeds/scripts/feed.py",
+    "sha256": "b33392b1a87cb84ea3550d243f06bc213a0320d684f16be568956ecd7c78d5cb",
+    "bytes": 9983
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/code-wiki/SKILL.md",
+    "sha256": "5d3e5b93dfd188483f45e75f00a7d4f16d044681f41c36b785aae900c7397576",
+    "bytes": 14115
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/code-wiki/templates/README.md",
+    "sha256": "0c38fb312fbe6f6f1c8169b93648966275e28f0ae5f312c7195023f6b91bc240",
+    "bytes": 667
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/code-wiki/templates/architecture.md",
+    "sha256": "91f4c340c29460d777ba1317ec0d46da677f2768d848e74ee3ac90d1699bbc60",
+    "bytes": 654
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/code-wiki/templates/getting-started.md",
+    "sha256": "190b3e93cfa8872de69f846a86b7250a154ce3ed3c50d3127eeae8c0a02c1f36",
+    "bytes": 658
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/code-wiki/templates/module.md",
+    "sha256": "5a5f02b93dc45712a444c279e4b993a01937436082a0c8a9e64e2fa7f597a8d7",
+    "bytes": 634
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/grill-me/SKILL.md",
+    "sha256": "6e3b3b81c1ad3a0b3ba3d36ec725e376d225e7867bfbf23a5129cf245e94bb0c",
+    "bytes": 4689
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/hermes-agent-skill-authoring/SKILL.md",
+    "sha256": "9cfb1341d276908fbced52e1e8ff81b4dc95aa92361684dec98e9a5cb5fc3db5",
+    "bytes": 14650
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/python-debugpy/SKILL.md",
+    "sha256": "cb1b8b0795a56fa0fd79f80f3363f1ad79d404a6757d6cf547971cf89f21155e",
+    "bytes": 14984
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "optional-skills/software-development/rest-graphql-debug/SKILL.md",
+    "sha256": "18228139612c555dbb4a53b74039dadb53cb1163507dd9325a4fcfa3326e475d",
+    "bytes": 15636
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/architecture-diagram/SKILL.md",
+    "sha256": "0e7e2736aafe052e409c2ad27863d51ef3007c116711e584033787ccb5d99d3f",
+    "bytes": 5830
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/architecture-diagram/templates/template.html",
+    "sha256": "d17a1631a14f108dd469ad16c83d667d917565ebe780f42fad7321be327de442",
+    "bytes": 12483
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/humanizer/LICENSE",
+    "sha256": "4ac4810254ab36d45419141aeb8e69bf50652cfafe5b2dab947d06d44e5cbf96",
+    "bytes": 1066
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/humanizer/SKILL.md",
+    "sha256": "887d5e3467a682da9b166e5293007f8bbbc299f8a6718ae00f26161b7d062b04",
+    "bytes": 34463
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/README.md",
+    "sha256": "8251be0e41fbe1bd0a903ac93b38beb2b64375696fd0cd23bb73dd2ef8f8054f",
+    "bytes": 3316
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/SKILL.md",
+    "sha256": "3b39b75303e082af69b3f4e2deab7a55b27d60293eff6a561fb627188194a33e",
+    "bytes": 27534
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/animation.md",
+    "sha256": "7b71c1fd7c7778bfe3e348e49ae8b4cae59c5eb730a42d9b603acce7801bbe57",
+    "bytes": 10456
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/color-systems.md",
+    "sha256": "4c210028c4d6e8cf72df7eb0c730b6faea6ac60d627d333991040c42e7f5d699",
+    "bytes": 8647
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/core-api.md",
+    "sha256": "8b1278b31bd4e003cb093da1858e4d0753eb304540c8f4e8e567c682222753e7",
+    "bytes": 9841
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/export-pipeline.md",
+    "sha256": "b88e7236c5a674c2541d664c1c1f7cdf2eea0ef7da43c047ac2d45e3fd239667",
+    "bytes": 15611
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/interaction.md",
+    "sha256": "2951d6e9df71c467fe9ac8401c771a0b93b7c648dd4723108743f339d3c82aa3",
+    "bytes": 8345
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/shapes-and-geometry.md",
+    "sha256": "0a468a75d22322552abffec0cb1305d94ee531c850dd8b590584fd1078d48ed2",
+    "bytes": 7213
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/troubleshooting.md",
+    "sha256": "89812ad4fa9f08bde59ee1050107c723bd1b9046a81f8dd0aad94d4a9d8b215f",
+    "bytes": 13041
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/typography.md",
+    "sha256": "d26c532a850750c6d6e64ddaa0465a499bfd44023465a6a19d8909637266654c",
+    "bytes": 6779
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/visual-effects.md",
+    "sha256": "644cbaf5f91b44dfa54ec125ccdff44c445f454781ff98edd316d30df258db56",
+    "bytes": 23456
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/references/webgl-and-3d.md",
+    "sha256": "86ce498bccba5ce24ab9ba6d104723ea2739db6da27c2aec4284848ba306860d",
+    "bytes": 8893
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/scripts/export-frames.js",
+    "sha256": "b1de46c977c9edfcc71fc045422f78722f12744c4f8b3d80e0fa6b2681a1dd05",
+    "bytes": 5398
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/scripts/render.sh",
+    "sha256": "76aeb8a5036b3927869f18e03742e591cb7ff3f9984c65d7ba6f63428b9fe0c8",
+    "bytes": 2919
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/scripts/serve.sh",
+    "sha256": "e8107c5344e674198a0e4a4ec98777815856c37e51b69f193dedfd1b6b553a36",
+    "bytes": 841
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/scripts/setup.sh",
+    "sha256": "890e0470b339e73dc095337b286accf660d27f912fc684e8cf86a99aa5695d17",
+    "bytes": 2483
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/p5js/templates/viewer.html",
+    "sha256": "6a0f3f42fbc6a52cc82cd5990a856474cdbf43d2f157d2183a09b9cec91a331a",
+    "bytes": 10858
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/SKILL.md",
+    "sha256": "3551eba639022a414cce013b96458bd595bfd6fa1d4c71ad819d36ae8b03edfc",
+    "bytes": 9869
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/airbnb.md",
+    "sha256": "b92fdabf4f62f2fb2466a92427e6d790c836eaab66a2303e9b4779e38eaf46c2",
+    "bytes": 14847
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/airtable.md",
+    "sha256": "b1bc37ba49c7a5816bc32da0a4afb34dbf0e428e8b6ad753ae396ccd13255176",
+    "bytes": 4323
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/apple.md",
+    "sha256": "257e59d8e83dfe4f6bb72f4bcd606bd2074fa058dfe0f4c762c996b920504d7c",
+    "bytes": 21145
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/bmw.md",
+    "sha256": "61294f5b56278a705aba7ffffb2984d7df3f57aec25869d953527e43a8f2eccf",
+    "bytes": 10608
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/cal.md",
+    "sha256": "2c1f9d3361207a97de4f8d3b066aa3bf586344790fa21462c79d86365d46b0d3",
+    "bytes": 18605
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/claude.md",
+    "sha256": "eaeb1f458235b1c53760c52ec70d98a51e3d82b3920fde2ab7b85e8781669554",
+    "bytes": 21101
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/clay.md",
+    "sha256": "e32da83deb4777ef34e89c58369847ed98decd3d6d1ef1e6c0c29655e51bdfce",
+    "bytes": 18128
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/clickhouse.md",
+    "sha256": "05baed55955e61828b76837616415629a5a6f7fd4800d35b17b8714f32f971ee",
+    "bytes": 16203
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/cohere.md",
+    "sha256": "284eeb4b3c0dc01bb4f63d558217e21060937901af7998bc8f7a29a21777cb73",
+    "bytes": 15566
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/coinbase.md",
+    "sha256": "8dac39830fe68f9b815c98c3519482074cb434f4669a6a0205a510d7ccb14b6d",
+    "bytes": 5804
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/composio.md",
+    "sha256": "ca390fe68434f4f7af84f6c7e216a72050650cd318f9b50cfc5905ce72c36246",
+    "bytes": 21755
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/cursor.md",
+    "sha256": "dd48b51fe153373b241d688bc6eb479fda9d31fdec8adf6b68c759c8c672b6f6",
+    "bytes": 19890
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/elevenlabs.md",
+    "sha256": "22df5f7ade0f59608e9fa324f438e59e5d04d30a6302fd998c8206c531b56818",
+    "bytes": 16001
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/expo.md",
+    "sha256": "d1546d529fd50bf23c548066f0e32b596c8fb1d8945d9c7789a5e9218a865ef6",
+    "bytes": 19489
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/figma.md",
+    "sha256": "0e8ad219a4d2dc0f13091ce069244d2e0f2df300aea0e012bb9909bb59a97d23",
+    "bytes": 12426
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/framer.md",
+    "sha256": "03588e8616784c58f916e5c636beb403d37f69167a69f094cc3415f4b36a89dc",
+    "bytes": 18370
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/hashicorp.md",
+    "sha256": "2d8677f6f776d10b05c565fa17a97740bb421a3776656983651818bf434268c8",
+    "bytes": 16448
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/ibm.md",
+    "sha256": "15f0a1e389740379ef4c5b73e6351a75f9029f577de7701413e0a00554404ab7",
+    "bytes": 20389
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/intercom.md",
+    "sha256": "e626a1d0c521223dcab4cc08d7d1920d9c5de174ac3b15501e0711bb6c06e533",
+    "bytes": 7185
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/kraken.md",
+    "sha256": "b88fccb826430e0b39393b218cfd08cd8ef8074108cd7f20340c3310605c8b75",
+    "bytes": 5117
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/linear.app.md",
+    "sha256": "a3dce39ae906d2d874e021da2eae5cc3f606bd86d211b8b241344bbbd78c9ca7",
+    "bytes": 23254
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/lovable.md",
+    "sha256": "5eba4cc4e180157a895cf64870b42a822c30815baa6cf4be15eeb8b359102445",
+    "bytes": 18183
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/minimax.md",
+    "sha256": "a45b6c59206b7d9eb33b1713ef30ed5610bc0293fb019b10b6f3ec2dead03e8d",
+    "bytes": 15094
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/mintlify.md",
+    "sha256": "96496cd421d3eddf1027ed0cdafc79206b87c016cf05da85b8de9e20bd49b9a3",
+    "bytes": 18226
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/miro.md",
+    "sha256": "c6e5bf06a3dc9e9d98a5896a96ad3c3b657291b526c327be6e6472fe79232eff",
+    "bytes": 5561
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/mistral.ai.md",
+    "sha256": "613c02a50391fa50ec3b45a3dc46003d6664c67b9cae0e89ed621071849737e9",
+    "bytes": 16444
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/mongodb.md",
+    "sha256": "c2333f690529f5f5bad49725f3f1ec765aa5775e44404d29bfca7d7445b37d32",
+    "bytes": 15831
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/notion.md",
+    "sha256": "03217a0132de8dc164d5836eb0ed4c3a971a96ae35859dd44f0a0636d91d590d",
+    "bytes": 19113
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/nvidia.md",
+    "sha256": "51476f7d42ccaeef6ccf9309088fa4f05f2bcee64863aedfdb3399e06f6115fa",
+    "bytes": 17857
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/ollama.md",
+    "sha256": "d533c14718234d17f6afd5d193f99eb70d0edc0ca9a61f5a5076d7d39fffa79f",
+    "bytes": 16330
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/opencode.ai.md",
+    "sha256": "61da03c049dc705e6becbbac7215f0f10ce36c782812b90a6d0ec48e651d69c4",
+    "bytes": 16330
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/pinterest.md",
+    "sha256": "f5ea2999252fb66ba29d8459b6080bd624f323d808b6afc94fd4fde07949d95a",
+    "bytes": 12717
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/posthog.md",
+    "sha256": "8a5d235362f983ec8b7a5b2a91ea908f15ea272ea65cd83e676fd85dc87b342e",
+    "bytes": 19370
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/raycast.md",
+    "sha256": "396a7751c0d1c9498ad75bcb88c68aa16007543ef2488e2983985f1ff8661335",
+    "bytes": 19284
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/replicate.md",
+    "sha256": "80d1ba402b4105c1afd281240eb9dee21ea5f419892ffac37a3ff900fa0a4c55",
+    "bytes": 14970
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/resend.md",
+    "sha256": "30cb0204f2324707893f33d1b07f5e921c87ac5cdf4163517cef560b2bf9af62",
+    "bytes": 19224
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/revolut.md",
+    "sha256": "50395cacab19550358324e773a844d3bcf8ee2ffa68bd363936b04905edd4dd5",
+    "bytes": 9386
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/runwayml.md",
+    "sha256": "929448fc5e3fa30fe233c7efee41b49f222c926ea13f91cca30c3aa2744723b8",
+    "bytes": 15120
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/sanity.md",
+    "sha256": "f634a0705d198163e60de4bc11d8307d5744d12bc602f81ded96406ac508f72e",
+    "bytes": 22064
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/sentry.md",
+    "sha256": "d3649c8926dd7d10619b22b1406619af23aebe12ed768a85b5f57c44249e03d5",
+    "bytes": 15562
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/spacex.md",
+    "sha256": "129d7b021b8c6d9c39989f36e325a1d90d32805640584eea8ea8417ca414e143",
+    "bytes": 12087
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/spotify.md",
+    "sha256": "96f8cb6e8d5cc96d3483802ba12efae052f0ba702595ac39781037580294ae0c",
+    "bytes": 13754
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/stripe.md",
+    "sha256": "5fd3a2617d34c297d5835811c65184d2bfd15599d2baceedcd33bd4afe14b998",
+    "bytes": 21286
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/supabase.md",
+    "sha256": "0bdf471bd10075c64f501372a3b156babac3a2fe6a68322ae3ab9794ddd138d2",
+    "bytes": 15615
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/superhuman.md",
+    "sha256": "de1692e859f872fe2771ca0149d893186d2abc449e0b6da67afec820b60128c8",
+    "bytes": 19737
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/together.ai.md",
+    "sha256": "648a46d14c456c250f2fd20123562f0d2d6a51e9bdba854a960f32a2712488ea",
+    "bytes": 15096
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/uber.md",
+    "sha256": "422e4e929b76dcbab70c38a83d67c6b2332a3835c5f5a87a6734f889fe607827",
+    "bytes": 19453
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/vercel.md",
+    "sha256": "2b002ce45e8a765195f7ab029d53d05e44a89fbff8e197c0d7431202ccbccd2d",
+    "bytes": 20250
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/voltagent.md",
+    "sha256": "c9f563a568ce80df94c34f044f9fa5ecb7c5c7ebd36e2a4972e91b39728f09fa",
+    "bytes": 27114
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/warp.md",
+    "sha256": "15a922ed4dbb669f4d7d26418bf9191cf5196ed7a570a930d9f60e09562c832b",
+    "bytes": 17464
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/webflow.md",
+    "sha256": "c237862ee3e77bc5273977ef36b791e39a012a7540eef47519971e24a0fa600a",
+    "bytes": 4886
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/wise.md",
+    "sha256": "0855946ea9af11ea78ff2c7fc2b381eb3a9c3816d1a1da6f3f2af55bfd9f84ec",
+    "bytes": 9231
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/x.ai.md",
+    "sha256": "36f3f90253f435c45bd681f1cdc7f21e9318dc1159f4f31cf22560f6e0b838aa",
+    "bytes": 17066
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/creative/popular-web-designs/templates/zapier.md",
+    "sha256": "e029cf56090baf0ff2de80c62b3eb73d7538cd651e92a747e6555e58e6840d83",
+    "bytes": 19507
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/devops/sdlc-review/SKILL.md",
+    "sha256": "ce90e8a3e145cce69c62880dc85921700110879f9290952d6cec28218503155f",
+    "bytes": 9073
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/note-taking/obsidian/SKILL.md",
+    "sha256": "7aea4e8f89f94ab2876d79898d10a5d4cdab31390c53f72ad6934b071179f826",
+    "bytes": 3092
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/productivity/weekly-review-planning/SKILL.md",
+    "sha256": "4c940236f93e3b23f131f776e0f020af2728fe41e06161b327517899a67716e6",
+    "bytes": 3955
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/codebase-inspection/SKILL.md",
+    "sha256": "d62554263461919dff7d77c3c0c284c2190c894f312a84d7a770a030dab642dc",
+    "bytes": 3612
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/dogfood/SKILL.md",
+    "sha256": "b0c93d87d160da63ad489743880bdcee634ccb7f5b68c15a668ef80048b37916",
+    "bytes": 8652
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/dogfood/references/issue-taxonomy.md",
+    "sha256": "b90546fab5b59494ebea35b957ccc1d98bab8eaeaaa3529a142b15ea96df2b31",
+    "bytes": 3682
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/dogfood/templates/dogfood-report-template.md",
+    "sha256": "6db9127715d3d1482542e48dd2d71fcb25238e614b1e5739ec193fa143962a26",
+    "bytes": 1528
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/SKILL.md",
+    "sha256": "9d70e7c842fe7db75b5a50526552a69862f5bcfc1e59aa93785241649a09d5a3",
+    "bytes": 2446
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/auth.md",
+    "sha256": "eba9d0edf896036718612bb557ec7a6432532a9395bd66277c3b7417d8960a37",
+    "bytes": 11586
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/ci-troubleshooting.md",
+    "sha256": "ada022d91c8abff55a15505fe630ba02abdece5afa3751433fa4014a33defa23",
+    "bytes": 4936
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/code-review.md",
+    "sha256": "11ad06e6d49bcfc3433530b40f95b72f568cae0a2d7ca6e2450b22d3e0626d7b",
+    "bytes": 13295
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/conventional-commits.md",
+    "sha256": "2d71a3b701b08c2e5ed5248d17928eb11e27d7b357f9e2dca27caee9cc017aab",
+    "bytes": 2417
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/github-api-cheatsheet.md",
+    "sha256": "a9081d4a108b67b4edd3c92c73d823fd1730e37e23be6f069d9bd67dd3b32486",
+    "bytes": 6092
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/issue-to-pr.md",
+    "sha256": "9fc6de82f9b8e65a1611a5e3eee9f6f35cc9118a90a9df3de547cb65f2766dab",
+    "bytes": 5638
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/issues.md",
+    "sha256": "86cf4a98232ee6362cd7893e76bed6ed25c21eb660e878432c6df3286c02d6d8",
+    "bytes": 8981
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/pr-workflow.md",
+    "sha256": "f75f8cc23266a3675a67c8d06385c561befab23a8e6a9683b5418c8b656bb2b5",
+    "bytes": 9746
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/repo-management.md",
+    "sha256": "e5b92a6d2edf1dc317ed4d4ba1b37734b78f391438d58f3f86139df398996301",
+    "bytes": 13416
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/references/review-output-template.md",
+    "sha256": "4560662913e8f89d558c7ba4f34daf77a35a88367c2d480ad86de7085cbcaf34",
+    "bytes": 2465
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/scripts/gh-env.sh",
+    "sha256": "eb04179d859635b56cdd0da71da59cd5d94d7a69c9a856f9f562d1cd5cb9412f",
+    "bytes": 2556
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/scripts/git-credential-token.py",
+    "sha256": "4c0f3dfdc75df9043fe7b62b0807e7b4392c59ee81082d2fcc8d39b75c593efb",
+    "bytes": 1788
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/templates/bug-report.md",
+    "sha256": "4b3144ccf47a85dcec889c7610d6b739a7ae6f19aa8d4709942112ef09e11a5b",
+    "bytes": 469
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/templates/feature-request.md",
+    "sha256": "43962f5a398b4badeeb94280299ba4511940ad0e32afcfce5f2a6e1afd21c7a8",
+    "bytes": 598
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/templates/pr-body-bugfix.md",
+    "sha256": "e8c31915b87dba0454d7520a3aa45ef8650fd0e50e48e277db855ff919e6251a",
+    "bytes": 513
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/github/templates/pr-body-feature.md",
+    "sha256": "875e815da6e0e3df2763a85c9c2a56a776461da39d4181a1487333c0bf5b9276",
+    "bytes": 580
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/requesting-code-review/SKILL.md",
+    "sha256": "1e26ced9f05e357950e035b93ad1a937dd8a9e578a44d3c8d4fa734a09b7f814",
+    "bytes": 8781
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/simplify-code/SKILL.md",
+    "sha256": "9ee977c3362a1c07f2e327198e066ddb3c0ed67709706fc410165ee820b2ca01",
+    "bytes": 14696
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/spike/SKILL.md",
+    "sha256": "573d8fc0d6699eaf5308e742402bc02c883152ffeebe14607f164c6c538495c2",
+    "bytes": 8723
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/systematic-debugging/SKILL.md",
+    "sha256": "bd480f51a2e9969c88544003c30b7539b7df0b7358703f99b0495514c2dd878a",
+    "bytes": 14059
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/software-development/test-driven-development/SKILL.md",
+    "sha256": "649e6ab89bd8aaad2f9b162c60321f227cff8a8cda56393f07a81d1c6825a692",
+    "bytes": 10300
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/web/blocked-page-recovery/SKILL.md",
+    "sha256": "b71179e82ff27c002e6593e792d9a64dad9a444901b8938f30204fa115592061",
+    "bytes": 5175
+  },
+  {
+    "repo": "NousResearch/hermes-agent",
+    "commit": "3b421578588243f920886e6fe79a6faa87ea026e",
+    "path": "skills/web/blocked-page-recovery/scripts/recover_page.py",
+    "sha256": "22b996996ae2bf252b31cfd2636231f08936729a381dce7ba8bfa4afb8ffe8c6",
+    "bytes": 8481
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "LICENSE",
+    "sha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+    "bytes": 1070
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "README.md",
+    "sha256": "79f29f50c735862d2e304ea547b4c9aa67d9db6909ff6fb7b5ea922d7bcbc3e7",
+    "bytes": 14847
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/SKILL.md",
+    "sha256": "2c9ca71f94886f9ca9f4aef055f7cafb3e1a9bdf3aeebf8f4cb547c69405d207",
+    "bytes": 15190
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/builder-check-prompt.md",
+    "sha256": "36d51a4723d6f0a3ce5811a0ea3b3a8424f07533947e1355f5d8cb8cce40c55e",
+    "bytes": 881
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/scripts/frame-template.html",
+    "sha256": "6a8a4e58bd6a44b904e2e3c57de774481d909204597e1498de53f1b2fecc4c4e",
+    "bytes": 8094
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/scripts/helper.js",
+    "sha256": "43c6d69954a46ec34a2a262bcc62a9a7e83e839c739f199cb72646d397c686e3",
+    "bytes": 5615
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/scripts/server.cjs",
+    "sha256": "763abf96510e0b892a1141397b31aa82ef900cf87ed34dde94bc8782baf4a7ca",
+    "bytes": 25699
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/scripts/start-server.sh",
+    "sha256": "314dd68dc00e8dd94c7491aca8a5f004c7fddffc161e2b07482f29f48d13659a",
+    "bytes": 7315
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/scripts/stop-server.sh",
+    "sha256": "0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf",
+    "bytes": 3263
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/brainstorming/visual-companion.md",
+    "sha256": "6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2",
+    "bytes": 13413
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/executing-plans/SKILL.md",
+    "sha256": "deaf176fa179827e80f2ea3101db3ea90fdf562ebef340eba761e4687940f5f5",
+    "bytes": 18364
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/executing-plans/scripts/task-done",
+    "sha256": "ac0b5ebafc7d471507b7e94d88da77a11f187ba277c8d48fefaf8ff3e4fee50e",
+    "bytes": 1900
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/executing-plans/scripts/task-start",
+    "sha256": "4ae7ce3b6777c3240af786197836a6b4bbf3b0ee831c25f147c149ea8db54a21",
+    "bytes": 1185
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/finishing-a-development-branch/SKILL.md",
+    "sha256": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65",
+    "bytes": 7781
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/receiving-code-review/SKILL.md",
+    "sha256": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438",
+    "bytes": 6203
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/using-git-worktrees/SKILL.md",
+    "sha256": "8cfb86f121269e8f7f12361e6795c4f6738828340e28964c9229d365666c9edd",
+    "bytes": 6813
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/verification-before-completion/SKILL.md",
+    "sha256": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3",
+    "bytes": 3646
+  },
+  {
+    "repo": "obra/superpowers",
+    "commit": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "path": "skills/writing-plans/SKILL.md",
+    "sha256": "a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a",
+    "bytes": 10335
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "README.md",
+    "sha256": "1fca448ca17ccf901bd068c661209b15300bc5be3f039ba1a616c3a13a374ccb",
+    "bytes": 5547
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/algorithmic-art/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/algorithmic-art/SKILL.md",
+    "sha256": "3bc4092c09804853186524c826bc0621b940bb6122c05b84496dff95388e6eef",
+    "bytes": 19769
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/algorithmic-art/templates/generator_template.js",
+    "sha256": "9ee0f1da52ef8f7bbfde1917123654880890d43f2d388642d71eab6dd78f94c4",
+    "bytes": 7826
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/algorithmic-art/templates/viewer.html",
+    "sha256": "86c79d7ce97d2599ebe4bd9b97fdeb7295c9d3ed61ceeb513cbe1b2bb5d1ce29",
+    "bytes": 20844
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/SKILL.md",
+    "sha256": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b",
+    "bytes": 11939
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/ArsenalSC-OFL.txt",
+    "sha256": "8ddd61b18ba2c0d0dbe4a691cf5f1a0673f473d02fa0546e67ee88c006aeff6e",
+    "bytes": 4373
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/ArsenalSC-Regular.ttf",
+    "sha256": "65e6f89df58f68fd905b3add34a79dd6106aa3b3044df0dad9676fff53d504b9",
+    "bytes": 165848
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/BigShoulders-Bold.ttf",
+    "sha256": "b43bcd198b9fdf717dd42aa61a34dba32e01aceaeae659d689afd0ca52c37ea2",
+    "bytes": 94528
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/BigShoulders-OFL.txt",
+    "sha256": "fbc746aabf0eb1847dfd92e2efc4596d79fa897d60b8e64062a22f585508fb3f",
+    "bytes": 4397
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/BigShoulders-Regular.ttf",
+    "sha256": "18a879fc71978a4447150705caf880a9da3860083c259fd29e6dc03057b6842a",
+    "bytes": 94396
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Boldonse-OFL.txt",
+    "sha256": "45cc82ab4032273c0924025ffcf8f0665a68e1a5955e3f7247e5daf1deeb1326",
+    "bytes": 4390
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Boldonse-Regular.ttf",
+    "sha256": "cc2e540604565c0f90a7d8d46194a2f42fc9c45512cd2e39bf03b50eb68c35a4",
+    "bytes": 77168
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/BricolageGrotesque-Bold.ttf",
+    "sha256": "a737b146fe0d77ffe8a86e3cd16700dd431d3b1e420d4fd80e142cd68a1cb50d",
+    "bytes": 90952
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/BricolageGrotesque-OFL.txt",
+    "sha256": "0e4f4eb8534bc66a76aca13dd19c1f9731b2008866b29ccff182b764649df9b4",
+    "bytes": 4403
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/BricolageGrotesque-Regular.ttf",
+    "sha256": "972a6d098c9867ae131d0ea99e221e63976b11a19d4b931c2c7ace525674e4f6",
+    "bytes": 90920
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/CrimsonPro-Bold.ttf",
+    "sha256": "48f191e38355c8db100eb3ce157c20f9302a3b9a37b44a660f77ecfce3986609",
+    "bytes": 107352
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/CrimsonPro-Italic.ttf",
+    "sha256": "52318db3526b644e6efa60be0b3ca5a50e40fbe8bd026c261e0aa206f0772267",
+    "bytes": 108828
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/CrimsonPro-OFL.txt",
+    "sha256": "35680d14547b6748b6f362a052a46d22764ce5eccf96e18b74f567bb2ee58114",
+    "bytes": 4394
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/CrimsonPro-Regular.ttf",
+    "sha256": "48fad08cb1917a7b2f2c6fe5135d6c07743a6663cf7631ec4481108aaf081422",
+    "bytes": 106696
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/DMMono-OFL.txt",
+    "sha256": "bfe7842fcb88323e2981e24710c25202677385a8c75fb6a87217b275a0247ae3",
+    "bytes": 4392
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/DMMono-Regular.ttf",
+    "sha256": "f98ada968dc3b6b2c08d3f5caaf266977df0bfe0929372b93df5a06cf2ace450",
+    "bytes": 48852
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/EricaOne-OFL.txt",
+    "sha256": "e0de629968b52255548d5fafcf30b24ff9edae0eda362380755a75816404d0fa",
+    "bytes": 4410
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/EricaOne-Regular.ttf",
+    "sha256": "db1d89e80e33a8a01beaaac7a85df582857d24a43f1e181461aa7ff5d701476a",
+    "bytes": 24872
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/GeistMono-Bold.ttf",
+    "sha256": "75c0828d5c1ee44b9ef9f4df577bf41595ec362e2ea3f1e558590c9e92c7949d",
+    "bytes": 78304
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/GeistMono-OFL.txt",
+    "sha256": "6a873c900f584109b13ae0aaf81d6e3cf0a68751a216b03f7b6c68d547057bb4",
+    "bytes": 4388
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/GeistMono-Regular.ttf",
+    "sha256": "a55c1b51cda4afeab9e471e7947b85a20f7c8831d7e6b1470c1b7fbdc0f0f15e",
+    "bytes": 78232
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Gloock-OFL.txt",
+    "sha256": "c0a3f3125ac491ef3d1f09f401be4834c646562f647e44f2bcbc49f0466c656d",
+    "bytes": 4381
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Gloock-Regular.ttf",
+    "sha256": "e86b4ce66dbd3f1f83eee8db99ec96e0da1128c3f53df0e9b3b7472025dfe960",
+    "bytes": 95156
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexMono-Bold.ttf",
+    "sha256": "dbd2a2fb024579438d6400a84e57579bfd2dbe67c306c8fd9fde92a61e4f2eea",
+    "bytes": 136008
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexMono-OFL.txt",
+    "sha256": "5294ce778857e1eb02e830b6ab06435537d38f43055327e73d03a2d4d57d5123",
+    "bytes": 4363
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexMono-Regular.ttf",
+    "sha256": "ab08018ccd276b79fb2c636bb95b9c543598f9d50505fe92506fcb4dae7810cd",
+    "bytes": 133796
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexSerif-Bold.ttf",
+    "sha256": "b8d294e9b5c5a0940f167c3ced0f7ef2e3f57082ca3ff096ef30e86e26c1c159",
+    "bytes": 161000
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexSerif-BoldItalic.ttf",
+    "sha256": "da64b75f4284f53e7b5c71fa190a35b8bf3494fe19f1804c81c3a53340bca570",
+    "bytes": 169840
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexSerif-Italic.ttf",
+    "sha256": "b11f1048745e715a55c9d837b3f10226ca3d78867b7db7251ddad8f98dcf0f38",
+    "bytes": 170004
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/IBMPlexSerif-Regular.ttf",
+    "sha256": "77cd233a2af8dc6b1022faea3bb3b01f3c75af68bcf530cb6aeb15982ff3dbb7",
+    "bytes": 160380
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSans-Bold.ttf",
+    "sha256": "444f85bf1c4b0e1ce1ca624f6be54bcd832207714ccaf4ea99ee531341683bdf",
+    "bytes": 68084
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSans-BoldItalic.ttf",
+    "sha256": "3762f6cef95d6039489ad5ba5787d4c30f17a1ad01e9ac3c816ed69692722a68",
+    "bytes": 70004
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSans-Italic.ttf",
+    "sha256": "78e85858e371b2cb4e18f617c10f0f937c0e12a0887ffee98555b24ed305b3a7",
+    "bytes": 69900
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSans-OFL.txt",
+    "sha256": "bf4dc6d13a8cccd4807133c77a1ee9619a16b92cb23322258725ab6731c2f6e5",
+    "bytes": 4403
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSans-Regular.ttf",
+    "sha256": "a22cb26e48fd79bcb01bf2fc92d36785474dce36d9c544ab0a8868c2657c4a87",
+    "bytes": 68028
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSerif-Italic.ttf",
+    "sha256": "9c86e4d5a47b50224a2463a9eca8535835257c8e85c470c2c6b454b1af6f046e",
+    "bytes": 70868
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/InstrumentSerif-Regular.ttf",
+    "sha256": "56ac3be03ac3ba283196b3e77850ab2ffcf56cfb6fd3212c5620109a972f8c99",
+    "bytes": 69312
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Italiana-OFL.txt",
+    "sha256": "8373b11312ace78c4cec2e8f9f6aa9f2330601107dac7bcf899c6f2dbd40c5a5",
+    "bytes": 4394
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Italiana-Regular.ttf",
+    "sha256": "15c4dd6ab8cf4a29ba8826f65edcbe2f6c266c557d34d081f25072dfd5605fd2",
+    "bytes": 27184
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/JetBrainsMono-Bold.ttf",
+    "sha256": "a2349098b9e45419e7bf0e2958d6c4937a049dded37387b08be725be4c7615f3",
+    "bytes": 114828
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/JetBrainsMono-OFL.txt",
+    "sha256": "a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697",
+    "bytes": 4399
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/JetBrainsMono-Regular.ttf",
+    "sha256": "b6b1ff4ddefe36d7f2a6174e1d001cab374e594519ee9049af028d577b64c5f5",
+    "bytes": 114904
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Jura-Light.ttf",
+    "sha256": "c891a381df056b2c4dfe85841e911bf45da0890fa21a7b2692cbe5ea1f505e1e",
+    "bytes": 154308
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Jura-Medium.ttf",
+    "sha256": "c72965cb732a92872643819fd1734128238583cc36b116313859137a51d3368a",
+    "bytes": 154488
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Jura-OFL.txt",
+    "sha256": "eaf9bdb675f6d87e5feb88199ab3ea581d3bd2082f426e384fa9c394576d7260",
+    "bytes": 4380
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/LibreBaskerville-OFL.txt",
+    "sha256": "55959eef5b0c3b2e3c1c7631b8ff0f9447d75de20f29cfa7db5bcfb026763343",
+    "bytes": 4449
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/LibreBaskerville-Regular.ttf",
+    "sha256": "2101302538d9e88adb679031c04623e4578b5745e89566284fd2c508d79acae0",
+    "bytes": 147584
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Lora-Bold.ttf",
+    "sha256": "7d74015e950c2fb66519c7295b8155621d22200ae2ca2a4c6b43ce3c490cac87",
+    "bytes": 133828
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Lora-BoldItalic.ttf",
+    "sha256": "152f87e71f5ddb60d5c57ecd9132807c947e65c42977193c9164e7c5a6690081",
+    "bytes": 140332
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Lora-Italic.ttf",
+    "sha256": "be627e595184e8afe521f08da0607eee613f1997d423bc8dadc5798995581377",
+    "bytes": 139328
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Lora-OFL.txt",
+    "sha256": "62e37a82d3f1ef2a70712885fa8b3144b65fd144d8e748d6196b690a354d792c",
+    "bytes": 4423
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Lora-Regular.ttf",
+    "sha256": "7ed00e7c9cdf16ab7e2fd2361fe45d4f0b61263cd60aae398b27b7ee08108827",
+    "bytes": 133888
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/NationalPark-Bold.ttf",
+    "sha256": "69ac4c301c4a7233c6e602d12a92c54d7967b575f4449951c45ce773f7acff53",
+    "bytes": 79208
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/NationalPark-OFL.txt",
+    "sha256": "81c6c71d83b5b45d7344f96df12bb4a2477a5b092a9144757ee1d0f50f855175",
+    "bytes": 4399
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/NationalPark-Regular.ttf",
+    "sha256": "a477338b7e18308d476650dfe31235ef86a883572665e56ffb5fb80f82009b58",
+    "bytes": 76424
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/NothingYouCouldDo-OFL.txt",
+    "sha256": "7c2a6970584ddad04919816163746f83b378078015899b18468b40f05e9ce128",
+    "bytes": 4363
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/NothingYouCouldDo-Regular.ttf",
+    "sha256": "d866f985896d3280f4fce72db7e17302c24a0c1fdb0699b6b5ed3af14f944d57",
+    "bytes": 32020
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Outfit-Bold.ttf",
+    "sha256": "6654b93d21301ec61887d3cedd6c11d9df1b1dfb63f9cf45ac7995f6e2235ab1",
+    "bytes": 55392
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Outfit-OFL.txt",
+    "sha256": "1945b62cd76da9a3051a1660dde72afaa64ffc2666d30e7a78356d651653ba2f",
+    "bytes": 4389
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Outfit-Regular.ttf",
+    "sha256": "f24945365147c9e783e91d8649959b59be6b00c9ee4ecd2f6b33afbb2dd871fe",
+    "bytes": 54912
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/PixelifySans-Medium.ttf",
+    "sha256": "38397504f71c122b03d234ea6f55118e3d5bdbddffd82bedddbd7755d3b3be82",
+    "bytes": 51072
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/PixelifySans-OFL.txt",
+    "sha256": "7f54d1d9f1ae1ba9f2722f978145f90324fea34ca3c2304b3a29cfa96ac6037e",
+    "bytes": 4395
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/PoiretOne-OFL.txt",
+    "sha256": "2eaf541f7eb8b512e4c757a5212060abf5b6edfef230e9d7640bf736b315c33a",
+    "bytes": 4366
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/PoiretOne-Regular.ttf",
+    "sha256": "9cf265b139648b36b6c0afdfeb0bf27f7e66db9a16094bc40f644d8da05bc318",
+    "bytes": 45244
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/RedHatMono-Bold.ttf",
+    "sha256": "7ef48353f4be5ddb90f000f6fad48f2b62b3e8c27d9818d8d45ff46c201065e0",
+    "bytes": 34420
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/RedHatMono-OFL.txt",
+    "sha256": "435fbfb7e66988b2a06686a4cb966faec733f35d8fe100a1601573c27f3e0bb8",
+    "bytes": 4394
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/RedHatMono-Regular.ttf",
+    "sha256": "452fe826871b37539f5212b20c87cf30f82f58dd2741f1c96edd1dcbdc0db6b4",
+    "bytes": 34488
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Silkscreen-OFL.txt",
+    "sha256": "6b849745119bbe85ec01fd080c9cd50234da9f52ac6e48b55d1a424a0c4d7ca9",
+    "bytes": 4394
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Silkscreen-Regular.ttf",
+    "sha256": "49567408600809e25147e9225ac4f37f410e2df45a750696c45027531fb65f1b",
+    "bytes": 31960
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/SmoochSans-Medium.ttf",
+    "sha256": "dd76e6e77cce82f827a8654cd906e9ce58f3aaf78adda63c4a7f655b8ecb41f0",
+    "bytes": 59704
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/SmoochSans-OFL.txt",
+    "sha256": "74c9c4eb88e891483e1b7bc54780b452cbf4f4df66d4e71881d7569aa2130749",
+    "bytes": 4396
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Tektur-Medium.ttf",
+    "sha256": "52bbe8c9b057b3d2da4eeace31a524b1ea26a1375ae34319cf6900ccc57a4c82",
+    "bytes": 76248
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Tektur-OFL.txt",
+    "sha256": "3f1466cb5438f31782eeb6e895f3a655bc4d090e24263e331f555357d1cb734e",
+    "bytes": 4385
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/Tektur-Regular.ttf",
+    "sha256": "162e1b36c4718c5b051b36c971ad7e50d341944f35618f480422ebbe72988f98",
+    "bytes": 75604
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/WorkSans-Bold.ttf",
+    "sha256": "240d125fc9f8561363dc1ea3f513501253bd70942f41468f48f0b0cafb0c82e2",
+    "bytes": 191304
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/WorkSans-BoldItalic.ttf",
+    "sha256": "a5b2cad813df0aaa7d16621f2e93b5117c25e9bc788bc9a3ad218e9d6348ce34",
+    "bytes": 175772
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/WorkSans-Italic.ttf",
+    "sha256": "6b7f7002e0b0c8b261fe878658ef5551e3e59d9f6b609b04efb90dde1e2c1ada",
+    "bytes": 174280
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/WorkSans-OFL.txt",
+    "sha256": "ace8c22a3326318b54e67c3691857929634205533f454a70ef5a3473ddb2e2ba",
+    "bytes": 4397
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/WorkSans-Regular.ttf",
+    "sha256": "e67985a843df0d3cdee51a3d0f329eb1774a344ad9ff0c9ab923751f1577e2a4",
+    "bytes": 188916
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/YoungSerif-OFL.txt",
+    "sha256": "cdcb8039606b40a027a6d24586ec62d5fe29c701343d82a048c829cb28a3dd28",
+    "bytes": 4398
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/canvas-design/canvas-fonts/YoungSerif-Regular.ttf",
+    "sha256": "f8dc08f77abad753a00670af70756a8ace938e5c3f0b770f4f4c2071c4bd8fc6",
+    "bytes": 105136
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/doc-coauthoring/SKILL.md",
+    "sha256": "2e47d78846faeea4a56e9809c52700087a15a2155a3f293a3efbaded81398ef4",
+    "bytes": 15815
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/frontend-design/LICENSE.txt",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "bytes": 10174
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/frontend-design/SKILL.md",
+    "sha256": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+    "bytes": 9390
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/internal-comms/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/internal-comms/SKILL.md",
+    "sha256": "067b7587a344a928fc6534ef66b1bcd591fc7c26d207ea7ca3334aeb678d6475",
+    "bytes": 1511
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/internal-comms/examples/3p-updates.md",
+    "sha256": "087e4363c0f3513728a7e695eeb9ead5c3ecd12a4681b59340691180e65b68fc",
+    "bytes": 3274
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/internal-comms/examples/company-newsletter.md",
+    "sha256": "30f81cfbdb03858a006169c72169024089c7c5d3d32611d337782da4f38c86b5",
+    "bytes": 3295
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/internal-comms/examples/faq-answers.md",
+    "sha256": "5ecd3356cd6666937f2ebefa753253edfdbdca15e368d07baf398bfcced72484",
+    "bytes": 2366
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/internal-comms/examples/general-comms.md",
+    "sha256": "4d3a4bb198a77626bcf018e96b2b45a2dbabed172d4ade0fcd70d23ae8a47a47",
+    "bytes": 602
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/SKILL.md",
+    "sha256": "b483b56d6673134497e45489c317f26ae0f1429c194db0297e43073e17e6748c",
+    "bytes": 11129
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/reference/evaluation.md",
+    "sha256": "8c99479f8a2d22a636c38e274537aac3610879e26f34e0709825077c4576f427",
+    "bytes": 21663
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/reference/mcp_best_practices.md",
+    "sha256": "80fb4369a349447cf18ecdd7494fe7938b6065377e9f08c077cec411093a3007",
+    "bytes": 7330
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/reference/node_mcp_server.md",
+    "sha256": "ee3c95d812e450f6168b734390d0c9ef6f8ebeef041d73a122c972dfbd4d476a",
+    "bytes": 28745
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/reference/node_mcp_server_v2.md",
+    "sha256": "49b2fe48f33910b743ae3a56353fffa5d5f252f531053f24f2da4e5914c0d3aa",
+    "bytes": 35171
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/reference/python_mcp_server.md",
+    "sha256": "2da52f77e675191014ca2e146a4b95aa04d0ca7dd7e2b100322df15ade685e80",
+    "bytes": 25099
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/scripts/connections.py",
+    "sha256": "9403668a2041568772082a8b334122c1f88daf0541fb393af4522d0094a47a6e",
+    "bytes": 4875
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/scripts/evaluation.py",
+    "sha256": "49ed1d17cdce5da101b210197740713f49b935c29d4f339542a14b132658e6f7",
+    "bytes": 12579
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/scripts/example_evaluation.xml",
+    "sha256": "9272b348ddcc4b06ba562367ccd0770e018158c0068ac5116d5e34aaeff8777a",
+    "bytes": 1194
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/mcp-builder/scripts/requirements.txt",
+    "sha256": "d5d7558b2368ecea9dfeed7d1fbc71ee9e0750bebd1282faa527d528a344c3c7",
+    "bytes": 29
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/SKILL.md",
+    "sha256": "dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf",
+    "bytes": 33168
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/agents/analyzer.md",
+    "sha256": "bf68f4cac5a56c673a928c2e6d619586c5b93ea364026ab37547772cb45a663a",
+    "bytes": 10376
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/agents/comparator.md",
+    "sha256": "fe1fc9787c495d864c5d6eada47396478572325fde1b33a96d78bf4b849b7a3e",
+    "bytes": 7287
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/agents/grader.md",
+    "sha256": "57134da0c1a4eea33fbd74a1c9c44aa814f07d6bc64de303edb586f941e5d21a",
+    "bytes": 9049
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/assets/eval_review.html",
+    "sha256": "ce477dcc74dc1c0d1d3352646a79167b5a63634e936b1019160025065974e452",
+    "bytes": 7058
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/eval-viewer/generate_review.py",
+    "sha256": "fc9d1b9243fe5ab6012ebd579bd76d0035de1b79fd3b969de114defab26478fb",
+    "bytes": 16365
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/eval-viewer/viewer.html",
+    "sha256": "a53213426ee1100441d701a3a0d49cda7a842f992d2c36463f4d3cc0258575fa",
+    "bytes": 44998
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/references/schemas.md",
+    "sha256": "8e8876180a8989b406a4d3edddf875b04cdfd5805cc8616686d552b11ce4455f",
+    "bytes": 12061
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/__init__.py",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/aggregate_benchmark.py",
+    "sha256": "123ef128ea5ccc01a4b1ac212ef5567f21e9c13d3d240609780beeb3200c49aa",
+    "bytes": 14386
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/generate_report.py",
+    "sha256": "13df7118a3c50c83c4c3250a606d5f2b20b25a3d44cbc392b3d669ec75281453",
+    "bytes": 12847
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/improve_description.py",
+    "sha256": "87d864570220b699fac52da309d2d6efdb060647bfebc74f768128e646accf80",
+    "bytes": 11116
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/package_skill.py",
+    "sha256": "1a33059b0db1ef73375d46d513e5ea81369d2e8838c970597b0d52ddef8d1c0f",
+    "bytes": 4234
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/quick_validate.py",
+    "sha256": "67cf5703402013936c8fb75ad6a1afecd8841d45cc5e606b634eb05825fde365",
+    "bytes": 3972
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/run_eval.py",
+    "sha256": "43e3b8f80dbf69c343967ba77e268fae991d9fa3ed68b32a0ff02532cd48657f",
+    "bytes": 11464
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/run_loop.py",
+    "sha256": "7bd6f674203168520517eec94c55f493c0d154339b061b4d7c0f0dad187d0f21",
+    "bytes": 13605
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/skill-creator/scripts/utils.py",
+    "sha256": "3af8ae62c40c73ab712207436a0d9a981e845f25c5a7040229eb189cc8e45bb1",
+    "bytes": 1661
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/SKILL.md",
+    "sha256": "c35893e221e28895c52143cc11bf30e41a44817796b39d4b15727dadc9796552",
+    "bytes": 3124
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/theme-showcase.pdf",
+    "sha256": "3e126eca9fe99088051f7cb984c97cedb31c7d9e09ce0ba5d61bd01e70a0d253",
+    "bytes": 124310
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/arctic-frost.md",
+    "sha256": "868a75a8fb5b2a61d0f0ab87c437fe632d3cbab6371c418f06aa2816ac109ae0",
+    "bytes": 544
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/botanical-garden.md",
+    "sha256": "222cb8e7496abc9b75b29453c809fb9839e7e4b01fa45deecdd896b38d087765",
+    "bytes": 519
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/desert-rose.md",
+    "sha256": "bd065b8629be3b64655183927e248e3d892a27b8d184b009cfba89c96102744f",
+    "bytes": 496
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/forest-canopy.md",
+    "sha256": "ecb722efa24688e808b5bf323c334ca2349e989cfddd72ce8400ce5d4c4bd3e7",
+    "bytes": 506
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/golden-hour.md",
+    "sha256": "3444a00df971d3c2f06b665e21a2e9eb5d7d7d6f6281f2758773b8345776a139",
+    "bytes": 528
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/midnight-galaxy.md",
+    "sha256": "0e134c4c0324df41e34ac314269aa6829cd378cf3c304b31858d0cd158d2f944",
+    "bytes": 513
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/modern-minimalist.md",
+    "sha256": "b8bc572b75948d4df69c401af703b9262ed6820a3ceb270da30a529e92763614",
+    "bytes": 549
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/ocean-depths.md",
+    "sha256": "a7ad8eec85341dbfcb2665da827a4b6a4baee08ab3335ac02421f18e6b46b2e2",
+    "bytes": 555
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/sunset-boulevard.md",
+    "sha256": "658af11ab04be4923692571081ffb42a428141ae537703117b9236d9f8ee22a3",
+    "bytes": 558
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/theme-factory/themes/tech-innovation.md",
+    "sha256": "183648163026dd5eeba3df5effa335b55ba333c3ee1fe215278605e55f40a52a",
+    "bytes": 547
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/web-artifacts-builder/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/web-artifacts-builder/SKILL.md",
+    "sha256": "81c5002c6643b0de7b8710b00e7a9038daa6fb9b68d59870ee6adb12da8d10f8",
+    "bytes": 3087
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/web-artifacts-builder/scripts/bundle-artifact.sh",
+    "sha256": "abf0e480bf6585b56fab8526a407dfb7dc740812bddd70c636e1e8f3df5f9618",
+    "bytes": 1517
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/web-artifacts-builder/scripts/init-artifact.sh",
+    "sha256": "355e5dd4382aaaee91f01f1627eaeab30b2676ffa8d9b3ec328a1ae450ebccaa",
+    "bytes": 9924
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/web-artifacts-builder/scripts/shadcn-components.tar.gz",
+    "sha256": "1296f069e825de7933de7e8ac63672495cacce3f88f2dc45554dbcddbcbca60f",
+    "bytes": 19967
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/webapp-testing/LICENSE.txt",
+    "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+    "bytes": 11345
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/webapp-testing/SKILL.md",
+    "sha256": "51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2",
+    "bytes": 3913
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/webapp-testing/examples/console_logging.py",
+    "sha256": "ea46877289acb82da7e7ce59d0bc37c8977cd57e2a006d0c88d7a1c625bf95da",
+    "bytes": 1027
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/webapp-testing/examples/element_discovery.py",
+    "sha256": "d63c89604a22f8845d724e95dda45db49b1bf57c25ce0a83afbb7b8da3d402f0",
+    "bytes": 1463
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/webapp-testing/examples/static_html_automation.py",
+    "sha256": "9d533aafb875ee3ab8b8ebf8f5b9003ac8d999da3d09b285cce252e623140064",
+    "bytes": 953
+  },
+  {
+    "repo": "anthropics/skills",
+    "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+    "path": "skills/webapp-testing/scripts/with_server.py",
+    "sha256": "b0dcf4918935b795f4eda9821579b9902119235ff4447f687a30286e7d0925fd",
+    "bytes": 3693
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "README.md",
+    "sha256": "9429e781e3fb2f005e619b96fe18cdc59f8db38b619a4c98f0c46c86357e56a0",
+    "bytes": 7273
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/AGENTS.md",
+    "sha256": "89e3ddd58fcf99a53a50e25dfd21b8cde1be5f10b7df6bacd3dfa6796932f516",
+    "bytes": 22627
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/README.md",
+    "sha256": "85915a43a6f0b4efe525e3cf6398dd866166da2025837c4460468a24a940da94",
+    "bytes": 2140
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/SKILL.md",
+    "sha256": "e38e0eaa609316b10423a9a138ed95e35099accd3f735585295c8a8f165c28a3",
+    "bytes": 2886
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/metadata.json",
+    "sha256": "49262ed5cb4186f31ee980cf8d990be0170c51efed4908d0464a1cff9905bd05",
+    "bytes": 530
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/_sections.md",
+    "sha256": "a174213b87e6911e2b766995a2cbaf8d1534057076e82fb79fe3f0ecb38047df",
+    "bytes": 829
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/_template.md",
+    "sha256": "587f7d16b0660eb61fee4a4d3d7df2b3077d6835de170602c7d6e60bee559131",
+    "bytes": 329
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/architecture-avoid-boolean-props.md",
+    "sha256": "007555ebb020f4d552582a2c4db194db71a1fd33094012e5187bcfa4f8c392d5",
+    "bytes": 2267
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/architecture-compound-components.md",
+    "sha256": "f246af13dc269b521cf20eb8ad99a0cb645beac381c8c9b117262c34612c8457",
+    "bytes": 2600
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/patterns-children-over-render-props.md",
+    "sha256": "7c45a0d21b3c4126a32cba916ee31adeae195386ad1dbbe6634aedb7457aa0ad",
+    "bytes": 1886
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/patterns-explicit-variants.md",
+    "sha256": "8c19e596e61807549d01ce8c6954c6358199f97a8511c0c02c625ec0efda8c0e",
+    "bytes": 2395
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/react19-no-forwardref.md",
+    "sha256": "881830adb7534c4b2d70db426556646ad9837f5478f744f35641f635ada22227",
+    "bytes": 953
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/state-context-interface.md",
+    "sha256": "09e73afbf9285fa416679cc864a287b9e8b821d0969272ab784295386d8c9bc3",
+    "bytes": 4974
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/state-decouple-implementation.md",
+    "sha256": "76a8c1eb29a70d8996ab3f71260345af2f7bc89deab815a421d6c87c6591a9c3",
+    "bytes": 2699
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/composition-patterns/rules/state-lift-state.md",
+    "sha256": "74c54038a6c554c748fe31cec673b80861b5d920b7553cf78cdf10d18b4b759b",
+    "bytes": 3224
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/AGENTS.md",
+    "sha256": "fc93e7421177bbf869cce892bc60a6c83a4517d974bc3bf65c4e2c1e58a6ccf6",
+    "bytes": 108261
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/README.md",
+    "sha256": "9eafb2123d3b8b2aef41fba0db2648a3f4f49996f8c7c8bb2c86263befd8b48a",
+    "bytes": 3360
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/SKILL.md",
+    "sha256": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355",
+    "bytes": 7251
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/metadata.json",
+    "sha256": "c4e18bac3290fbe1b471a605867d4df68b03144ea26b8befdbe8f9d8fd124354",
+    "bytes": 921
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/_sections.md",
+    "sha256": "01c59969e4e867f0708c8f8ef9c6d87fab9a07d0586244f429ff84013db8a115",
+    "bytes": 1554
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/_template.md",
+    "sha256": "99df2a3ea088c6c22de2484ddc7e964d0e9923846f44c63380343ecc64455442",
+    "bytes": 631
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/advanced-effect-event-deps.md",
+    "sha256": "55ed8f9f27a1bff803d6fa55828176207714b02123cbb97ddb8a90d88024a723",
+    "bytes": 1802
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/advanced-event-handler-refs.md",
+    "sha256": "a3097edeecfb2ff6851cd66ed8cdf0617c3c88180504bee824aa6e75a215bbbc",
+    "bytes": 1483
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/advanced-init-once.md",
+    "sha256": "3e4dc22173eb0e2b6dcf583e3babd862b8696328f8f59aee7c4d746c5bc05f6c",
+    "bytes": 958
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/advanced-use-latest.md",
+    "sha256": "8a3f64dfe5a77d1564248faf17fe662ae75b55d497a243cb30b38eb07ccbbf9a",
+    "bytes": 1072
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/async-api-routes.md",
+    "sha256": "523338540d73427dc14c0cbb19f2741ebccdf8b105a7b2c1b33d2905cf237a42",
+    "bytes": 1125
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/async-cheap-condition-before-await.md",
+    "sha256": "03107c1f70a293cd58a8abc5474c5548e20ea4efdf01b6d45aae7ad0ac1cb32c",
+    "bytes": 1220
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/async-defer-await.md",
+    "sha256": "f3c142d090615abdcc99d31c123be37b31f0f1ed8d9ec9f7789a3bc6883ae0fb",
+    "bytes": 2208
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/async-dependencies.md",
+    "sha256": "16ef469f877e30c6b8e1e1b4bc3e527312fa3c6318cb785a4eca186ea236131a",
+    "bytes": 1293
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/async-parallel.md",
+    "sha256": "6d2f841896279e976dfcdc1ac89e70771ac188baadfd43c096b5706cb838b961",
+    "bytes": 654
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/async-suspense-boundaries.md",
+    "sha256": "de05fedac2eb7ae563b887b5a424464ec3dfaf84e5b7797467ebe2a796ac8afc",
+    "bytes": 2510
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/bundle-analyzable-paths.md",
+    "sha256": "62090b5c815fd71bf1133dce754f51abc16a9456d0ccd025fd627de27726e92a",
+    "bytes": 2382
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/bundle-barrel-imports.md",
+    "sha256": "e648f6d54525f07a691357040ca5bff6ea3424788a91ff63812adb29622a671b",
+    "bytes": 2795
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/bundle-conditional.md",
+    "sha256": "09c8259c3efb04fc0abb8e412ccbda217c222ae8118516283e571c995fe3a7d4",
+    "bytes": 949
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/bundle-defer-third-party.md",
+    "sha256": "3719fb47b191e8db4fe22686ec88448ad5af9e6838585425abbe103d0b642e37",
+    "bytes": 920
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/bundle-dynamic-imports.md",
+    "sha256": "401817a7369f315fc5a68a1095742ff7d53d0461906880dc9d64a41495ee1986",
+    "bytes": 791
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/bundle-preload.md",
+    "sha256": "d1f7cc28da7cd5ab249acd287edc5b761afcfb194e9cb62cd44c5f3543db2de2",
+    "bytes": 1149
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/client-event-listeners.md",
+    "sha256": "242a873349febc1ce685e85617994784dbab92c2eaa68aed7fed5a83e7680e93",
+    "bytes": 1969
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/client-localstorage-schema.md",
+    "sha256": "0fb7cdf9dc93fdf22f87e3669f953fb9d4ac9b0be42eec4a29fe9a2560610b88",
+    "bytes": 1950
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/client-passive-event-listeners.md",
+    "sha256": "1f35016f9053de69e884ee9be00654e37979c2ca85f5e57764dc2626ff7acb4b",
+    "bytes": 1644
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/client-swr-dedup.md",
+    "sha256": "644652c39c6cc00de8d1c77a7273612e868dc3f7edda30764164c12ec0f764a3",
+    "bytes": 1159
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-batch-dom-css.md",
+    "sha256": "480b891b9eaf96e929dc1e964274a4828e3a78009b7d00ccd965a0d425215959",
+    "bytes": 3266
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-cache-function-results.md",
+    "sha256": "3daaa11d24f4295cb6be8bc6f407f2ce83cc7b5bd1f0e68891ea8ab835721dc7",
+    "bytes": 1949
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-cache-property-access.md",
+    "sha256": "73e47431e74878a927061bf0ddc7cd91a7556cb35d2573f3421e82300d9ae311",
+    "bytes": 532
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-cache-storage.md",
+    "sha256": "11b826b0433898c1ece2d3547010d8e77db9fb240185748c45db91493de9b6cc",
+    "bytes": 1651
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-combine-iterations.md",
+    "sha256": "71add08aeeb43091d4ff4c0b2842cce8b4bdef8ad3e732cc034bb5a84827e746",
+    "bytes": 753
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-early-exit.md",
+    "sha256": "925ce5ce87f3347186ca62212f29cc6baa2b8c85a96d2720ad07c3d0abf781c0",
+    "bytes": 1133
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-flatmap-filter.md",
+    "sha256": "9e5b166a41914d975bef7635467f8fb32cd98b5c3126c0bc6f163490812fb5f0",
+    "bytes": 1411
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-hoist-regexp.md",
+    "sha256": "f9e9aef2f7c2307dd7310f283df85dcada45fc43e9bb941b0c3aa414dec21ec4",
+    "bytes": 1028
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-index-maps.md",
+    "sha256": "5df1bdc2cfabb2c98abd55d26762e5c18189535c2e686184f426082e62920391",
+    "bytes": 837
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-length-check-first.md",
+    "sha256": "8b54a311c826b299272f29187fc58bc55772a04c4a72eeb29456ee96dc9fc624",
+    "bytes": 1747
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-min-max-loop.md",
+    "sha256": "87dfb67e2f39df6ad8bcfb5b78c5fb364d3c07554ad188a202408d99f3763421",
+    "bytes": 2290
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-request-idle-callback.md",
+    "sha256": "ee08f83905b4011abbc33d594033157d77561b5bbd9b36b04f0f409581ffec32",
+    "bytes": 2647
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-set-map-lookups.md",
+    "sha256": "a7fd781a6ba9ad49065961b6f9a90ef486bf6b648390e1a08704025f98e1642b",
+    "bytes": 532
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/js-tosorted-immutable.md",
+    "sha256": "d0a5e1b0fec48a0a81397957e2f068e224329f7c42cb5feeed8aae6fa64025e8",
+    "bytes": 1782
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-activity.md",
+    "sha256": "1e5e7eaf3555e61d6a2e900089c676527d26259501db5594f59544b6c664f85a",
+    "bytes": 564
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-animate-svg-wrapper.md",
+    "sha256": "9c6ae0ca7a51434e803887c64cded760956579a1452ccb80a461a03f9c937c77",
+    "bytes": 1185
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-conditional-render.md",
+    "sha256": "2ec2fa23c4148285144687050c52369adba3da2fbe3d486f8d3e0aad8f06f2bc",
+    "bytes": 980
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-content-visibility.md",
+    "sha256": "64eee6d5b916fe74df33363994b27fc7f71bea3bcedc7ee04bda23107ca3e6e4",
+    "bytes": 815
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-hoist-jsx.md",
+    "sha256": "93b229560fae92005ed9a2a829064607b39b2e984e92d221d05b2d41df2b7c0e",
+    "bytes": 1039
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-hydration-no-flicker.md",
+    "sha256": "dc7ab358c67c177bca6e6f360fbc935ebe4efa928c0ba3ebd3f9f3d9e2000ca3",
+    "bytes": 2308
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-hydration-suppress-warning.md",
+    "sha256": "915bacb934e2927d84b37a3f3d225a47b309ac8f9e494ed2bcb66ce07c5676a2",
+    "bytes": 872
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-resource-hints.md",
+    "sha256": "351b1095d641717b930f1b2253282b7120af3023bc74e06c17675168d4286864",
+    "bytes": 2549
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-script-defer-async.md",
+    "sha256": "4cea07b7875ba7fc2c7465ff23b63a2bb334f90aaf2d9293d38d67b05fdb32ab",
+    "bytes": 1868
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-svg-precision.md",
+    "sha256": "ed468533f6e95f622859c884b122cf21f9f593ed6bb3d500a54de4b9f9bcb9fb",
+    "bytes": 588
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rendering-usetransition-loading.md",
+    "sha256": "3a1249c3f13026b6f54ab5712c388df219d6af01b12aa542749acd99a46f4bc1",
+    "bytes": 2074
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-defer-reads.md",
+    "sha256": "234050a77faf50cb306be10a9e15bd4421134ab5907e75f13e6d78e2bd262dc9",
+    "bytes": 973
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-dependencies.md",
+    "sha256": "17eb5830956fb56486fd3cfc7431f5849d39751730c05ad9e77dd4f0c27169c5",
+    "bytes": 824
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-derived-state-no-effect.md",
+    "sha256": "cb11ec76f50aa7b6847269f02d79b120c889a30d9ecd2c1d578f75144419c77a",
+    "bytes": 1201
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-derived-state.md",
+    "sha256": "1c326bb67b01fb084eb00c8911b0a7cff54681c2315b629f88e49b64eaa6481d",
+    "bytes": 728
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-functional-setstate.md",
+    "sha256": "5e68df6b2ae8058e67f476ff1ac67bde159f5a9d18df439e46eabcdeb7b52e58",
+    "bytes": 2968
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-lazy-state-init.md",
+    "sha256": "4ae844740f266fc8cbf050701230286624a2440ec5be67b9a63d9edc3c580573",
+    "bytes": 2016
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-memo-with-default-value.md",
+    "sha256": "81c47476564ad8a79fc68fc442734255ca7d6829424359464503fda0a9f9a0dd",
+    "bytes": 1173
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-memo.md",
+    "sha256": "1f258990c2f27ff6256b3cc5c43300631bb3f0d81f749aed08d07fcdcc131dd1",
+    "bytes": 1148
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-move-effect-to-event.md",
+    "sha256": "abc2cbf167bee056743023351e96806a411d3398da8802093620aecf0721f029",
+    "bytes": 1268
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-no-inline-components.md",
+    "sha256": "1cc32907a770272524ba682eef9e7efdd8ad4533b6f89b718a1fcd7d1d0eb6a3",
+    "bytes": 2135
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-simple-expression-in-memo.md",
+    "sha256": "5bdcf2d1558ba5204e643c887b7b4060f89630969425651eb68e96427d97f800",
+    "bytes": 1018
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-split-combined-hooks.md",
+    "sha256": "6f45d703343484ef9acef9388397f3642966ae6a5a258899a0cf1f9977cfbf6c",
+    "bytes": 1844
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-transitions.md",
+    "sha256": "60f4033909a62df5e5b8c601494f9e50a562e2f8c1c2d81eac24f38142265f1c",
+    "bytes": 1055
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-use-deferred-value.md",
+    "sha256": "8c3579576a61a949884167745dcfaf1d5426ba305cc61fd0a79602d70fda4909",
+    "bytes": 1846
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/rerender-use-ref-transient-values.md",
+    "sha256": "f1a649af9d1d0b5c762f6c9c4c1c70c90d7df82aa10296ee87aadb78c1b76c54",
+    "bytes": 1742
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-after-nonblocking.md",
+    "sha256": "d0b8d24a3db9f0f65f9e2bddbf230b0e03a5f60e1229d93a4a18f5e7a991c7c2",
+    "bytes": 2012
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-auth-actions.md",
+    "sha256": "a2ca8aa102839251c7971ec784560fab943c20b36fe6f80365d4110c13260c23",
+    "bytes": 2649
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-cache-lru.md",
+    "sha256": "1924b64561841923b88a657085097a0aeba3e0ba2d5470b9f5c15cc10d6ae70f",
+    "bytes": 1353
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-cache-react.md",
+    "sha256": "fddeea6c870bb3da4134b61d54b7d09b83d2603f929b7547cd3dc1dc269edd5c",
+    "bytes": 2228
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-dedup-props.md",
+    "sha256": "c2747424cdac46be62f835f245a0aa887b0090b416d28e2ac8676702645eeb37",
+    "bytes": 2060
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-hoist-static-io.md",
+    "sha256": "5abea4dd882b13661bd5f7dfb93f9e547d5f08176c61c448ade91b210ed5d49f",
+    "bytes": 4423
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-no-shared-module-state.md",
+    "sha256": "4d869bf1cd2f1632e5ca4c0e64b1cf0e71c5f5a0f940bc8a22174d205e735ed7",
+    "bytes": 1766
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-parallel-fetching.md",
+    "sha256": "569a2e9fc04f9606686cd75c5894ef8781b502786a7fffe241396846c7733472",
+    "bytes": 1554
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-parallel-nested-fetching.md",
+    "sha256": "ad5d9656984d4a959997a2367bf59cc6632297b4634a1dd13a087939d83f30b3",
+    "bytes": 992
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/react-best-practices/rules/server-serialization.md",
+    "sha256": "f4c7d68b29c82381baad059c4a7f09e868e71ec9c3115a26ad3ae7d24c0dfe1f",
+    "bytes": 996
+  },
+  {
+    "repo": "vercel-labs/agent-skills",
+    "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "path": "skills/web-design-guidelines/SKILL.md",
+    "sha256": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f",
+    "bytes": 1231
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "LICENSE",
+    "sha256": "7abe19ec9bb73b36141b999b861d24ad855e808bafe0f81e84cce28556f6c297",
+    "bytes": 20131
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "README.md",
+    "sha256": "c58f30b01ce7d8ce2a29a3c9ac15a3b4758a1783ee16e75f26c0684410789b6b",
+    "bytes": 10682
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/.claude-plugin/plugin.json",
+    "sha256": "6ad075e18dec9f79320954e6e1e5a1c367371d6b8d6458c4ee047c27da171d39",
+    "bytes": 416
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/README.md",
+    "sha256": "5271ba702fbd84ea78e29e050676d05c0ae23e75608044e3cfdb261836b28076",
+    "bytes": 8063
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/agents/function-analyzer.md",
+    "sha256": "d450f462b63dac6858015340a2e047293851d7e3c671725792d9770dca107d29",
+    "bytes": 4372
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/.gitignore",
+    "sha256": "f370ad043ec0c98a166fd98646c3b94280ed78bc996223b6cca2ba936f7c6781",
+    "bytes": 9
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/continuity-across-calls/case.yaml",
+    "sha256": "637fbe5d62e663bfa350560b5fd714da3422205adfc64e35037c5a3a09e17de6",
+    "bytes": 1698
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/continuity-across-calls/fixture/proto.c",
+    "sha256": "ea3e0ebde489fa493faa80a9f03b61fe28b88e3cd51155fcf9fbd17038e5bd8e",
+    "bytes": 939
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/continuity-across-calls/fixture/proto.h",
+    "sha256": "053932b038f9ed7e7d6cbd0856e6e498d7aa3a96f8fd296ee5e40611630248cc",
+    "bytes": 854
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/continuity-across-calls/graders/crossed-the-boundary.md",
+    "sha256": "319676f8745583dfde778c8fa1de5709e072820850057213de40e2fadde046f5",
+    "bytes": 72
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/continuity-across-calls/graders/stays-in-context-building.md",
+    "sha256": "759c116c9852985d203a7b9037907671697a756c12d9851484625dfb10471d05",
+    "bytes": 1266
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/continuity-across-calls/graders/unbounded-length-path.md",
+    "sha256": "b603f24e35f96273e1c74a1b278f68d8564046a57686a590855008c3dc30293e",
+    "bytes": 1527
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/contract-continuity/case.yaml",
+    "sha256": "04415a359c57692fb206a97361a95971c6d55b8d85b72d7716c5af200be01883",
+    "bytes": 1387
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/contract-continuity/fixture/Escrow.sol",
+    "sha256": "8be8667376fa39a2011d18c9eba72e2a8d1d00393dd3e1b6f0e62141f2c18aba",
+    "bytes": 2180
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/contract-continuity/graders/feesink-treated-as-black-box.md",
+    "sha256": "50ff640f661355d1aaddc48d8fe91bfb3747e7c6fb9b26fd68d96035b3a2f9ea",
+    "bytes": 1060
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/contract-continuity/graders/unchecked-credit-path.md",
+    "sha256": "b5ebc4c6abe54ec693d63061ce187fd46f98540c93708114d6ca84a695134962",
+    "bytes": 1191
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/decompiled-continuity/case.yaml",
+    "sha256": "a0041e889c64df16d61a9593c5daced092890734854e843d7c8147c900351f33",
+    "bytes": 1321
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/decompiled-continuity/fixture/decomp.c",
+    "sha256": "3b74a061c9d215b0ffb17ec53397586f3d00c6264ec0aee01fcf6f07845749f4",
+    "bytes": 1972
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/decompiled-continuity/graders/length-unestablished.md",
+    "sha256": "a2c7453fe8851561bf62f0b37284631a7dbfb41015a509168c22f03bb286b23d",
+    "bytes": 1626
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/decompiled-continuity/graders/no-source-is-black-box.md",
+    "sha256": "22ad867e348e9d1190a688e3ddeb10ccf68b7effd05aca3e30b71cd244425926",
+    "bytes": 859
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/dispatches-not-inlines/case.yaml",
+    "sha256": "2ebc8d19d04091f3fffb757af78b466e451b05852eeb22bd06a5fc826b372150",
+    "bytes": 1408
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/dispatches-not-inlines/fixture/frame.c",
+    "sha256": "23d55f9e1299cc8da7c2f4c5b6f57e2e2d414ffddb2c439a6d4ee637fff1d73c",
+    "bytes": 1044
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/dispatches-not-inlines/fixture/proto.c",
+    "sha256": "ea3e0ebde489fa493faa80a9f03b61fe28b88e3cd51155fcf9fbd17038e5bd8e",
+    "bytes": 939
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/dispatches-not-inlines/fixture/proto.h",
+    "sha256": "053932b038f9ed7e7d6cbd0856e6e498d7aa3a96f8fd296ee5e40611630248cc",
+    "bytes": 854
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/dispatches-not-inlines/graders/names-the-mechanism.md",
+    "sha256": "58027c56d5b8cdd8e2c453e736fb64bcae3ef8518b095e665125c4b8b8fbfe41",
+    "bytes": 133
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/dispatches-not-inlines/graders/no-inline-analysis.md",
+    "sha256": "b5c77706fd5616624f96a2239c80be96eed1fed8547398a890f79e0f8f29a454",
+    "bytes": 1200
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/routes-to-workflow/case.yaml",
+    "sha256": "d6341c7db8c66e792c715007480e8bf8772df98714acfd544196dcf5ab4667a7",
+    "bytes": 2170
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/routes-to-workflow/fixture/frame.c",
+    "sha256": "23d55f9e1299cc8da7c2f4c5b6f57e2e2d414ffddb2c439a6d4ee637fff1d73c",
+    "bytes": 1044
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/routes-to-workflow/fixture/proto.c",
+    "sha256": "ea3e0ebde489fa493faa80a9f03b61fe28b88e3cd51155fcf9fbd17038e5bd8e",
+    "bytes": 939
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/routes-to-workflow/fixture/proto.h",
+    "sha256": "053932b038f9ed7e7d6cbd0856e6e498d7aa3a96f8fd296ee5e40611630248cc",
+    "bytes": 854
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/routes-to-workflow/graders/dispatches-the-workflow.md",
+    "sha256": "e812ccb4b1009415ce5b63ded2984d9cce7a24121ddab5b41fe37e5897099a2d",
+    "bytes": 83
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/evals/routes-to-workflow/graders/invokes-the-skill.md",
+    "sha256": "d6b722f4cc0cd5ea2a77b2b5752898981c17eaeb5c2b351b2bf1091a3ceb64ce",
+    "bytes": 89
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/skills/audit-context-building/SKILL.md",
+    "sha256": "33fa693dc6e166cfa4919e4373cb6578c009d296234c2ae7cb3cd4e79b443765",
+    "bytes": 3991
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/skills/audit-context-building/agents/openai.yaml",
+    "sha256": "1d66ff830ff41ce751286d588a0ffeb95ed56d1b42e279fa2c8eebff10f4e59e",
+    "bytes": 253
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/skills/audit-context-building/assets/trail-of-bits-mark.svg",
+    "sha256": "4bf74c789b38dcf6ad762c136b6832363d27ae19fbaa9a18ec18d66ecce6ca05",
+    "bytes": 3084
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/skills/audit-context-building/resources/ANALYSIS_FORMAT.md",
+    "sha256": "029532945776fb0fcbc866f19cd6114fe4152cd3dea1c0f44b266ec13a2cc6e8",
+    "bytes": 2613
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/skills/audit-context-building/resources/DOMAIN_NOTES.md",
+    "sha256": "ca3090f7f8d18f7145b253b283f5d33c36b314cea231aae8466bf23f122e2ed1",
+    "bytes": 5040
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/skills/audit-context-building/resources/FUNCTION_MICRO_ANALYSIS_EXAMPLE.md",
+    "sha256": "3351010d83b61bfb34a0359498f153817fdfa6528cead54536b06e035ff2399c",
+    "bytes": 9056
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/audit-context-building/workflows/audit-context.js",
+    "sha256": "71cd025216e2589fee1e1a0ffe215fb7bbeaf22751dc7417ca6ce74497e6d0b3",
+    "bytes": 12229
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/.claude-plugin/plugin.json",
+    "sha256": "744f05e0e768b3de215514393263bc0b7edff3440d8ce6dfbf63b8ab4ee8c249",
+    "bytes": 317
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/README.md",
+    "sha256": "b1fcfb0c225a31fbf7742463f1e6bf962ef2d58d249749276798f969bcbd3087",
+    "bytes": 4522
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/agents/adversarial-modeler.md",
+    "sha256": "f7be8413601990ceae260f2b1e3557f6d33022e7c4279eaedbed0a7d3bc919e6",
+    "bytes": 5746
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/commands/diff-review.md",
+    "sha256": "a19aa3c86e34d223a693af1d5be3d460313a47a35ced828c0be320e9ec0738fe",
+    "bytes": 482
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/SKILL.md",
+    "sha256": "f9af6a8193fc1a9f8ca3c54bb8d19095a5f20c9472ca6d014488bbde50b67da0",
+    "bytes": 7439
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/adversarial.md",
+    "sha256": "3cb823f38c6e551cbcf5f72325d2bb219dacdad774072519c31d50d92db19800",
+    "bytes": 5062
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/agents/openai.yaml",
+    "sha256": "0279d56f88dc1a04d4b1941a25fa7672912a3ceb0557b13c38d069908b30ae61",
+    "bytes": 245
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/assets/trail-of-bits-mark.svg",
+    "sha256": "4bf74c789b38dcf6ad762c136b6832363d27ae19fbaa9a18ec18d66ecce6ca05",
+    "bytes": 3084
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/methodology.md",
+    "sha256": "16b335d24cf2145e3dc4a37f50056550d29db2efa20e6df78fec95ec1e6fb0b4",
+    "bytes": 6738
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/patterns.md",
+    "sha256": "52abb18abbc73502a3d3b2f36a7a035adc1db40fd812d1d5424cf065036a06e9",
+    "bytes": 6999
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/differential-review/skills/differential-review/reporting.md",
+    "sha256": "0016876dc6f158e926448bff1b6f634796757c7afe09dff177cfe30250724fc4",
+    "bytes": 7006
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/.claude-plugin/plugin.json",
+    "sha256": "0da557acf1632bf73f97e1a9ae46b8e3cd9fef48f59466b703486f9ca14a0f22",
+    "bytes": 367
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/README.md",
+    "sha256": "999d8d5fcb7153eedd3d31a0826f4f72183a427836f585a357a4cdf1f1ce254f",
+    "bytes": 6738
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/commands/audit.md",
+    "sha256": "75883127cbe66d51977f4ea1db1a8107f6df6b302bc338121e46a851d79c6518",
+    "bytes": 1397
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/debug-features.json",
+    "sha256": "5f1ea6080d50bc4698e239dbf1c168bcbcead834b7161b754d2731bf96561e13",
+    "bytes": 777
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/debug-features.md",
+    "sha256": "c83c54a3f8a36939b61f897f919dde8f2b41c18b8249a653c071ab749f562cf6",
+    "bytes": 2326
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/default-credentials.json",
+    "sha256": "46169168a34a18439aaeb882f248a73012ecc9af95cc0f31ab962067a62d9879",
+    "bytes": 723
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/default-credentials.md",
+    "sha256": "259a036867182b0480d0ee8be3c89fe8199a086c7084a0410adb9899cb024ab9",
+    "bytes": 2275
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/fail-open-security.json",
+    "sha256": "c44057e9251b46eb14b7afa70931d0a0353567e640eb936e4fbd813bdb2b2946",
+    "bytes": 686
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/fail-open-security.md",
+    "sha256": "0e837dd32f600c7788cf34407f9ef836e8af7ed028e83019a099c036afccf39c",
+    "bytes": 2056
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/fallback-secrets.json",
+    "sha256": "717eb7850b4d0fec43c1a528f4b09a12050f11f9cfc0ebf3faae328365346f1a",
+    "bytes": 522
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/fallback-secrets.md",
+    "sha256": "eea72165e891ff40d2d6f7eea5bc0ee20c13332856b1e5914334f06f5f984f59",
+    "bytes": 2102
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/permissive-access.json",
+    "sha256": "8ee01d7845a964c255aa5d320ec372e4d71d3a14bdf6f35fe34bbeef5669e006",
+    "bytes": 720
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/permissive-access.md",
+    "sha256": "6e4bd7798b7d1e4065f25e57c4409764eda47ce192cd7f683f9771ed54626842",
+    "bytes": 2237
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/weak-crypto.json",
+    "sha256": "792b59a3488fabe5b2e72254de3b0f589de926f8f6c17deb3096033be61eaa4c",
+    "bytes": 794
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/references/weak-crypto.md",
+    "sha256": "df424cfe3ba37fc69482b4dcd7d03b0191cb8db3b2e239a416cb295f11dc70ef",
+    "bytes": 2196
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/tests/README.md",
+    "sha256": "f2f2c3e9334048c52e6323c54900d34ad4a80e41e70aa469b5934687550811f0",
+    "bytes": 7261
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/tests/harness.js",
+    "sha256": "61338f0652ae7569c5dbd2076194ff577a333b52b5e6331f28a7d959639d5259",
+    "bytes": 51988
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/tests/run_seeds.sh",
+    "sha256": "07f5ee633b753cd41c49e30ae91c06afbca189feac196d5931ee8c3f5d6a4712",
+    "bytes": 811
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/tests/seed-coverage.js",
+    "sha256": "d7c05450da39c115823eb359fba14d1291051191298e73be2725a4fd341af202",
+    "bytes": 6778
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/insecure-defaults/workflows/audit.js",
+    "sha256": "d11f066eebc5390233c0a1308b6f7fc5da80a7dbd79a533e43dbd8f5cbc23572",
+    "bytes": 35816
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/.claude-plugin/plugin.json",
+    "sha256": "1b616e2282bbb67e77bfcaacd496bf180c5b5e1c54c35a440794430866b94f2b",
+    "bytes": 304
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/README.md",
+    "sha256": "c30064490a8220080585e2e8ab0132a7800bae798b392934aff5d3af3775c018",
+    "bytes": 5739
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/01-roundtrip-codec.md",
+    "sha256": "81612629160ddf658d112a4f2e3051087740cfe00a47ad2035346c390edf4268",
+    "bytes": 228
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/02-normalizer-idempotence.md",
+    "sha256": "eea95ddc847f068ce75b541290f1aee250f9ae3653a1ab0207e621dc4d03e5cb",
+    "bytes": 118
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/03-hypothesis-existing.md",
+    "sha256": "f55c038dcae954e66c9539c03d3bee80366039204369909afe254058c5dd7f54",
+    "bytes": 122
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/04-echidna-invariant.md",
+    "sha256": "c62e5f29fae9a12458dbcb4a144a14782a38a4b126b4834bb834198e4d66c667",
+    "bytes": 189
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/05-review-weak-tests.md",
+    "sha256": "6bf0b6bb209be3f4d09305bd22b3a2373fef49a4c89b9898e1e51e65b4abf7c9",
+    "bytes": 181
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/07-fuzz-serializer-noname.md",
+    "sha256": "22343a429fa841ec7d8728423abd79b4aa992b1dccfe698d867fc79ee988e70b",
+    "bytes": 171
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/08-sort-comparator.md",
+    "sha256": "fd1c958c892d0dd450e528e3ecca66cc07a563cb8a13b8cb4e70bae0f1713cc7",
+    "bytes": 148
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/09-neg-libfuzzer-harness.md",
+    "sha256": "44ec51b1bf737dfe8e75a45ac6791d40f2b008935c066bf2e429e422ab4757e5",
+    "bytes": 145
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/10-neg-mutation-campaign.md",
+    "sha256": "5e97166e5b4f3fc6ee259b7ed513d31d6fd96fd8dff59b974fa7190b8fef587c",
+    "bytes": 116
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/11-neg-flaky-ci.md",
+    "sha256": "b7d14b16348efc305c74e80d8513a5e46af9bda652fb424e13024c9bf155080d",
+    "bytes": 132
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/12-neg-crud-unit-test.md",
+    "sha256": "c8276bce8c9ef810561dc850d171b3a5036b0b3efa49badb77cf43328ad2e711",
+    "bytes": 126
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/13-neg-slither-scan.md",
+    "sha256": "5ce260cf75fc965663aaaf56c2733e318c271a6043702267074c15a77bfc9b3f",
+    "bytes": 130
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/14-neg-benchmark.md",
+    "sha256": "ca8944afbfd101d6a5bf9cd10003788b864be8bbca4f812b51ab310d857b27c3",
+    "bytes": 133
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/15-neg-pytest-setup.md",
+    "sha256": "b1e383645e1d41bfbf5badcfc60d9b406c26d357572a9153ee026349de433c63",
+    "bytes": 114
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/16-neg-e2e-playwright.md",
+    "sha256": "0f1c8829a7e1765fa18ecd20be5c2a8724e160ac1dde2244198737372bc97a51",
+    "bytes": 116
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/effectiveness.sh",
+    "sha256": "e9a35d2af55a0be3214d6b5b67f9f6e727e025315ad287849f9fdb8fb659fc9a",
+    "bytes": 12194
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/fixture/contracts/Staking.sol",
+    "sha256": "51b6dc58610c23cea8d36ecdf1db021c0dbd4824607ee272306d5581fdb8a53e",
+    "bytes": 355
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/fixture/requirements.txt",
+    "sha256": "2ec024d4ac8c016735259761d43f120128dec869de202feebf46ec030ba09b77",
+    "bytes": 11
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/fixture/src/codec.py",
+    "sha256": "e04e560e8fdf6f402feebac1178c4594c276e2744a728e1bb08285379db0661b",
+    "bytes": 527
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/fixture/src/money.py",
+    "sha256": "80a2561c2845e56a3ada781ac6f24929bcb544f4b55f69fa932f8d170ba61a40",
+    "bytes": 249
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/fixture/tests/test_parser.py",
+    "sha256": "de024488462860b084c9a3d8e4b6136a3de0083cc26092dce7746d699b7b9d86",
+    "bytes": 295
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals-extra/run.sh",
+    "sha256": "cb3dd6179e6811a251388fe80f9c2ec7e27f9917c2345001d5c164fef1d27784",
+    "bytes": 29967
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/02-neg-cargo-fuzz-coverage/graders/answers-on-its-own-terms.md",
+    "sha256": "d5bf3a46de865606a2d12ab3427dcc44d8f94f10a4f9b316fd02c22609af1d57",
+    "bytes": 1422
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/02-neg-cargo-fuzz-coverage/graders/does-not-pivot-to-pbt.md",
+    "sha256": "15f22205bf2994a17619dc430f5d99a443838be5bae7318a439a6f52fc228375",
+    "bytes": 1319
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/02-neg-cargo-fuzz-coverage/graders/no-skill-invocation.md",
+    "sha256": "3854369334a51e7560110a2a3d27020a57a92dc84d47dc6550b9f4e168345e56",
+    "bytes": 60
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/02-neg-cargo-fuzz-coverage/prompt.md",
+    "sha256": "23d8e9d3cb68141ce86f4db69515dcb0fec7d6e201e23168547c5765df5dfe22",
+    "bytes": 372
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/03-dependency-is-users-call/graders/dependency-left-to-user.md",
+    "sha256": "58750de044da1c9f5485c4c0d8e76f1f05c65e597605b14f71f3745e22dceddb",
+    "bytes": 1288
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/03-dependency-is-users-call/graders/no-dependency-file-written.md",
+    "sha256": "01a92cb394f5b8ee22d304fd5ff1878d660897124c9497f00f1cb19d628e666b",
+    "bytes": 117
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/03-dependency-is-users-call/graders/skill-fired.md",
+    "sha256": "f8f43bab2c2c5ddfcb1dd00ef9d713a5fb02b53c4f948d6aad1fa6cf05a58ce0",
+    "bytes": 43
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/evals/03-dependency-is-users-call/prompt.md",
+    "sha256": "f73816c4aa2ea2c0917138a15e0a6185d994f40ec6912090e90f5db84e0649dc",
+    "bytes": 815
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/README.md",
+    "sha256": "ffbe30eec09cc64fb1eae836b07ca1d82939bda3f1e6f0dceadcdd78793a3112",
+    "bytes": 15332
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/SKILL.md",
+    "sha256": "9448cacb65c6237a7c22dc59602667177ecae405524079ae9ff92240590b995a",
+    "bytes": 4306
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/agents/openai.yaml",
+    "sha256": "51d635deefa254d8cdf6dc56450851b6ec9545cd37f88a4eb4035cf3f2262fff",
+    "bytes": 254
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/assets/trail-of-bits-mark.svg",
+    "sha256": "4bf74c789b38dcf6ad762c136b6832363d27ae19fbaa9a18ec18d66ecce6ca05",
+    "bytes": 3084
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/references/generating.md",
+    "sha256": "c0e72dfc89babe3c32de718b81b94044362c85e776d7475e950dfeaab78bb58e",
+    "bytes": 2634
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/references/interpreting-failures.md",
+    "sha256": "dbae7db8773712ba03268a3d56ea5aa6720af0650a5189580bfd88aa2edc3f9a",
+    "bytes": 3426
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/references/libraries.md",
+    "sha256": "f7218acf8e668130ef3048983472579d04e12030c5401926f666363e5f69c686",
+    "bytes": 2952
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/references/refactoring.md",
+    "sha256": "6eb5c206f575704791f089608bb06e41d6eed91b9d3c7fb27912f969aed07a18",
+    "bytes": 4854
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/property-based-testing/skills/property-based-testing/references/reviewing.md",
+    "sha256": "110b08118a1e7b1a2566def6e9d2a0bf43fc2deefce857d2ce3b4382b07bc774",
+    "bytes": 2859
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/.claude-plugin/plugin.json",
+    "sha256": "8384f19d6d64e1de987a9a62f36d7dbd1f311fa0bf4ab02eec7af936a6b80ecf",
+    "bytes": 308
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/README.md",
+    "sha256": "50731a8fa2619c16a55d6bda57a9e07f9f54a8117bd0ba587827782537d43f1f",
+    "bytes": 2314
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/agents/sharp-edges-analyzer.md",
+    "sha256": "c9df773b4a8a56ed88179ef46b8b4eada44092fe4227a683d37bd5219bcbbdae",
+    "bytes": 8185
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/SKILL.md",
+    "sha256": "3b69a709c2f8f0cfcf57d40a3186e166f307865cc8ed924be4098e549a121e9c",
+    "bytes": 11814
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/agents/openai.yaml",
+    "sha256": "d18c31ffb600df69db714161add9a1fe1dca38011b52a0c8926d4d4d3fb1ea4f",
+    "bytes": 239
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/assets/trail-of-bits-mark.svg",
+    "sha256": "4bf74c789b38dcf6ad762c136b6832363d27ae19fbaa9a18ec18d66ecce6ca05",
+    "bytes": 3084
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/auth-patterns.md",
+    "sha256": "1fbf526ca1db7204f9ebb1bf4eb3c48c544676623d23e5d28e01f6f63c355be2",
+    "bytes": 6999
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/case-studies.md",
+    "sha256": "2e81a320728b4597bf84c490176d5bf212f1e6ba6f87aafba61ad1734de35332",
+    "bytes": 8143
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/config-patterns.md",
+    "sha256": "1d99f2716f7bef18efe71015ce0c56e0f4961c042faa503d796d6d4d1626fdc6",
+    "bytes": 9729
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/crypto-apis.md",
+    "sha256": "8baddc83a1f964d6d8b15678d60a37c93029c18dc162bd7c00895e585ff1a825",
+    "bytes": 5275
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-c.md",
+    "sha256": "d077d711c73749c924eae81c06018b14bbf1ec9b93d71723c472b43df5d7d5ae",
+    "bytes": 5683
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-csharp.md",
+    "sha256": "8fa9e93d36c0e1397b7ca81307163370fc43cf700215b7c6d7aa1b09fdb91fb4",
+    "bytes": 7324
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-go.md",
+    "sha256": "839c0e7b4e3fa2f3b37c651e926aa59d69d20bfef5e67f569eedacf11354844d",
+    "bytes": 6661
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-java.md",
+    "sha256": "3b93b6049f7e0e356a1ffebc0b4642f3cef315d90be45b63e15c8c4814f9ebeb",
+    "bytes": 6820
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-javascript.md",
+    "sha256": "cf72f55d31318666942a8d1d64340befc3c4e7223afc2ca196e6a776ffa4c895",
+    "bytes": 6933
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-kotlin.md",
+    "sha256": "c891148c10a4941c3396416a10ac64512eb3a9e13ea5eeaec3902da4b51501dd",
+    "bytes": 6751
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-php.md",
+    "sha256": "7960d9773874cf06c5b470a5ca3ab406d896e66b71e713d809bc1ecfcab63485",
+    "bytes": 6179
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-python.md",
+    "sha256": "36543becc25b4e3f41eaedcab62e9b204657e6742b8ac95e405bcd040d33bf03",
+    "bytes": 6616
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-ruby.md",
+    "sha256": "d9ba749caaccb8a3bb39e2199b2062c0957cf48739218ba8022d49be5cba2088",
+    "bytes": 6213
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-rust.md",
+    "sha256": "3d14993ea70b2b2df3fc0f388cbd1631470895c27ccbd9d764296d1da8f5b6ee",
+    "bytes": 6545
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/lang-swift.md",
+    "sha256": "a64ab8692db0f3e43526088c63c7fdcb7354d1b24e6fe7ca759aea3260890e04",
+    "bytes": 6252
+  },
+  {
+    "repo": "trailofbits/skills",
+    "commit": "149d7b21f4067765b82e67029730b42d228ef4b4",
+    "path": "plugins/sharp-edges/skills/sharp-edges/references/language-specific.md",
+    "sha256": "4522b4a37cfd7d3aa689209dfd4569f3b39074bd1f5987a36a6e819f501141b6",
+    "bytes": 13267
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "LICENSE",
+    "sha256": "a6946284993aeec75c7d75906064b66210c46051e562077efb30eb6dcfe72e26",
+    "bytes": 11607
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "README.md",
+    "sha256": "6db45ae725346e38fa0b6b921aba4fe8489c4d9735986876d366ba5768010b14",
+    "bytes": 6109
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/analyze/SKILL.md",
+    "sha256": "4ee816363d944c7a959e43384576d979a414f37fff7071c0bfb8935aae10143e",
+    "bytes": 4432
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/build-dashboard/SKILL.md",
+    "sha256": "6f23faa0b266820a23096f76df9d83e6b67597af4fc8c3306b4eba7e9f409f99",
+    "bytes": 26002
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/create-viz/SKILL.md",
+    "sha256": "3b13a9c2c9d2b1d36f9c323d952d93f578216f2094bc80d4be6fd4ccbfe9b77d",
+    "bytes": 5151
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-context-extractor/SKILL.md",
+    "sha256": "6d05dec52ac3667b551898b9eb943f5ee08141bc8d2fabb69a8e39bb9ce7c754",
+    "bytes": 7233
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-context-extractor/references/domain-template.md",
+    "sha256": "ad5658dba15bf15faae05ade116cdb9bc5c7cac2057a3dbd56a52556bf25faba",
+    "bytes": 3490
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-context-extractor/references/example-output.md",
+    "sha256": "b19e188ed03d9417ff1136187944a6f9125c7da40b6ecb22abe096edd985932e",
+    "bytes": 6247
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-context-extractor/references/skill-template.md",
+    "sha256": "0ceedd25de9a1e278832fc84e6124334af1bc6eaf7e4d3a29f31c23451cb3a71",
+    "bytes": 3820
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-context-extractor/references/sql-dialects.md",
+    "sha256": "a62f61bf64699f7919f4360cce7255794522406c36689069c78c95796fce0ba0",
+    "bytes": 4557
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-context-extractor/scripts/package_data_skill.py",
+    "sha256": "ce79da32ea049db99c91fff0dfcc8ba1ece91940bbbf992de9283cdebe5a4d64",
+    "bytes": 3765
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/data-visualization/SKILL.md",
+    "sha256": "5811e8b3547cda6bc8af118aaf0d7589e8861cdc9facce6372dc78aea99ab87d",
+    "bytes": 11051
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/explore-data/SKILL.md",
+    "sha256": "af7590fa616360259da712b5ede5f79b817beb854c47a465f95774354988e8a2",
+    "bytes": 11520
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/sql-queries/SKILL.md",
+    "sha256": "dbd5a5e2d563d83ca6d4d033206f285f503296eabff4a35545cdb4cb5302bd9a",
+    "bytes": 11126
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/statistical-analysis/SKILL.md",
+    "sha256": "91a15cfc144efffcd622b09827362a73993a3ff30e3a78114801832477c9f8a0",
+    "bytes": 10434
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/validate-data/SKILL.md",
+    "sha256": "1e424822043480375b80aef9416227b1c8083af749ca536568716265f79ca54b",
+    "bytes": 14916
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "data/skills/write-query/SKILL.md",
+    "sha256": "4c7ef791db1f23504c457cc52de0d8855d26f176d5acf037260deb1b98e5e34e",
+    "bytes": 4753
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/competitive-brief/SKILL.md",
+    "sha256": "720916695f99a70e723be02d0123908c9c968ce56e1ffdeeb423014587017cd2",
+    "bytes": 14774
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/metrics-review/SKILL.md",
+    "sha256": "e92f364b668074c72b36fd0f69a6adef2ead66640b2c17dc824c043fb613d278",
+    "bytes": 18038
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/product-brainstorming/SKILL.md",
+    "sha256": "53ee71b6863b277aba87002d8a5bb58bd2a4172d7cfeb2e282a0161958edc8e7",
+    "bytes": 15944
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/roadmap-update/SKILL.md",
+    "sha256": "bdb121e290b590d60b94bca84d1700a8803c78db9f68f2a28fd04ccfe8aceb9e",
+    "bytes": 12372
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/sprint-planning/SKILL.md",
+    "sha256": "c078d3f838c783e9ab53ca1a4b4c04dcd7930a55a995731b8c020cd656cb1edd",
+    "bytes": 4144
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/stakeholder-update/SKILL.md",
+    "sha256": "bcdb8ee95dc34d025dcc3d98e7435c4dca45930581b3b7a8707f8770dd364e79",
+    "bytes": 14677
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/synthesize-research/SKILL.md",
+    "sha256": "ae98c11102545c911a1ea5d8527be0e08a3db8e53327f2865f0db19bbb2d7e9c",
+    "bytes": 16135
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "product-management/skills/write-spec/SKILL.md",
+    "sha256": "ca6670913878b4ac4582727562bfced5271492a5a800d934f68c9e7bc1cd4dcc",
+    "bytes": 12326
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "productivity/skills/dashboard.html",
+    "sha256": "742286836fb80daea7e593fad4c7b7397fb768fea2c5761a069011f1b795ea1c",
+    "bytes": 98403
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "productivity/skills/memory-management/SKILL.md",
+    "sha256": "ad42fd09cbab585b8ae8fcce54e711d37105d5d5b7d9ceaf9b29bf6441f7a88d",
+    "bytes": 8742
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "productivity/skills/start/SKILL.md",
+    "sha256": "def467be29ec60f1567c9fa92dc4b1ca9a6d3ed85f964f338a02502a44779208",
+    "bytes": 4919
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "productivity/skills/task-management/SKILL.md",
+    "sha256": "db1320873d68caab09cdbc1788e78d81e3b9b7cc6b499e2c4b975f25e873049f",
+    "bytes": 2604
+  },
+  {
+    "repo": "anthropics/knowledge-work-plugins",
+    "commit": "e91a134584eb798bac7fb0379358006a2b63b965",
+    "path": "productivity/skills/update/SKILL.md",
+    "sha256": "27dbb2c732a9140ea3f01da6cdf7e533df5e75e9614c80e7e356c8f39c959799",
+    "bytes": 5061
+  }
+]

@@ -16,9 +16,9 @@ def main():
     image=json.loads((ROOT/'custom-image.json').read_text())['image_id']
     prior=subprocess.run(['docker','inspect',NAME],capture_output=True)
     if prior.returncode==0:raise RuntimeError('container already exists; inspect before changing it')
-    data=ROOT/'data';data.mkdir(mode=0o1770,exist_ok=True)
-    os.chown(data,0,10000);data.chmod(0o1770)
-    config=data/'config.yaml'
+    data=ROOT/'cli-home';data.mkdir(mode=0o700,exist_ok=True)
+    os.chown(data,10000,10000);data.chmod(0o700)
+    config=ROOT/'policy/config.yaml'
     if not config.exists() or config.stat().st_uid!=10001:
         raise RuntimeError('administrator-owned canonical config required')
     workspace=ROOT/'workspace';workspace.mkdir(mode=0o750,exist_ok=True)
@@ -29,7 +29,10 @@ def main():
           '--security-opt','no-new-privileges:true','--user','10000:10000',
           '--entrypoint','sleep','--env-file',str(credentials),
           '--env','HERMES_WRITE_SAFE_ROOT=/workspace:/opt/data',
-          '--mount','type=bind,src='+str(ROOT/'data')+',dst=/opt/data',
+          '--env','HERMES_MANAGED_DIR=/opt/policy',
+          '--mount','type=bind,src='+str(data)+',dst=/opt/data',
+          '--mount','type=bind,src='+str(ROOT/'policy')+',dst=/opt/policy,readonly',
+          '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles,readonly',
           '--mount','type=bind,src='+str(ROOT/'workspace')+',dst=/workspace',
           '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills,readonly',
           '--mount','type=bind,src='+str(ETC/'AGENTS.md')+',dst=/workspace/AGENTS.md,readonly',

@@ -1,0 +1,21 @@
+FROM springmonkey/hermes-pilot:v0.23.1-r1
+USER root
+ARG DEBIAN_FRONTEND=noninteractive
+# System tools live only in this image. Copyright notices remain in /usr/share/doc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libreoffice-writer libreoffice-calc libreoffice-impress poppler-utils \
+    tesseract-ocr tesseract-ocr-jpn tesseract-ocr-chi-sim \
+    pandoc graphviz jq gh fonts-noto-cjk \
+    && mkdir -p /opt/capabilities \
+    && dpkg-query -W > /opt/capabilities/debian-packages.tsv \
+    && rm -rf /var/lib/apt/lists/*
+COPY requirements-capabilities-lock.txt /opt/capabilities/
+# A separate interpreter can see the existing document libraries. It does not
+# replace the sealed Hermes interpreter or its installed dependency versions.
+RUN /usr/local/bin/python3 -m venv /opt/skills-python \
+    && printf '%s\n' /opt/hermes/.venv/lib/python3.14/site-packages > /opt/skills-python/lib/python3.14/site-packages/hermes-base.pth \
+    && /opt/skills-python/bin/python -m pip install --no-cache-dir --no-deps --require-hashes --only-binary=:all: -r /opt/capabilities/requirements-capabilities-lock.txt
+ENV PATH="/opt/skills-python/bin:${PATH}"
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/hermes/tools/chromium-1208/chrome-linux64/chrome
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

@@ -1,0 +1,10 @@
+{
+  "native_symlink_atomic_save": "PASS",
+  "config_sha256_unchanged": "38c5f6bbb2c14f40c07a377eccc0611ef94d69568e5dc57f3e410872d7b45bc0",
+  "cli_home_uid": 10000,
+  "cli_home_mode": "0o700",
+  "admin_home_uid": 10001,
+  "admin_home_mode": "0o700",
+  "canonical_config": "/srv/hermes-pilot/policy/config.yaml",
+  "native_managed_scope": "CLI: /opt/policy; directory read-only"
+}

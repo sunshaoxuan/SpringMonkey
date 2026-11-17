@@ -1,0 +1,9 @@
+{
+  "ActiveState": "inactive",
+  "SubState": "dead",
+  "Result": "success",
+  "ExecMainStatus": "0",
+  "tail": "#10 exporting to image\n#10 exporting layers\n#10 exporting layers 62.9s done\n#10 exporting manifest sha256:92c8d520e69fc589976ff70e227494a1d7aa501641327fbf35340c9bc56e0c07 0.0s done\n#10 exporting config sha256:f623bb2751fd29265c5084965cc332717d044ec848c389d30ea5ec69535f22df 0.0s done\n#10 exporting attestation manifest sha256:0c7f8d575466134c22d685bb66fd075ed18f222612cae7c755294505c7bad920 0.0s done\n#10 exporting manifest list sha256:598f0583092e6d0f3441d33c3951af83da01e2ceb2b79f11d4000b0ef0c01723 0.0s done\n#10 naming to docker.io/springmonkey/hermes-pilot:v0.23.1-r2 done\n#10 unpacking to docker.io/springmonkey/hermes-pilot:v0.23.1-r2\n#10 unpacking to docker.io/springmonkey/hermes-pilot:v0.23.1-r2 14.8s done\n#10 DONE 77.9s\nhermes-b3-image-build.service: Deactivated successfully.\n",
+  "image_id": "sha256:598f0583092e6d0f3441d33c3951af83da01e2ceb2b79f11d4000b0ef0c01723",
+  "image_bytes": 6905256026
+}

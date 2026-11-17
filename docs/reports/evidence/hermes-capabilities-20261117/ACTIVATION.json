@@ -1,0 +1,13 @@
+{
+  "activated": true,
+  "image_id": "sha256:598f0583092e6d0f3441d33c3951af83da01e2ceb2b79f11d4000b0ef0c01723",
+  "skills": 70,
+  "bundles": 8,
+  "config_sha256_unchanged": "38c5f6bbb2c14f40c07a377eccc0611ef94d69568e5dc57f3e410872d7b45bc0",
+  "rollback_containers": [
+    "hermes-pilot-b3-rollback",
+    "hermes-dashboard-b3-rollback"
+  ],
+  "dashboard_auth_required": true,
+  "discord": "not connected"
+}

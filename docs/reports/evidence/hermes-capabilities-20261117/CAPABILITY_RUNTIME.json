@@ -1,0 +1,97 @@
+{
+  "versions": {
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "scipy": "1.18.1",
+    "matplotlib": "3.11.2",
+    "seaborn": "0.13.2",
+    "plotly": "7.1.0",
+    "pygount": "3.2.0",
+    "debugpy": "1.8.22",
+    "playwright": "1.65.2",
+    "pytesseract": "0.3.13",
+    "pytest": "9.2.0",
+    "hypothesis": "6.170.15",
+    "nbformat": "5.11.1"
+  },
+  "analysis": "PASS: CSV, exact totals, regression, PNG and interactive HTML",
+  "office": "PASS: DOCX/PPTX to PDF, PDF text/readback, XLSX formula recalculation and PNG rendering",
+  "ocr": {
+    "english_marker": "PASS",
+    "installed_languages": [
+      "chi_sim",
+      "eng",
+      "jpn",
+      "osd"
+    ],
+    "japanese_chinese_accuracy": "not measured; language data installed"
+  },
+  "development": "PASS: 2 synthetic tests and actual pygount statistics",
+  "rss": "PASS: real PyPI release feed, synthetic parse and 4MiB rejection",
+  "web_qa": {
+    "click": "PASS",
+    "page_errors": [],
+    "failed_requests": [],
+    "scope": "synthetic local fixture"
+  },
+  "tools": {
+    "pandoc_graphviz_jq": "PASS",
+    "github_cli": "gh version 2.46.0 (2025-01-13 Debian 2.46.0-3)",
+    "private_github": "not connected"
+  },
+  "artifacts": {
+    "sample.csv": {
+      "bytes": 33,
+      "sha256": "ca516939567a17a15e93f088c8119614357cfb20883731eedc13120faf973223"
+    },
+    "statistics.json": {
+      "bytes": 35,
+      "sha256": "21fef378ea14e30ca289e01d6216e786569a74eb6df1cbcf492cd7f01b585400"
+    },
+    "chart.png": {
+      "bytes": 14624,
+      "sha256": "4ba16f512bbfdc0fc968a02aee402a211795a568460620e430d3256fd5c35473"
+    },
+    "interactive-chart.html": {
+      "bytes": 4823739,
+      "sha256": "5e921dbc3a6d5e9436b610e6df1f41a7ccdfad9bc9643f2a816c0d475417aacf"
+    },
+    "sample.docx": {
+      "bytes": 36733,
+      "sha256": "f52cd2e41284af9dedac1687380f7e60e68d0a6f524f04b7a33622c2d4870662"
+    },
+    "sample.xlsx": {
+      "bytes": 4924,
+      "sha256": "8c5d4ef2e774218efb136922e8d7a30891290485b4ca75af368e40b3f47b8344"
+    },
+    "sample.pptx": {
+      "bytes": 29094,
+      "sha256": "b8554b31a32417de3bb2ef8b78ebbc245df8d2bdbda61890600a2b9fbb1b9f4f"
+    },
+    "document-render.png": {
+      "bytes": 27099,
+      "sha256": "6cfd6ee84e4369614402c50884e980d9ca036977d13e64324b75223a0c33fbe6"
+    },
+    "ocr.txt": {
+      "bytes": 16,
+      "sha256": "563fb594d84d3491995e7c523f9f89803bf77f60cd6c20a5488fe022217ab84b"
+    },
+    "feed.json": {
+      "bytes": 164,
+      "sha256": "aeb7a5e59da1b8806622c8610025229be38987084c11a91626a4f90e05e06824"
+    },
+    "web-qa.png": {
+      "bytes": 13074,
+      "sha256": "3ea76b99a9e58173c8e6f1aac15702325d25c25ab154a467b7419d8fd0929238"
+    },
+    "diagram.svg": {
+      "bytes": 1886,
+      "sha256": "3d5cc06dd341395fa5629bcec85a18dbb18868a9dd7fdf1c4b12e0c157d36b02"
+    },
+    "note.html": {
+      "bytes": 62,
+      "sha256": "ee6649a48e78c26ce74aec1e448bb5ab7a8da612f4499a538623ff32f4dc3b77"
+    }
+  },
+  "status": "PASS"
+}

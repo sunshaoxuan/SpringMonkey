@@ -1,5 +1,8 @@
 # SpringMonkey
 
+当前扩充见[70 Skills与8工作流安装回执](docs/reports/HERMES_CAPABILITY_EXPANSION_2026-11-17.md)。私有运行home与单一policy配置替代本页旧共享home，当前源码和配置以新回执为准。
+
+
 [Current research/dashboard status](docs/reports/HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md)：网页研究、HTTPS、Nous登录及桌面配置保存已验收；管理页已上线https://sm.briconbric.com/config。390px手机视口控件溢出9px，响应式验收未通过。原无browser/dashboard及只读单文件bind为首批历史。
 
 Current host, 2026-11-17: Ubuntu26.10 with a deployed Hermes CLI pilot, Tailscale and FRP. See [deployment report](docs/reports/HERMES_DEPLOYMENT_2026-11-17.md). Older OpenClaw records below are historical; Discord remains disconnected.

@@ -1,0 +1,7 @@
+{
+  "semantic_sha256": "ec24df7a4a4edc6f98d29bdea886c2361105db519a30e7bedf987b98da7b3f06",
+  "uid": 10001,
+  "mode": "0o640",
+  "home_config_is_symlink": true,
+  "model": "gpt-6-astra"
+}

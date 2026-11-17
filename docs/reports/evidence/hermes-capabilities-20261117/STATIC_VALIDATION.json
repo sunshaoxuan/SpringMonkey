@@ -1,0 +1,30 @@
+{
+  "python_ast": [
+    "acceptance_capabilities.py",
+    "acceptance_research.py",
+    "acceptance_routing.py",
+    "acceptance_runtime.py",
+    "install_dashboard_renewal.py",
+    "install_docker.py",
+    "publish_dashboard.py",
+    "refusal_patch.py",
+    "start_container.py",
+    "start_dashboard.py",
+    "verify_image.py"
+  ],
+  "json_files": 17,
+  "source_bindings": 6,
+  "local_links": 11,
+  "archive_skill_count": 64,
+  "archive_files": 484,
+  "archive_installed_hashes_match": true,
+  "artifact_hashes_match": true,
+  "save_semantics_and_permissions_unchanged": true,
+  "secret_text_files_scanned": 31,
+  "diff_check": "PASS",
+  "functional_acceptance": "PASS: direct tools and representative Hermes task",
+  "all_skill_semantics_individually_tested": false,
+  "ui_source_changed": false,
+  "existing_mobile_issue": "retained: upstream 9px at390px; not retested",
+  "native_model_routing_regressions": "REUSED: unchanged source and configuration"
+}

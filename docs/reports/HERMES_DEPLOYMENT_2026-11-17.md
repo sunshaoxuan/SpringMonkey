@@ -1,5 +1,8 @@
 # SpringMonkey Hermes 首批部署
 
+当前扩充见[70 Skills与8工作流安装回执](HERMES_CAPABILITY_EXPANSION_2026-11-17.md)。私有运行home与单一policy配置替代本页旧共享home，当前源码和配置以新回执为准。
+
+
 [后续批次](HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md)：网页研究、HTTPS、Nous登录及桌面配置保存已验收；管理页已上线https://sm.briconbric.com/config。390px手机视口控件溢出9px，响应式验收未通过。原无browser/dashboard及只读单文件bind为首批历史。
 
 2026-11-17，Asia/Tokyo。用户已授权部署Hermes，并允许从已登录Edge取得指定Sub2API账号的Key。此前暂不部署的限制已更新。Discord未接入，费用预留与USD10预算代理已取消。

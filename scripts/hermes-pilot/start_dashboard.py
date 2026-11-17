@@ -17,7 +17,7 @@ def main():
         raise RuntimeError('expected public URL required')
     if subprocess.run(['docker','inspect',NAME],capture_output=True).returncode==0:
         raise RuntimeError('dashboard exists; inspect it before replacement')
-    config=ROOT/'data/config.yaml'
+    config=ROOT/'policy/config.yaml'
     if config.stat().st_uid!=10001:raise RuntimeError('administrator must own config')
     image=json.loads((ROOT/'custom-image.json').read_text())['image_id']
     args=['docker','run','-d','--name',NAME,'--label','org.springmonkey.pilot=hermes-dashboard',
@@ -28,6 +28,8 @@ def main():
           '--env','XDG_RUNTIME_DIR=/tmp/hermes-admin-runtime',
           '--env','HERMES_WRITE_SAFE_ROOT=/workspace',
           '--mount','type=bind,src='+str(ROOT/'data')+',dst=/opt/data',
+          '--mount','type=bind,src='+str(ROOT/'policy')+',dst=/opt/policy',
+          '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles,readonly',
           '--mount','type=bind,src='+str(ROOT/'workspace')+',dst=/workspace',
           '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills,readonly',
           '--mount','type=bind,src='+str(ETC/'AGENTS.md')+',dst=/workspace/AGENTS.md,readonly',
