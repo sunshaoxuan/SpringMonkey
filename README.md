@@ -1,5 +1,7 @@
 # SpringMonkey
 
+2026-11-18：网页聊天收发、工具写读、服务重启恢复已验收，已启用Nous Blue亮色主题。见[入门用法](docs/ops/HERMES_QUICK_START.md)与[恢复记录](docs/reports/HERMES_WEB_CHAT_RECOVERY_2026-11-18.md)。
+
 当前MoA已配置并真实验收：GPT-6.1 Sol汇总，DeepSeek/Qwen参考，辅助auto。见[配置与验收](docs/reports/HERMES_MOA_ACCEPTANCE_2026-11-17.md)。普通聊天主模型保持gpt-6.1-sol。
 
 

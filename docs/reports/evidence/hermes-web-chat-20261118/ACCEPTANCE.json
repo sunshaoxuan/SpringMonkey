@@ -1,0 +1,16 @@
+{
+  "date_jst": "2026-11-18",
+  "native_attach_after_restart": "PASS",
+  "socket_mode": "0600",
+  "socket_uid": 10001,
+  "session_model": "gpt-6.1-sol",
+  "file_matches": true,
+  "file_sha256": "3801deebe8114ab764e47f9e48018a1ac6236046cd0afa2dcd7e3c6ceed2d3a7",
+  "ui_send_reply_and_tools": "PASS observed live browser",
+  "theme_persisted": "nous-blue observed after reload and restart",
+  "history_resume_after_restart": "PASS observed live browser",
+  "anonymous_config_http": 401,
+  "discord_enabled": false,
+  "ui_source_changed": false,
+  "full_frontend_regression": "not run; original mobile limitation remains"
+}
