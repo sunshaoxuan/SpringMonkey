@@ -1,0 +1,6 @@
+{
+  "exit": 0,
+  "stdout": "{\"success\": true, \"data\": {\"web\": [{\"url\": \"https://playwright.dev/docs/browser-contexts\", \"title\": \"Isolation | Playwright\", \"description\": \"# Isolation ## Introduction\\u200b Tests written with Playwright execute in isolated clean-slate environments called browser contexts. This isolation model improves reproducibility and prevents cascading te\", \"position\": 1}, {\"url\": \"https://playwright.dev/docs/api/class-browsercontext\", \"title\": \"BrowserContext | Playwright\", \"description\": \"# BrowserContext BrowserContexts provide a way to operate multiple independent browser sessions. If a page opens another page, e.g. with a `window.open` call, the popup will belong to the parent page'\", \"position\": 2}, {\"url\": \"https://playwright.dev/docs/api/class-browser\", \"title\": \"Browser | Playwright\", \"description\": \"### close\\u200b In case this browser is obtained using browserType.launch(), closes the browser and all of its pages (if any were opened). In case this browser is connected to, clears all created contexts \", \"position\": 3}]}}",
+  "stderr": "",
+  "excerpted_public_text": true
+}

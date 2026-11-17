@@ -1,0 +1,166 @@
+{
+  "exit": 0,
+  "seconds": 154.5,
+  "outputs": {
+    "report.md": {
+      "exists": true,
+      "bytes": 3700,
+      "sha256": "c6d099de89f9f573587b3522762ded1fb3a303d2beb03abbe1103e85dcd11e6c"
+    },
+    "sources.json": {
+      "exists": true,
+      "bytes": 1161,
+      "sha256": "2fa28c9201e255ffeb240a3eb6378f7f9ee9b0f3d39425e12cbe97e67894b889"
+    },
+    "browser.png": {
+      "exists": true,
+      "bytes": 33164,
+      "sha256": "0a9b415f2ac5b20500a46e779f3c075d9422471dc54a67bdf18130bbf180fafe"
+    }
+  },
+  "events": [
+    {
+      "type": "system"
+    },
+    {
+      "type": "tool_use",
+      "name": "web_search"
+    },
+    {
+      "type": "tool_use",
+      "name": "web_search"
+    },
+    {
+      "type": "tool_result",
+      "name": "web_search"
+    },
+    {
+      "type": "tool_result",
+      "name": "web_search"
+    },
+    {
+      "type": "tool_use",
+      "name": "terminal"
+    },
+    {
+      "type": "tool_result",
+      "name": "terminal"
+    },
+    {
+      "type": "tool_use",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_result",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_use",
+      "name": "browser_exec"
+    },
+    {
+      "type": "tool_result",
+      "name": "browser_exec"
+    },
+    {
+      "type": "tool_use",
+      "name": "terminal"
+    },
+    {
+      "type": "tool_result",
+      "name": "terminal"
+    },
+    {
+      "type": "tool_use",
+      "name": "web_extract"
+    },
+    {
+      "type": "tool_result",
+      "name": "web_extract"
+    },
+    {
+      "type": "tool_use",
+      "name": "browser_exec"
+    },
+    {
+      "type": "tool_result",
+      "name": "browser_exec"
+    },
+    {
+      "type": "tool_use",
+      "name": "web_extract"
+    },
+    {
+      "type": "tool_result",
+      "name": "web_extract"
+    },
+    {
+      "type": "tool_use",
+      "name": "write_file"
+    },
+    {
+      "type": "tool_result",
+      "name": "write_file"
+    },
+    {
+      "type": "tool_use",
+      "name": "write_file"
+    },
+    {
+      "type": "tool_result",
+      "name": "write_file"
+    },
+    {
+      "type": "tool_use",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_use",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_result",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_result",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_use",
+      "name": "terminal"
+    },
+    {
+      "type": "tool_result",
+      "name": "terminal"
+    },
+    {
+      "type": "tool_use",
+      "name": "browser_exec"
+    },
+    {
+      "type": "tool_result",
+      "name": "browser_exec"
+    },
+    {
+      "type": "tool_use",
+      "name": "patch"
+    },
+    {
+      "type": "tool_result",
+      "name": "patch"
+    },
+    {
+      "type": "tool_use",
+      "name": "read_file"
+    },
+    {
+      "type": "tool_result",
+      "name": "read_file"
+    },
+    {
+      "type": "result"
+    }
+  ],
+  "stderr_tail": "\u26a0 install out of sync (pnpm: not installed or outdated) \u2014 this docker-managed install must rebuild the artifact to fix\nSession: local-d4a6d45800bce73208d2e7507abcb9c3a4aba3e40a8e21f721ad413bbf375fe9\n\nsession_id: local-d4a6d45800bce73208d2e7507abcb9c3a4aba3e40a8e21f721ad413bbf375fe9\n"
+}

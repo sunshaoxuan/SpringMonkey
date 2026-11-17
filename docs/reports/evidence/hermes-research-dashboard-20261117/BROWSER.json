@@ -1,0 +1,6 @@
+{
+  "exit": 0,
+  "stdout": "{\"success\": true, \"exit_code\": 0, \"workspace\": \"/opt/data/cache/browser-use/workspace/research-acceptance\", \"session\": \"research-check\", \"screenshot_path\": \"/opt/data/home/.config/browser-harness/tmp/shot.png\", \"observed_page\": {\"url\": \"https://playwright.dev/docs/browser-contexts\", \"title\": \"\\ud83d\\udc34 Isolation | Playwright\", \"text_excerpt\": \"GuidesIsolation\\nOn this page\\nIsolation\\nIntroduction\\u200b\\n\\nTests written with Playwright execute in isolated clean-slate environments called browser contexts. This isolation model improves reproducibility and prevents cascading test failures.\\n\\nWhat is Test Isolation?\\u200b\\n\\nTest Isolation is when each test is completely isolated from another test. Every test\"}}",
+  "stderr": "",
+  "excerpted_public_text": true
+}

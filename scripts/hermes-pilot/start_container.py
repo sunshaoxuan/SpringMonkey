@@ -16,8 +16,13 @@ def main():
     image=json.loads((ROOT/'custom-image.json').read_text())['image_id']
     prior=subprocess.run(['docker','inspect',NAME],capture_output=True)
     if prior.returncode==0:raise RuntimeError('container already exists; inspect before changing it')
-    for path in [ROOT/'data',ROOT/'workspace']:
-        path.mkdir(mode=0o750,exist_ok=True);os.chown(path,10000,10000)
+    data=ROOT/'data';data.mkdir(mode=0o1770,exist_ok=True)
+    os.chown(data,0,10000);data.chmod(0o1770)
+    config=data/'config.yaml'
+    if not config.exists() or config.stat().st_uid!=10001:
+        raise RuntimeError('administrator-owned canonical config required')
+    workspace=ROOT/'workspace';workspace.mkdir(mode=0o750,exist_ok=True)
+    os.chown(workspace,10000,10000)
     args=['docker','run','-d','--name',NAME,'--hostname','springmonkey-hermes',
           '--label','org.springmonkey.pilot=hermes','--restart','unless-stopped',
           '--cpus','1.5','--memory','3g','--memory-swap','3g','--pids-limit','512',
@@ -26,7 +31,6 @@ def main():
           '--env','HERMES_WRITE_SAFE_ROOT=/workspace:/opt/data',
           '--mount','type=bind,src='+str(ROOT/'data')+',dst=/opt/data',
           '--mount','type=bind,src='+str(ROOT/'workspace')+',dst=/workspace',
-          '--mount','type=bind,src='+str(ETC/'config.json')+',dst=/opt/data/config.yaml,readonly',
           '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills,readonly',
           '--mount','type=bind,src='+str(ETC/'AGENTS.md')+',dst=/workspace/AGENTS.md,readonly',
           '--log-opt','max-size=10m','--log-opt','max-file=3',image,'infinity']

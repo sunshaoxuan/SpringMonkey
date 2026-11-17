@@ -1,0 +1,7 @@
+{
+  "auth_required": true,
+  "auth_providers": [
+    "nous"
+  ],
+  "firewall_active": "active"
+}

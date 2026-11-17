@@ -3,6 +3,7 @@
 Authorized and deployed on SpringMonkey on 2026-11-17. See the
 [deployment and acceptance report](../../docs/reports/HERMES_DEPLOYMENT_2026-11-17.md).
 No Discord connection or fee reservation service is configured.
+See [current research/dashboard status](../../docs/reports/HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md).
 
 `Dockerfile` extends the immutable v0.23.1 base using its own locked build,
 applies two preverified refusal source files, verifies source/package hashes and
@@ -17,12 +18,14 @@ It rejects an existing container and expects root-only credentials staged under
 `/etc/hermes-pilot`. The host wrapper serializes tasks and enforces a 900s timeout.
 
 `pilot-config.json` defines GPT, independent DeepSeek and same-gateway Qwen routes.
+Exa search/extract and local headless Chromium are enabled.
 Two shared session slots accommodate the CLI frontend/backend pair; the host lock
 limits top-level tasks to one. `WORKSPACE_AGENTS.md` defines scope. This trusted
 single-user container exposes its model client credentials to its own processes.
 
 On the host run `sudo hermes-pilot chat`. Work under `/workspace`, mapped to
-`/srv/hermes-pilot/workspace`. No dashboard, messaging gateway, browser, OCR,
+`/srv/hermes-pilot/workspace`. The official dashboard sidecar runs as UID10001 on host loopback9119 with Nous OAuth.
+Public DNS/callback saves and HTTPS acceptance are pending. No messaging gateway, OCR,
 runtime dependency installation, delegation or scheduling is enabled.
 
 `acceptance_runtime.py` checks real alternate model responses and document
@@ -42,3 +45,14 @@ Local regression command when those implementation inputs change:
 ```sh
 python -m pytest scripts/hermes-pilot/tests -q -p no:cacheprovider --hermes-source=<verified-source-cache> --basetemp=<task-temporary-directory>
 ```
+
+
+The canonical config is /srv/hermes-pilot/data/config.yaml, UID10001/GID10000,
+mode0640, inside a root-owned sticky home. Stage that file before start_container.py.
+The former /etc/hermes-pilot/config.json is not read at runtime. start_dashboard.py
+starts the official UI using the registered client in the protected env file.
+acceptance_research.py checks real search, browser and arXiv tools.
+publish_dashboard.py prepare installs only the dedicated domain's HTTP/ACME
+site and loopback-only FRP firewall unit. activate issues the dedicated
+certificate and enables HTTPS only after the pending DNS/redirect changes are
+confirmed and the domain resolves. Never include credentials in this tree.

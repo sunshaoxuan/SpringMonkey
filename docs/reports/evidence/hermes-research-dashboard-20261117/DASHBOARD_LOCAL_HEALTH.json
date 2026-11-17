@@ -1,0 +1,33 @@
+{
+  "/login": {
+    "http": 200
+  },
+  "/api/status": {
+    "http": 200,
+    "auth_required": true,
+    "auth_providers": [
+      "nous"
+    ]
+  },
+  "/api/config": {
+    "http": 401,
+    "location": null
+  },
+  "agent_permissions": {
+    "uid": 10000,
+    "config_writable": false,
+    "config_owner": 10001,
+    "config_mode": "0o640",
+    "toolsets": [
+      "terminal",
+      "file",
+      "web",
+      "browser",
+      "skills",
+      "memory"
+    ],
+    "backend": "exa",
+    "model": "gpt-6-astra"
+  },
+  "dashboard_state": "running"
+}

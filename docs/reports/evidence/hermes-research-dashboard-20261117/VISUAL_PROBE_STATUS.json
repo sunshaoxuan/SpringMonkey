@@ -1,0 +1,14 @@
+{
+  "flash_image_probe": {
+    "model": "gemini-3.8-flash-high",
+    "passed": true,
+    "answer": "IMAGE_INPUT_OK",
+    "source": "Original observed tool response; generic on-disk receipt was later overwritten by the separate Pro probe."
+  },
+  "pro_image_probe": {
+    "passed": false,
+    "exit": 1,
+    "diagnostic": "advisory request failed; raw output withheld"
+  },
+  "dashboard_visual_review": "pending public activation and authenticated screenshot"
+}

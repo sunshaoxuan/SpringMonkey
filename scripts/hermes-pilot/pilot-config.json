@@ -24,12 +24,13 @@
       "api_mode": "chat_completions"
     }
   ],
-  "toolsets": ["terminal", "file", "web", "skills", "memory"],
+  "toolsets": ["terminal", "file", "web", "browser", "skills", "memory"],
   "max_concurrent_sessions": 2,
   "max_live_sessions": 1,
   "agent": {"max_turns": 30, "api_max_retries": 2, "auto_recovery_cycles": 1, "run_budget_seconds": 900},
   "terminal": {"backend": "local", "cwd": "/workspace", "timeout": 120},
-  "web": {"backend": "ddgs", "search_backend": "ddgs", "keyless_fallback": true},
+  "web": {"backend": "exa", "search_backend": "exa", "extract_backend": "exa", "keyless_fallback": true},
+  "browser": {"cloud_provider": "local", "engine": "auto", "headed": false, "use_real_profile": false, "user_data_dir": "", "inactivity_timeout": 60, "command_timeout": 60},
   "auxiliary": {"title_generation": {"enabled": false}, "background_review": {"enabled": false}},
   "skills": {"project_discovery": false, "guard_agent_created": true, "write_approval": true, "inline_shell": false},
   "security": {"allow_private_urls": false, "redact_secrets": true, "protected_instruction_files": true, "allow_lazy_installs": false},

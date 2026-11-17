@@ -1,5 +1,7 @@
 # 能力索引：汤猴 / OpenClaw / SpringMonkey 仓库
 
+[当前研究及管理页状态](reports/HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md)：网页研究已验收；管理页及FRP已准备，公网激活待DNS和OAuth回调保存确认。原无browser/dashboard及只读单文件bind为首批历史。
+
 2026-11-17当前主机已重置为Ubuntu26.10并部署Hermes CLI试点。当前运行入口、版本、边界及验收见[Hermes部署报告](reports/HERMES_DEPLOYMENT_2026-11-17.md)。下列旧OpenClaw运行资料保留为历史参考，重装后的主机未恢复OpenClaw或Discord。
 
 **用途**：做任何运维、改配置、写脚本前，**先查本页**，再点进专题文档或脚本路径；避免在仓库里「大海捞针」。

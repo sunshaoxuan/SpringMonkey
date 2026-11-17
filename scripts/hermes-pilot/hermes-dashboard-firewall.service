@@ -1,0 +1,12 @@
+[Unit]
+Description=Restrict Hermes FRP dashboard listener to loopback
+After=network.target docker.service
+Before=frps.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hermes-dashboard-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

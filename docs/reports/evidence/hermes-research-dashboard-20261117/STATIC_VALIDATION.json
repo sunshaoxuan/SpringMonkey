@@ -1,0 +1,18 @@
+{
+  "python_ast": [
+    "acceptance_research.py",
+    "acceptance_routing.py",
+    "acceptance_runtime.py",
+    "install_docker.py",
+    "publish_dashboard.py",
+    "refusal_patch.py",
+    "start_container.py",
+    "start_dashboard.py",
+    "verify_image.py"
+  ],
+  "json_count": 13,
+  "links_checked": 6,
+  "research_hashes_verified": true,
+  "public_acceptance": "PENDING_USER_CONFIRMATION",
+  "public_source_text_excerpted": true
+}

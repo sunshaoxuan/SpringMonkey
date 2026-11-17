@@ -1,0 +1,6 @@
+{
+  "public_site_prepared": true,
+  "dashboard_http_exposed": false,
+  "acme_webroot_ready": true,
+  "frp_port_loopback_only": true
+}

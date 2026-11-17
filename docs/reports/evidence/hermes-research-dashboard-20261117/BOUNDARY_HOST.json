@@ -1,0 +1,12 @@
+{
+  "administrator_file_delete_denied": true,
+  "config_write_denied": true,
+  "ssh_active": "active",
+  "tailscale_active": "active",
+  "frpc_active": "active",
+  "wifi_connected": true,
+  "stats": [
+    "hermes-pilot 1.305MiB / 3GiB 1",
+    "hermes-dashboard 165MiB / 1GiB 8"
+  ]
+}

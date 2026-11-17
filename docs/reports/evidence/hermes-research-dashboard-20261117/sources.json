@@ -1,0 +1,31 @@
+[
+  {
+    "title": "🐴 Isolation | Playwright",
+    "url": "https://playwright.dev/docs/browser-contexts",
+    "retrieved_at": "2026-11-17",
+    "source_type": "official_documentation_browser"
+  },
+  {
+    "title": "🐴 Browser Automation | Hermes Agent",
+    "url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/browser",
+    "retrieved_at": "2026-11-17",
+    "source_type": "official_documentation_browser"
+  },
+  {
+    "title": "Docker | Playwright",
+    "url": "https://playwright.dev/docs/docker",
+    "retrieved_at": "2026-11-17",
+    "source_type": "official_documentation"
+  },
+  {
+    "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+    "url": "https://arxiv.org/abs/2210.03629v3",
+    "retrieved_at": "2026-11-17",
+    "source_type": "arxiv_paper",
+    "arxiv_id": "2210.03629v3",
+    "published_at": "2022-10-06",
+    "updated_at": "2023-03-10",
+    "pdf_url": "https://arxiv.org/pdf/2210.03629v3",
+    "abstract_summary_zh": "交替生成推理轨迹与任务动作，通过外部知识或环境观察更新计划和处理异常；在问答、事实核查与交互决策基准上评估有效性。"
+  }
+]

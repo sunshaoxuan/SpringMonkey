@@ -1,0 +1,6 @@
+{
+  "new_proxy": "hermes-dashboard",
+  "existing_ssh_mapping_unchanged": true,
+  "configuration_verified": true,
+  "frpc_active": "active"
+}

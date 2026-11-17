@@ -1,5 +1,7 @@
 # SpringMonkey Hermes 首批部署
 
+[后续批次](HERMES_RESEARCH_AND_DASHBOARD_2026-11-17.md)：网页研究已验收；管理页及FRP已准备，公网激活待DNS和OAuth回调保存确认。原无browser/dashboard及只读单文件bind为首批历史。
+
 2026-11-17，Asia/Tokyo。用户已授权部署Hermes，并允许从已登录Edge取得指定Sub2API账号的Key。此前暂不部署的限制已更新。Discord未接入，费用预留与USD10预算代理已取消。
 
 ## 部署结果
