@@ -1,0 +1,15 @@
+FROM springmonkey/hermes-pilot:v0.23.1-r2
+USER root
+# Extend only the accepted r2 image. Keep its agent, model clients and Skills libraries.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    tigervnc-standalone-server xfce4-panel xfwm4 xfdesktop4 xfce4-settings \
+    xfce4-terminal dbus-x11 x11-xserver-utils x11-utils x11-xkb-utils xauth \
+    fonts-dejavu-core chromium nginx libatk-adaptor at-spi2-core \
+    && rm -rf /var/lib/apt/lists/*
+COPY install_screen_driver.py /opt/pilot/install_screen_driver.py
+RUN /opt/hermes/.venv/bin/python /opt/pilot/install_screen_driver.py
+ENV HERMES_CUA_DRIVER_CMD=/opt/pilot/cua-driver
+RUN (getent group 10000 >/dev/null || groupadd --gid 10000 hermes-pilot) \
+    && (getent passwd 10001 >/dev/null || useradd --uid 10001 --gid 10000 \
+        --home-dir /opt/data --no-create-home --shell /bin/bash hermes-admin)
+COPY webapp-ingress.conf /opt/pilot/webapp-ingress.conf

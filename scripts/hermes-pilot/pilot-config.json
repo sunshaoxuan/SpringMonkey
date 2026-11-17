@@ -52,19 +52,21 @@
       }
     }
   },
-  "toolsets": ["terminal", "file", "web", "browser", "skills", "memory"],
+  "toolsets": ["terminal", "file", "web", "browser", "skills", "memory", "computer_use", "cronjob"],
   "max_concurrent_sessions": 2,
   "max_live_sessions": 1,
-  "agent": {"max_turns": 30, "api_max_retries": 2, "auto_recovery_cycles": 1, "run_budget_seconds": 900},
+  "agent": {"max_turns": 100, "api_max_retries": 2, "auto_recovery_cycles": 1, "run_budget_seconds": 7200},
   "terminal": {"backend": "local", "cwd": "/workspace", "timeout": 120},
   "web": {"backend": "exa", "search_backend": "exa", "extract_backend": "exa", "keyless_fallback": true},
-  "browser": {"cloud_provider": "local", "engine": "auto", "headed": false, "use_real_profile": false, "user_data_dir": "", "inactivity_timeout": 60, "command_timeout": 60},
+  "browser": {"cloud_provider": "local", "engine": "auto", "headed": true, "use_real_profile": false, "user_data_dir": "", "inactivity_timeout": 1800, "command_timeout": 60},
+  "bot_desktop": {"geometry": "1440x900", "auto_start": true, "min_free_memory_mb": 1536, "idle_stop_minutes": 30, "placement": "auto"},
+  "webapp": {"enabled": true, "host": "127.0.0.1", "port": 9120, "public_url": "https://sm.briconbric.com/app"},
   "auxiliary": {"title_generation": {"enabled": false}, "background_review": {"enabled": false}},
   "skills": {"project_discovery": false, "guard_agent_created": true, "write_approval": true, "inline_shell": false},
   "security": {"allow_private_urls": false, "redact_secrets": true, "protected_instruction_files": true, "allow_lazy_installs": false},
   "approvals": {"mode": "smart", "single_query_mode": "deny", "unattended_mode": "deny", "cron_mode": "deny"},
   "updates": {"check": false},
-  "cron": {"allow_agent_scheduling": false},
+  "cron": {"allow_agent_scheduling": true},
   "hooks_auto_accept": false,
   "timezone": "Asia/Tokyo"
 }
