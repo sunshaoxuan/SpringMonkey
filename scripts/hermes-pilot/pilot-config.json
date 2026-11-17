@@ -2,7 +2,7 @@
   "_config_version": 53,
   "model": {
     "provider": "custom",
-    "default": "gpt-6-astra",
+    "default": "gpt-6.1-sol",
     "base_url": "https://ccnode.briconbric.com:49530/v1",
     "api_key": "${HERMES_GATEWAY_API_KEY}",
     "api_mode": "chat_completions",

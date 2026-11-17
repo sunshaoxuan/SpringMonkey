@@ -1,0 +1,13 @@
+{
+  "previous_model": "gpt-6-astra",
+  "current_model": "gpt-6.1-sol",
+  "only_change": "model.default",
+  "fallback_models": [
+    "deepseek-flash",
+    "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
+  ],
+  "owner": 10001,
+  "mode": "0o640",
+  "symlink_preserved": true,
+  "config_sha256": "21df402e5064c586e6346485334f6b632b4a669460773c1b78efa5453c5e6098"
+}

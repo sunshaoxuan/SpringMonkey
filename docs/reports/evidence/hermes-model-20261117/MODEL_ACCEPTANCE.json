@@ -1,0 +1,22 @@
+{
+  "agent_exit": 0,
+  "runtime_model": "gpt-6.1-sol",
+  "model_evidence": "latest native CLI session record; init model field was empty",
+  "tool_calls": [
+    "write_file",
+    "read_file"
+  ],
+  "output_marker": "HERMES_MODEL_GPT_6_1_SOL",
+  "duration_ms": 32294,
+  "public_auth": {
+    "/api/status": {
+      "http": 200,
+      "auth_required": true
+    },
+    "/api/config": {
+      "http": 401
+    }
+  },
+  "fallback_configuration": "unchanged; DeepSeek then Qwen",
+  "discord": "not connected"
+}

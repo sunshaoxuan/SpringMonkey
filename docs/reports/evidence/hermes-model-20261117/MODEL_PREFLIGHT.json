@@ -1,0 +1,9 @@
+{
+  "model_visible": true,
+  "requested": "gpt-6.1-sol",
+  "response_model": "gpt-6.1-sol",
+  "marker_ok": true,
+  "finish_reason": "stop",
+  "elapsed_seconds": 3.69,
+  "tokens": 19
+}

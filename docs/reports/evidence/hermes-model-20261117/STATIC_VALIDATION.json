@@ -1,0 +1,10 @@
+{
+  "config_json": "PASS",
+  "only_runtime_setting_changed": "model.default",
+  "model_preflight": "PASS",
+  "native_agent_file_roundtrip": "PASS",
+  "source_default_matches_runtime": true,
+  "fallback_order_preserved": true,
+  "diff_check": "PASS",
+  "other_skills_tools_evidence": "REUSED: unchanged inputs"
+}

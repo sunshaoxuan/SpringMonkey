@@ -1,0 +1,10 @@
+{
+  "latest_session_model": [
+    "gpt-6.1-sol"
+  ],
+  "effective_model": "gpt-6.1-sol",
+  "fallback_models": [
+    "deepseek-flash",
+    "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-IQ3_S"
+  ]
+}
