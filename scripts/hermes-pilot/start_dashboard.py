@@ -39,6 +39,8 @@ def main():
           '--log-opt','max-size=10m','--log-opt','max-file=3','--entrypoint','/bin/sh',image,
           '-c','set -eu; umask 007; mkdir -p "$XDG_RUNTIME_DIR"; /opt/hermes/.venv/bin/hermes webapp --skip-build --no-open >/dev/null; /usr/sbin/nginx -e /dev/stderr -c /opt/pilot/webapp-ingress.conf; exec /opt/hermes/.venv/bin/hermes dashboard --host 0.0.0.0 --port 9119 --skip-build --no-open']
     subprocess.run(args,check=True,capture_output=True)
+    if subprocess.run(['docker','network','inspect','hermes-steam-private'],capture_output=True).returncode==0:
+        subprocess.run(['docker','network','connect','--gw-priority','-1','hermes-steam-private',NAME],check=True)
     print(json.dumps({'dashboard_started':True,'host_bind':'127.0.0.1:9119',
                       'uid':10001,'agent_uid':10000,'public_url':values['HERMES_DASHBOARD_PUBLIC_URL'],
                       'image_id':image,'oauth_client_configured':True}))

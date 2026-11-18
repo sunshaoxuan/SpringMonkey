@@ -38,6 +38,8 @@ def main():
           '--mount','type=bind,src='+str(ETC/'AGENTS.md')+',dst=/workspace/AGENTS.md,readonly',
           '--log-opt','max-size=10m','--log-opt','max-file=3',image,'infinity']
     subprocess.run(args,check=True,capture_output=True)
+    if subprocess.run(['docker','network','inspect','hermes-steam-private'],capture_output=True).returncode==0:
+        subprocess.run(['docker','network','connect','--gw-priority','-1','hermes-steam-private',NAME],check=True)
     wrapper=Path('/usr/local/bin/hermes-pilot')
     wrapper.write_text('#!/bin/sh\nset -eu\nexec /usr/bin/flock -n /run/lock/hermes-pilot.lock '
         '/usr/bin/docker exec -i --user 10000:10000 --workdir /workspace hermes-pilot '

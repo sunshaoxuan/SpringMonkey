@@ -1,0 +1,17 @@
+FROM springmonkey/hermes-pilot:v0.23.1-r3-screen AS build
+USER 0:0
+WORKDIR /opt/steam-mcp
+COPY source/package.json source/package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY source/tsconfig.json ./
+COPY source/src ./src
+RUN npm --ignore-scripts run build
+
+FROM springmonkey/hermes-pilot:v0.23.1-r3-screen
+USER 0:0
+WORKDIR /opt/steam-mcp
+COPY source/package.json source/package-lock.json source/LICENSE ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
+COPY --from=build /opt/steam-mcp/dist ./dist
+USER 65534:65534
+ENTRYPOINT ["/usr/local/bin/node", "/opt/steam-mcp/dist/index.js"]

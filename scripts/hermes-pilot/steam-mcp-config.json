@@ -1,0 +1,19 @@
+{
+  "url": "http://hermes-steam-mcp:3000/mcp",
+  "enabled": true,
+  "timeout": 25,
+  "sampling": {"enabled": false},
+  "tools": {
+    "include": [
+      "steam_getAppDetails",
+      "steam_searchApps",
+      "steam_getPlayerCount",
+      "steam_getAppReviewSummary",
+      "steam_getNewsForApp",
+      "steam_getAppBuilds",
+      "steam_getAppBetas"
+    ],
+    "resources": false,
+    "prompts": false
+  }
+}
