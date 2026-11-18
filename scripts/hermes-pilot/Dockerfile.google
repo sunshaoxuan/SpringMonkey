@@ -1,0 +1,14 @@
+FROM springmonkey/hermes-pilot:v0.23.1-r3-screen
+USER root
+# Fixed upstream Linux binary. OAuth client and grant files stay outside the image.
+RUN test "$(uname -m)" = x86_64 \
+    && mkdir /tmp/gws-install \
+    && cd /tmp/gws-install \
+    && curl -fsSL --max-time 90 -o gws.tar.gz https://github.com/googleworkspace/cli/releases/download/v0.22.5/google-workspace-cli-x86_64-unknown-linux-gnu.tar.gz \
+    && echo 'de78ecdbd2f1a84cca0063a7ecbc440240fc14b6ebccbb17f4646b792a8c5c1f  gws.tar.gz' | sha256sum -c - \
+    && tar -xzf gws.tar.gz --strip-components=1 \
+    && install -m 0755 gws /usr/local/bin/gws \
+    && install -D -m 0644 LICENSE /usr/local/share/licenses/gws/LICENSE \
+    && cd / \
+    && rm -rf /tmp/gws-install \
+    && gws --version

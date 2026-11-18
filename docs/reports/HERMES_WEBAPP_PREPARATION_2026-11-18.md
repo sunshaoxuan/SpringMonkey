@@ -77,6 +77,8 @@
 
 ## 依据
 
+账号后续核查见 [SpringMonkey 账号接入](../ops/HERMES_ACCOUNT_CONNECTIONS.md)。
+
 - [官方WebApp](https://hermes-agent.nousresearch.com/docs/user-guide/desktop)
 - [Bot Screen](https://hermes-agent.nousresearch.com/docs/user-guide/features/bot-screen)
 - [密码库及保护边界](https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-vault)
