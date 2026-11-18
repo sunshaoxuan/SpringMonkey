@@ -96,3 +96,8 @@ five fields on the real Steamworks challenge in a read-only probe. The productio
 image is selected through `/srv/hermes-pilot/screen-image.json`. The stopped
 `hermes-dashboard-pre-steamguard` container and its original image are available
 for rollback. The Steam MCP connector's tool scopes are independent of browser login.
+
+The [Steamworks reports skill](../../scripts/hermes-pilot/steamworks-reports/SKILL.md)
+covers routine read-only sales and financial report requests. It selects the
+native Steam Guard prompt for either Valve portal when needed, then continues
+the report lookup after successful verification.
