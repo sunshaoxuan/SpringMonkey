@@ -1,0 +1,26 @@
+[
+  {
+    "host": "smapp.briconbric.com",
+    "path": "/",
+    "status": 302,
+    "location_path": "/auth/login"
+  },
+  {
+    "host": "smapp.briconbric.com",
+    "path": "/api/config",
+    "status": 401,
+    "location_path": ""
+  },
+  {
+    "host": "sm.briconbric.com",
+    "path": "/",
+    "status": 302,
+    "location_path": "/auth/login"
+  },
+  {
+    "host": "sm.briconbric.com",
+    "path": "/api/config",
+    "status": 401,
+    "location_path": ""
+  }
+]

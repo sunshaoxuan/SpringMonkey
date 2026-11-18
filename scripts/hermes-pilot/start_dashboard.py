@@ -20,15 +20,18 @@ def main():
     config=ROOT/'policy/config.yaml'
     if config.stat().st_uid!=10001:raise RuntimeError('administrator must own config')
     image=json.loads((ROOT/'screen-image.json').read_text())['image_id']
-    args=['docker','run','-d','--name',NAME,'--label','org.springmonkey.pilot=hermes-dashboard',
+    args=['docker','run','-d','--name',NAME,'--hostname','springmonkey-hermes',
+          '--label','org.springmonkey.pilot=hermes-dashboard',
           '--restart','unless-stopped','--init','--user','10001:10000','--cap-drop','ALL',
           '--security-opt','no-new-privileges:true','--cpus','1.5','--memory','3g',
           '--memory-swap','3g','--pids-limit','512','--shm-size','512m','--publish','127.0.0.1:9119:8080',
           '--env-file',str(credentials),'--env','HOME=/opt/data',
           '--env','XDG_RUNTIME_DIR=/tmp/hermes-admin-runtime',
           '--env','HERMES_WRITE_SAFE_ROOT=/workspace',
+          '--env','HERMES_DASHBOARD_FILES_ROOT=/workspace',
           '--mount','type=bind,src='+str(ROOT/'data')+',dst=/opt/data',
           '--mount','type=bind,src='+str(ROOT/'policy')+',dst=/opt/policy',
+          '--mount','type=bind,src='+str(ROOT/'webapp-ingress.conf')+',dst=/opt/pilot/webapp-ingress.conf,readonly',
           '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles,readonly',
           '--mount','type=bind,src='+str(ROOT/'workspace')+',dst=/workspace',
           '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills,readonly',

@@ -1,0 +1,69 @@
+{
+  "public_auth": {
+    "result": "PASS",
+    "evidence": "PUBLIC_BOUNDARY.json",
+    "reuse": "same pinned authentication code and configuration; proxy capacity change does not change gate"
+  },
+  "webapp_chat_file": {
+    "result": "PASS",
+    "file": "/workspace/webapp-acceptance-result.md",
+    "sha256": "77108dc26fc507658aac98944f36e8ac873e7a9471b40cfa32a679697637093f"
+  },
+  "closed_tab_task": {
+    "result": "PASS",
+    "sleep_seconds": 60,
+    "observed": "closed during Running sleep 60, reopened showing Ran sleep 60, final file and readback"
+  },
+  "managed_files": {
+    "result": "PASS",
+    "positive": "/workspace result allowed; native UI preview rendered",
+    "negative": "/opt/data/auth.json refused with 403"
+  },
+  "screen_takeover": {
+    "result": "PASS",
+    "human_control_tool_result": "human_has_control",
+    "handback": "original Agent computer_use capture read Example Domain"
+  },
+  "browser_recreation": {
+    "result": "PASS",
+    "hostname": "springmonkey-hermes",
+    "profile_preserved": true,
+    "browser_reopened": true,
+    "real_account_persistence": "NOT_TESTED"
+  },
+  "final_page_network": {
+    "result": "PASS",
+    "http_failures": 0,
+    "failed_loads": 0,
+    "websocket_status": 101,
+    "worker_connections": 2048
+  },
+  "original_console": {
+    "result": "PASS",
+    "tui_ready": true,
+    "main_model_visible": "gpt-6.1-sol"
+  },
+  "responsive": {
+    "result": "NOT_COMPLETED",
+    "requested_width": 1280,
+    "actual_width": 2698,
+    "actual_height": 1524,
+    "override_reset": true
+  },
+  "accounts": {
+    "result": "NOT_COMPLETED",
+    "nous_catalog_count": 54,
+    "Gmail_search": "No app matches",
+    "Microsoft_search": "No app matches",
+    "real_credentials_stored": false
+  },
+  "discord": {
+    "result": "NOT_CONNECTED"
+  },
+  "visual": {
+    "result": "LIMITED_NATIVE_DESKTOP_REVIEW",
+    "model": "gemini-3.8-flash-high",
+    "pro_minimum_requests": "two upstream_error",
+    "notes": "light shell legible; native nested scrolling and long-page clipping; no pixel-geometry or mobile PASS"
+  }
+}

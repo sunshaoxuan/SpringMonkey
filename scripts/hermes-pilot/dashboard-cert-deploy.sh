@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
-if [ "${RENEWED_LINEAGE:-}" = "/etc/letsencrypt/live/sm.briconbric.com" ]; then
+case "${RENEWED_LINEAGE:-}" in
+  /etc/letsencrypt/live/sm.briconbric.com|/etc/letsencrypt/live/smapp.briconbric.com)
     /usr/sbin/nginx -t
     /bin/systemctl reload nginx
-fi
+    ;;
+esac

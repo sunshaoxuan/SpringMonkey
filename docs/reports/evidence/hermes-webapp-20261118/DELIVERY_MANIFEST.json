@@ -1,0 +1,29 @@
+{
+  "image_id": "sha256:86cc211bf1b69da29db91c1068123bf1b56b256ea914ef898fd597cf0e32f3f3",
+  "hostname": "springmonkey-hermes",
+  "user": "10001:10000",
+  "memory_bytes": 3221225472,
+  "nano_cpus": 1500000000,
+  "ports": {
+    "8080/tcp": [
+      {
+        "HostIp": "127.0.0.1",
+        "HostPort": "9119"
+      }
+    ]
+  },
+  "restart_count": 0,
+  "oom_killed": false,
+  "files_root_configured": true,
+  "hashes": {
+    "webapp-ingress.conf": "b75be8072a415950aa7dd02fb0b5b59d610bf273afdfe7d371c928e35d120cd9",
+    "b8/start_dashboard.py": "fdc3f3c9988b7b6bb334694e3f54abd33bca6464a88dceda8fc7bfc85bae286e"
+  },
+  "mounted_ingress_readonly": true,
+  "remote_access_services": [
+    "active",
+    "active",
+    "active",
+    "active"
+  ]
+}

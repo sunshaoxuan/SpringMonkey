@@ -81,10 +81,28 @@ certificate and enables HTTPS after DNS/redirect changes are confirmed and the
 domain resolves. The approved DNS-only record and OAuth callback are now saved.
 `install_dashboard_renewal.py` installs the dedicated twice-daily certificate
 timer and conditional Nginx deploy hook from `/srv/hermes-dashboard-public`.
-It renews only sm.briconbric.com, using the existing free Let's Encrypt certificate.
-The UID10000 config-write boundary was verified for the CLI; GUI chat is outside
-this acceptance and the trusted administrator UI runs as UID10001.
+The reviewed renewal unit now covers both sm.briconbric.com and
+smapp.briconbric.com with independent free Let's Encrypt certificates.
+The UID10000 config-write boundary was verified for the CLI. The trusted
+administrator UI runs as UID10001; WebApp chat and handoff acceptance are recorded
+separately in the WebApp report below.
 Never include credentials in this tree.
+
+The official WebApp is published at https://smapp.briconbric.com, with its own
+owner-only Nous client and root /auth/callback. The original console remains at
+https://sm.briconbric.com. `webapp-nginx.conf` is the dedicated CCNODE TLS site;
+`webapp-ingress.conf` routes the two fixed Host names through the existing FRP
+port. The running screen image is pinned in `/srv/hermes-pilot/screen-image.json`.
+The ingress file is bind-mounted readonly, overriding the older image-layer
+candidate. Keep worker_connections at the reviewed 2048 limit: 256 exhausted
+connections while the WebApp loaded its module chunks.
+
+`start_dashboard.py` fixes the container hostname to springmonkey-hermes for
+Chromium profile recovery, sets the native files boundary to /workspace, and
+uses UID10001/3GiB/1.5CPU. The CLI keeps its independent r2 image and limits.
+Runtime config and private WebApp client registration are preserved outside Git.
+See docs/reports/HERMES_WEBAPP_PREPARATION_2026-11-18.md for actual acceptance,
+known UI limits and outstanding account authorization. Discord remains disabled.
 
 `acceptance_capabilities.py` exercises bounded synthetic CSV/analysis, Office
 conversion, formula recalculation, PDF rendering, OCR, code statistics, RSS and
