@@ -1,0 +1,14 @@
+[Unit]
+Description=SpringMonkey Hermes Gmail read-only socket
+
+[Socket]
+ListenStream=/srv/hermes-pilot/approved-skills/.gmail-runtime/gmail.sock
+SocketUser=root
+SocketGroup=root
+SocketMode=0660
+DirectoryMode=0755
+ExecStartPost=/usr/bin/chgrp +10000 /srv/hermes-pilot/approved-skills/.gmail-runtime/gmail.sock
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

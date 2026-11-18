@@ -9,19 +9,43 @@
 
 ## Gmail 首批试点
 
-1. 使用专用 Google Cloud 项目，仅启用 Gmail API。建立 Desktop app OAuth 客户端，按账号所属组织选择受众。公司账号遵循组织第三方应用策略。项目和客户端均待创建。
+1. 用户指定复用已改名为 SpringMonkey 的 Google Cloud 项目。先查看现有 OAuth 客户端、受众和 Gmail API 启用状态，再为 Hermes 新建设计为 Desktop app 的专用客户端。试点仅需 Gmail API。已有客户端、项目受众和发布状态的变更均须先评估其对现有应用的影响。公司账号遵循组织第三方应用策略。
 2. 在用户本机常用浏览器完成 Google 授权。首批只请求 `https://www.googleapis.com/auth/gmail.readonly`。该权限可读取邮件正文及设置，Google 将其列为受限范围。试跑仅查询用户指定的测试邮件，并限制结果读取字段。日历和 Drive 单独评估。
 3. 本机回环只用于正式授权回调。采用支持 state 与 PKCE 的流程，验证回调与当前授权请求绑定。避免将回调地址、认证码或令牌写进聊天、工作区和模型上下文。候选工具的代理专用回调实现未核验到 state 与 PKCE，试点不采用该分支。
 4. 在 SpringMonkey 用独立运行身份和受限目录保存令牌，先验证持久化与缓存权限。授权完成后只用指定的合成测试邮件验收查询和读回，核对实际授权范围、重启后续用及撤销行为，再确定交给 Hermes 的接口。
 
+Google 公布的 Gmail API 标准用量无额外费用。官方列出的每日计费门槛为每项目 8,000 万配额单位，超量收费计划另行公告。共享项目的实际配额与用量需在控制台确认。本次试点为手动查询指定测试邮件，现有项目的结算配置未变更。
+
 Google Workspace CLI 固定为 `0.22.5`。固定版 `--scopes` 接受完整、逗号分隔的权限 URI，直接使用自定义列表。默认及 `--readonly` 预设覆盖多个服务，首批使用显式 URI。上游二进制通过固定发布包 SHA256 校验。原候选构建因 npm 12 阻止 postinstall 导致缺少 gws。Google 外部应用处于 Testing 状态时，带 Gmail 范围的刷新令牌七天到期。生产长期使用另核对项目发布状态和组织策略。
 
 - [固定版作用域与回调源码](https://github.com/googleworkspace/cli/blob/v0.22.5/crates/google-workspace-cli/src/auth_commands.rs)
+- [Google Cloud OAuth 客户端配置](https://developers.google.com/workspace/guides/create-credentials#oauth-client-id)
+- [Google Auth Platform 受众与数据权限](https://developers.google.com/workspace/guides/configure-oauth-consent)
 - [固定发布包](https://github.com/googleworkspace/cli/releases/tag/v0.22.5)
 - [Gmail 权限范围](https://developers.google.com/workspace/gmail/api/auth/scopes)
+- [Gmail API 用量与计费](https://developers.google.com/workspace/gmail/api/reference/quota)
 - [Google 刷新令牌有效期](https://developers.google.com/identity/protocols/oauth2#expiration)
 
 SpringMonkey 上的隔离候选镜像 `sha256:15e482b8a7c266b134faa01823b425979a17e456901a7db944d31205e8b52946` 已通过发布包 SHA256 检查。在无网络、无生产配置挂载、只读根文件系统、UID 10001 的容器中实测 `gws --version` 返回 0.22.5，`gws auth login --help` 显示自定义权限参数。候选镜像尚未切换为生产镜像。真实授权、实际邮件读取、撤销和令牌持久化待验证。
+
+已在登录后的 Google Cloud 控制台核对 SpringMonkey 的 OAuth 客户端列表，创建前页面显示暂无 OAuth 客户端。经用户确认，已创建名为 `SpringMonkey Hermes Gmail` 的桌面应用客户端，并勾选用于 AI 智能体。Google 显示创建成功，本机下载的 JSON 已验证是目标项目的桌面客户端凭据。凭据尚未部署到 SpringMonkey。
+
+已在目标项目开启 Gmail API，控制台跳转到 Gmail API 管理概览。Google Auth Platform 显示应用为外部、发布状态为测试。已核对控制台 Google 账号与用户已连接的 Gmail 账号一致，并将该账号加入测试名单，回读确认只有这一名测试用户。
+
+本机 Edge 完成了 Google 的测试应用确认及用户授权。请求仅含 Gmail 只读，回环地址和 PKCE S256 参数已验证，错误 state 的合成回调返回 HTTP 400。授权回调将令牌用 Windows DPAPI 加密保存。SpringMonkey 实际刷新令牌并调用 Gmail `getProfile`，结果为 HTTP 200。验收输出仅包含成功信号。
+
+## Hermes 运行时接入与验证
+
+当前 WebApp 和 CLI 共用宿主机的 Gmail 只读服务。systemd 通过主机密钥加密凭据，服务使用专用动态用户。加密文件为 root 所有、0600。主机密钥位于同机未加密磁盘，由系统权限保护。Hermes 容器使用已有的只读技能目录访问 Unix socket，权限为 root:10000、0660。凭据目录未挂载到容器。已有容器镜像无需切换。
+
+在 Hermes 中使用 `gmail-readonly`。它可检查连接、按条件查找最多十封邮件，再按消息 ID 读取少量邮件头、摘要及最多 12,000 字符的纯文本。查询和读取由用户明确的任务触发。当前接口未提供 HTML 和附件读取。
+
+两容器实际 `status` 和原生 `skill_view` 通过。Hermes CLI 的真实对话加载技能并执行状态命令，返回 `connected: true` 和 `gmail.readonly`。Gmail 真实空搜索通过，空结果的 HTTP 204 映射为空列表。无关 UID 无法连接 socket，POST、非法消息 ID、未知操作均被本地拒绝。邮件纯文本解析用合成样例通过，验收没有打开真实邮件正文。公网 WebApp 无会话仍跳转 Nous 登录。
+
+回滚时先停止并禁用 `hermes-gmail-readonly.socket`，然后停止 `hermes-gmail-readonly.service`。如需撤销持续访问，在 Google 账号的第三方连接页面撤销对应试点授权。Gmail 仍使用 Google 的仅测试授权，刷新令牌有效期按上文所述。
+
+- [服务和技能源码](../../scripts/hermes-pilot/gmail)
+- [Gmail getProfile](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/getProfile)
 
 ## 其他验收状态
 

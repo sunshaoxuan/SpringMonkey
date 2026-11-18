@@ -1,0 +1,15 @@
+[Unit]
+Description=SpringMonkey Hermes Gmail read-only service
+Requires=hermes-gmail-readonly.socket
+After=hermes-gmail-readonly.socket
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/libexec/hermes-gmail-readonly.py
+DynamicUser=yes
+LoadCredentialEncrypted=gmail-grant:/etc/hermes-pilot/gmail-readonly.cred
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
