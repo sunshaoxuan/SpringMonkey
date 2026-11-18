@@ -9,7 +9,8 @@ STEAM_GUARD_DETECTION = r'''
   // Steamworks uses an unlabeled group of five 1-character inputs for email 2FA.
   // Match only the official origin and the visible challenge text around the group.
   const steamGuard = new Set();
-  if (window.location.origin === "https://partner.steamgames.com") {
+  const steamPartners = ["https://partner.steamgames.com", "https://partner.steampowered.com"];
+  if (steamPartners.includes(window.location.origin)) {
     for (const section of document.querySelectorAll("section")) {
       const challenge = section.parentElement?.innerText || "";
       if (!/enter the code/i.test(challenge) || !/code from|sent to/i.test(challenge)) continue;

@@ -84,7 +84,8 @@ configuration changed after installation.
 The WebApp image extends the reviewed Hermes v0.23.1 screen image with a pinned
 classifier patch. Steamworks currently renders its emailed-code challenge as
 five adjacent, unlabeled text fields. The patch recognizes this exact group on
-`https://partner.steamgames.com` when the surrounding challenge text matches.
+the observed Valve partner origins (https://partner.steamgames.com and
+https://partner.steampowered.com) when the surrounding challenge text matches.
 The native vault handles the private prompt, origin check and field write. The
 report workflow can continue after Steam accepts the verification.
 

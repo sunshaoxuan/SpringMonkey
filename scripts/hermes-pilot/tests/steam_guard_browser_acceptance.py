@@ -13,6 +13,7 @@ from agent.vault_login_classifier import LoginControl, build_inspection_js, clas
 from tools import browser_vault_tool as vault
 
 STEAM = "https://partner.steamgames.com"
+REPORT = "https://partner.steampowered.com"
 FAKE_CODE = "Q8M2K"
 
 
@@ -48,8 +49,8 @@ def main():
         def evaluate(task_id, expression):
             return {"success": True, "result": page.evaluate(expression)}
 
-        def invoke(user_input, navigation=False):
-            load(STEAM, document(5))
+        def invoke(user_input, navigation=False, origin=STEAM):
+            load(origin, document(5))
             requested = []
 
             def prompt(site, hint):
@@ -60,19 +61,20 @@ def main():
 
             with (
                 patch.object(vault, "_focus_bound_origin", return_value=None),
-                patch.object(vault, "_current_page_origin", return_value=STEAM),
+                patch.object(vault, "_current_page_origin", return_value=origin),
                 patch.object(vault, "_eval_js", evaluate),
                 patch.object(vault, "_eval_js_secret", evaluate),
                 patch.object(unlock, "can_prompt_here", return_value=True),
                 patch.object(unlock, "get_code_prompt_callback", return_value=prompt),
             ):
                 result = json.loads(vault.browser_vault_enter_code())
-            assert requested == ["partner.steamgames.com"]
+            assert requested == [origin.split("://")[1]]
             assert FAKE_CODE not in json.dumps(result)
             return result, page.locator("input").evaluate_all("(inputs) => inputs.map(x => x.value)")
 
-        result, values = invoke(FAKE_CODE)
-        assert result["success"] and result["filled_fields"] == 5 and values == ["", *FAKE_CODE]
+        for origin in (STEAM, REPORT):
+            result, values = invoke(FAKE_CODE, origin=origin)
+            assert result["success"] and result["filled_fields"] == 5 and values == ["", *FAKE_CODE]
         result, values = invoke("TOOLONG")
         assert result["success"] is False and not any(values)
         result, values = invoke(FAKE_CODE, navigation=True)
