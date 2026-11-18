@@ -101,3 +101,9 @@ The [Steamworks reports skill](../../scripts/hermes-pilot/steamworks-reports/SKI
 covers routine read-only sales and financial report requests. It selects the
 native Steam Guard prompt for either Valve portal when needed, then continues
 the report lookup after successful verification.
+
+For the application overview, the same skill runs the installed
+`report-overview.js` through one `browser_exec` call. The extractor reads the
+lifetime and currently selected period summaries together. It preserves the
+visible period, currency, gross and net labels and leaves the report filters
+as they are. The existing login and other report views use their own steps.

@@ -35,3 +35,27 @@ Use the owner's authorized Bot Screen browser. For a request such as
 Keep account identifiers, credentials, codes, browser session data, and private
 report contents out of this skill. Record future verified navigation or field
 semantics through the native skill management tool.
+
+## Read the application overview in one browser call
+
+On the approved Valve report page, make one `browser_exec` call using the
+following Python. When the report is already loaded, execute exactly this
+code. The installed script extracts both lifetime and selected-period
+summary rows without changing the filters.
+
+```python
+from pathlib import Path
+
+extract = Path("/workspace/authored-skills/steamworks-reports/report-overview.js")
+print(js(extract.read_text(encoding="utf-8")))
+```
+
+If needed, open the authorized app report and wait for it inside the same
+call before running this code. Prefer the installed extractor to generating
+new JavaScript or reading the full page. Check the returned App ID and use
+the selected period header verbatim. Keep lifetime totals separate. Report
+the currency symbol shown, and give an ISO currency code only if available.
+Keep the page's explicit gross and net labels and notes. When status is
+`ok`, report any missing date or amount as unavailable from this view.
+Make another targeted read only if the page structure could not be matched
+or the user specifically requested a different view.
