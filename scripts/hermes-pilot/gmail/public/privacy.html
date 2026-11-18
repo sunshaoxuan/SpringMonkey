@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gmail 数据隐私说明 | SpringMonkey Hermes</title>
+<style>
+  body { margin: 0; background: #f6f8f5; color: #182820; font: 1rem/1.7 system-ui, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: clamp(1.5rem, 6vw, 4rem) 1.5rem; }
+  h1 { margin: 0 0 1rem; font-size: clamp(1.8rem, 6vw, 2.75rem); line-height: 1.2; }
+  h2 { margin: 1.75rem 0 .5rem; font-size: 1.2rem; }
+  a { color: #065a42; text-underline-offset: .2em; }
+  nav a { display: inline-flex; align-items: center; min-height: 44px; }
+</style>
+<main>
+  <h1>Gmail 数据隐私说明</h1>
+  <p>本说明适用于 SpringMonkey Hermes 的 Gmail 接入。</p>
+  <h2>访问范围</h2>
+  <p>连接 Gmail 时，SpringMonkey Hermes 通过 Google OAuth 获得 Gmail 只读权限。该权限可读取邮件和设置。本接入用它检查连接、按你的查询查找邮件，并读取你所请求邮件的主题、发件人、收件人、日期、摘要和纯文本。</p>
+  <h2>数据处理与保存</h2>
+  <p>SpringMonkey 在主机上加密保存刷新令牌，运行服务用它向 Google 换取访问令牌。Hermes 通过主机上的只读接口获取邮件结果。Google 账号的密码由 Google 登录页面处理。</p>
+  <p>当你要求 Hermes 阅读、总结或整理邮件时，任务所需的邮件内容可能包含在发送给当前配置的模型服务的请求中。邮件结果也可能出现在 Hermes 对话记录和你要求生成的输出文件中。这些内容用于完成你请求的邮箱操作。</p>
+  <h2>撤销授权和联系</h2>
+  <p>你可以在 <a href="https://myaccount.google.com/connections">Google 账号的第三方连接页面</a>撤销授权。撤销会阻止后续通过这项授权获取 Gmail 数据。先前保存在 Hermes 对话或输出文件中的内容可在对应位置删除。关于接入或数据处理的问题，请联系 Google 授权页列出的应用支持邮箱。</p>
+  <nav aria-label="相关页面"><a href="/gmail">返回 SpringMonkey Hermes 简介</a></nav>
+</main>
+</html>

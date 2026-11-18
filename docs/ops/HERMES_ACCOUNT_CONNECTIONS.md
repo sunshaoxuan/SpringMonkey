@@ -47,6 +47,20 @@ SpringMonkey 上的隔离候选镜像 `sha256:15e482b8a7c266b134faa01823b425979a
 - [服务和技能源码](../../scripts/hermes-pilot/gmail)
 - [Gmail getProfile](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/getProfile)
 
+## 长期授权迁移
+
+Google 对外部测试应用发出的 Gmail 刷新令牌设有七天期限。迁移方案是在品牌资料齐备后把该 OAuth 应用发布至生产状态，再由所有者同意一次新授权。新令牌通过作用域、Google 刷新和 Gmail `getProfile` 检查后才切换服务器加密凭据。短期回滚保留原凭据，前提是它仍在有效期内。
+
+已将旧项目的 OAuth 品牌名称由 `BoBGia` 改为 `SpringMonkey Hermes`。经所有者同意，公开了 [应用介绍](https://smapp.briconbric.com/gmail) 和 [Gmail 数据隐私说明](https://smapp.briconbric.com/gmail/privacy)，并将这两条 URL 及 Google 要求的注册域名 `briconbric.com` 保存到品牌资料。两页采用 Nginx 精确路径规则，静态文件由现有只读挂载提供。外部测试仍只设一名测试用户，生产发布按钮已启用，等待所有者确认生产发布。
+
+浏览器在 1024×900 和 390×844 验证页面、链接导航、水平无溢出和链接热区。无脚本异常和网络失败。公网匿名 GET 两页均 HTTP 200，主页仍跳转到 Nous 登录，匿名 `/api/config` 返回 HTTP 401，未匹配的 Gmail 子路径仍走原认证路由。应用名、首页、隐私链接和域名均收到 Google 品牌保存回执。
+
+发布外部 OAuth 应用会让其他 Google 账号也能发起授权，个人使用的有限人数例外与是否发出新刷新令牌仍以 Google 实际授权结果为准。当前 WebApp 登录保护与 Gmail 令牌仍可用。
+
+- [Google 应用受众与发布状态](https://support.google.com/cloud/answer/15549945)
+- [个人用途验证例外](https://support.google.com/cloud/answer/13464323)
+- [应用首页、隐私说明与网域要求](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)
+
 ## 其他验收状态
 
 | 项目 | 状态 |
