@@ -25,6 +25,13 @@
     }
   ],
   "providers": {
+    "springmonkey-background": {
+      "base_url": "https://ccnode.briconbric.com:49530/v1",
+      "key_env": "HERMES_GATEWAY_API_KEY",
+      "api_mode": "chat_completions",
+      "default_model": "gpt-6.1-terra",
+      "models": ["gpt-6.1-terra", "gpt-6.1-sol"]
+    },
     "springmonkey-deepseek": {
       "base_url": "https://api.deepseek.com",
       "key_env": "HERMES_DEEPSEEK_API_KEY",
@@ -52,7 +59,20 @@
       }
     }
   },
-  "toolsets": ["terminal", "file", "web", "browser", "skills", "memory", "computer_use", "cronjob"],
+  "plugins": {"enabled": ["advanced-delegation"]},
+  "delegation": {
+    "backend": "model_map",
+    "backends": {
+      "model_map": {
+        "default": "routine",
+        "options": [
+          {"name": "routine", "description": "Default for routine delegated work: read-only reports, lookups, extraction and summaries.", "provider": "custom:springmonkey-background", "model": "gpt-6.1-terra", "reasoning_effort": "none"},
+          {"name": "complex", "description": "Use for complex analysis, research synthesis, difficult debugging, or when the owner asks for Sol.", "provider": "custom:springmonkey-background", "model": "gpt-6.1-sol"}
+        ]
+      }
+    }
+  },
+  "toolsets": ["terminal", "file", "web", "browser", "skills", "memory", "computer_use", "cronjob", "delegation"],
   "max_concurrent_sessions": 2,
   "max_live_sessions": 1,
   "agent": {"max_turns": 100, "api_max_retries": 2, "auto_recovery_cycles": 1, "run_budget_seconds": 7200},
@@ -66,7 +86,7 @@
   "security": {"allow_private_urls": false, "redact_secrets": true, "protected_instruction_files": true, "allow_lazy_installs": false},
   "approvals": {"mode": "smart", "single_query_mode": "deny", "unattended_mode": "deny", "cron_mode": "deny"},
   "updates": {"check": false},
-  "cron": {"allow_agent_scheduling": true},
+  "cron": {"allow_agent_scheduling": true, "model": "gpt-6.1-terra", "model_provider": "custom:springmonkey-background"},
   "hooks_auto_accept": false,
   "timezone": "Asia/Tokyo"
 }
