@@ -1,0 +1,25 @@
+[Unit]
+Description=SpringMonkey Gmail incremental label worker
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/libexec/hermes-gmail-autolabel.py
+DynamicUser=yes
+StateDirectory=hermes-gmail-autolabel
+StateDirectoryMode=0700
+LoadCredentialEncrypted=gmail-grant:/etc/hermes-pilot/gmail-autolabel.cred
+LoadCredentialEncrypted=model-key:/etc/hermes-pilot/gmail-autolabel-model.cred
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+Restart=on-failure
+RestartSec=15
+MemoryMax=128M
+
+[Install]
+WantedBy=multi-user.target

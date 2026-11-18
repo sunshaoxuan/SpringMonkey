@@ -66,6 +66,21 @@ Google 对外部测试应用发出的 Gmail 刷新令牌设有七天期限。迁
 - [应用首页、隐私说明与网域要求](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)
 - [Google OAuth 刷新令牌失效条件](https://developers.google.com/identity/protocols/oauth2#expiration)
 
+## 新收件自动贴标
+
+用户已批准自动给新收件箱邮件添加 Gmail 标签。Google 的 `gmail.modify` 授权由用户在本机确认。工作进程使用独立密文，原有 Hermes 手动查询继续使用 `gmail.readonly`。真实 OAuth 刷新核对两种授权属于同一邮箱，Gmail 返回 8 个符合条件的已有自定义标签。
+
+SpringMonkey 默认每 10 秒调用 Gmail `history.list` 读取增量。到账时间还取决于 Gmail 同步及模型分类延迟。SQLite 保存开始时间、历史游标、待处理邮件 ID、重试时间及结果。首次启动建立基线。Google 历史游标失效时，从最后一次同步附近回查，同时继续执行启用时间与已处理 ID 边界。两次元数据检查用于避免改动已经被标记、移出收件箱或删除的邮件。
+
+分类使用已配置的 `gpt-6.1-sol` 兼容接口，输入为发件人、主题和候选标签名。每封邮件最多添加一个已存在的自定义标签。已有自定义标签、系统排除标签、启用前邮件及模糊判定会跳过。写入接口仅构造 `addLabelIds`，并校验 Gmail 返回的标签允许列表。无归档、删除和发送路径。
+
+`hermes-gmail-autolabel.service` 已启用开机启动。生产验证覆盖 Google 刷新及标签目录、真实增量同步、实际网关上的合成分类、重启后的游标延续以及原只读接口。四项合成测试覆盖重放去重、历史失效恢复、旧邮件及现有标签跳过、唯一允许的写入格式和系统标签拒绝。验收时未观察到启用后的新邮件，实际 Gmail 写入待有匹配的新邮件时验证。
+
+如需暂停，在 SpringMonkey 执行 `sudo systemctl disable --now hermes-gmail-autolabel.service`。原手动只读查询继续可用。公开说明已同步数据范围，WebApp 匿名配置仍返回 HTTP 401。
+
+- [Gmail 增量同步接口](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.history/list)
+- [Gmail 邮件标签写入权限](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/modify)
+
 ## 其他验收状态
 
 | 项目 | 状态 |
