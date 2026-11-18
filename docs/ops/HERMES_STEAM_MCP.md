@@ -19,10 +19,10 @@ bridge for outbound Steam API calls and publishes no host ports. The Hermes
 startup scripts connect the application containers to the internal network when
 it exists, with lower gateway priority than their existing route.
 
-The runtime enables the store and publisher toolsets and uses the upstream
-read-only flag. Hermes adds a seven-tool allowlist from
+The public runtime enables the store and publisher toolsets and uses the upstream
+read-only flag. Hermes exposes only the five public tools in
 [`steam-mcp-config.json`](../../scripts/hermes-pilot/steam-mcp-config.json).
-The working Steam MCP has no Steam account, Publisher Key, or browser session.
+This container has no Steam account, Publisher Key, or browser session.
 
 Verification passed for HTTP MCP initialization and listing, a live public
 Steam player-count lookup, rejection of an unexpected Host header, and the
@@ -35,8 +35,34 @@ public App ID 570 and returned the live result.
 Restart discovery in an existing Hermes conversation with `/reload-mcp`, or
 start a new conversation. Ask it to use Steam MCP for a public Steam title,
 such as querying the current player count for App ID 570. Steamworks build
-history and beta branch reads are registered. Both require the publisher
-group's key for the relevant App ID.
+history and beta branch reads use the separate `steamworks` entry for
+`4417110` (英雄荣光医院).
+
+## Private publisher queries
+
+The owner's existing Valve publisher-group key is sealed with systemd
+host credentials at `/etc/hermes-pilot/steam-publisher.cred` (root, 0600).
+`hermes-steamworks-mcp.service` supplies the key at startup over stdin.
+The key is absent from Docker configuration, Hermes YAML, and the public
+connector. No Valve key, permissions, or Steamworks application settings were
+created or changed.
+
+The private MCP reuses the pinned upstream build and beta handlers, registers
+only these two tools, and requires App ID `4417110` in both argument schemas.
+Its listener binds only to the dedicated Docker internal network. It uses a
+separate bridge for outbound Valve HTTPS and publishes no host ports. Use the
+[`steamworks` MCP configuration](../../scripts/hermes-pilot/steamworks-mcp-config.json)
+to discover the tools from Hermes. Other applications in the same Valve group
+are outside this connector's scope.
+
+Live verification passed for both Valve queries through the scoped MCP and
+for rejection of the Demo App ID. Both Hermes containers passed native
+discovery for the private and public connectors. No private build description
+or credential was included in repository evidence.
+
+To pause private access, disable `hermes-steamworks-mcp.service` and remove
+only `mcp_servers.steamworks` from the managed configuration. The public
+connector can continue serving public lookups.
 
 Store-page edits, build uploads, and release actions are outside this
 installation. Valve documents build uploads through SteamPipe and the required

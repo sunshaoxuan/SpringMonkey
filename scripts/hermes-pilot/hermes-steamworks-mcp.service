@@ -1,0 +1,16 @@
+[Unit]
+Description=SpringMonkey Steamworks scoped publisher MCP
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=simple
+LoadCredentialEncrypted=steam-publisher:/etc/hermes-pilot/steam-publisher.cred
+ExecStart=/bin/sh -ec 'exec /usr/bin/docker run --rm -i --name hermes-steamworks-mcp --network name=hermes-steam-private,ip=172.18.254.14,gw-priority=-1 --network name=hermes-steamworks-egress,gw-priority=1 --read-only --user 65534:65534 --cap-drop ALL --security-opt no-new-privileges:true --memory 256m --memory-swap 256m --cpus 0.5 --pids-limit 64 --tmpfs /opt/data:ro,noexec,nosuid,nodev,size=1m --mount type=bind,src=/usr/local/libexec/hermes-steamworks-publisher.mjs,dst=/opt/steam-mcp/steamworks-publisher.mjs,readonly --entrypoint /usr/local/bin/node sha256:ce8ee20c0f448e6989250afd56e07a4f2bc75147c87e0aab00eee5984ee11fd9 /opt/steam-mcp/steamworks-publisher.mjs < "$${CREDENTIALS_DIRECTORY}/steam-publisher"'
+ExecStop=-/usr/bin/docker stop --time 5 hermes-steamworks-mcp
+Restart=on-failure
+RestartSec=8s
+TimeoutStopSec=20s
+
+[Install]
+WantedBy=multi-user.target

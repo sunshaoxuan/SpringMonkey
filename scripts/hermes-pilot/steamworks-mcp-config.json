@@ -1,0 +1,11 @@
+{
+  "url": "http://hermes-steamworks-mcp:3000/mcp",
+  "enabled": true,
+  "timeout": 25,
+  "sampling": {"enabled": false},
+  "tools": {
+    "include": ["steam_getAppBuilds", "steam_getAppBetas"],
+    "resources": false,
+    "prompts": false
+  }
+}

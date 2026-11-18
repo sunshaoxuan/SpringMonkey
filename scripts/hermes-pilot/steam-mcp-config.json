@@ -9,9 +9,7 @@
       "steam_searchApps",
       "steam_getPlayerCount",
       "steam_getAppReviewSummary",
-      "steam_getNewsForApp",
-      "steam_getAppBuilds",
-      "steam_getAppBetas"
+      "steam_getNewsForApp"
     ],
     "resources": false,
     "prompts": false
