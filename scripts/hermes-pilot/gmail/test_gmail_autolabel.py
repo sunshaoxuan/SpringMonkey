@@ -28,7 +28,7 @@ class AutolabelTest(unittest.TestCase):
             "ambiguous": self.new | {"ambiguous": True},
             "spam": self.new | {"labelIds": ["INBOX", "SPAM"]},
         }.get
-        classify = lambda data, _labels: None if data.get("ambiguous") else "Label_1"
+        classify = lambda data, _labels: ("skip", None) if data.get("ambiguous") else ("label", "Label_1")
         worker.process(self.db, self.gmail, classify)
         worker.collect(self.db, self.gmail)
         worker.process(self.db, self.gmail, classify)
@@ -66,9 +66,40 @@ class AutolabelTest(unittest.TestCase):
 
     def test_model_cannot_select_unlisted_or_system_label(self):
         with patch.object(worker, "request_json") as req:
-            req.return_value = {"choices": [{"message": {"content": '{"label_id":"TRASH"}'}}]}
-            self.assertIsNone(worker.choose_label("synthetic", {}, {"Label_1": "Invoices"}))
+            req.return_value = {"choices": [{"message": {"content": '{"label_id":"TRASH","spam":false}'}}]}
+            self.assertEqual(worker.classify_message("synthetic", {}, {"Label_1": "Invoices"}), ("skip", None))
             self.assertNotIn("snippet", str(req.call_args.kwargs["body"]))
+
+    def test_spam_requires_corroboration_and_preserves_protected_messages(self):
+        spam = self.new | {"labelIds": ["SPAM"]}
+        self.gmail.messages.return_value = ({"confirmed", "ordinary", "starred", "important", "old"}, "101")
+        worker.collect(self.db, self.gmail)
+        self.gmail.metadata.side_effect = {
+            "confirmed": spam,
+            "ordinary": self.new,
+            "starred": spam | {"labelIds": ["SPAM", "STARRED"]},
+            "important": spam | {"labelIds": ["SPAM", "IMPORTANT"]},
+            "old": self.old | {"labelIds": ["SPAM"]},
+        }.get
+        worker.process(self.db, self.gmail, lambda *_: ("trash", None))
+        worker.collect(self.db, self.gmail)
+        worker.process(self.db, self.gmail, lambda *_: ("trash", None))
+        self.gmail.trash.assert_called_once_with("confirmed")
+
+    def test_trash_uses_reversible_gmail_endpoint(self):
+        gmail = worker.Gmail({})
+        with patch.object(gmail, "headers", return_value={}), patch.object(worker, "request_json") as req:
+            with self.assertRaises(ValueError):
+                gmail.trash("../test")
+            req.assert_not_called()
+            gmail.trash("test")
+            req.assert_called_once_with(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/test/trash",
+                headers={}, method="POST",
+            )
+
+    def test_half_hour_interval(self):
+        self.assertEqual(worker.INTERVAL, 1800)
 
 
 if __name__ == "__main__":

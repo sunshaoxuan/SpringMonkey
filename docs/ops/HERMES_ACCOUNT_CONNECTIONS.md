@@ -70,16 +70,17 @@ Google 对外部测试应用发出的 Gmail 刷新令牌设有七天期限。迁
 
 用户已批准自动给新收件箱邮件添加 Gmail 标签。Google 的 `gmail.modify` 授权由用户在本机确认。工作进程使用独立密文，原有 Hermes 手动查询继续使用 `gmail.readonly`。真实 OAuth 刷新核对两种授权属于同一邮箱，Gmail 返回 8 个符合条件的已有自定义标签。
 
-SpringMonkey 默认每 10 秒调用 Gmail `history.list` 读取增量。到账时间还取决于 Gmail 同步及模型分类延迟。SQLite 保存开始时间、历史游标、待处理邮件 ID、重试时间及结果。首次启动建立基线。Google 历史游标失效时，从最后一次同步附近回查，同时继续执行启用时间与已处理 ID 边界。两次元数据检查用于避免改动已经被标记、移出收件箱或删除的邮件。
+SpringMonkey 每 30 分钟调用 Gmail `history.list` 读取增量。SQLite 保存开始时间、历史游标、待处理邮件 ID、重试时间及结果。首次启动建立基线。Google 历史游标失效时，从最后一次同步附近回查收件箱和垃圾邮件，同时继续执行启用时间与已处理 ID 边界。实际动作前重新核对邮件状态。
 
-分类使用已配置的 `gpt-6.1-sol` 兼容接口，输入为发件人、主题和候选标签名。每封邮件最多添加一个已存在的自定义标签。已有自定义标签、系统排除标签、启用前邮件及模糊判定会跳过。写入接口仅构造 `addLabelIds`，并校验 Gmail 返回的标签允许列表。无归档、删除和发送路径。
+分类使用已配置的 `gpt-6.1-sol` 兼容接口，输入为发件人、主题、候选标签名和垃圾判定信号。普通新收件每封最多添加一个已存在的自定义标签。模型明确判为垃圾且 Gmail 已标为垃圾或主题匹配高特异诈骗信号时，才调用 `messages.trash` 移入回收站。已有自定义标签、星标或重要标记的邮件受到保护。写入只包含添加标签与移入回收站。Gmail 提供 30 天恢复期。
 
-`hermes-gmail-autolabel.service` 已启用开机启动。生产验证覆盖 Google 刷新及标签目录、真实增量同步、实际网关上的合成分类、重启后的游标延续以及原只读接口。四项合成测试覆盖重放去重、历史失效恢复、旧邮件及现有标签跳过、唯一允许的写入格式和系统标签拒绝。验收时未观察到启用后的新邮件，实际 Gmail 写入待有匹配的新邮件时验证。
+`hermes-gmail-autolabel.service` 已启用开机启动。生产验证覆盖 Google 刷新及标签目录、真实增量同步、实际网关上的合成贴标和垃圾判断、重启后的游标延续，以及原只读接口。七项合成测试验证标签权限、收件范围、历史恢复、垃圾双重条件、星标与重要邮件保护，以及半小时间隔。更新后首轮同步通过，未观察到符合条件的新邮件，实际 Gmail 写入待有匹配的新邮件时验证。
 
 如需暂停，在 SpringMonkey 执行 `sudo systemctl disable --now hermes-gmail-autolabel.service`。原手动只读查询继续可用。公开说明已同步数据范围，WebApp 匿名配置仍返回 HTTP 401。
 
 - [Gmail 增量同步接口](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.history/list)
 - [Gmail 邮件标签写入权限](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/modify)
+- [Gmail 回收站接口](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/trash)
 
 ## 其他验收状态
 
