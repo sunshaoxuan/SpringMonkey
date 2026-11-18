@@ -42,7 +42,7 @@ SpringMonkey 上的隔离候选镜像 `sha256:15e482b8a7c266b134faa01823b425979a
 
 两容器实际 `status` 和原生 `skill_view` 通过。Hermes CLI 的真实对话加载技能并执行状态命令，返回 `connected: true` 和 `gmail.readonly`。Gmail 真实空搜索通过，空结果的 HTTP 204 映射为空列表。无关 UID 无法连接 socket，POST、非法消息 ID、未知操作均被本地拒绝。邮件纯文本解析用合成样例通过，验收没有打开真实邮件正文。公网 WebApp 无会话仍跳转 Nous 登录。
 
-回滚时先停止并禁用 `hermes-gmail-readonly.socket`，然后停止 `hermes-gmail-readonly.service`。如需撤销持续访问，在 Google 账号的第三方连接页面撤销对应试点授权。Gmail 仍使用 Google 的仅测试授权，刷新令牌有效期按上文所述。
+如需停用接入，先停止并禁用 `hermes-gmail-readonly.socket`，然后停止 `hermes-gmail-readonly.service`。如需撤销持续访问，在 Google 账号的第三方连接页面撤销对应授权。
 
 - [服务和技能源码](../../scripts/hermes-pilot/gmail)
 - [Gmail getProfile](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users/getProfile)
@@ -55,11 +55,16 @@ Google 对外部测试应用发出的 Gmail 刷新令牌设有七天期限。迁
 
 浏览器在 1024×900 和 390×844 验证页面、链接导航、水平无溢出和链接热区。无脚本异常和网络失败。公网匿名 GET 两页均 HTTP 200，主页仍跳转到 Nous 登录，匿名 `/api/config` 返回 HTTP 401，未匹配的 Gmail 子路径仍走原认证路由。应用名、首页、隐私链接和域名均收到 Google 品牌保存回执。
 
-发布外部 OAuth 应用后，其他 Google 账号也能发起授权。Google 个人使用例外及是否签发新的长期刷新令牌，以实际授权结果为准。发布后复核，WebApp 匿名访问仍要求登录，匿名配置请求返回 HTTP 401。本机 Edge 已打开 Google 账号选择页，授权请求通过仅 Gmail 只读、离线访问、回环、PKCE 和无效 state 拒绝检查。当前服务仍使用原测试令牌，等待账号所有者批准新授权。
+发布外部 OAuth 应用后，其他 Google 账号也能发起授权。本机 Edge 完成了所有者的新授权。授权请求通过仅 Gmail 只读、离线访问、回环、PKCE 和无效 state 拒绝检查。
+
+已在 SpringMonkey 验证新旧刷新令牌不同，但经 Google `getProfile` 比对为同一邮箱。新令牌刷新与 `getProfile` 均返回 HTTP 200，作用域恰为 Gmail 只读。Google 未返回刷新令牌固定到期时间，外部测试应用的七天期限不适用于这次正式版授权。撤销、带 Gmail 权限时修改 Google 密码、六个月未使用等仍可能使令牌失效。
+
+已原子替换服务的加密凭据并重启 Gmail 只读服务，两容器的连接状态均通过。Hermes 真实对话加载 `gmail-readonly` 并成功调用状态命令，返回 `connected: true`、`gmail.readonly`，命令退出码 0。旧密文保留于宿主机 root 专用回滚目录，文件权限 0600。Hermes 容器保持原镜像，WebApp 匿名访问仍要求 Nous 登录，匿名配置请求返回 HTTP 401。验收期间未读取真实邮件正文。
 
 - [Google 应用受众与发布状态](https://support.google.com/cloud/answer/15549945)
 - [个人用途验证例外](https://support.google.com/cloud/answer/13464323)
 - [应用首页、隐私说明与网域要求](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification)
+- [Google OAuth 刷新令牌失效条件](https://developers.google.com/identity/protocols/oauth2#expiration)
 
 ## 其他验收状态
 
