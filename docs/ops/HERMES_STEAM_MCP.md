@@ -78,3 +78,20 @@ configuration changed after installation.
 - [Upstream license](https://github.com/TMHSDigital/steam-mcp/blob/fce291842eb162bc241f63228dc1c29b7202860c/LICENSE)
 - [Valve Publisher Keys](https://partner.steamgames.com/doc/webapi_overview/auth#publisher-keys)
 - [Valve SteamPipe uploads](https://partner.steamgames.com/doc/sdk/uploading)
+
+## Steam Guard email verification in WebApp
+
+The WebApp image extends the reviewed Hermes v0.23.1 screen image with a pinned
+classifier patch. Steamworks currently renders its emailed-code challenge as
+five adjacent, unlabeled text fields. The patch recognizes this exact group on
+`https://partner.steamgames.com` when the surrounding challenge text matches.
+The native vault handles the private prompt, origin check and field write. The
+report workflow can continue after Steam accepts the verification.
+
+`tests/steam_guard_browser_acceptance.py` covers the native prompt callback and
+five-field fill in isolated Chromium, along with wrong-origin, unrelated fields,
+wrong-length, and navigation cases. The candidate classifier also identified all
+five fields on the real Steamworks challenge in a read-only probe. The production
+image is selected through `/srv/hermes-pilot/screen-image.json`. The stopped
+`hermes-dashboard-pre-steamguard` container and its original image are available
+for rollback. The Steam MCP connector's tool scopes are independent of browser login.

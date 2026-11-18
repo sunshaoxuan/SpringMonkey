@@ -1,0 +1,5 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+USER root
+COPY steam_guard_patch.py /opt/pilot/steam_guard_patch.py
+RUN /opt/hermes/.venv/bin/python /opt/pilot/steam_guard_patch.py
