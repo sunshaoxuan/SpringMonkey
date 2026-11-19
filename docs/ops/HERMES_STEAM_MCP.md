@@ -107,3 +107,7 @@ For the application overview, the same skill runs the installed
 lifetime and currently selected period summaries together. It preserves the
 visible period, currency, gross and net labels and leaves the report filters
 as they are. The existing login and other report views use their own steps.
+
+The skill also covers finalized revenue share and payment history. It
+reports the statement cutoff, keeps lifetime net sales separate from payable
+balances, and reads the current payment hold threshold without saving changes.

@@ -32,6 +32,17 @@ Use the owner's authorized Bot Screen browser. For a request such as
    data only. Changes to store, payment, pricing, or publishing settings are
    outside its scope.
 
+Distinguish live sales from finalized monthly payments. The app details page's
+Lifetime Steam revenue (net) deducts returns, chargebacks, and taxes but is not
+the partner's payable balance. Read finalized Revenue Share and Payment History
+for amounts owed; label sums of unpaid entries with their reporting cutoff rather
+than presenting them as today's complete balance. If a newer month is absent
+from Reports, check availability and report the actual result without assuming
+that live sales are unavailable. For the account's hold threshold, navigate via
+Dashboard > Company Details and read the selected option text of
+`#payment_hold_threshold`; do not infer the amount from all dropdown options or
+save changes. Keep these views read-only.
+
 Keep account identifiers, credentials, codes, browser session data, and private
 report contents out of this skill. Record future verified navigation or field
 semantics through the native skill management tool.
