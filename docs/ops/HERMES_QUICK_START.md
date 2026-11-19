@@ -31,3 +31,9 @@ WebApp当前显示亮色界面，Open settings可调整界面。原Dashboard左�
 回滚时，从 `/srv/hermes-pilot/background-routing-rollback/config.yaml` 恢复本次涉及的委派、插件启用、命名供应商、工具集和 cron 模型字段，然后通过 Hermes 控制套接字重新加载插件。只恢复本次变更的字段可保留后来用户对聊天默认值的调整。
 
 部署验收确认 Hermes 在热加载后发现官方插件。`delegate_task` 省略路由时返回 `model_map/routine`，SteamWorks 报表由 Terra 子会话真实读取，五个指定数值和页面一致。Sol 复杂路由与 Terra 定时任务路由已用原生解析器核对；本次只有报表委派实际调用模型。安装依据为用户要求独立配置后台路由，聊天和 MoA 模型字段保留原值。
+
+## 新机器人继承模型连接
+
+创建机器人时可从主档案复制静态模型密钥。模型要和供应商一同选择。`gpt-6.1-terra` 使用 `springmonkey-background` 的兼容网关，`springmonkey-deepseek` 用于 DeepSeek 模型。只有已经选对的供应商和模型组合才能作为可用的继承配置。
+
+运行中的命名机器人读取该档案自己的凭据范围。容器里已有某个密钥，只能说明主进程或管理员调用可以用它。给已有机器人补配置时，把已有推理密钥写入该档案的私有 `.env`，在配置中保留环境变量引用。新机器人从已设置的主档案创建时可选复制密钥。避免在聊天、日志或仓库中存放密钥原文。
