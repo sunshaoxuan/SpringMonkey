@@ -23,6 +23,8 @@ def main():
         raise RuntimeError('administrator-owned canonical config required')
     workspace=ROOT/'workspace';workspace.mkdir(mode=0o750,exist_ok=True)
     os.chown(workspace,10000,10000)
+    gmail_runtime=ROOT/'approved-skills/.gmail-runtime'
+    gmail_mount=['--mount',f'type=bind,src={gmail_runtime},dst=/opt/data/skills/.gmail-runtime,readonly'] if gmail_runtime.is_dir() else []
     args=['docker','run','-d','--name',NAME,'--hostname','springmonkey-hermes',
           '--label','org.springmonkey.pilot=hermes','--restart','unless-stopped',
           '--cpus','1.5','--memory','3g','--memory-swap','3g','--pids-limit','512',
@@ -32,9 +34,10 @@ def main():
           '--env','HERMES_MANAGED_DIR=/opt/policy',
           '--mount','type=bind,src='+str(data)+',dst=/opt/data',
           '--mount','type=bind,src='+str(ROOT/'policy')+',dst=/opt/policy,readonly',
-          '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles,readonly',
+          '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles',
           '--mount','type=bind,src='+str(ROOT/'workspace')+',dst=/workspace',
-          '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills,readonly',
+          '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills',
+          *gmail_mount,
           '--mount','type=bind,src='+str(ETC/'AGENTS.md')+',dst=/workspace/AGENTS.md,readonly',
           '--log-opt','max-size=10m','--log-opt','max-file=3',image,'infinity']
     subprocess.run(args,check=True,capture_output=True)
@@ -43,7 +46,7 @@ def main():
     wrapper=Path('/usr/local/bin/hermes-pilot')
     wrapper.write_text('#!/bin/sh\nset -eu\nexec /usr/bin/flock -n /run/lock/hermes-pilot.lock '
         '/usr/bin/docker exec -i --user 10000:10000 --workdir /workspace hermes-pilot '
-        '/usr/bin/timeout --signal=TERM 900 /opt/hermes/.venv/bin/hermes "$@"\n')
+        '/bin/sh -c \'umask 0007; exec "$@"\' sh /usr/bin/timeout --signal=TERM 900 /opt/hermes/.venv/bin/hermes "$@"\n')
     wrapper.chmod(0o755)
     obj=json.loads(subprocess.check_output(['docker','inspect',NAME]))[0]
     host=obj['HostConfig']

@@ -16,8 +16,8 @@ in the final config. acceptance_moa.py checks the existing private trace and
 synthetic files without making more model calls. No Discord connection is added.
 `Dockerfile.capabilities` extends that exact local base with Office/OCR/rendering
 tools and a separate hash-locked Python environment. Check the r1 image ID before
-building it. Runtime skill sources are the reviewed readonly host mount, with
-the pinned source archive and licenses retained in the expansion evidence.
+building it. The shared Skill catalog starts from the reviewed source archive, with
+its provenance and licenses retained in the expansion evidence.
 
 `Dockerfile` extends the immutable v0.23.1 base using its own locked build,
 applies two preverified refusal source files, verifies source/package hashes and
@@ -27,7 +27,7 @@ context includes the retained reviewed `skills/`, `patched/agent/`, and
 
 `install_docker.py` checks official signing-key identity, records network baselines,
 and installs Docker on Ubuntu26.10. `start_container.py` uses the reviewed local
-image ID, UID10000, resource limits, readonly policy/Skills and no published ports.
+image ID, UID10000, resource limits, read-only CLI policy and no published ports.
 It rejects an existing container and expects root-only credentials staged under
 `/etc/hermes-pilot`. The host wrapper serializes tasks and enforces a 900s timeout.
 
@@ -70,7 +70,7 @@ mode0640, in an administrator-owned0750 policy directory. The CLI home is
 ../policy/config.yaml. Native atomic saving preserves the symlink. The CLI mounts
 policy readonly and uses HERMES_MANAGED_DIR=/opt/policy to pin administrator values.
 Prepare these homes, links and the policy directory before start_container.py.
-Both containers mount /srv/hermes-pilot/data/skill-bundles readonly. Old state
+Both containers share writable Skill bundles in /srv/hermes-pilot/data/skill-bundles. Old state
 remains in the dashboard home; new CLI sessions have separate state.
 The former /etc/hermes-pilot/config.json is not read at runtime. start_dashboard.py
 starts the official UI using the registered client in the protected env file.
@@ -115,3 +115,18 @@ reviewed skills mount and r1 image ID, and use the current private-home startup
 scripts. Keep the private-home/policy arrangement: the older root-sticky home
 fails native control-socket discovery. Archived stopped containers retain older
 mounts and must not be started blindly. Preserve all user state and recovery data.
+
+## Writable Hermes skill directories
+
+The pilot and dashboard mount the shared Skill catalog and bundle directory
+read-write. Both runtime users share group 10000. Existing catalog and bundle
+directories must be writable by that group, and new entries inherit it.
+The CLI wrapper and dashboard use umask 0007. The Gmail socket directory,
+when present, is mounted separately read-only. Skill write approval is off
+for new edits. Existing pending proposals remain in the review queue until an
+owner applies or rejects them.
+
+The deployment rollback is stored in /srv/hermes-pilot/writable-skills-rollback.
+It includes the prior configuration, workspace instructions, CLI wrapper and
+original modes for the two writable trees. The stopped containers with the
+pre-writable-skills suffix retain the previous mount configuration.

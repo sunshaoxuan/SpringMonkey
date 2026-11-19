@@ -11,18 +11,18 @@ in `cardNo1`, 6 digits in `cardNo2`, and a separate password input.
 
 ## Runtime changes
 
-- The installed catalog remains read-only. `skills.create_dir` now points
+- `skills.create_dir` points
   to `/workspace/authored-skills` on the existing shared workspace mount.
 - The TimesCar skill installed there explains the two fields, human handoff,
   authorized reservation reads, change preparation and confirmation.
 - The live working instructions explicitly tell Hermes to open an authorized
   site's official entry, use the owner-authorized browser session, and ask
   for handoff when login is required. Hermes may author reusable skills
-  in the authored directory using its native approval flow when prompted.
+  in the authored directory through the native Skill tool.
 
 Both running containers loaded the installed skill through `skill_view`,
-resolved the same writable creation directory, and verified the original skill
-catalog was still read-only. In an isolated Hermes home the native
+and resolved the same writable creation directory. The catalog and bundle
+mounts became writable on 2026-11-19. In an isolated Hermes home the native
 `skill_manage` created a synthetic skill in an alternative directory and
 `skill_view` could read it back. A real new conversation on the dashboard
 profile loaded TimesCar and explained the 4+6 field split, login handoff and

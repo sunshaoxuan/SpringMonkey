@@ -20,6 +20,8 @@ def main():
     config=ROOT/'policy/config.yaml'
     if config.stat().st_uid!=10001:raise RuntimeError('administrator must own config')
     image=json.loads((ROOT/'screen-image.json').read_text())['image_id']
+    gmail_runtime=ROOT/'approved-skills/.gmail-runtime'
+    gmail_mount=['--mount',f'type=bind,src={gmail_runtime},dst=/opt/data/skills/.gmail-runtime,readonly'] if gmail_runtime.is_dir() else []
     args=['docker','run','-d','--name',NAME,'--hostname','springmonkey-hermes',
           '--label','org.springmonkey.pilot=hermes-dashboard',
           '--restart','unless-stopped','--init','--user','10001:10000','--cap-drop','ALL',
@@ -32,9 +34,10 @@ def main():
           '--mount','type=bind,src='+str(ROOT/'data')+',dst=/opt/data',
           '--mount','type=bind,src='+str(ROOT/'policy')+',dst=/opt/policy',
           '--mount','type=bind,src='+str(ROOT/'webapp-ingress.conf')+',dst=/opt/pilot/webapp-ingress.conf,readonly',
-          '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles,readonly',
+          '--mount','type=bind,src='+str(ROOT/'data/skill-bundles')+',dst=/opt/data/skill-bundles',
           '--mount','type=bind,src='+str(ROOT/'workspace')+',dst=/workspace',
-          '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills,readonly',
+          '--mount','type=bind,src='+str(ROOT/'approved-skills')+',dst=/opt/data/skills',
+          *gmail_mount,
           '--mount','type=bind,src='+str(ETC/'AGENTS.md')+',dst=/workspace/AGENTS.md,readonly',
           '--log-opt','max-size=10m','--log-opt','max-file=3','--entrypoint','/bin/sh',image,
           '-c','set -eu; umask 007; mkdir -p "$XDG_RUNTIME_DIR"; /opt/hermes/.venv/bin/hermes webapp --skip-build --no-open >/dev/null; /usr/sbin/nginx -e /dev/stderr -c /opt/pilot/webapp-ingress.conf; exec /opt/hermes/.venv/bin/hermes dashboard --host 0.0.0.0 --port 9119 --skip-build --no-open']
